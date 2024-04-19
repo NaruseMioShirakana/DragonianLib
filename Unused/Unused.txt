@@ -1,0 +1,889 @@
+/*
+template<typename T>
+bool operator!=(const std::vector<T>& _Left, const std::vector<T>& _Right)
+{
+	if (_Left.size() != _Right.size())
+		return true;
+	for (int i = 0; i < _Left.size(); ++i)
+		if (_Left[i] != _Right[i])
+			return true;
+	return false;
+}
+
+template<typename T>
+bool operator==(const std::vector<T>& _Left, const std::vector<T>& _Right)
+{
+	return !(_Left != _Right);
+}
+
+
+
+TensorData::~TensorData()
+{
+	Free();
+}
+
+Tensor TensorData::Copy() const
+{
+	Tensor Ret(Tensor_);
+	Ret.Shape_ = Shape_;
+	Ret.ReversedShape_ = ReversedShape_;
+	Ret.Step_ = Step_;
+	return Ret;
+}
+
+void TensorData::Assign(float32 _Val) const
+{
+	ggml_set_f32(Tensor_, _Val);
+}
+
+void TensorData::Assign(int32 _Val) const
+{
+	ggml_set_i32(Tensor_, _Val);
+}
+
+void TensorData::Assign(float32 _Val, const Indices& _Indices) const
+{
+	ggml_set_f32_nd(Tensor_, _Indices.axis4, _Indices.axis3, _Indices.axis2, _Indices.axis1, _Val);
+}
+
+void TensorData::Assign(int32 _Val, const Indices& _Indices) const
+{
+	ggml_set_i32_nd(Tensor_ ,_Indices.axis4, _Indices.axis3, _Indices.axis2, _Indices.axis1, _Val);
+}
+
+void TensorData::Assign(float32 _Val, const Ranges& _Indices) const
+{
+	const auto axis1_max = std::min(_Indices.axis1.End, (int)Tensor_->ne[3]);
+	const auto axis2_max = std::min(_Indices.axis2.End, (int)Tensor_->ne[2]);
+	const auto axis3_max = std::min(_Indices.axis3.End, (int)Tensor_->ne[1]);
+	const auto axis4_max = std::min(_Indices.axis4.End, (int)Tensor_->ne[0]);
+	for (int i = _Indices.axis1.Begin; i < axis1_max; i += _Indices.axis1.Step)
+	{
+		if (i >= axis1_max) break;
+		for (int j = _Indices.axis2.Begin; j < axis2_max; j += _Indices.axis2.Step)
+		{
+			if (j >= axis2_max) break;
+			for (int k = _Indices.axis3.Begin; k < axis3_max; k += _Indices.axis3.Step)
+			{
+				if (k >= axis3_max) break;
+				for (int l = _Indices.axis4.Begin; l < axis4_max; l += _Indices.axis4.Step)
+				{
+					if (l >= axis4_max) break;
+					ggml_set_f32_nd(Tensor_, l, k, j, i, _Val);
+				}
+			}
+		}
+	}
+}
+
+void TensorData::Assign(int32 _Val, const Ranges& _Indices) const
+{
+	const auto axis1_max = std::min(_Indices.axis1.End, (int)Tensor_->ne[3]);
+	const auto axis2_max = std::min(_Indices.axis2.End, (int)Tensor_->ne[2]);
+	const auto axis3_max = std::min(_Indices.axis3.End, (int)Tensor_->ne[1]);
+	const auto axis4_max = std::min(_Indices.axis4.End, (int)Tensor_->ne[0]);
+	for (int i = _Indices.axis1.Begin; i < axis1_max; i += _Indices.axis1.Step)
+	{
+		if (i >= axis1_max) break;
+		for (int j = _Indices.axis2.Begin; j < axis2_max; j += _Indices.axis2.Step)
+		{
+			if (j >= axis2_max) break;
+			for (int k = _Indices.axis3.Begin; k < axis3_max; k += _Indices.axis3.Step)
+			{
+				if (k >= axis3_max) break;
+				for (int l = _Indices.axis4.Begin; l < axis4_max; l += _Indices.axis4.Step)
+				{
+					if (l >= axis4_max) break;
+					ggml_set_i32_nd(Tensor_, l, k, j, i, _Val);
+				}
+			}
+		}
+	}
+}
+
+void TensorData::Assign(const Ranges& _Indices) const
+{
+	const auto axis1_max = std::min(_Indices.axis1.End, (int)Tensor_->ne[3]);
+	const auto axis2_max = std::min(_Indices.axis2.End, (int)Tensor_->ne[2]);
+	const auto axis3_max = std::min(_Indices.axis3.End, (int)Tensor_->ne[1]);
+	const auto axis4_max = std::min(_Indices.axis4.End, (int)Tensor_->ne[0]);
+	for (int i = _Indices.axis1.Begin; i < axis1_max; i += _Indices.axis1.Step)
+	{
+		if (i >= axis1_max) break;
+		const auto axis1_ = (i - _Indices.axis1.Begin) / _Indices.axis1.Step;
+		for (int j = _Indices.axis2.Begin; j < axis2_max; j += _Indices.axis2.Step)
+		{
+			if (j >= axis2_max) break;
+			const auto axis2_ = (j - _Indices.axis2.Begin) / _Indices.axis2.Step;
+			for (int k = _Indices.axis3.Begin; k < axis3_max; k += _Indices.axis3.Step)
+			{
+				if (k >= axis3_max) break;
+				const auto axis3_ = (k - _Indices.axis3.Begin) / _Indices.axis3.Step;
+				for (int l = _Indices.axis4.Begin; l < axis4_max; l += _Indices.axis4.Step)
+				{
+					if (l >= axis4_max) break;
+					const auto axis4_ = (l - _Indices.axis4.Begin) / _Indices.axis4.Step;
+					if (_Indices.ip)
+					{
+						ggml_set_i32_nd(
+							Tensor_, l, k, j, i,
+							*(_Indices.ip + (ptrdiff_t)
+								((axis1_ * _Indices.axis2.Size * _Indices.axis3.Size * _Indices.axis4.Size) +
+									(axis2_ * _Indices.axis3.Size * _Indices.axis4.Size) +
+									(axis3_ * _Indices.axis4.Size) +
+									(axis4_)))
+						);
+					}
+					else if (_Indices.fp)
+					{
+						ggml_set_f32_nd(
+							Tensor_, l, k, j, i,
+							*(_Indices.fp + (ptrdiff_t)
+								((axis1_ * _Indices.axis2.Size * _Indices.axis3.Size * _Indices.axis4.Size) +
+									(axis2_ * _Indices.axis3.Size * _Indices.axis4.Size) +
+									(axis3_ * _Indices.axis4.Size) +
+									(axis4_)))
+						);
+					}
+					else
+						return;
+				}
+			}
+		}
+	}
+}
+
+void TensorData::Free()
+{
+	if (MemoryPool_ && MemoryPool_->pool)
+	{
+		--MemoryPool_->ref_count;
+		if (MemoryPool_->ref_count == 0)
+		{
+			ggml_libsvc_free_tensor(MemoryPool_->pool);
+			if (MemOwner_) MemoryPool_->mx.unlock();
+		}
+	}
+	if (ReferencePool_ && ReferencePool_->pool)
+	{
+		--ReferencePool_->ref_count;
+		if (ReferencePool_->ref_count == 0)
+			ggml_libsvc_free_tensor(ReferencePool_->pool);
+	}
+	MemoryPool_ = nullptr;
+	ReferencePool_ = nullptr;
+	Tensor_ = nullptr;
+}
+
+Tensor::Tensor(const TensorOptions& _Options)
+{
+	Type_ = _Options._Dtype;
+	DTypeAligBytes_ = Type2Size(Type_);
+	if (_Options._Shape.size() > GGML_MAX_DIMS)
+		LibSvcThrow("Axis > " + std::to_string(GGML_MAX_DIMS) + " Not Support Yet");
+	Shape_ = _Options._Shape;
+	RegName_ = _Options._Name;
+	MemOwner_ = _Options._MemOwner;
+	AllocateMul = _Options.NMul;
+	Device_ = _Options._Device;
+
+	ReversedShape_ = Shape_;
+	std::ranges::reverse(ReversedShape_);
+	size_t TotalSize = DTypeAligBytes_;
+	for (const auto i : Shape_)
+		TotalSize *= i;
+	const auto SizeAllocated = TotalSize + ((sizeof(ggml_tensor) + sizeof(ggml_object)) * AllocateMul);
+
+	if (MemOwner_)
+	{
+		if (_Options._Pool)
+		{
+			if (_Options._Pool->mx.try_lock() || ggml_get_mem_size(_Options._Pool->pool) >= SizeAllocated)
+			{
+				MemoryPool_ = _Options._Pool;
+				LogMessage("[Allocator] Using Custom Memory");
+			}
+			else
+				MemoryPool_ = &Allocate(RegName_, TotalSize, AllocateMul, Device_);
+		}
+		else
+			MemoryPool_ = &Allocate(RegName_, TotalSize, AllocateMul, Device_);
+		if (MemoryPool_->mx.try_lock())
+			LogMessage("[Allocator] Using Official Memory");
+		if (GetGGMLUnusedMemorySize(MemoryPool_->pool) < SizeAllocated)
+			ggml_libsvc_free_tensor(MemoryPool_->pool);
+		Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+		if (!Tensor_)
+		{
+			LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Empty Cache.");
+			ggml_libsvc_free_tensor(MemoryPool_->pool);
+			Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+			if (!Tensor_)
+			{
+				LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Realloc MemoryPool.");
+				ggml_libsvc_free(MemoryPool_->pool);
+				MemoryPool_->pool = ggml_libsvc_allocate({ SizeAllocated * AllocateMul, nullptr, false });
+				Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+				if (!Tensor_)
+					LibSvcThrow("Fatal Error When Creating Tensor!");
+			}
+		}
+		++MemoryPool_->ref_count;
+	}
+	else
+		LibSvcThrow("When Construct With TensorOptions, _MemOwner Should Be True!");
+	if (Tensor_)
+		Step_ = { Tensor_->nb,Tensor_->nb + Shape_.size() };
+}
+
+Tensor::Tensor(const Tensor& _Left)
+{
+	MemOwner_ = _Left.MemOwner_;
+	Shape_ = _Left.Shape_;
+	Type_ = _Left.Type_;
+	DTypeAligBytes_ = _Left.DTypeAligBytes_;
+	RegName_ = _Left.RegName_;
+	AllocateMul = _Left.AllocateMul;
+	Device_ = _Left.Device_;
+
+	Step_ = _Left.Step_;
+	ReversedShape_ = _Left.ReversedShape_;
+
+	size_t TotalSize = DTypeAligBytes_;
+	for (const auto i : Shape_)
+		TotalSize *= i;
+	const auto SizeAllocated = TotalSize + ((sizeof(ggml_tensor) + sizeof(ggml_object)) * AllocateMul);
+
+	if (MemOwner_)
+	{
+		bool UseSrc = true;
+		if (GetGGMLUnusedMemorySize(_Left.MemoryPool_->pool) >= SizeAllocated)
+		{
+			LogMessage("[Tensor] Trying To Create A Tensor With Old MemoryPool.");
+			MemoryPool_ = _Left.MemoryPool_;
+			Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+			if (Tensor_) UseSrc = false;
+		}
+
+		if (UseSrc)
+		{
+			MemoryPool_ = &Allocate(RegName_, TotalSize, AllocateMul, Device_);
+			if (GetGGMLUnusedMemorySize(MemoryPool_->pool) < SizeAllocated)
+				ggml_libsvc_free_tensor(MemoryPool_->pool);
+			Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+			if (!Tensor_)
+			{
+				LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Empty Cache.");
+				ggml_libsvc_free_tensor(MemoryPool_->pool);
+				Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+				if (!Tensor_)
+				{
+					LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Realloc MemoryPool.");
+					ggml_libsvc_free(MemoryPool_->pool);
+					MemoryPool_->pool = ggml_libsvc_allocate({ SizeAllocated * AllocateMul, nullptr, false });
+					Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+					if (!Tensor_)
+						LibSvcThrow("Fatal Error When Creating Tensor!");
+				}
+			}
+		}
+		if (MemoryPool_->mx.try_lock())
+			LogMessage("[Tensor] Creating A Tensor With New MemoryPool.");
+		Calc(ggml_cpy(GetReferPool(Device_).pool, _Left.Tensor_, Tensor_));
+		++MemoryPool_->ref_count;
+	}
+	else
+	{
+		MemoryPool_ = _Left.MemoryPool_;
+		ReferencePool_ = &GetReferPool(Device_);
+		Tensor_ = ggml_view_tensor(ReferencePool_->pool, _Left.Tensor_);
+		if(Tensor_)
+		{
+			++MemoryPool_->ref_count;
+			++ReferencePool_->ref_count;
+		}
+	}
+}
+
+Tensor::Tensor(Tensor&& _Right) noexcept
+{
+	RegName_ = std::move(_Right.RegName_);
+	Shape_ = std::move(_Right.Shape_);
+	Step_ = std::move(_Right.Step_);
+	ReversedShape_ = std::move(_Right.ReversedShape_);
+	DTypeAligBytes_ = _Right.DTypeAligBytes_;
+	Type_ = std::move(_Right.Type_);
+	AllocateMul = _Right.AllocateMul;
+	MemOwner_ = _Right.MemOwner_;
+	Device_ = _Right.Device_;
+
+	MemoryPool_ = _Right.MemoryPool_;
+	ReferencePool_ = _Right.ReferencePool_;
+	Tensor_ = _Right.Tensor_;
+
+	_Right.MemoryPool_ = nullptr;
+	_Right.ReferencePool_ = nullptr;
+	_Right.Tensor_ = nullptr;
+}
+
+Tensor::Tensor(ggml_tensor* _Right) noexcept
+{
+	if (!_Right)
+		LibSvcThrow("Nullptr Exception");
+
+	RegName_ = L"Tensor";
+	Shape_ = { _Right->ne,_Right->ne + GGML_MAX_DIMS };
+	Step_ = { Tensor_->nb,Tensor_->nb + Shape_.size() };
+	ReversedShape_ = Shape_;
+	Type_ = GGMLType2Type(_Right->type);
+	DTypeAligBytes_ = Type2Size(Type_);
+	AllocateMul = ALLOCATE_MUL;
+	MemOwner_ = true;
+	Device_ = _Right->backend;
+
+	size_t TotalSize = DTypeAligBytes_;
+	for (const auto i : Shape_)
+		TotalSize *= i;
+	const auto SizeAllocated = TotalSize + ((sizeof(ggml_tensor) + sizeof(ggml_object)) * AllocateMul);
+
+	if (MemOwner_)
+	{
+		MemoryPool_ = &Allocate(RegName_, TotalSize, AllocateMul, Device_);
+		if (MemoryPool_->mx.try_lock())
+			LogMessage("[Allocator] Using Official Memory");
+		if (GetGGMLUnusedMemorySize(MemoryPool_->pool) < SizeAllocated)
+			ggml_libsvc_free_tensor(MemoryPool_->pool);
+		Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+		if (!Tensor_)
+		{
+			LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Empty Cache.");
+			ggml_libsvc_free_tensor(MemoryPool_->pool);
+			Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+			if (!Tensor_)
+			{
+				LogMessage("[Tensor] MemoryPool Out Of Memory! Trying To Realloc MemoryPool.");
+				ggml_libsvc_free(MemoryPool_->pool);
+				MemoryPool_->pool = ggml_libsvc_allocate({ SizeAllocated * AllocateMul, nullptr, false });
+				Tensor_ = ggml_new_tensor(MemoryPool_->pool, Type2GGMLType(Type_), (int)ReversedShape_.size(), ReversedShape_.data());
+				if (!Tensor_)
+					LibSvcThrow("Fatal Error When Creating Tensor!");
+			}
+		}
+		Calc(ggml_cpy(GetReferPool(Device_).pool, _Right, Tensor_));
+		++MemoryPool_->ref_count;
+	}
+}
+
+Tensor& Tensor::operator=(const Tensor& _Left)
+{
+	ggml_set_f32(GetReferPool(Device_).pool, Tensor_, );
+	return *this;
+}
+
+Tensor& Tensor::operator=(Tensor&& _Right) noexcept
+{
+	RegName_ = std::move(_Right.RegName_);
+	Shape_ = std::move(_Right.Shape_);
+	Step_ = std::move(_Right.Step_);
+	ReversedShape_ = std::move(_Right.ReversedShape_);
+	DTypeAligBytes_ = _Right.DTypeAligBytes_;
+	Type_ = std::move(_Right.Type_);
+	AllocateMul = _Right.AllocateMul;
+	MemOwner_ = _Right.MemOwner_;
+	Device_ = _Right.Device_;
+
+	MemoryPool_ = _Right.MemoryPool_;
+	ReferencePool_ = _Right.ReferencePool_;
+	Tensor_ = _Right.Tensor_;
+
+	_Right.MemoryPool_ = nullptr;
+	_Right.ReferencePool_ = nullptr;
+	_Right.Tensor_ = nullptr;
+	return *this;
+}
+
+Tensor::~Tensor() = default;
+
+void Tensor::loadData(ggml_context* _WeightDict, bool _Strict)
+{
+	if (RegName_.empty())
+		RegName_ = L"Tensor";
+	const auto Tensor = ggml_get_tensor(_WeightDict, to_byte_string(RegName_).c_str());
+	if (!Tensor)
+		LibSvcThrow("Tensor Not Found In Static Dict!");
+	MemOwner_ = true;
+	Type_ = GGMLType2Type(Tensor->type);
+	DTypeAligBytes_ = Type2Size(Type_);
+	AllocateMul = ALLOCATE_MUL;
+
+	for (int i = 0; i < GGML_MAX_DIMS; ++i)
+	{
+		if(Tensor->nb[i] == 0)
+			break;
+		Shape_.emplace_back(Tensor->ne[i]);
+	}
+	for (int i = int(Shape_.size()) - 1; i > -1; --i)
+		Step_.emplace_back(Tensor->nb[i]);
+	Transopse_ = std::vector(Shape_.size(), 0i64);
+	for (size_t i = 1; i < Transopse_.size(); ++i)
+		Transopse_[i] = Transopse_[i - 1] + 1;
+	size_t TotalSize = DTypeAligBytes_;
+	for (const auto i : Shape_)
+		TotalSize *= i;
+
+	if (MemoryPool_)
+		ggml_libsvc_free_tensor(MemoryPool_->pool);
+	if (MemOwner_)
+	{
+		MemoryPool_ = &Allocate(RegName_, TotalSize, AllocateMul, Device_);
+		ggml_cpy(MemoryPool_->pool, Tensor, Tensor_);
+		MemoryPool_->mx.lock();
+	}
+}
+
+void Tensor::saveData(FileGuard& _File)
+{
+
+}
+
+Tensor Tensor::zeros(const std::vector<int64_t>& _Shape, const std::string& _Dtype, const std::string& _Name)
+{
+	Tensor Output{ _Shape ,_Dtype, _Name };
+	memset(Output.Data_.data(), 0, Output.Data_.size());
+	return Output;
+}
+
+Tensor Tensor::zeros_like(const Tensor& _O)
+{
+	Tensor Output{ _O.shape() ,_O.dtype(), _O.RegName_ };
+	memset(Output.Data_.data(), 0, Output.Data_.size());
+	return Output;
+}
+
+Tensor Tensor::ones(const std::vector<int64_t>& _Shape, const std::string& _Dtype, const std::string& _Name)
+{
+	Tensor Output{ _Shape ,_Dtype, _Name };
+	if (Output.Type_ == "int8")
+		AssignPtr(Output.buf_begin<int8>(), Output.buf_end<int8>(), int8(1));
+	else if (Output.Type_ == "int16")
+		AssignPtr(Output.buf_begin<int16>(), Output.buf_end<int16>(), 1i16);
+	else if (Output.Type_ == "int32")
+		AssignPtr(Output.buf_begin<int32>(), Output.buf_end<int32>(), 1i32);
+	else if (Output.Type_ == "int64")
+		AssignPtr(Output.buf_begin<int64>(), Output.buf_end<int64>(), 1i64);
+	else if (Output.Type_ == "float8")
+		;
+	else if (Output.Type_ == "float16")
+		;
+	else if (Output.Type_ == "bfloat16")
+		;
+	else if (Output.Type_ == "float32")
+		AssignPtr(Output.buf_begin<float32>(), Output.buf_end<float32>(), 1.f);
+	else if (Output.Type_ == "float64")
+		AssignPtr(Output.buf_begin<float64>(), Output.buf_end<float64>(), 1.);
+	else
+		AssignPtr(Output.buf_begin<bool>(), Output.buf_end<bool>(), true);
+	return Output;
+}
+
+Tensor Tensor::ones_like(const Tensor& _O)
+{
+	return ones(_O.Shape_, _O.Type_, _O.RegName_);
+}
+
+Tensor Tensor::rand(const std::vector<int64_t>& _Shape, int _Seed, const std::string& _Dtype, const std::string& _Name)
+{
+	return {};
+}
+
+Tensor Tensor::rand_like(const Tensor& _O, int _Seed)
+{
+	return rand(_O.Shape_, _Seed, _O.Type_, _O.RegName_);
+}
+
+Tensor Tensor::randn(const std::vector<int64_t>& _Shape, int _Seed, const std::string& _Dtype, const std::string& _Name)
+{
+	return {};
+}
+
+Tensor Tensor::randn_like(const Tensor& _O, int _Seed)
+{
+	return randn(_O.Shape_, _Seed, _O.Type_, _O.RegName_);
+}
+*/
+
+
+/*
+struct TensorOptions
+{
+	std::vector<int64_t> _Shape;
+	std::string _Dtype = "float32";
+	std::wstring _Name = L"Tensor";
+	size_t NMul = ALLOCATE_MUL;
+	bool _MemOwner = true;
+	ThreadSafeMemoryPool* _Pool = nullptr;
+	ggml_backend_type _Device = GGML_BACKEND_TYPE_CPU;
+};
+
+
+
+class TensorData : public Value
+{
+public:
+	TensorData() = default;
+	TensorData(const TensorData& _Left) = delete;
+	TensorData(TensorData&& _Right) = delete;
+	~TensorData() override;
+
+protected:
+	std::vector<int64_t> Shape_;
+	std::vector<uint64_t> Step_;
+	std::vector<int64_t> ReversedShape_;
+	size_t DTypeAligBytes_ = 4;
+	std::string Type_ = "float32";
+	size_t AllocateMul = ALLOCATE_MUL;
+	bool MemOwner_ = false;
+	ggml_backend_type Device_ = GGML_BACKEND_TYPE_CPU;
+
+public:
+	LIBSVCND const std::string& dtype() const { return Type_; }
+	LIBSVCND const std::vector<int64_t>& shape() const { return Shape_; }
+	LIBSVCND size_t size() const {
+		if (Shape_.empty()) return 0;
+		return Shape_[0];
+	}
+	LIBSVCND size_t total_size() const {
+		if (Shape_.empty()) return 0;
+		size_t ttsize = 1;
+		for (const auto i : Shape_)
+			ttsize *= i;
+		return ttsize;
+	}
+	LIBSVCND size_t buf_size() const {
+		return total_size() * DTypeAligBytes_;
+	}
+	LIBSVCND size_t step() const {
+		if (Step_.empty()) return 0;
+		return Step_[0];
+	}
+	LIBSVCND byte* data() const { return (byte*)Tensor_->data; }
+	template<typename _ValueType>
+	LIBSVCND _ValueType& item()
+	{
+		assert(sizeof(_ValueType) == DTypeAligBytes_);
+		return *(_ValueType*)(Tensor_->data);
+	}
+
+protected:
+	ggml_tensor* Tensor_ = nullptr;
+	ThreadSafeMemoryPool* MemoryPool_ = nullptr;
+	ThreadSafeMemoryPool* ReferencePool_ = nullptr;
+
+public:
+	LIBSVCND TensorView operator[](int64_t index) const;
+	LIBSVCND Tensor Copy() const;
+	LIBSVCND void Assign(int32 _Val) const;
+	LIBSVCND void Assign(float32 _Val) const;
+	LIBSVCND void Assign(int32 _Val, const Indices& _Indices) const;
+	LIBSVCND void Assign(float32 _Val, const Indices& _Indices) const;
+	LIBSVCND void Assign(int32 _Val, const Ranges& _Indices) const;
+	LIBSVCND void Assign(float32 _Val, const Ranges& _Indices) const;
+	LIBSVCND void Assign(const Ranges& _Indices) const;
+	void Free();
+};
+
+class Tensor : public TensorData
+{
+public:
+	Tensor() = default;
+	Tensor(const TensorOptions& _Options);
+	Tensor(const Tensor& _Left);
+	Tensor(Tensor&& _Right) noexcept;
+	Tensor(ggml_tensor* _Right) noexcept;
+	~Tensor() override;
+	Tensor& operator=(const Tensor& _Left);
+	Tensor& operator=(Tensor&& _Right) noexcept;
+
+private:
+	template<typename _ValueType>
+	LIBSVCND _ValueType* buf_begin()
+	{
+		assert(sizeof(_ValueType) == DTypeAligBytes_);
+		return (_ValueType*)(Tensor_->data);
+	}
+	template<typename _ValueType>
+	LIBSVCND _ValueType* buf_end()
+	{
+		assert(sizeof(_ValueType) == DTypeAligBytes_);
+		//return (_ValueType*)(Data_.end()._Ptr);
+	}
+
+public:
+	static Tensor zeros(const std::vector<int64_t>& _Shape, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor");
+	static Tensor zeros_like(const Tensor& _O);
+	static Tensor ones(const std::vector<int64_t>& _Shape, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor");
+	static Tensor ones_like(const Tensor& _O);
+	static Tensor rand(const std::vector<int64_t>& _Shape, int _Seed = 114514, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor");
+	static Tensor rand_like(const Tensor& _O, int _Seed = 114514);
+	static Tensor randn(const std::vector<int64_t>& _Shape, int _Seed = 114514, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor");
+	static Tensor randn_like(const Tensor& _O, int _Seed = 114514);
+	template <typename __TY>
+	static Tensor arange(__TY _Begin, __TY _End, __TY _Step, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor")
+	{
+		if (__Dtype.find(_Dtype) == __Dtype.end())
+			LibSvcThrow("DType Not Recognized");
+		if (sizeof(__TY) != __Dtype.at(_Dtype))
+			LibSvcThrow("Size Of DType MisMatch");
+		Tensor ret;
+		ret.Type_ = _Dtype;
+		ret.RegName_ = _Name;
+		ret.DTypeAligBytes_ = __Dtype.at(ret.Type_);
+		ret.MemOwner_ = true;
+		const auto diff = _End - _Begin;
+		const auto len = size_t(diff / _Step);
+		if (len <= 0)
+			LibSvcThrow("The Positive And Negative Of Both _End - _Begin And _Step Must Be The Same");
+
+		ret.Shape_ = { len };
+		ret.Data_ = MResource<byte>(len * ret.DTypeAligBytes_);
+		ret.Step_ = { ret.DTypeAligBytes_ };
+		ret.Transopse_ = { 0 };
+		ret.DataPtr_ = ret.Data_.data();
+		ret.ThisPtr_ = ret.Data_.data();
+
+		__TY* pdata = ret.DataPtr_;
+		*(pdata++) = _Begin;
+		for (size_t i = 1; i < len; ++i)
+		{
+			*pdata = *(pdata - 1) + _Step;
+			++pdata;
+		}
+
+		return ret;
+	}
+	template <typename __TY>
+	static Tensor linspace(__TY _Begin, __TY _End, size_t _Len, const std::string& _Dtype = "float32", const std::string& _Name = "Tensor")
+	{
+		if (__Dtype.find(_Dtype) == __Dtype.end())
+			LibSvcThrow("DType Not Recognized");
+		if (sizeof(__TY) != __Dtype.at(_Dtype))
+			LibSvcThrow("Size Of DType MisMatch");
+		Tensor ret;
+		ret.Type_ = _Dtype;
+		ret.RegName_ = _Name;
+		ret.DTypeAligBytes_ = __Dtype.at(ret.Type_);
+		ret.MemOwner_ = true;
+		const auto diff = _End - _Begin;
+		const auto step = size_t(diff / __TY(_Len));
+
+		ret.Shape_ = { _Len };
+		ret.Data_ = MResource<byte>(_Len * ret.DTypeAligBytes_);
+		ret.Step_ = { ret.DTypeAligBytes_ };
+		ret.Transopse_ = { 0 };
+		ret.DataPtr_ = ret.Data_.data();
+		ret.ThisPtr_ = ret.Data_.data();
+
+		__TY* pdata = ret.DataPtr_;
+		*(pdata++) = _Begin;
+		for (size_t i = 1; i < _Len; ++i)
+		{
+			*pdata = *(pdata - 1) + step;
+			++pdata;
+		}
+
+		return ret;
+	}
+
+protected:
+	void loadData(ggml_context* _WeightDict, bool _Strict) override;
+	void saveData(FileGuard& _File) override;
+};
+*/
+
+
+
+[[noreturn]] void GGMLThrowFn(const char* message)
+{
+	LibSvcThrow(message);
+}
+
+const std::unordered_map<std::string, ggml_type> __Ty2GGMLTy{
+	{ "int8", GGML_TYPE_I8},
+	{ "int16", GGML_TYPE_I16 },
+	{ "int32", GGML_TYPE_I32 },
+	{ "int64", GGML_TYPE_I64 },
+	{ "float16", GGML_TYPE_F16 },
+	{ "float32", GGML_TYPE_F32 },
+	{ "float64", GGML_TYPE_F64 },
+	{ "bool", GGML_TYPE_I8 }
+};
+
+const std::unordered_map<ggml_type, std::string> __GGMLTy2Ty{
+	{ GGML_TYPE_I8, "int8" },
+	{ GGML_TYPE_I16, "int16" },
+	{ GGML_TYPE_I32, "int32" },
+	{ GGML_TYPE_I64, "int64" },
+	{ GGML_TYPE_F16, "float16" },
+	{ GGML_TYPE_F32, "float32" },
+	{ GGML_TYPE_F64, "float64" },
+	{ GGML_TYPE_I8, "bool" }
+};
+
+const std::unordered_map<std::string, size_t> __Ty2Size{
+	{ "int8", 1},
+	{ "int16", 2 },
+	{ "int32", 4 },
+	{ "int64", 8 },
+	{ "float16", 2 },
+	{ "float32", 4 },
+	{ "float64", 8 },
+	{ "bool", 1 }
+};
+
+int NumThreads = GGML_DEFAULT_N_THREADS;
+
+std::unordered_map<std::wstring, std::pair<std::vector<ThreadSafeMemoryPool>, std::mutex>> __GlobalMemoryPool;
+
+std::vector<ThreadSafeMemoryPool> __ReferPool;
+
+ggml_type Type2GGMLType(const std::string& _Type)
+{
+	const auto res = __Ty2GGMLTy.find(_Type);
+	if (res != __Ty2GGMLTy.end())
+		return res->second;
+	LibSvcThrow("Type Error!")
+}
+
+const std::string& GGMLType2Type(ggml_type _Type)
+{
+	const auto res = __GGMLTy2Ty.find(_Type);
+	if (res != __GGMLTy2Ty.end())
+		return res->second;
+	LibSvcThrow("Type Error!")
+}
+
+size_t Type2Size(const std::string& _Type)
+{
+	const auto res = __Ty2Size.find(_Type);
+	if (res != __Ty2Size.end())
+		return res->second;
+	LibSvcThrow("Type Error!")
+}
+
+ThreadSafeMemoryPool& Allocate(const std::wstring& _Name, size_t _Size, size_t _NMul, ggml_backend_type _Device)
+{
+	switch (_Device)
+	{
+		case GGML_BACKEND_TYPE_CPU:
+		{
+			const auto SizeAllocated = (_Size + sizeof(ggml_tensor) + sizeof(ggml_object)) * _NMul;
+			auto& Iter = __GlobalMemoryPool[_Name];
+			const ggml_init_params Params{ SizeAllocated , nullptr, false };
+			std::lock_guard lg(Iter.second);
+			auto& PoolVec = Iter.first;
+			if (PoolVec.empty())
+			{
+				LogMessage("[Allocator] No Cache Found, Creating New Cache");
+				return PoolVec.emplace_back(std::mutex(), ggml_libsvc_allocate(Params));
+			}
+			for (auto& it : PoolVec)
+			{
+				std::unique_lock ul(it.mx, std::defer_lock);
+				if (ul.try_lock())
+				{
+					if (!it.pool || (ggml_get_mem_size(it.pool) < SizeAllocated))
+					{
+						if (it.pool) ggml_libsvc_free(it.pool);
+						it.pool = ggml_libsvc_allocate(Params);
+					}
+					return it;
+				}
+			}
+			LogMessage("[Allocator] No Free Cache Found, Creating New Cache");
+			return PoolVec.emplace_back(std::mutex(), ggml_libsvc_allocate(Params));
+		}
+		default:
+			LibSvcThrow("Cur Device Not Support Yet!");
+	}
+}
+
+ThreadSafeMemoryPool& GetReferPool(ggml_backend_type _Device)
+{
+	switch (_Device)
+	{
+		case GGML_BACKEND_TYPE_CPU:
+		{
+			constexpr auto SizeAllocated = (sizeof(ggml_tensor) + sizeof(ggml_object) * 2) * REF_POOL_SIZE;
+			constexpr ggml_init_params Params{ SizeAllocated, nullptr, false };
+			if (__ReferPool.empty())
+				return __ReferPool.emplace_back(std::mutex(), ggml_libsvc_allocate(Params));
+			for (auto& it : __ReferPool)
+			{
+				if (GetGGMLUnusedMemorySize(it.pool) > (sizeof(ggml_tensor) + sizeof(ggml_object) * 4))
+					return it;
+			}
+			return __ReferPool.emplace_back(std::mutex(), ggml_libsvc_allocate(Params));
+		}
+		default:
+			LibSvcThrow("Cur Device Not Support Yet!");
+	}
+}
+
+void EmptyCache()
+{
+	LogMessage("[Allocator] Empty Cache!");
+	for (auto& it : __GlobalMemoryPool | std::views::values)
+	{
+		std::lock_guard lg(it.second);
+		for (const auto& iter : it.first)
+		{
+			std::lock_guard lock(iter.mx);
+			if (iter.pool) ggml_libsvc_free(iter.pool);
+		}
+		it.first.clear();
+	}
+	LogMessage("[Allocator] Cache Cleared!");
+}
+
+void GC()
+{
+	LogMessage("[Allocator] Run GC!");
+	for (auto& it : __GlobalMemoryPool | std::views::values)
+	{
+		std::lock_guard lg(it.second);
+		for (size_t i = 0; i < it.first.size(); ++i)
+		{
+			std::unique_lock ul(it.first[i].mx, std::defer_lock);
+			if (ul.try_lock() && it.first[i].pool)
+			{
+				ggml_libsvc_free(it.first[i].pool);
+				it.first.erase(it.first.begin() + int64(i));
+				--i;
+			}
+		}
+	}
+	LogMessage("[Allocator] GC Complete!");
+}
+
+
+struct ThreadSafeMemoryPool
+{
+	std::mutex mx;
+	ggml_context* pool = nullptr;
+	int64_t ref_count = 0;
+};
+
+ggml_type Type2GGMLType(const std::string& _Type);
+
+const std::string& GGMLType2Type(ggml_type _Type);
+
+size_t Type2Size(const std::string& _Type);
+
+ThreadSafeMemoryPool& Allocate(const std::wstring& _Name, size_t _Size, size_t _NMul, ggml_backend_type _Device);
+
+ThreadSafeMemoryPool& GetReferPool(ggml_backend_type _Device);
+
+void EmptyCache();
+
+void GC();
