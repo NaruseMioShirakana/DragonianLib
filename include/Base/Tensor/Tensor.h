@@ -11,32 +11,6 @@ using SliceOptions = std::vector<std::vector<SizeType>>;
 
 SizeType VectorMul(const ShapeType& _Input);
 
-class TensorIterator
-{
-public:
-	using lpbyte = byte*;
-	TensorIterator() = delete;
-	TensorIterator(
-		const lpbyte& _Ptr,
-		const ShapeType& _Shape,
-		const ShapeType& _Step,
-		const ShapeType& _SliceBegin,
-		const ShapeType& _DimStride,
-		const ShapeType& _CurIndices,
-		SizeType _Align
-	);
-
-private:
-	const lpbyte& Ptr_;
-	const ShapeType& Shape_;
-	const ShapeType& Step_;
-	const ShapeType& SliceBegin_;
-	const ShapeType& DimStride_;
-	const ShapeType& CurIndices_;
-	SizeType AlignSize_ = 4;
-	SizeType Pos_ = 0;
-};
-
 class Tensor : public TensorBase
 {
 public:
@@ -76,22 +50,15 @@ public:
 			LibSvcThrow("TypeError!");
 		return *(Ref*)(Data());
 	}
-	template <typename Ref>
-	void Assign(const Ref& _Value)
-	{
-		ThrowOnNotEnabled();
-		if (sizeof(Ref) != AlignSize_)
-			LibSvcThrow("TypeError!");
-		if (ShapeBack_.size() == 1)
-			Assign1D(_Value);
-		else
-			for (SizeType i = 0; i < Size(0); ++i)
-				operator[](i).Assign(_Value);
-	}
+	void Assign(const void* _Val, TensorType _Type) const;
 	void Assign(const void* _Buffer, SizeType _BufferSize) const;
+	void Assign(int64 _Val) const;
+	void Assign(float64 _Val) const;
 	Tensor& operator=(const Tensor& _Left);
 	Tensor& operator=(Tensor&& _Right) noexcept;
-	Tensor operator[](SizeType _Index);
+	Tensor& operator=(int64 _Val);
+	Tensor& operator=(float64 _Val);
+	Tensor operator[](SizeType _Index) const;
 
 private:
 	void Free();
@@ -108,6 +75,7 @@ private:
 		for (SizeType i = 0; i < Size(0); ++i)
 			*(Ref*)(DataPtr_ + CurIndex + (((i * DimStride_[0]) + SliceBegin_[0]) * StepBack_[0])) = _Value;
 	}
+	void Assign1D(const void* _Val) const;
 	void CalcInfo();
 
 public:
@@ -131,14 +99,24 @@ public:
 	SizeType Shape(SizeType _Index) const;
 	const ShapeType& Size() const;
 	SizeType Size(SizeType _Index) const;
-	void FixOnes();
-	void FixZeros();
-	void RandFix(int _Seed);
-	void RandnFix(int _Seed, double _Mean, double _Sigma);
+	const ShapeType& Strides() const;
+	const ShapeType& StepsBack() const;
+	const ShapeType& StepsFront() const;
+	const ShapeType& CurIndices() const;
+	const ShapeType& SliceBegins() const;
+	void FixOnes() const;
+	void FixZeros() const;
+	void Fix(double _Val) const;
+	void Fix(int64 _Val) const;
+	void RandFix(int _Seed) const;
+	void RandnFix(int _Seed, double _Mean, double _Sigma) const;
 	byte* Buffer() const;
 	byte* Data() const;
 	byte* Data(const ShapeType& _Indices) const;
 	Tensor View(const ShapeType& _ViewShape) const;
 	Tensor& Continuous();
+	Tensor UnSqueeze(SizeType Dim) const;
+	Tensor Squeeze(SizeType Dim) const;
+	Tensor Squeeze() const;
 };
 LibSvcEnd

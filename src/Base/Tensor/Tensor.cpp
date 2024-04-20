@@ -1,7 +1,6 @@
-#include "Tensor/Tensor.h"
-
 #include <random>
 
+#include "Tensor/Tensor.h"
 #include "Tensor/Int8Tensor.h"
 #include "Tensor/Int16Tensor.h"
 #include "Tensor/Int32Tensor.h"
@@ -212,6 +211,15 @@ void Tensor::CalcInfo()
 	DimStride_ = { ShapeBack_.size(),1, ShapeType::allocator_type() };
 }
 
+void Tensor::Assign1D(const void* _Val) const
+{
+	SizeType CurIndex = 0;
+	for (size_t i = 0; i < CurIndices_.size(); ++i)
+		CurIndex += CurIndices_[i] * StepFront_[i];
+	for (SizeType i = 0; i < Size(0); ++i)
+		memcpy(DataPtr_ + CurIndex + (((i * DimStride_[0]) + SliceBegin_[0]) * StepBack_[0]), _Val, AlignSize_);
+}
+
 //Operator=
 
 Tensor& Tensor::operator=(const Tensor& _Left)
@@ -268,7 +276,19 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 	return *this;
 }
 
-Tensor Tensor::operator[](SizeType _Index)
+Tensor& Tensor::operator=(float64 _Val)
+{
+	Fix(_Val);
+	return *this;
+}
+
+Tensor& Tensor::operator=(int64 _Val)
+{
+	Fix(_Val);
+	return *this;
+}
+
+Tensor Tensor::operator[](SizeType _Index) const
 {
 	ThrowOnNotEnabled();
 	const auto Idx = CalcIndex(_Index, ShapeBack_.front());
@@ -323,14 +343,23 @@ void Tensor::Assign(const void* _Buffer, SizeType _BufferSize) const
 		memcpy(Data(), _Buffer, CurSize * AlignSize_);
 		return;
 	}
-	ShapeType Indice(ShapeBack_.size(), 0);
-	const byte* buf = (const byte*)_Buffer;
-	for (SizeType i = 0; i < CurSize; ++i)
-	{
-		memcpy(Data(Indice), buf, AlignSize_);
-		IteratorAdd(Indice);
-		buf += AlignSize_;
-	}
+	LibSvcOperatorNoRetrun(AssignBuffer, *this, _Buffer, (byte*)_Buffer + _BufferSize);
+}
+
+void Tensor::Assign(const void* _Val, TensorType _Type) const
+{
+	ThrowOnNotEnabled();
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, _Type);
+}
+
+void Tensor::Assign(float64 _Val) const
+{
+	Fix(_Val);
+}
+
+void Tensor::Assign(int64 _Val) const
+{
+	Fix(_Val);
 }
 
 //Public
@@ -338,11 +367,12 @@ void Tensor::Assign(const void* _Buffer, SizeType _BufferSize) const
 void Tensor::IteratorAdd(ShapeType& _Indices) const
 {
 	auto Val = _Indices.data() + _Indices.size() - 1;
+	const auto ShapePtr = ShapeBack_.data();
 
 	for (size_t i = _Indices.size() - 1; ; --i)
 	{
 		const auto Ret = *Val + 1;
-		if (Ret < ShapeBack_[i])
+		if (Ret < *(ShapePtr + i))
 		{
 			*Val = Ret;
 			return;
@@ -357,6 +387,7 @@ void Tensor::IteratorAdd(ShapeType& _Indices) const
 void Tensor::IteratorSub(ShapeType& _Indices) const
 {
 	auto Val = _Indices.data() + _Indices.size() - 1;
+	const auto ShapePtr = ShapeBack_.data();
 
 	for (size_t i = _Indices.size() - 1; ; --i)
 	{
@@ -368,7 +399,7 @@ void Tensor::IteratorSub(ShapeType& _Indices) const
 		}
 		if (i == 0)
 			return;
-		*Val = (ShapeBack_[i] - 1);
+		*Val = (*(ShapePtr + i) - 1);
 		--Val;
 	}
 }
@@ -653,8 +684,11 @@ byte* Tensor::Data() const
 {
 	ThrowOnNotEnabled();
 	SizeType Index = 0;
-	for (size_t i = 0; i < CurIndices_.size(); ++i)
-		Index += CurIndices_[i] * StepFront_[i];
+	auto IndicPtr = CurIndices_.data();
+	auto StepPtr = StepFront_.data();
+	const auto AllSize = CurIndices_.size();
+	for (size_t i = 0; i < AllSize; ++i)
+		Index += *(IndicPtr++) * *(StepPtr++);
 	return DataPtr_ + Index;
 }
 
@@ -679,23 +713,40 @@ byte* Tensor::Buffer() const
 	return DataPtr_;
 }
 
-void Tensor::FixOnes()
+void Tensor::FixOnes() const
 {
+	float _Val = 1.f;
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32);
+}
+
+void Tensor::FixZeros() const
+{
+	if (!IsContinuous())
+	{
+		float _Val = 0.f;
+		LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32);
+	}
+	else
+		memset(DataPtr_, 0, VectorMul(ShapeBack_) * AlignSize_);
+}
+
+void Tensor::Fix(double _Val) const
+{
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64);
+}
+
+void Tensor::Fix(int64 _Val) const
+{
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64);
+}
+
+void Tensor::RandFix(int _Seed) const
+{
+
 
 }
 
-void Tensor::FixZeros()
-{
-
-}
-
-void Tensor::RandFix(int _Seed)
-{
-
-
-}
-
-void Tensor::RandnFix(int _Seed, double _Mean, double _Sigma)
+void Tensor::RandnFix(int _Seed, double _Mean, double _Sigma) const
 {
 
 }
@@ -776,6 +827,76 @@ Tensor& Tensor::Continuous()
 	ViewParent_ = nullptr;
 	ViewChild_.clear();
 	return *this;
+}
+
+const ShapeType& Tensor::CurIndices() const
+{
+	return CurIndices_;
+}
+
+const ShapeType& Tensor::SliceBegins() const
+{
+	return SliceBegin_;
+}
+
+const ShapeType& Tensor::StepsBack() const
+{
+	return StepBack_;
+}
+
+const ShapeType& Tensor::StepsFront() const
+{
+	return StepFront_;
+}
+
+const ShapeType& Tensor::Strides() const
+{
+	return DimStride_;
+}
+
+Tensor Tensor::UnSqueeze(SizeType Dim) const
+{
+	auto Ret = CreateView();
+	Dim = CalcIndex(Dim, SizeType(Ret.ShapeBack_.size() + 1));
+	Ret.ShapeBack_.insert(Ret.ShapeBack_.begin() + Dim, 1);
+	if (Dim == SizeType(Ret.ShapeBack_.size()))
+		Ret.StepBack_.insert(Ret.StepBack_.begin() + Dim, DType2Size(Ret.DType()));
+	else
+		Ret.StepBack_.insert(Ret.StepBack_.begin() + Dim, *(Ret.StepBack_.begin() + Dim + 1));
+	Ret.SliceBegin_.insert(Ret.SliceBegin_.begin() + Dim, 0);
+	Ret.DimStride_.insert(Ret.DimStride_.begin() + Dim, 1);
+	return Ret;
+}
+
+Tensor Tensor::Squeeze(SizeType Dim) const
+{
+	auto Ret = CreateView();
+	Dim = CalcIndex(Dim, SizeType(Ret.ShapeBack_.size()));
+	if (Ret.ShapeBack_[Dim] != 1 || Ret.SliceBegin_[Dim] != 0)
+		return Ret;
+	Ret.ShapeBack_.erase(Ret.ShapeBack_.begin() + Dim);
+	Ret.StepBack_.erase(Ret.StepBack_.begin() + Dim);
+	Ret.SliceBegin_.erase(Ret.SliceBegin_.begin() + Dim);
+	Ret.DimStride_.erase(Ret.DimStride_.begin() + Dim);
+	return Ret;
+}
+
+Tensor Tensor::Squeeze() const
+{
+	auto Ret = CreateView();
+	auto Iter = std::ranges::find(Ret.ShapeBack_, 1);
+	while (Iter != Ret.ShapeBack_.end())
+	{
+		const auto Idx = Iter - Ret.ShapeBack_.begin();
+		if(*(Ret.SliceBegin_.begin() + Idx) != 0)
+			continue;
+		Ret.ShapeBack_.erase(Iter);
+		Ret.StepBack_.erase(Ret.StepBack_.begin() + Idx);
+		Ret.SliceBegin_.erase(Ret.SliceBegin_.begin() + Idx);
+		Ret.DimStride_.erase(Ret.DimStride_.begin() + Idx);
+		Iter = std::ranges::find(Ret.ShapeBack_, 1);
+	}
+	return Ret;
 }
 
 LibSvcEnd

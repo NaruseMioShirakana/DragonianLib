@@ -1,5 +1,6 @@
 #include "Tensor/Tensor.h"
 #include <iostream>
+#include <windows.h>
 
 void PrintTensor(libsvc::Tensor& _Tensor)
 {
@@ -16,8 +17,21 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 
 int main()
 {
-	const float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
+	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
 	libsvc::Tensor Ten({ 2,3,5 });
+	const libsvc::Tensor Ten114514({ 1,514,1,1919 });
+	LARGE_INTEGER Time1, Time2, Freq;
+	QueryPerformanceFrequency(&Freq);
+	QueryPerformanceCounter(&Time1);
+	Ten114514.FixOnes();
+	QueryPerformanceCounter(&Time2);
+	std::cout << (Time2.QuadPart - Time1.QuadPart) * 1000. / Freq.QuadPart << '\n';
+	Ten.FixOnes();
+	Ten.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	Ten.Fix(114514.);
+	Ten.Invoke(1, PrintTensor);
+	std::cout << '\n';
 	Ten.Assign(Temp, sizeof(Temp));
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';

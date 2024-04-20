@@ -57,6 +57,7 @@ using float32 = float;
 using float64 = double;
 using byte = unsigned char;
 using lpvoid = void*;
+using cpvoid = const void*;
 using uint8 = uint8_t;
 using uint16 = uint16_t;
 using uint32 = uint32_t;
