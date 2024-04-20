@@ -11,5 +11,9 @@ namespace Float32
 
 	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid);
 
+	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB);
+
+	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma);
+
 }
 LibSvcEnd

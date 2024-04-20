@@ -1,7 +1,7 @@
 #pragma once
 #include <deque>
 #include <ranges>
-
+#include <random>
 #include "Tensor/TensorBase.h"
 
 LibSvcBegin
@@ -54,6 +54,7 @@ public:
 	void Assign(const void* _Buffer, SizeType _BufferSize) const;
 	void Assign(int64 _Val) const;
 	void Assign(float64 _Val) const;
+	void Assign(const Tensor& _Val) const;
 	Tensor& operator=(const Tensor& _Left);
 	Tensor& operator=(Tensor&& _Right) noexcept;
 	Tensor& operator=(int64 _Val);
@@ -108,8 +109,8 @@ public:
 	void FixZeros() const;
 	void Fix(double _Val) const;
 	void Fix(int64 _Val) const;
-	void RandFix(int _Seed) const;
-	void RandnFix(int _Seed, double _Mean, double _Sigma) const;
+	void RandFix(uint64 _Seed) const;
+	void RandnFix(uint64 _Seed, double _Mean = 0., double _Sigma = 1.) const;
 	byte* Buffer() const;
 	byte* Data() const;
 	byte* Data(const ShapeType& _Indices) const;
@@ -118,5 +119,6 @@ public:
 	Tensor UnSqueeze(SizeType Dim) const;
 	Tensor Squeeze(SizeType Dim) const;
 	Tensor Squeeze() const;
+	std::pair<Tensor, Tensor> BroadCast(const Tensor& _Other) const;
 };
 LibSvcEnd

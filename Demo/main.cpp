@@ -25,7 +25,7 @@ int main()
 	QueryPerformanceCounter(&Time1);
 	Ten114514.FixOnes();
 	QueryPerformanceCounter(&Time2);
-	std::cout << (Time2.QuadPart - Time1.QuadPart) * 1000. / Freq.QuadPart << '\n';
+	std::cout << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << '\n';
 	Ten.FixOnes();
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';
@@ -59,6 +59,9 @@ int main()
 	TenC.Assign(Temp, sizeof(Temp));
 	TenC.Invoke(1, PrintTensor);
 	std::cout << '\n';
-	TenA.Permute({ 2,0,1 }).Invoke(1, PrintTensor);;
+	auto Tennnnn = TenA.Clone();
+	TenA.Permute({ 2,0,1 }).Invoke(1, PrintTensor);
+	std::cout << '\n';
+	Tennnnn.Invoke(1, PrintTensor);
 	return 0;
 }
