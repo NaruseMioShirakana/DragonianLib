@@ -108,6 +108,7 @@ private:
 		for (SizeType i = 0; i < Size(0); ++i)
 			*(Ref*)(DataPtr_ + CurIndex + (((i * DimStride_[0]) + SliceBegin_[0]) * StepBack_[0])) = _Value;
 	}
+	void CalcInfo();
 
 public:
 	void IteratorAdd(ShapeType& _Indices) const;
@@ -137,7 +138,7 @@ public:
 	byte* Buffer() const;
 	byte* Data() const;
 	byte* Data(const ShapeType& _Indices) const;
-	Tensor View(const ShapeType& _ViewShape);
+	Tensor View(const ShapeType& _ViewShape) const;
 	Tensor& Continuous();
 };
 LibSvcEnd

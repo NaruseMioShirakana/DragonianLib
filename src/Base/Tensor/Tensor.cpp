@@ -199,6 +199,19 @@ bool Tensor::HasChild(const Tensor* _Child) const
 	return false;
 }
 
+void Tensor::CalcInfo()
+{
+	StepBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
+	StepBack_.emplace_back(AlignSize_);
+	std::ranges::reverse(StepBack_);
+	for (size_t i = 1; i < StepBack_.size(); ++i)
+		StepBack_[i] *= StepBack_[i - 1];
+	std::ranges::reverse(StepBack_);
+
+	SliceBegin_ = { ShapeBack_.size(),0, ShapeType::allocator_type() };
+	DimStride_ = { ShapeBack_.size(),1, ShapeType::allocator_type() };
+}
+
 //Operator=
 
 Tensor& Tensor::operator=(const Tensor& _Left)
@@ -208,6 +221,7 @@ Tensor& Tensor::operator=(const Tensor& _Left)
 	if (_Left.ViewParent_ && _Left.ViewParent_ == this)
 		LibSvcThrow("Assign To Parent Is Not Allowed!");
 	_Left.ThrowOnNotEnabled();
+	Free();
 	return *this = _Left.CreateView();
 }
 
@@ -440,8 +454,10 @@ bool Tensor::IsContinuous() const
 	for (const auto i : SliceBegin_)
 		if (i != 0)
 			return false;
-	for (size_t i = 1; i < StepBack_.size(); ++i)
-		if (StepBack_[i] > StepBack_[i - 1])
+	auto TotalStep = StepFront_;
+	TotalStep.insert(TotalStep.end(), StepBack_.begin(), StepBack_.end());
+	for (size_t i = 1; i < TotalStep.size(); ++i)
+		if (TotalStep[i] > TotalStep[i - 1])
 			return false;
 	return true;
 }
@@ -454,7 +470,44 @@ bool Tensor::IsView() const
 Tensor Tensor::Clone() const
 {
 	ThrowOnNotEnabled();
-	return {}; //TODO
+
+	Tensor Ret;
+
+	Ret.DType_ = DType_;
+	Ret.AlignSize_ = AlignSize_;
+
+	Ret.ShapeFront_.clear();
+	Ret.ShapeBack_ = ShapeBack_;
+
+	Ret.StepFront_.clear();
+	Ret.StepBack_ = { Ret.ShapeBack_.begin() + 1,Ret.ShapeBack_.end() };
+	Ret.StepBack_.emplace_back(Ret.AlignSize_);
+	std::ranges::reverse(Ret.StepBack_);
+	for (size_t i = 1; i < Ret.StepBack_.size(); ++i)
+		Ret.StepBack_[i] *= Ret.StepBack_[i - 1];
+	std::ranges::reverse(Ret.StepBack_);
+
+	Ret.SliceBegin_ = { Ret.ShapeBack_.size(),0, ShapeType::allocator_type() };
+	Ret.DimStride_ = { Ret.ShapeBack_.size(),1, ShapeType::allocator_type() };
+	Ret.CurIndices_.clear();
+
+	const auto DataSize = VectorMul(Ret.ShapeBack_);
+	const auto BufSize = DataSize * Ret.AlignSize_;
+	Ret.DataPtr_ = (byte*)LIBSVC_MALLOC(BufSize);
+
+	auto It = Ret.DataPtr_;
+	ShapeType Indice(Ret.ShapeBack_.size(), 0);
+	for (SizeType i = 0; i < DataSize; ++i)
+	{
+		memcpy(It, Data(Indice), Ret.AlignSize_);
+		IteratorAdd(Indice);
+		It += Ret.AlignSize_;
+	}
+
+	Ret.ViewParent_ = nullptr;
+	Ret.ViewChild_.clear();
+	
+	return Ret;
 }
 
 Tensor Tensor::CreateView() const
@@ -647,19 +700,29 @@ void Tensor::RandnFix(int _Seed, double _Mean, double _Sigma)
 
 }
 
-Tensor Tensor::View(const ShapeType& _ViewShape)
+Tensor Tensor::View(const ShapeType& _ViewShape) const
 {
 	//TODO
 	if (!IsContinuous())
 		LibSvcThrow("View Should Be Continuous!");
 	if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
 		LibSvcThrow("Count Of Dynamic Axis Should <= 1!");
+	if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), 0))
+		LibSvcThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
 	Tensor Ret = CreateView();
-	if(VectorMul(Ret.ShapeBack_) % VectorMul(_ViewShape))
+	const auto SrcSize = VectorMul(Ret.ShapeBack_);
+	const auto DstSize = abs(VectorMul(_ViewShape));
+	if ((SrcSize % DstSize) != 0)
 		LibSvcThrow("Size MisMatch!");
-
-
-
+	const auto DynamicAxes = SrcSize % DstSize;
+	Ret.ShapeBack_ = _ViewShape;
+	for (auto& i : Ret.ShapeBack_)
+		if (i == -1)
+		{
+			i = DynamicAxes;
+			break;
+		}
+	Ret.CalcInfo();
 	return Ret;
 }
 
@@ -673,26 +736,30 @@ Tensor& Tensor::Continuous()
 
 	const auto DataSize = VectorMul(ShapeBack_);
 	const auto BufSize = DataSize * AlignSize_;
-	DataPtr_ = (byte*)LIBSVC_MALLOC(BufSize);
+	const auto NewData = (byte*)LIBSVC_MALLOC(BufSize);
 
-	if (ViewParent_->ViewParent_)
-		LibSvcThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
-	std::lock_guard Lock(ViewParent_->ViewMx_);
-	auto& Views = ViewParent_->ViewChild_;
-	const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
-	if (Iter != Views.end())
-		Views.erase(Iter);
-	else
-		LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+	{
+		if (ViewParent_->ViewParent_)
+			LibSvcThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
+		std::lock_guard Lock(ViewParent_->ViewMx_);
+		auto& Views = ViewParent_->ViewChild_;
+		const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
+		if (Iter != Views.end())
+			Views.erase(Iter);
+		else
+			LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+	}
 
-	auto It = DataPtr_;
-	ShapeType Indice(ViewParent_->ShapeBack_.size(), 0);
+	auto It = NewData;
+	ShapeType Indice(ShapeBack_.size(), 0);
 	for (SizeType i = 0; i < DataSize; ++i)
 	{
-		memcpy(It, ViewParent_->Data(Indice), AlignSize_);
-		ViewParent_->IteratorAdd(Indice);
+		memcpy(It, Data(Indice), AlignSize_);
+		IteratorAdd(Indice);
 		It += AlignSize_;
 	}
+
+	DataPtr_ = NewData;
 
 	ShapeFront_.clear();
 	StepFront_.clear();
@@ -708,7 +775,6 @@ Tensor& Tensor::Continuous()
 
 	ViewParent_ = nullptr;
 	ViewChild_.clear();
-	ViewParent_ = nullptr;
 	return *this;
 }
 
