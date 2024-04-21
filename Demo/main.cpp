@@ -23,7 +23,7 @@ int main()
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
 	QueryPerformanceCounter(&Time1);
-	Ten114514.FixOnes();
+	Ten114514.Permute({}).FixOnes();
 	QueryPerformanceCounter(&Time2);
 	std::cout << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << '\n';
 	Ten.FixOnes();

@@ -333,10 +333,10 @@ namespace Int16
 					return;
 				if (BufSize <= RequiredBufSize)
 				{
-					AssignBuffer(_Input, Buffer, BufferEnd, _ThreadPool);
+					AssignBuffer(InputTen, Buffer, BufferEnd, _ThreadPool);
 					return;
 				}
-				AssignBuffer(_Input, Buffer, Buffer + RequiredBufSize, _ThreadPool);
+				AssignBuffer(InputTen, Buffer, Buffer + RequiredBufSize, _ThreadPool);
 				Buffer += RequiredBufSize;
 			}
 		else if (_ThreadPool)

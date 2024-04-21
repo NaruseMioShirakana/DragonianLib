@@ -6,6 +6,8 @@ option(LIVSVC_ROCM                    "rocm backend" OFF)
 option(LIVSVC_SHARED_LIBS             "build shared libs" OFF)
 option(SVC_BUILD_DEMO                 "SVC_BUILD_DEMO" ON)
 add_definitions(-DLIBSVC_ALLOC_ALIG=32)
+add_definitions(-DLIBSVC_CONT_THRESHOLD_FRONT=8)
+add_definitions(-DLIBSVC_CONT_THRESHOLD_BACK=262144)
 add_definitions(-DUNICODE)
 add_definitions(-DLIBSVC_DEBUG)
 
