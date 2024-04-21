@@ -558,7 +558,7 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 Tensor Tensor::Permute(const ShapeType& _DPremute) const
 {
 	ThrowOnNotEnabled();
-	if (ShapeBack_.empty() || _DPremute.size() > ShapeBack_.size())
+	if (ShapeBack_.empty() || _DPremute.size() != ShapeBack_.size())
 		LibSvcThrow("Axis Out Of Range!");
 	Tensor Ret = CreateView();
 	auto TransposedDims = _DPremute;
