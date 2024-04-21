@@ -23,7 +23,14 @@ endif ()
 
 project (${LIBSVC_LIB})
 
-add_compile_options(/ZI)
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+message("Build Release")
+add_compile_options(/GS- /arch:AVX2 /O2 /Ob2)
+else()
+message("Build Debug")
+add_compile_options(/ZI /Gy)
+endif()
 
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
