@@ -29,6 +29,13 @@ namespace Float32
 		const auto _Value = CastFrom(_ValType, _Val);
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
 
+		if(_Input.IsContinuous())
+		{
+			const size_t BufferSize = VectorMul(_Input.Shape()) * sizeof(ThisType);
+			LibSvcMemSet(DataPtr, &_Value, BufferSize, sizeof(ThisType));
+			return;
+		}
+
 		auto Steps = _Input.StepsBack();
 		for (auto& i : Steps)
 			i /= DType2Size(_Input.DType());
@@ -78,18 +85,6 @@ namespace Float32
 		}
 	}
 
-	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType)
-	{
-		const auto CurDimSize = _Input.Shape().front();
-		const auto CurDims = (SizeType)_Input.Shape().size();
-
-		if (CurDims > 4)
-			for (auto i = 0; i < CurDimSize; ++i)
-				AssignValue(_Input[i], _Val, _ValType);
-		else
-			AssignImpl(_Input, _Val, _ValType, CurDims);
-	}
-
 	void AssignBufferImpl(
 		const Tensor& _Input,
 		const ThisType* __restrict Buffer,
@@ -97,6 +92,19 @@ namespace Float32
 		SizeType CurDims
 	) {
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
+
+		if (BufferEnd < Buffer)
+		{
+			LogMessage("[Operator] BufferEnd* < Buffer* Is True, Make Sure BufferEnd* > Buffer*");
+			return;
+		}
+
+		if (_Input.IsContinuous())
+		{
+			const size_t BufferSize = (BufferEnd - Buffer) * sizeof(ThisType);
+			LibSvcMemCpy(DataPtr, Buffer, BufferSize);
+			return;
+		}
 
 		auto Steps = _Input.StepsBack();
 		for (auto& i : Steps)
@@ -155,39 +163,16 @@ namespace Float32
 		}
 	}
 
-	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid)
-	{
-		const byte* Buffer = (const byte*)BufferVoid;
-		const byte* BufferEnd = (const byte*)BufferEndVoid;
-		if ((BufferEnd - Buffer) % DType2Size(_Input.DType()))
-			return;
-		const auto CurDimSize = _Input.Shape().front();
-		const auto CurDims = (SizeType)_Input.Shape().size();
-
-		if (CurDims > 4)
-			for (auto i = 0; i < CurDimSize; ++i)
-			{
-				auto InputTen = _Input[i];
-				const auto BufSize = BufferEnd - Buffer;
-				const auto RequiredBufSize = VectorMul(InputTen.Shape()) * DType2Size(InputTen.DType());
-				if (BufSize <= 0)
-					return;
-				if (BufSize <= RequiredBufSize)
-				{
-					AssignBuffer(_Input, Buffer, BufferEnd);
-					return;
-				}
-				AssignBuffer(_Input, Buffer, Buffer + RequiredBufSize);
-				Buffer += RequiredBufSize;
-			}
-		else
-			AssignBufferImpl(_Input, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
-	}
-
 	void AssignTensorImpl(const Tensor& _InputA, const Tensor& _InputB, SizeType CurDims)
 	{
 		ThisType* DataPtr1 = (ThisType*)_InputA.Data();
 		const ThisType* DataPtr2 = (ThisType*)_InputB.Data();
+
+		if(!_InputA.IsBroadCasted() && !_InputB.IsBroadCasted() && _InputA.IsContinuous() && _InputB.IsContinuous())
+		{
+			const size_t BufferSize = VectorMul(_InputA.Shape()) * sizeof(ThisType);
+			LibSvcMemCpy(DataPtr1, DataPtr2, BufferSize);
+		}
 
 		auto Steps1 = _InputA.StepsBack();
 		for (auto& i : Steps1)
@@ -254,36 +239,10 @@ namespace Float32
 		}
 	}
 
-	void AssignTensorBroadCasted(const Tensor& _InputA, const Tensor& _InputB)
-	{
-		const auto CurDimSize = _InputA.Shape().front();
-		const auto CurDims = (SizeType)_InputA.Shape().size();
-
-		if (CurDims > 4)
-			for (auto i = 0; i < CurDimSize; ++i)
-				AssignTensorBroadCasted(_InputA[i], _InputB[i]);
-		else
-			AssignTensorImpl(_InputA, _InputB, CurDims);
-	}
-
-	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB)
-	{
-		if(_InputB.IsScalar())
-		{
-			AssignValue(_InputA, _InputB.Data(), _InputB.DType());
-			return;
-		}
-
-		const auto BroadCast = _InputA.BroadCast(_InputB);
-
-		AssignTensorBroadCasted(BroadCast.first, BroadCast.second);
-	}
-
 	void FixWithRandomImpl(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma, SizeType CurDims)
 	{
-		const ThisType Mean = CastFrom(TensorType::Float64, &_Mean), Sigma = CastFrom(TensorType::Float64, &_Sigma);
 		std::mt19937_64  RndDevice(_Seed);
-		std::normal_distribution NormGen(Mean, Sigma);
+		std::normal_distribution NormGen(_Mean, _Sigma);
 
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
 
@@ -304,7 +263,7 @@ namespace Float32
 							DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0] +
 								((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1] +
 								((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2] +
-								((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3]] = NormGen(RndDevice);
+								((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3]] = (ThisType)NormGen(RndDevice);
 						}
 		}
 		else if (CurDims == 3)
@@ -315,7 +274,7 @@ namespace Float32
 					{
 						DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0] +
 							((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1] +
-							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2]] = NormGen(RndDevice);
+							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2]] = (ThisType)NormGen(RndDevice);
 					}
 		}
 		else if (CurDims == 2)
@@ -324,26 +283,100 @@ namespace Float32
 				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
 					DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0] +
-						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1]] = NormGen(RndDevice);
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1]] = (ThisType)NormGen(RndDevice);
 				}
 		}
 		else if (CurDims == 1)
 		{
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
-				DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0]] = NormGen(RndDevice);
+				DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0]] = (ThisType)NormGen(RndDevice);
 			}
 		}
 	}
 
-	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma)
+	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType, ThreadPool* _ThreadPool)
 	{
 		const auto CurDimSize = _Input.Shape().front();
 		const auto CurDims = (SizeType)_Input.Shape().size();
 
 		if (CurDims > 4)
 			for (auto i = 0; i < CurDimSize; ++i)
-				FixWithRandom(_Input[i], _Seed, _Mean, _Sigma);
+				AssignValue(_Input[i], _Val, _ValType, _ThreadPool);
+		else if(_ThreadPool)
+			_ThreadPool->Commit(AssignImpl, _Input, _Val, _ValType, CurDims);
+		else
+			AssignImpl(_Input, _Val, _ValType, CurDims);
+	}
+
+	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid, ThreadPool* _ThreadPool)
+	{
+		const byte* Buffer = (const byte*)BufferVoid;
+		const byte* BufferEnd = (const byte*)BufferEndVoid;
+		if ((BufferEnd - Buffer) % DType2Size(_Input.DType()))
+			return;
+		const auto CurDimSize = _Input.Shape().front();
+		const auto CurDims = (SizeType)_Input.Shape().size();
+
+		if (CurDims > 4)
+			for (auto i = 0; i < CurDimSize; ++i)
+			{
+				auto InputTen = _Input[i];
+				const auto BufSize = BufferEnd - Buffer;
+				const auto RequiredBufSize = VectorMul(InputTen.Shape()) * DType2Size(InputTen.DType());
+				if (BufSize <= 0)
+					return;
+				if (BufSize <= RequiredBufSize)
+				{
+					AssignBuffer(_Input, Buffer, BufferEnd, _ThreadPool);
+					return;
+				}
+				AssignBuffer(_Input, Buffer, Buffer + RequiredBufSize, _ThreadPool);
+				Buffer += RequiredBufSize;
+			}
+		else if (_ThreadPool)
+			_ThreadPool->Commit(AssignBufferImpl, _Input, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
+		else
+			AssignBufferImpl(_Input, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
+	}
+
+	void AssignTensorBroadCasted(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
+	{
+		const auto CurDimSize = _InputA.Shape().front();
+		const auto CurDims = (SizeType)_InputA.Shape().size();
+
+		if (CurDims > 4)
+			for (auto i = 0; i < CurDimSize; ++i)
+				AssignTensorBroadCasted(_InputA[i], _InputB[i], _ThreadPool);
+		else if (_ThreadPool)
+			_ThreadPool->Commit(AssignTensorImpl, _InputA, _InputB, CurDims);
+		else
+			AssignTensorImpl(_InputA, _InputB, CurDims);
+	}
+
+	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
+	{
+		if (_InputB.IsScalar())
+		{
+			AssignValue(_InputA, _InputB.Data(), _InputB.DType(), _ThreadPool);
+			return;
+		}
+
+		const auto BroadCast = _InputA.BroadCast(_InputB);
+
+		AssignTensorBroadCasted(BroadCast.first, BroadCast.second, _ThreadPool);
+	}
+
+	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)
+	{
+		const auto CurDimSize = _Input.Shape().front();
+		const auto CurDims = (SizeType)_Input.Shape().size();
+
+		if (CurDims > 4)
+			for (auto i = 0; i < CurDimSize; ++i)
+				FixWithRandom(_Input[i], _Seed, _Mean, _Sigma, _ThreadPool);
+		else if (_ThreadPool)
+			_ThreadPool->Commit(FixWithRandomImpl, _Input, _Seed, _Mean, _Sigma, CurDims);
 		else
 			FixWithRandomImpl(_Input, _Seed, _Mean, _Sigma, CurDims);
 	}

@@ -3,6 +3,8 @@
 #include <ranges>
 #include <random>
 #include "Tensor/TensorBase.h"
+#include "Util/ThreadPool.h"
+#include "Util/Avx256.h"
 
 LibSvcBegin
 using ShapeType = std::vector<SizeType>;
@@ -31,6 +33,7 @@ protected:
 	ShapeType DimStride_;
 	ShapeType CurIndices_;
 	int64_t AlignSize_ = 4;
+	bool IsBroadCasted_ = false;
 
 	std::deque<Tensor*> ViewChild_;
 	mutable std::mutex ViewMx_;
@@ -50,11 +53,11 @@ public:
 			LibSvcThrow("TypeError!");
 		return *(Ref*)(Data());
 	}
-	void Assign(const void* _Val, TensorType _Type) const;
-	void Assign(const void* _Buffer, SizeType _BufferSize) const;
-	void Assign(int64 _Val) const;
-	void Assign(float64 _Val) const;
-	void Assign(const Tensor& _Val) const;
+	void Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool = nullptr) const;
+	void Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _ThreadPool = nullptr) const;
+	void Assign(int64 _Val, ThreadPool* _ThreadPool = nullptr) const;
+	void Assign(float64 _Val, ThreadPool* _ThreadPool = nullptr) const;
+	void Assign(const Tensor& _Val, ThreadPool* _ThreadPool = nullptr) const;
 	Tensor& operator=(const Tensor& _Left);
 	Tensor& operator=(Tensor&& _Right) noexcept;
 	Tensor& operator=(int64 _Val);
@@ -90,7 +93,7 @@ public:
 	bool HasViewedFeature() const;
 	bool IsContinuous() const;
 	bool IsView() const;
-	Tensor Clone() const;
+	Tensor Clone(ThreadPool* _ThreadPool = nullptr) const;
 	Tensor CreateView() const;
 	Tensor Slice(const SliceOptions& _SliceOptions) const;
 	Tensor Permute(const ShapeType& _DPremute) const;
@@ -105,20 +108,22 @@ public:
 	const ShapeType& StepsFront() const;
 	const ShapeType& CurIndices() const;
 	const ShapeType& SliceBegins() const;
-	void FixOnes() const;
-	void FixZeros() const;
-	void Fix(double _Val) const;
-	void Fix(int64 _Val) const;
-	void RandFix(uint64 _Seed) const;
-	void RandnFix(uint64 _Seed, double _Mean = 0., double _Sigma = 1.) const;
+	void FixOnes(ThreadPool* _ThreadPool = nullptr) const;
+	void FixZeros(ThreadPool* _ThreadPool = nullptr) const;
+	void Fix(double _Val, ThreadPool* _ThreadPool = nullptr) const;
+	void Fix(int64 _Val, ThreadPool* _ThreadPool = nullptr) const;
+	void RandFix(uint64 _Seed, ThreadPool* _ThreadPool = nullptr) const;
+	void RandnFix(uint64 _Seed, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr) const;
 	byte* Buffer() const;
 	byte* Data() const;
 	byte* Data(const ShapeType& _Indices) const;
 	Tensor View(const ShapeType& _ViewShape) const;
-	Tensor& Continuous();
+	Tensor& Continuous(ThreadPool* _ThreadPool = nullptr);
 	Tensor UnSqueeze(SizeType Dim) const;
 	Tensor Squeeze(SizeType Dim) const;
 	Tensor Squeeze() const;
 	std::pair<Tensor, Tensor> BroadCast(const Tensor& _Other) const;
+	bool IsBroadCasted() const;
+	SizeType DimCount() const;
 };
 LibSvcEnd

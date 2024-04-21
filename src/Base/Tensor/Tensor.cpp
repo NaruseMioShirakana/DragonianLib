@@ -54,7 +54,6 @@ Tensor::Tensor(const ShapeType& _Shape, TensorType _DType) : TensorBase(_DType)
 
 Tensor::Tensor(const Tensor& _Left) : TensorBase(_Left.DType_)
 {
-	//TODO
 	_Left.ThrowOnNotEnabled();
 	*this = _Left.Clone();
 }
@@ -313,39 +312,37 @@ Tensor Tensor::operator[](SizeType _Index) const
 	return Ret;
 }
 
-void Tensor::Assign(const void* _Buffer, SizeType _BufferSize) const
+void Tensor::Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	const auto DataSize = VectorMul(ShapeBack_);
-	const auto SrcSize = (_BufferSize / AlignSize_);
-	const auto CurSize = std::min(DataSize, SrcSize);
-	if(IsContinuous())
-	{
-		memcpy(Data(), _Buffer, CurSize * AlignSize_);
-		return;
-	}
-	LibSvcOperatorNoRetrun(AssignBuffer, *this, _Buffer, (const byte*)_Buffer + _BufferSize);
+	LibSvcOperatorNoRetrun(AssignBuffer, *this, _Buffer, (const byte*)_Buffer + _BufferSize, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::Assign(const void* _Val, TensorType _Type) const
+void Tensor::Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, _Type);
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, _Type, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::Assign(float64 _Val) const
+void Tensor::Assign(float64 _Val, ThreadPool* _ThreadPool) const
 {
-	Fix(_Val);
+	Fix(_Val, _ThreadPool);
 }
 
-void Tensor::Assign(int64 _Val) const
+void Tensor::Assign(int64 _Val, ThreadPool* _ThreadPool) const
 {
-	Fix(_Val);
+	Fix(_Val, _ThreadPool);
 }
 
-void Tensor::Assign(const Tensor& _Val) const
+void Tensor::Assign(const Tensor& _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignTensor, *this, _Val);
+	LibSvcOperatorNoRetrun(AssignTensor, *this, _Val, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
 //Public
@@ -468,13 +465,16 @@ bool Tensor::IsContinuous() const
 	for (const auto i : DimStride_)
 		if (i != 1)
 			return false;
-	for (const auto i : SliceBegin_)
-		if (i != 0)
-			return false;
-	auto TotalStep = StepFront_;
-	TotalStep.insert(TotalStep.end(), StepBack_.begin(), StepBack_.end());
-	for (size_t i = 1; i < TotalStep.size(); ++i)
-		if (TotalStep[i] > TotalStep[i - 1])
+	if(DimCount() != 1)
+	{
+		for (const auto i : SliceBegin_)
+			if (i != 0)
+				return false;
+	}
+	if (StepBack_.back() != AlignSize_)
+		return false;
+	for (size_t i = 1; i < StepBack_.size(); ++i)
+		if (StepBack_[i - 1] / ShapeBack_[i] != StepBack_[i])
 			return false;
 	return true;
 }
@@ -484,11 +484,11 @@ bool Tensor::IsView() const
 	return ViewParent_;
 }
 
-Tensor Tensor::Clone() const
+Tensor Tensor::Clone(ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
 	Tensor Ret(ShapeBack_);
-	Ret.Assign(*this);
+	Ret.Assign(*this, _ThreadPool);
 	return Ret;
 }
 
@@ -663,41 +663,48 @@ byte* Tensor::Buffer() const
 	return DataPtr_;
 }
 
-void Tensor::FixOnes() const
+void Tensor::FixOnes(ThreadPool* _ThreadPool) const
 {
 	float _Val = 1.f;
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32);
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::FixZeros() const
+void Tensor::FixZeros(ThreadPool* _ThreadPool) const
 {
-	if (!IsContinuous())
-	{
-		float _Val = 0.f;
-		LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32);
-	}
-	else
-		memset(DataPtr_, 0, VectorMul(ShapeBack_) * AlignSize_);
+	float _Val = 0.f;
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::Fix(double _Val) const
+void Tensor::Fix(double _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64);
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::Fix(int64 _Val) const
+void Tensor::Fix(int64 _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64);
+	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::RandFix(uint64 _Seed) const
+void Tensor::RandFix(uint64 _Seed, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, 0., 11451.41919810);
+	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, 0., 11451.41919810, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
-void Tensor::RandnFix(uint64 _Seed, double _Mean, double _Sigma) const
+void Tensor::RandnFix(uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, _Mean, _Sigma);
+	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, _Mean, _Sigma, _ThreadPool);
+	if (_ThreadPool)
+		_ThreadPool->Join();
 }
 
 Tensor Tensor::View(const ShapeType& _ViewShape) const
@@ -725,7 +732,7 @@ Tensor Tensor::View(const ShapeType& _ViewShape) const
 	return Ret;
 }
 
-Tensor& Tensor::Continuous()
+Tensor& Tensor::Continuous(ThreadPool* _ThreadPool)
 {
 	ThrowOnNotEnabled();
 	if (!IsView() && !IsContinuous())
@@ -733,7 +740,7 @@ Tensor& Tensor::Continuous()
 	if (!IsView() || IsContinuous())
 		return *this;
 
-	return *this = Clone();
+	return *this = Clone(_ThreadPool);
 }
 
 const ShapeType& Tensor::CurIndices() const
@@ -828,18 +835,20 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _Other) const
 		else
 		{
 			First.ShapeBack_.emplace_back(1);
-			First.StepBack_.emplace_back(0);
+			First.StepBack_.emplace_back(First.StepBack_.back());
 			First.SliceBegin_.emplace_back(0);
 			First.DimStride_.emplace_back(0);
+			First.IsBroadCasted_ = true;
 		}
 		if (i < Second.ShapeBack_.size())
 			YSize = Second.ShapeBack_[i];
 		else
 		{
 			Second.ShapeBack_.emplace_back(1);
-			Second.StepBack_.emplace_back(0);
+			Second.StepBack_.emplace_back(First.StepBack_.back());
 			Second.SliceBegin_.emplace_back(0);
 			Second.DimStride_.emplace_back(0);
+			Second.IsBroadCasted_ = true;
 		}
 		if (XSize == YSize)
 			continue;
@@ -847,11 +856,13 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _Other) const
 		{
 			First.ShapeBack_[i] = YSize;
 			First.DimStride_[i] = 0;
+			First.IsBroadCasted_ = true;
 		}
 		else if (YSize == 1)
 		{
 			Second.ShapeBack_[i] = XSize;
 			Second.DimStride_[i] = 0;
+			Second.IsBroadCasted_ = true;
 		}
 		else
 			LibSvcThrow("TensorA & TensorB Can Not Be BroadCast!");
@@ -865,6 +876,16 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _Other) const
 	std::ranges::reverse(First.DimStride_);
 	std::ranges::reverse(Second.DimStride_);
 	return Ret;
+}
+
+bool Tensor::IsBroadCasted() const
+{
+	return IsBroadCasted_;
+}
+
+SizeType Tensor::DimCount() const
+{
+	return (SizeType)ShapeBack_.size();
 }
 
 LibSvcEnd

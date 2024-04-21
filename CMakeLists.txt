@@ -4,13 +4,13 @@
 option(LIVSVC_CUDA                    "cuda backend" OFF)
 option(LIVSVC_ROCM                    "rocm backend" OFF)
 option(LIVSVC_SHARED_LIBS             "build shared libs" OFF)
-option(SVC_BUILD_DEMO             "SVC_BUILD_DEMO" ON)
-add_definitions(-DLIBSVC_ALLOC_ALIG=64)
+option(SVC_BUILD_DEMO                 "SVC_BUILD_DEMO" ON)
+add_definitions(-DLIBSVC_ALLOC_ALIG=32)
 add_definitions(-DUNICODE)
 add_definitions(-DLIBSVC_DEBUG)
 
 set(LIBSVC_LIB libsvc)
-
+set(BUILD_SHARED_LIBS OFF)
 if(LIVSVC_CUDA)
     
 endif()
@@ -42,13 +42,11 @@ LibSvcAddFiles(PROJECT_SOURCES
     ${PROJECT_SOURCE_DIR}/src/*.c
 )
 if(LIVSVC_SHARED_LIBS)
-    set(BUILD_SHARED_LIBS OFF)
     add_library(${LIBSVC_LIB} SHARED ${PROJECT_SOURCES})
     add_definitions(-DLIBSVC_EXPORT)
     target_compile_definitions(${LIBSVC_LIB} PRIVATE -DLIBSVC_DLL)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
-    set(BUILD_SHARED_LIBS OFF)
     add_library(${LIBSVC_LIB} STATIC ${PROJECT_SOURCES})
 endif()
 
