@@ -30,6 +30,7 @@ namespace Int8
 
 		if (_Input.IsContinuous())
 		{
+			DataPtr = (ThisType*)_Input.GetPtr();
 			const size_t BufferSize = VectorMul(_Input.Shape()) * sizeof(ThisType);
 			LibSvcMemSet(DataPtr, &_Value, BufferSize, sizeof(ThisType));
 			return;
@@ -100,6 +101,7 @@ namespace Int8
 
 		if (_Input.IsContinuous())
 		{
+			DataPtr = (ThisType*)_Input.GetPtr();
 			const size_t BufferSize = (BufferEnd - Buffer) * sizeof(ThisType);
 			LibSvcMemCpy(DataPtr, Buffer, BufferSize);
 			return;
@@ -169,8 +171,11 @@ namespace Int8
 
 		if (!_InputA.IsBroadCasted() && !_InputB.IsBroadCasted() && _InputA.IsContinuous() && _InputB.IsContinuous())
 		{
+			DataPtr1 = (ThisType*)_InputA.GetPtr();
+			DataPtr2 = (ThisType*)_InputB.GetPtr();
 			const size_t BufferSize = VectorMul(_InputA.Shape()) * sizeof(ThisType);
 			LibSvcMemCpy(DataPtr1, DataPtr2, BufferSize);
+			return;
 		}
 
 		auto Steps1 = _InputA.StepsBack();

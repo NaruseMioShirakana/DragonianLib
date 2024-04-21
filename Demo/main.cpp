@@ -59,9 +59,9 @@ int main()
 	TenC.Assign(Temp, sizeof(Temp));
 	TenC.Invoke(1, PrintTensor);
 	std::cout << '\n';
-	//auto Tennnnn = TenA.Clone();
+	auto Tennnnn = TenA.Clone();
 	TenA.Permute({ 2,0,1 }).Invoke(1, PrintTensor);
 	std::cout << '\n';
-	//Tennnnn.Invoke(1, PrintTensor);
+	Tennnnn.Invoke(1, PrintTensor);
 	return 0;
 }

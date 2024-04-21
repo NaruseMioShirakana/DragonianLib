@@ -125,5 +125,7 @@ public:
 	std::pair<Tensor, Tensor> BroadCast(const Tensor& _Other) const;
 	bool IsBroadCasted() const;
 	SizeType DimCount() const;
+	bool IsVector() const;
+	byte* GetPtr() const;
 };
 LibSvcEnd

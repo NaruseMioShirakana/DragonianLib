@@ -888,4 +888,14 @@ SizeType Tensor::DimCount() const
 	return (SizeType)ShapeBack_.size();
 }
 
+bool Tensor::IsVector() const
+{
+	return DimCount() == 1;
+}
+
+byte* Tensor::GetPtr() const
+{
+	return Data(ShapeType(DimCount(), 0));
+}
+
 LibSvcEnd
