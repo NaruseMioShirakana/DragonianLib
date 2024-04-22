@@ -369,7 +369,7 @@ namespace Float64
 
 		const auto BroadCast = _InputA.BroadCast(_InputB);
 
-		AssignTensorBroadCasted(BroadCast.first, BroadCast.second, _ThreadPool);
+		AssignTensorBroadCasted(_InputA, BroadCast, _ThreadPool);
 	}
 
 	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)

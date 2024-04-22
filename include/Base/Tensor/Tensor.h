@@ -92,6 +92,7 @@ public:
 	bool IsScalar() const;
 	bool HasViewedFeature() const;
 	bool IsContinuous() const;
+	bool IsTranSposedContinuous() const;
 	bool IsView() const;
 	Tensor Clone(ThreadPool* _ThreadPool = nullptr) const;
 	Tensor CreateView() const;
@@ -112,8 +113,8 @@ public:
 	void FixZeros(ThreadPool* _ThreadPool = nullptr) const;
 	void Fix(double _Val, ThreadPool* _ThreadPool = nullptr) const;
 	void Fix(int64 _Val, ThreadPool* _ThreadPool = nullptr) const;
-	void RandFix(uint64 _Seed, ThreadPool* _ThreadPool = nullptr) const;
-	void RandnFix(uint64 _Seed, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr) const;
+	void RandFix(uint64 _Seed = 114514, ThreadPool* _ThreadPool = nullptr) const;
+	void RandnFix(uint64 _Seed = 114514, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr) const;
 	byte* Buffer() const;
 	byte* Data() const;
 	byte* Data(const ShapeType& _Indices) const;
@@ -122,10 +123,12 @@ public:
 	Tensor UnSqueeze(SizeType Dim) const;
 	Tensor Squeeze(SizeType Dim) const;
 	Tensor Squeeze() const;
-	std::pair<Tensor, Tensor> BroadCast(const Tensor& _Other) const;
+	static std::pair<Tensor, Tensor> BroadCast(const Tensor& _A, const Tensor& _B);
+	Tensor BroadCast(const Tensor& _Other) const;
 	bool IsBroadCasted() const;
 	SizeType DimCount() const;
 	bool IsVector() const;
 	byte* GetPtr() const;
+	ShapeType CalcContinuous() const;
 };
 LibSvcEnd

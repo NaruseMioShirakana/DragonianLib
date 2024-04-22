@@ -85,6 +85,18 @@
 	(_DST_VAL) = (_DST_TYPE)sqrt(_Cpx.real() * _Cpx.real() + _Cpx.imag() * _Cpx.imag()); \
 }
 
+#define LibSvcCycle(IndicesPtr, ShapePtr, CurDims, Body) while ((IndicesPtr)[0] < (ShapePtr)[0])\
+{ \
+	{Body} \
+	for (SizeType i = (CurDims) - 1; i >= 0; --i) \
+	{ \
+		++(IndicesPtr)[i]; \
+		if ((IndicesPtr)[i] < (ShapePtr)[i]) \
+			break; \
+		if (i) (IndicesPtr)[i] = 0; \
+	} \
+}
+
 LibSvcBegin
 using SizeType = int64;
 

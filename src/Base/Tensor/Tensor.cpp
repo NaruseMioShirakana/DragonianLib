@@ -465,17 +465,35 @@ bool Tensor::IsContinuous() const
 	for (const auto i : DimStride_)
 		if (i != 1)
 			return false;
-	if(DimCount() != 1)
-	{
-		for (const auto i : SliceBegin_)
-			if (i != 0)
-				return false;
-	}
+	for (size_t i = 1; i < SliceBegin_.size(); ++i)
+		if (SliceBegin_[i] != 0)
+			return false;
 	if (StepBack_.back() != AlignSize_)
 		return false;
 	for (size_t i = 1; i < StepBack_.size(); ++i)
 		if (StepBack_[i - 1] / ShapeBack_[i] != StepBack_[i])
 			return false;
+	return true;
+}
+
+bool Tensor::IsTranSposedContinuous() const
+{
+	const auto Dims = DimCount();
+	for (const auto i : DimStride_)
+		if (i != 1)
+			return false;
+	for (size_t i = 1; i < SliceBegin_.size(); ++i)
+		if (SliceBegin_[i] != 0)
+			return false;
+	const auto MaxStep = std::ranges::max(StepBack_);
+	if (SliceBegin_[0] != 0 && StepBack_[0] != MaxStep)
+		return false;
+	SizeType DimsMul = AlignSize_;
+	for (size_t i = 0; i < StepBack_.size(); ++i)
+		if (StepBack_[i] != MaxStep)
+			DimsMul *= ShapeBack_[i];
+	if (DimsMul != MaxStep)
+		return false;
 	return true;
 }
 
@@ -803,7 +821,10 @@ Tensor Tensor::Squeeze() const
 	{
 		const auto Idx = Iter - Ret.ShapeBack_.begin();
 		if(*(Ret.SliceBegin_.begin() + Idx) != 0)
+		{
+			Iter = std::ranges::find(Iter + 1, Ret.ShapeBack_.end(), 1);
 			continue;
+		}
 		Ret.ShapeBack_.erase(Iter);
 		Ret.StepBack_.erase(Ret.StepBack_.begin() + Idx);
 		Ret.SliceBegin_.erase(Ret.SliceBegin_.begin() + Idx);
@@ -813,9 +834,9 @@ Tensor Tensor::Squeeze() const
 	return Ret;
 }
 
-std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _Other) const
+std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _A, const Tensor& _B)
 {
-	std::pair Ret{ CreateView(), _Other.CreateView() };
+	std::pair Ret{ _A.CreateView(), _B.CreateView() };
 	auto& First = Ret.first;
 	auto& Second = Ret.second;
 	const auto Dims = std::max(First.ShapeBack_.size(), Second.ShapeBack_.size());
@@ -878,6 +899,14 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _Other) const
 	return Ret;
 }
 
+Tensor Tensor::BroadCast(const Tensor& _Other) const
+{
+	auto Bd = BroadCast(*this, _Other);
+	if (Bd.first.IsBroadCasted())
+		LibSvcThrow("TensorA & TensorB Can Not Be BroadCast In This Operator!");
+	return std::move(Bd.second);
+}
+
 bool Tensor::IsBroadCasted() const
 {
 	return IsBroadCasted_;
@@ -898,4 +927,22 @@ byte* Tensor::GetPtr() const
 	return Data(ShapeType(DimCount(), 0));
 }
 
+ShapeType Tensor::CalcContinuous() const
+{
+	if (IsBroadCasted_)
+		return { 0,1,2,3,4 };
+	const auto Dims = DimCount();
+	if (Dims == 1)
+		return { 0, 0, 0, 0, 0 };
+	std::vector<std::pair<SizeType, SizeType>> Ret;
+	Ret.reserve(Dims);
+	for (SizeType i = 0; i < Dims; ++i)
+		Ret.emplace_back(StepBack_[i], i);
+	std::ranges::sort(Ret);
+	std::ranges::reverse(Ret);
+	ShapeType Rtn;
+	for (const auto& i : Ret | std::views::values)
+		Rtn.emplace_back(i);
+	return Rtn;
+}
 LibSvcEnd
