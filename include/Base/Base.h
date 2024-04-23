@@ -17,7 +17,7 @@
 #endif
 
 #ifndef UNUSED
-#define UNUSED(x) void(x)
+#define UNUSED(x) (void)(x)
 #endif
 
 #define LibSvcBegin namespace libsvc {
@@ -62,6 +62,8 @@ using uint8 = uint8_t;
 using uint16 = uint16_t;
 using uint32 = uint32_t;
 using uint64 = uint64_t;
+struct NoneType {};
+static constexpr NoneType None;
 
 #ifdef _WIN32
 #pragma pack(push, 1)

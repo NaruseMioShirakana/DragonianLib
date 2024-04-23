@@ -50,6 +50,7 @@ void ThreadPool::Join()
     Condition_.notify_all();
     for (auto& CurTask : Threads_)
         if (CurTask.joinable()) CurTask.join();
+    Init();
 }
 
 LibSvcEnd

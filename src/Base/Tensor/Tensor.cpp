@@ -20,12 +20,15 @@ SizeType VectorMul(const ShapeType& _Input)
 	return All;
 }
 
-//Construct
-Tensor::Tensor(): TensorBase(TensorType::Float32)
+bool RangeIsAllNone(const Vector<Range>& _Input)
 {
-	
+	for (const auto& i : _Input)
+		if (!i.IsNone)
+			return false;
+	return true;
 }
 
+//Construct
 Tensor::~Tensor()
 {
 	Free();
@@ -33,8 +36,10 @@ Tensor::~Tensor()
 
 Tensor::Tensor(const ShapeType& _Shape, TensorType _DType) : TensorBase(_DType)
 {
+	for (const auto i : _Shape)
+		if (i <= 0)
+			LibSvcThrow("Shape Must > 0");
 	AlignSize_ = DType2Size(DType_);
-	ShapeFront_.clear();
 	ShapeBack_ = _Shape;
 	StepFront_.clear();
 	StepBack_ = { _Shape.begin() + 1,_Shape.end() };
@@ -60,7 +65,6 @@ Tensor::Tensor(const Tensor& _Left) : TensorBase(_Left.DType_)
 
 Tensor::Tensor(Tensor&& _Right) noexcept : TensorBase(_Right.DType_)
 {
-	ShapeFront_ = std::move(_Right.ShapeFront_);
 	ShapeBack_ = std::move(_Right.ShapeBack_);
 	StepFront_ = std::move(_Right.StepFront_);
 	StepBack_ = std::move(_Right.StepBack_);
@@ -135,19 +139,21 @@ void Tensor::ClearViewChilds()
 
 void Tensor::ThrowOnNotEnabled() const
 {
+#ifdef LIBSVC_DEBUG
 	if (AlignSize_ != DType2Size(DType_))
 		LibSvcThrow("AlignSize MisMatch!");
 	if (ShapeBack_.empty() || StepBack_.empty())
 		LibSvcThrow("Axis Out Of Range!");
 	if (!DataPtr_)
 		LibSvcThrow("NullPointer Error!");
-#ifdef LIBSVC_DEBUG
-	if ((ShapeFront_.size() != StepFront_.size()) || (CurIndices_.size() != StepFront_.size()) ||
-		(DimStride_.size() != ShapeBack_.size()) || (DimStride_.size() != StepBack_.size()))
+
+	if ((CurIndices_.size() != StepFront_.size()) ||
+		(DimStride_.size() != ShapeBack_.size()) ||
+		(DimStride_.size() != StepBack_.size()))
 	{
 		LibSvcThrow("Indices Error!");
 	}
-#endif
+
 	if (!IsView() && HasViewedFeature())
 		LibSvcThrow("Src Tensor Should Not Has Viewed Feature, Please Report This Bug!");
 
@@ -159,6 +165,7 @@ void Tensor::ThrowOnNotEnabled() const
 		if (Iter == Views.end())
 			LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
 	}
+#endif
 }
 
 void Tensor::RemoveSelfViewPtr()
@@ -178,7 +185,7 @@ bool Tensor::HasChild(const Tensor* _Child) const
 	return false;
 }
 
-void Tensor::CalcInfo()
+void Tensor::ReCalcViewInfo()
 {
 	StepBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
 	StepBack_.emplace_back(AlignSize_);
@@ -187,6 +194,11 @@ void Tensor::CalcInfo()
 		StepBack_[i] *= StepBack_[i - 1];
 	std::ranges::reverse(StepBack_);
 
+	if (SliceBegin_.front())
+	{
+		CurIndices_.emplace_back(SliceBegin_.front());
+		StepFront_.emplace_back(StepBack_.front());
+	}
 	SliceBegin_ = { ShapeBack_.size(),0, ShapeType::allocator_type() };
 	DimStride_ = { ShapeBack_.size(),1, ShapeType::allocator_type() };
 }
@@ -200,7 +212,45 @@ void Tensor::Assign1D(const void* _Val) const
 		memcpy(DataPtr_ + CurIndex + (((i * DimStride_[0]) + SliceBegin_[0]) * StepBack_[0]), _Val, AlignSize_);
 }
 
-//Operator=
+Tensor Tensor::GatherRef(SizeType _Index) const
+{
+	const auto Idx = CalcIndex(_Index, ShapeBack_.front());
+	Tensor Ret(DType_);
+	Ret.DType_ = DType_;
+
+	Ret.ShapeBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
+
+	Ret.StepFront_ = StepFront_;
+	Ret.StepFront_.emplace_back(StepBack_.front());
+
+	Ret.StepBack_ = { StepBack_.begin() + 1,StepBack_.end() };
+	Ret.SliceBegin_ = { SliceBegin_.begin() + 1,SliceBegin_.end() };
+	Ret.DimStride_ = { DimStride_.begin() + 1,DimStride_.end() };
+
+	Ret.CurIndices_ = CurIndices_;
+	Ret.CurIndices_.emplace_back(SliceBegin_.front() + (Idx * DimStride_.front()));
+
+	Ret.AlignSize_ = AlignSize_;
+	Ret.DataPtr_ = DataPtr_;
+
+	if (Ret.ShapeBack_.empty())
+	{
+		Ret.ShapeBack_.emplace_back(1);
+		Ret.StepBack_.emplace_back(1);
+		Ret.SliceBegin_.emplace_back(0);
+		Ret.DimStride_.emplace_back(1);
+	}
+
+	if (IsView())
+		Ret.ViewParent_ = ViewParent_;
+	else
+		Ret.ViewParent_ = (Tensor*)((size_t)(this));
+
+	std::lock_guard Lock(Ret.ViewParent_->ViewMx_);
+	Ret.ViewParent_->ViewChild_.emplace_back(&Ret);
+
+	return Ret;
+}
 
 Tensor& Tensor::operator=(const Tensor& _Left)
 {
@@ -215,11 +265,12 @@ Tensor& Tensor::operator=(const Tensor& _Left)
 
 Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 {
+	if (&_Right == this)
+		return *this;
 	if (_Right.ViewParent_ && _Right.ViewParent_ == this)
 		LibSvcThrow("Assign To Parent Is Not Allowed!");
 	Free();
 	DType_ = _Right.DType_;
-	ShapeFront_ = std::move(_Right.ShapeFront_);
 	ShapeBack_ = std::move(_Right.ShapeBack_);
 	StepFront_ = std::move(_Right.StepFront_);
 	StepBack_ = std::move(_Right.StepBack_);
@@ -271,61 +322,24 @@ Tensor& Tensor::operator=(int64 _Val)
 Tensor Tensor::operator[](SizeType _Index) const
 {
 	ThrowOnNotEnabled();
-	const auto Idx = CalcIndex(_Index, ShapeBack_.front());
-	Tensor Ret;
-	Ret.DType_ = DType_;
+	return GatherRef(_Index);
+}
 
-	Ret.ShapeFront_ = ShapeFront_;
-	Ret.ShapeFront_.emplace_back(ShapeBack_.front());
-
-	Ret.ShapeBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
-
-	Ret.StepFront_ = StepFront_;
-	Ret.StepFront_.emplace_back(StepBack_.front());
-
-	Ret.StepBack_ = { StepBack_.begin() + 1,StepBack_.end() };
-	Ret.SliceBegin_ = { SliceBegin_.begin() + 1,SliceBegin_.end() };
-	Ret.DimStride_ = { DimStride_.begin() + 1,DimStride_.end() };
-
-	Ret.CurIndices_ = CurIndices_;
-	Ret.CurIndices_.emplace_back(SliceBegin_.front() + (Idx * DimStride_.front()));
-
-	Ret.AlignSize_ = AlignSize_;
-	Ret.DataPtr_ = DataPtr_;
-
-	if (Ret.ShapeBack_.empty())
-	{
-		Ret.ShapeBack_.emplace_back(1);
-		Ret.StepBack_.emplace_back(1);
-		Ret.SliceBegin_.emplace_back(0);
-		Ret.DimStride_.emplace_back(1);
-	}
-
-	if (IsView())
-		Ret.ViewParent_ = ViewParent_;
-	else
-		Ret.ViewParent_ = (Tensor*)((size_t)(this));
-
-	std::lock_guard Lock(Ret.ViewParent_->ViewMx_);
-	Ret.ViewParent_->ViewChild_.emplace_back(&Ret);
-
-	return Ret;
+Tensor Tensor::operator[](const SliceOptions& _SliceOptions) const
+{
+	return Slice(_SliceOptions);
 }
 
 void Tensor::Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
 	LibSvcOperatorNoRetrun(AssignBuffer, *this, _Buffer, (const byte*)_Buffer + _BufferSize, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, _Type, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::Assign(float64 _Val, ThreadPool* _ThreadPool) const
@@ -341,8 +355,6 @@ void Tensor::Assign(int64 _Val, ThreadPool* _ThreadPool) const
 void Tensor::Assign(const Tensor& _Val, ThreadPool* _ThreadPool) const
 {
 	LibSvcOperatorNoRetrun(AssignTensor, *this, _Val, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 //Public
@@ -422,8 +434,8 @@ bool Tensor::IsEnabled() const
 	if (!DataPtr_)
 		return false;
 
-	if ((ShapeFront_.size() != StepFront_.size()) || (CurIndices_.size() != StepFront_.size()) ||
-		(DimStride_.size() != ShapeBack_.size()) || (DimStride_.size() != StepBack_.size()))
+	if ((CurIndices_.size() != StepFront_.size()) || (DimStride_.size() != ShapeBack_.size()) ||
+		(DimStride_.size() != StepBack_.size()))
 	{
 		return false;
 	}
@@ -455,7 +467,7 @@ bool Tensor::HasViewedFeature() const
 {
 	if (!CurIndices_.empty())
 		return true;
-	if (!(StepFront_.empty() && ShapeFront_.empty()))
+	if (!StepFront_.empty())
 		return true;
 	return !IsContinuous();
 }
@@ -478,7 +490,7 @@ bool Tensor::IsContinuous() const
 
 bool Tensor::IsTranSposedContinuous() const
 {
-	const auto Dims = DimCount();
+	//const auto Dims = DimCount();
 	for (const auto i : DimStride_)
 		if (i != 1)
 			return false;
@@ -505,7 +517,7 @@ bool Tensor::IsView() const
 Tensor Tensor::Clone(ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	Tensor Ret(ShapeBack_);
+	Tensor Ret(ShapeBack_, DType_);
 	Ret.Assign(*this, _ThreadPool);
 	return Ret;
 }
@@ -513,9 +525,8 @@ Tensor Tensor::Clone(ThreadPool* _ThreadPool) const
 Tensor Tensor::CreateView() const
 {
 	ThrowOnNotEnabled();
-	Tensor Ret;
+	Tensor Ret(DType_);
 	Ret.DType_ = DType_;
-	Ret.ShapeFront_ = ShapeFront_;
 	Ret.ShapeBack_ = ShapeBack_;
 	Ret.StepFront_ = StepFront_;
 	Ret.StepBack_ = StepBack_;
@@ -540,13 +551,17 @@ Tensor Tensor::CreateView() const
 Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 {
 	ThrowOnNotEnabled();
+	if (IsBroadCasted())
+		LibSvcThrow("Broad Casted Could Not Be Sliced!");
 	if (ShapeBack_.empty() || _SliceOptions.size() > ShapeBack_.size())
 		LibSvcThrow("Axis Out Of Range!");
 	Tensor Ret = CreateView();
 	for (size_t i = 0; i < _SliceOptions.size(); ++i)
 	{
-		Ret.SliceBegin_[i] = CalcIndex(_SliceOptions[i][0], ShapeBack_[i]);
-		auto SliceEndPos = _SliceOptions[i][1];
+		if (_SliceOptions[i].IsNone)
+			continue;
+		const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, ShapeBack_[i]);
+		auto SliceEndPos = _SliceOptions[i].End;
 		if (SliceEndPos > ShapeBack_[i] || SliceEndPos < -(ShapeBack_[i] + 1))
 			LibSvcThrow("Indew Out Of Range!");
 		if (SliceEndPos == -(ShapeBack_[i] + 1))
@@ -554,38 +569,46 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 		else if (SliceEndPos < 0)
 			SliceEndPos += ShapeBack_[i] + 1;
 
-		auto SliceLength = SliceEndPos - Ret.SliceBegin_[i];
+		const auto SliceLength = SliceEndPos - SliceBeginPos;
 		if (SliceLength == 0)
-		{
-			Ret.ShapeBack_[i] = 1;
-			continue;
-		}
-		if (SliceLength > 0 && _SliceOptions[i][2] < 0 ||
-			SliceLength < 0 && _SliceOptions[i][2] > 0)
+			LibSvcThrow("Slice Length Must > 0");
+		if (SliceLength > 0 && _SliceOptions[i].Step < 0 ||
+			SliceLength < 0 && _SliceOptions[i].Step > 0)
 			LibSvcThrow("Step & (SliceEnd - SliceBegin) Should Have The Same Sign!");
-		if(abs(SliceLength) < abs(_SliceOptions[i][2]))
-			LibSvcThrow("abs(Step) Should < abs(SliceEnd - SliceBegin)!");
-		Ret.DimStride_[i] *= _SliceOptions[i][2];
-		if (SliceLength < 0)
-			--SliceLength;
-		Ret.ShapeBack_[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i][2]));
+		Ret.SliceBegin_[i] += SliceBeginPos * Ret.DimStride_[i];
+		Ret.ShapeBack_[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i].Step));
+		Ret.DimStride_[i] *= _SliceOptions[i].Step;
 	}
 	return Ret;
+}
+
+Tensor Tensor::ReversedSlice(const SliceOptions& _SliceOptions) const
+{
+	Vector<Range> TempRange = _SliceOptions, NewRange;
+	TempRange.resize(ShapeBack_.size(), None);
+	for (size_t i = TempRange.size() - 1; i < TempRange.size(); --i)
+	{
+		if (TempRange[i].IsNone)
+			NewRange.emplace_back(None);
+		else
+			NewRange.emplace_back(TempRange[i].Begin, TempRange[i].Step, TempRange[i].End);
+	}
+	return Slice(NewRange);
 }
 
 Tensor Tensor::Permute(const ShapeType& _DPremute) const
 {
 	ThrowOnNotEnabled();
 	if (ShapeBack_.empty() || _DPremute.size() != ShapeBack_.size())
-		LibSvcThrow("Axis Out Of Range!");
+		LibSvcThrow("N_DIMS MisMatch!");
 	Tensor Ret = CreateView();
 	auto TransposedDims = _DPremute;
-	std::ranges::sort(TransposedDims.begin(), TransposedDims.end());
+	std::ranges::sort(TransposedDims);
 	if (TransposedDims[0] != 0)
-		LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS]!");
+		LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 	for (size_t i = 1; i < TransposedDims.size(); ++i)
 		if (TransposedDims[i] != TransposedDims[i - 1] + 1)
-			LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS]!");
+			LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 
 	for (size_t i = 0; i < _DPremute.size(); ++i)
 	{
@@ -685,44 +708,32 @@ void Tensor::FixOnes(ThreadPool* _ThreadPool) const
 {
 	float _Val = 1.f;
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::FixZeros(ThreadPool* _ThreadPool) const
 {
 	float _Val = 0.f;
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::Fix(double _Val, ThreadPool* _ThreadPool) const
 {
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::Fix(int64 _Val, ThreadPool* _ThreadPool) const
 {
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::RandFix(uint64 _Seed, ThreadPool* _ThreadPool) const
 {
 	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, 0., 11451.41919810, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 void Tensor::RandnFix(uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool) const
 {
 	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, _Mean, _Sigma, _ThreadPool);
-	if (_ThreadPool)
-		_ThreadPool->Join();
 }
 
 Tensor Tensor::View(const ShapeType& _ViewShape) const
@@ -731,14 +742,15 @@ Tensor Tensor::View(const ShapeType& _ViewShape) const
 		LibSvcThrow("View Should Be Continuous!");
 	if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
 		LibSvcThrow("Count Of Dynamic Axis Should <= 1!");
-	if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), 0))
-		LibSvcThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
+	for (const auto i : _ViewShape)
+		if (i <= 0 && i != -1)
+			LibSvcThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
 	Tensor Ret = CreateView();
 	const auto SrcSize = VectorMul(Ret.ShapeBack_);
-	const auto DstSize = abs(VectorMul(_ViewShape));
-	if ((SrcSize % DstSize) != 0)
+	const auto DstSize = VectorMul(_ViewShape);
+	if ((DstSize < 0 && (SrcSize % abs(DstSize)) != 0) || (DstSize > 0 && (SrcSize != DstSize)))
 		LibSvcThrow("Size MisMatch!");
-	const auto DynamicAxes = SrcSize % DstSize;
+	const auto DynamicAxes = SrcSize / DstSize;
 	Ret.ShapeBack_ = _ViewShape;
 	for (auto& i : Ret.ShapeBack_)
 		if (i == -1)
@@ -746,7 +758,7 @@ Tensor Tensor::View(const ShapeType& _ViewShape) const
 			i = DynamicAxes;
 			break;
 		}
-	Ret.CalcInfo();
+	Ret.ReCalcViewInfo();
 	return Ret;
 }
 
@@ -757,13 +769,7 @@ Tensor& Tensor::Continuous(ThreadPool* _ThreadPool)
 		LibSvcThrow("Src Should Be Continuous, Please Report This Bug!");
 	if (!IsView() || IsContinuous())
 		return *this;
-
 	return *this = Clone(_ThreadPool);
-}
-
-const ShapeType& Tensor::CurIndices() const
-{
-	return CurIndices_;
 }
 
 const ShapeType& Tensor::SliceBegins() const
@@ -774,11 +780,6 @@ const ShapeType& Tensor::SliceBegins() const
 const ShapeType& Tensor::StepsBack() const
 {
 	return StepBack_;
-}
-
-const ShapeType& Tensor::StepsFront() const
-{
-	return StepFront_;
 }
 
 const ShapeType& Tensor::Strides() const
@@ -794,7 +795,7 @@ Tensor Tensor::UnSqueeze(SizeType Dim) const
 	if (Dim == SizeType(Ret.ShapeBack_.size()))
 		Ret.StepBack_.insert(Ret.StepBack_.begin() + Dim, DType2Size(Ret.DType()));
 	else
-		Ret.StepBack_.insert(Ret.StepBack_.begin() + Dim, *(Ret.StepBack_.begin() + Dim + 1));
+		Ret.StepBack_.insert(Ret.StepBack_.begin() + Dim, *(Ret.StepBack_.begin() + Dim));
 	Ret.SliceBegin_.insert(Ret.SliceBegin_.begin() + Dim, 0);
 	Ret.DimStride_.insert(Ret.DimStride_.begin() + Dim, 1);
 	return Ret;
@@ -804,8 +805,13 @@ Tensor Tensor::Squeeze(SizeType Dim) const
 {
 	auto Ret = CreateView();
 	Dim = CalcIndex(Dim, SizeType(Ret.ShapeBack_.size()));
-	if (Ret.ShapeBack_[Dim] != 1 || Ret.SliceBegin_[Dim] != 0)
+	if (Ret.ShapeBack_[Dim] != 1)
 		return Ret;
+	if (Ret.SliceBegin_[Dim])
+	{
+		Ret.CurIndices_.emplace_back(Ret.SliceBegin_[Dim]);
+		Ret.StepFront_.emplace_back(Ret.StepBack_[Dim]);
+	}
 	Ret.ShapeBack_.erase(Ret.ShapeBack_.begin() + Dim);
 	Ret.StepBack_.erase(Ret.StepBack_.begin() + Dim);
 	Ret.SliceBegin_.erase(Ret.SliceBegin_.begin() + Dim);
@@ -820,10 +826,10 @@ Tensor Tensor::Squeeze() const
 	while (Iter != Ret.ShapeBack_.end())
 	{
 		const auto Idx = Iter - Ret.ShapeBack_.begin();
-		if(*(Ret.SliceBegin_.begin() + Idx) != 0)
+		if (Ret.SliceBegin_[Idx])
 		{
-			Iter = std::ranges::find(Iter + 1, Ret.ShapeBack_.end(), 1);
-			continue;
+			Ret.CurIndices_.emplace_back(Ret.SliceBegin_[Idx]);
+			Ret.StepFront_.emplace_back(Ret.StepBack_[Idx]);
 		}
 		Ret.ShapeBack_.erase(Iter);
 		Ret.StepBack_.erase(Ret.StepBack_.begin() + Idx);
@@ -929,12 +935,10 @@ byte* Tensor::GetPtr() const
 
 ShapeType Tensor::CalcContinuous() const
 {
-	if (IsBroadCasted_)
-		return { 0,1,2,3,4 };
 	const auto Dims = DimCount();
 	if (Dims == 1)
 		return { 0, 0, 0, 0, 0 };
-	std::vector<std::pair<SizeType, SizeType>> Ret;
+	Vector<std::pair<SizeType, SizeType>> Ret;
 	Ret.reserve(Dims);
 	for (SizeType i = 0; i < Dims; ++i)
 		Ret.emplace_back(StepBack_[i], i);
@@ -945,4 +949,59 @@ ShapeType Tensor::CalcContinuous() const
 		Rtn.emplace_back(i);
 	return Rtn;
 }
+
+Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, TensorType _ValueType, lpvoid _Val, ThreadPool* _ThreadPool)
+{
+	_Input.ThrowOnNotEnabled();
+	if (_Pad.size() > _Input.Shape().size())
+		LibSvcThrow("Dim Out Of Range");
+	auto Shape = _Input.Shape();
+	const auto InputShapePtr = _Input.Shape().data();
+	Vector<Range> SliceSrc, SliceDst;
+
+	for (size_t i = 0; i < _Pad.size(); ++i)
+	{
+		if (_Pad[i].Begin < 0 || _Pad[i].End < 0)
+			LibSvcThrow("Use Slice Instead");
+
+		if (_Pad[i].IsNone || (_Pad[i].Begin == 0 && _Pad[i].End == 0))
+		{
+			SliceSrc.emplace_back(None);
+			SliceDst.emplace_back(None);
+			continue;
+		}
+
+		Shape[i] += (_Pad[i].Begin + _Pad[i].End);
+		if (Shape[i] <= 0)
+			LibSvcThrow("Incorrect Pad Size!");
+
+		SliceSrc.emplace_back(None);
+		SliceDst.emplace_back(_Pad[i].Begin, InputShapePtr[i] + _Pad[i].Begin);
+	}
+
+	Tensor Ret(Shape, _Input.DType());
+	if (_Type == PaddingType::Zero)
+		Ret.FixZeros(_ThreadPool);
+	if (_Type == PaddingType::Constant)
+		Ret.Assign(_Val,_ValueType,_ThreadPool);
+
+	Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
+
+	return Ret;
+}
+
+Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, TensorType _ValueType, lpvoid _Val, ThreadPool* _ThreadPool)
+{
+	Vector<Range> TempRange = _Pad, NewRange;
+	TempRange.resize(_Input.ShapeBack_.size(), None);
+	for (size_t i = TempRange.size() - 1; i < TempRange.size(); --i)
+	{
+		if (TempRange[i].IsNone)
+			NewRange.emplace_back(None);
+		else
+			NewRange.emplace_back(TempRange[i].Begin, TempRange[i].End);
+	}
+	return Padding(_Input, NewRange, _Type, _ValueType, _Val, _ThreadPool);
+}
+
 LibSvcEnd

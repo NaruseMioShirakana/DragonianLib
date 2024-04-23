@@ -99,6 +99,8 @@
 
 LibSvcBegin
 using SizeType = int64;
+template <typename _Ty>
+using Vector = std::vector<_Ty>;
 
 enum class TensorType
 {

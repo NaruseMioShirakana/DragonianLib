@@ -3,7 +3,7 @@
 #include <complex>
 
 LibSvcBegin
-	const std::unordered_map<std::string, TensorType> __Ty2DTy{
+const std::unordered_map<std::string, TensorType> __Ty2DTy{
 	{ "int8", TensorType::Int8},
 	{ "int16", TensorType::Int16 },
 	{ "int32", TensorType::Int32 },
