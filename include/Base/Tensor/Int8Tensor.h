@@ -5,9 +5,9 @@ namespace Int8
 {
 	using ThisType = int8;
 
-	ThisType CastFrom(TensorType _Type, void* _Val);
+	ThisType CastFrom(TensorType _Type, cpvoid _Val);
 
-	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	void AssignValue(const Tensor& _Input, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
 
 	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid, ThreadPool* _ThreadPool);
 

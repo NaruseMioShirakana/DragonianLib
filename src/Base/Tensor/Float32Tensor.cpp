@@ -6,7 +6,7 @@ LibSvcBegin
 namespace Float32
 {
 
-	ThisType CastFrom(TensorType _Type, void* _Val)
+	ThisType CastFrom(TensorType _Type, cpvoid _Val)
 	{
 		ThisType Ret;
 		LibSvcTypeSwitch(
@@ -24,7 +24,7 @@ namespace Float32
 		return Ret;
 	}
 
-	void AssignImpl(const Tensor& _Input, void* _Val, TensorType _ValType, const SizeType CurDims)
+	void AssignImpl(const Tensor& _Input, cpvoid _Val, TensorType _ValType, const SizeType CurDims)
 	{
 		const auto _Value = CastFrom(_ValType, _Val);
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
@@ -621,7 +621,7 @@ namespace Float32
 				DataPtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0]] = (ThisType)NormGen(RndDevice);
 	}
 
-	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType, ThreadPool* _ThreadPool)
+	void AssignValue(const Tensor& _Input, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool)
 	{
 		if (_Input.IsBroadCasted())
 			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
@@ -806,6 +806,9 @@ namespace Float32
 
 	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
 	{
+		if (_InputA.DType() != _InputB.DType())
+			LibSvcThrow("Type MisMatch!");
+
 		if (_InputA.IsBroadCasted())
 			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
 

@@ -341,7 +341,7 @@ void Tensor::Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _Thre
 void Tensor::Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, _Type, _ThreadPool);
+	LibSvcOperatorNoRetrun(AssignValue, *this, _Val, _Type, _ThreadPool);
 }
 
 void Tensor::Assign(float64 _Val, ThreadPool* _ThreadPool) const
@@ -708,13 +708,13 @@ byte* Tensor::Buffer() const
 
 void Tensor::FixOnes(ThreadPool* _ThreadPool) const
 {
-	float _Val = 1.f;
+	constexpr float _Val = 1.f;
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
 }
 
 void Tensor::FixZeros(ThreadPool* _ThreadPool) const
 {
-	float _Val = 0.f;
+	constexpr float _Val = 0.f;
 	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
 }
 
@@ -984,7 +984,7 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 
 	Tensor Ret(Shape, _Input.DType());
 
-	if (_Type == PaddingType::Zero)
+	if (_Type == PaddingType::Zero || (_Type == PaddingType::Constant && !_Val))
 	{
 		Ret.FixZeros(_ThreadPool);
 		Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
@@ -999,11 +999,12 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 
 	Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
 
-	if (_Type == PaddingType::Zero)
+	if (_Type == PaddingType::Replicate)
 	{
 		for (size_t i = _Pad.size() - 1; i < _Pad.size(); --i)
 		{
 			Vector<Range> RngFront, RngBack;
+			Vector<Range> SrcFront, SrcBack;
 			for (size_t j = 0; j < _Pad.size(); ++j)
 			{
 				if (i == j && !_Pad[i].IsNone)
@@ -1016,21 +1017,107 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 						RngBack.emplace_back(None);
 					else
 						RngBack.emplace_back(InputShapePtr[i] + _Pad[i].Begin, -1);
+					SrcFront.emplace_back(_Pad[i].Begin, _Pad[i].Begin + 1);
+					SrcBack.emplace_back(InputShapePtr[i] + _Pad[i].Begin - 1, InputShapePtr[i] + _Pad[i].Begin);
 				}
 				else
 				{
 					RngFront.emplace_back(None);
 					RngBack.emplace_back(None);
+					SrcFront.emplace_back(None);
+					SrcBack.emplace_back(None);
 				}
 			}
 			if (!RangeIsAllNone(RngFront))
-				Ret.Slice(RngFront).FixZeros(_ThreadPool);
+				Ret.Slice(RngFront).Assign(Ret.Slice(SrcFront), _ThreadPool);
 			if (!RangeIsAllNone(RngBack))
-				Ret.Slice(RngBack).FixZeros(_ThreadPool);
+				Ret.Slice(RngBack).Assign(Ret.Slice(SrcBack), _ThreadPool);
 		}
 	}
-	
-
+	else if (_Type == PaddingType::Cicular)
+	{
+		for (size_t i = _Pad.size() - 1; i < _Pad.size(); --i)
+		{
+			Vector<Range> RngFront, RngBack;
+			Vector<Range> SrcFront, SrcBack;
+			for (size_t j = 0; j < _Pad.size(); ++j)
+			{
+				if (i == j && !_Pad[i].IsNone)
+				{
+					if (_Pad[i].Begin <= 0)
+						RngFront.emplace_back(None);
+					else
+						RngFront.emplace_back(0, _Pad[i].Begin);
+					if (_Pad[i].End <= 0)
+						RngBack.emplace_back(None);
+					else
+						RngBack.emplace_back(InputShapePtr[i] + _Pad[i].Begin, -1);
+					SrcFront.emplace_back(
+						InputShapePtr[i],
+						InputShapePtr[i] + _Pad[i].Begin
+					);
+					SrcBack.emplace_back(
+						_Pad[i].Begin,
+						_Pad[i].Begin + _Pad[i].End
+					);
+				}
+				else
+				{
+					RngFront.emplace_back(None);
+					RngBack.emplace_back(None);
+					SrcFront.emplace_back(None);
+					SrcBack.emplace_back(None);
+				}
+			}
+			if (!RangeIsAllNone(RngFront))
+				Ret.Slice(RngFront).Assign(Ret.Slice(SrcFront), _ThreadPool);
+			if (!RangeIsAllNone(RngBack))
+				Ret.Slice(RngBack).Assign(Ret.Slice(SrcBack), _ThreadPool);
+		}
+	}
+	else if (_Type == PaddingType::Reflect)
+	{
+		for (size_t i = _Pad.size() - 1; i < _Pad.size(); --i)
+		{
+			Vector<Range> RngFront, RngBack;
+			Vector<Range> SrcFront, SrcBack;
+			for (size_t j = 0; j < _Pad.size(); ++j)
+			{
+				if (i == j && !_Pad[i].IsNone)
+				{
+					if (_Pad[i].Begin <= 0)
+						RngFront.emplace_back(None);
+					else
+						RngFront.emplace_back(0, _Pad[i].Begin);
+					if (_Pad[i].End <= 0)
+						RngBack.emplace_back(None);
+					else
+						RngBack.emplace_back(InputShapePtr[i] + _Pad[i].Begin, -1);
+					SrcFront.emplace_back(
+						_Pad[i].Begin + _Pad[i].Begin,
+						-1,
+						_Pad[i].Begin
+					);
+					SrcBack.emplace_back(
+						InputShapePtr[i] + _Pad[i].Begin - 1,
+						-1,
+						InputShapePtr[i] + _Pad[i].Begin - _Pad[i].End - 1
+					);
+				}
+				else
+				{
+					RngFront.emplace_back(None);
+					RngBack.emplace_back(None);
+					SrcFront.emplace_back(None);
+					SrcBack.emplace_back(None);
+				}
+			}
+			if (!RangeIsAllNone(RngFront))
+				Ret.Slice(RngFront).Assign(Ret.Slice(SrcFront), _ThreadPool);
+			if (!RangeIsAllNone(RngBack))
+				Ret.Slice(RngBack).Assign(Ret.Slice(SrcBack), _ThreadPool);
+		}
+	}
 	return Ret;
 }
 
@@ -1048,29 +1135,83 @@ Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType 
 	return Padding(_Input, NewRange, _Type, _ValueType, _Val, _ThreadPool);
 }
 
-Tensor Tensor::Repeat(const Tensor& _Input, const ShapeType& _Dims, const ShapeType& _Count)
+Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, ThreadPool* _ThreadPool)
+{
+	return Padding(_Input, _Pad, _Type, TensorType::Float64, nullptr, _ThreadPool);
+}
+
+Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, ThreadPool* _ThreadPool)
+{
+	return Pad(_Input, _Pad, _Type, TensorType::Float64, nullptr, _ThreadPool);
+}
+
+Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, float64 _Val, ThreadPool* _ThreadPool)
+{
+	return Padding(_Input, _Pad, PaddingType::Constant, TensorType::Float64, &_Val, _ThreadPool);
+}
+
+Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, float64 _Val, ThreadPool* _ThreadPool)
+{
+	return Pad(_Input, _Pad, PaddingType::Constant, TensorType::Float64, &_Val, _ThreadPool);
+}
+
+Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, int64 _Val, ThreadPool* _ThreadPool)
+{
+	return Padding(_Input, _Pad, PaddingType::Constant, TensorType::Int64, &_Val, _ThreadPool);
+}
+
+Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, int64 _Val, ThreadPool* _ThreadPool)
+{
+	return Pad(_Input, _Pad, PaddingType::Constant, TensorType::Int64, &_Val, _ThreadPool);
+}
+
+Tensor Tensor::Repeat(const Tensor& _Input, const Vector<std::pair<SizeType, SizeType>>& _Repeat, ThreadPool* _ThreadPool)
 {
 	_Input.ThrowOnNotEnabled();
-	if (_Dims.size() != _Count.size())
-		LibSvcThrow("Size Of Dims And Count MisMatch!");
-	const auto& ShapeInp = _Input.Shape();
+	auto _Dims = _Repeat;
+	ContainerSet<SizeType> _Set;
+	for (const auto i : _Dims | std::views::keys)
+	{
+		if (_Set.contains(i))
+			LibSvcThrow("Axis Repeat!");
+		_Set.insert(i);
+	}
+
+	std::ranges::sort(_Dims, std::greater());
 	auto Shape = _Input.Shape();
 	const auto TensorAxis = (SizeType)Shape.size();
 	const auto DimCount = (SizeType)_Dims.size();
-	
+
+	Vector<Range> SliceTotal(TensorAxis, None);
 	for (SizeType i = 0; i < DimCount; ++i)
 	{
-		if (_Dims[i] < TensorAxis)
-			Shape[_Dims[i]] *= _Count[i];
+		if (_Dims[i].second < 2)
+			continue;
+		if (_Dims[i].first < TensorAxis)
+		{
+			Shape[_Dims[i].first] *= _Dims[i].second;
+			SliceTotal[_Dims[i].first] = { 0,_Dims[i].second,-1 };
+		}
 		else
 			LibSvcThrow("Axis Out Of Range!");
 	}
 
-	Vector<Range> Slices
-	for (SizeType i = 0; i < TensorAxis; ++i)
+	Tensor Rtn(Shape, _Input.DType());
+	Rtn.Slice(SliceTotal).Assign(_Input, _ThreadPool);
+
+	for (SizeType i = 0; i < DimCount; ++i)
 	{
-		
+		Vector<Range> SliceCur = SliceTotal;
+		auto& CurSlice = SliceCur[_Dims[i].first];
+		for (SizeType j = 1; j < _Dims[i].second; ++j)
+		{
+			CurSlice.Begin = j;
+			Rtn.Slice(SliceCur).Assign(Rtn.Slice(SliceTotal), _ThreadPool);
+		}
+		SliceTotal[_Dims[i].first].Step = 1;
 	}
+
+	return Rtn;
 }
 
 LibSvcEnd

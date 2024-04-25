@@ -12,11 +12,12 @@ using ShapeIterator = ShapeType::iterator;
 
 struct Range
 {
-	const SizeType Begin = 0;
-	const SizeType Step = 1;
-	const SizeType End = 0;
-	const bool IsVal = false;
-	const bool IsNone = false;
+	SizeType Begin = 0;
+	SizeType Step = 1;
+	SizeType End = 0;
+	bool IsVal = false;
+	bool IsNone = false;
+
 	Range(SizeType _Val) :Begin(_Val), Step(_Val), End(_Val), IsVal(true) {}
 	Range(NoneType _NoneVal) :IsNone(true) { UNUSED(_NoneVal); }
 	Range(SizeType _Begin, SizeType _Step, SizeType _End) :Begin(_Begin), Step(_Step), End(_End) {}
@@ -25,6 +26,7 @@ struct Range
 	Range(SizeType _Begin, SizeType _End) :Begin(_Begin), End(_End) {}
 	Range(NoneType _NoneVal, SizeType _End) :End(_End) { UNUSED(_NoneVal); }
 	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin), End(-1) { UNUSED(_NoneVal); }
+	void Reverse() { std::swap(Begin, End); Step = -Step; }
 	bool operator==(const NoneType& _NoneVal) const { UNUSED(_NoneVal); return IsNone; }
 };
 
@@ -163,7 +165,7 @@ public:
 	//当前Tensor是否具有View源
 	bool IsView() const;
 
-	//克隆当前Tensor，返回一个具有独立内存的新Tensor
+	//克隆当前Tensor，返回一个具有独立内存的新Tensor（新建Tensor）
 	Tensor Clone(ThreadPool* _ThreadPool = nullptr) const;
 
 	//创建一个当前Tensor的View，View不具有独立内存，只具有自身属性，当前Tensor就是该View的View源
@@ -268,30 +270,79 @@ public:
 	//获取遍历该张量开销最小的轴序
 	ShapeType CalcContinuous() const;
 
-	//对输入的Tensor进行Padding（顺序为正向），返回Padding后的Tensor
+	//对输入的Tensor进行Padding（顺序为正向），返回Padding后的Tensor（新建Tensor）
+	static Tensor Padding(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		PaddingType _Type,
+		TensorType _ValueType,
+		lpvoid _Val,
+		ThreadPool* _ThreadPool
+	);
+
+	//对输入的Tensor进行Padding（顺序为反向，即Torch的顺序），返回Padding后的Tensor（新建Tensor）
+	static Tensor Pad(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		PaddingType _Type,
+		TensorType _ValueType,
+		lpvoid _Val,
+		ThreadPool* _ThreadPool
+	);
+
+	//对输入的Tensor进行Padding（顺序为正向），返回Padding后的Tensor（新建Tensor）
 	static Tensor Padding(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type = PaddingType::Zero,
-		TensorType _ValueType = TensorType::Float32,
-		lpvoid _Val = nullptr,
 		ThreadPool* _ThreadPool = nullptr
 	);
 
-	//对输入的Tensor进行Padding（顺序为反向，即Torch的顺序），返回Padding后的Tensor
+	//对输入的Tensor进行Padding（顺序为反向，即Torch的顺序），返回Padding后的Tensor（新建Tensor）
 	static Tensor Pad(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type = PaddingType::Zero,
-		TensorType _ValueType = TensorType::Float32,
-		lpvoid _Val = nullptr,
 		ThreadPool* _ThreadPool = nullptr
 	);
 
+	//对输入的Tensor进行Padding（顺序为正向），返回Padding后的Tensor（新建Tensor）
+	static Tensor Padding(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		float64 _Val,
+		ThreadPool* _ThreadPool = nullptr
+	);
+
+	//对输入的Tensor进行Padding（顺序为反向，即Torch的顺序），返回Padding后的Tensor（新建Tensor）
+	static Tensor Pad(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		float64 _Val,
+		ThreadPool* _ThreadPool = nullptr
+	);
+
+	//对输入的Tensor进行Padding（顺序为正向），返回Padding后的Tensor（新建Tensor）
+	static Tensor Padding(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		int64 _Val,
+		ThreadPool* _ThreadPool = nullptr
+	);
+
+	//对输入的Tensor进行Padding（顺序为反向，即Torch的顺序），返回Padding后的Tensor（新建Tensor）
+	static Tensor Pad(
+		const Tensor& _Input,
+		const Vector<Range>& _Pad,
+		int64 _Val,
+		ThreadPool* _ThreadPool = nullptr
+	);
+
+	//对输入的张量进行重复操作（新建Tensor）
 	static Tensor Repeat(
 		const Tensor& _Input,
-		const ShapeType& _Dims,
-		const ShapeType& _Count
-	)
+		const Vector<std::pair<SizeType, SizeType>>& _Repeat,
+		ThreadPool* _ThreadPool = nullptr
+	);
 };
 LibSvcEnd

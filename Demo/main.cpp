@@ -17,9 +17,14 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 int main()
 {
 	libsvc::ThreadPool Thp;
-	Thp.Init(4);
+	Thp.Init(8);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
 	libsvc::Tensor Ten({ 2,3,5 }, libsvc::TensorType::Float32);
+	Ten.RandnFix();
+	Ten.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	libsvc::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, libsvc::PaddingType::Reflect).Invoke(1, PrintTensor);
+	std::cout << '\n';
 	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32);
 	const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 	LARGE_INTEGER Time1, Time2, Freq;
@@ -28,8 +33,16 @@ int main()
 	{
 		QueryPerformanceCounter(&Time1);
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
-		libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
+		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
+		/*libsvc::Tensor::Pad(
+			Ten1919810,
+			{libsvc::None,1 },
+			libsvc::PaddingType::Replicate,
+			libsvc::TensorType::Float32,
+			nullptr, &Thp
+		);*/
 		//auto a = Ten1919810.Permute({ 0,2,1 });
+		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
 		//a.Continuous(&Thp);
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{0,192} }).Continuous(); });
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{192,384} }).Continuous(); });
