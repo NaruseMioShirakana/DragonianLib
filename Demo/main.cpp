@@ -2,13 +2,14 @@
 #include <iostream>
 #include <windows.h>
 
+template<typename _T = float>
 void PrintTensor(libsvc::Tensor& _Tensor)
 {
 	for (libsvc::SizeType i = 0; i < _Tensor.Size(0); ++i)
 	{
 		std::cout << '[';
 		for (libsvc::SizeType j = 0; j < _Tensor.Size(1); ++j)
-			std::cout << _Tensor.Item<float>({ i,j }) << ", ";
+			std::cout << _Tensor.Item<_T>({ i,j }) << ", ";
 		std::cout << "]\n";
 	}
 	std::cout << "\n";
@@ -19,9 +20,20 @@ int main()
 	libsvc::ThreadPool Thp;
 	Thp.Init(8);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
-	libsvc::Tensor Ten({ 2,3,5 }, libsvc::TensorType::Float32);
+	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32);
 	Ten.RandnFix();
 	Ten.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	Ten = libsvc::Tensor::Stack({ Ten ,Ten }, 0);
+	Ten.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	auto Tens = libsvc::Tensor::Cat({ Ten ,Ten }, 2);
+	Tens.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	Tens = libsvc::Tensor::Cat({ Ten ,Ten }, -1);
+	Tens.Invoke(1, PrintTensor);
+	std::cout << '\n';
+	Tens.Cast(libsvc::TensorType::Int64).Invoke(1, PrintTensor<int64_t>);
 	std::cout << '\n';
 	libsvc::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, libsvc::PaddingType::Reflect).Invoke(1, PrintTensor);
 	std::cout << '\n';
@@ -41,6 +53,7 @@ int main()
 			libsvc::TensorType::Float32,
 			nullptr, &Thp
 		);*/
+		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
 		//a.Continuous(&Thp);

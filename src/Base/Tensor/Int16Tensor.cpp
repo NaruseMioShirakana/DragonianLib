@@ -825,16 +825,315 @@ namespace Int16
 
 	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)
 	{
-		auto SqueezedTensor = _Input.Squeeze();
+		if (_Input.IsBroadCasted())
+			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+
+		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
+		const auto& SqueezedShape = SqueezedTensor.Shape();
+		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool)
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
 		{
-			_ThreadPool->Commit(FixWithRandomImpl, SqueezedTensor, _Seed, _Mean, _Sigma, CurDims);
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			const auto SqueezedDims = (SizeType)SqueezedShape.size();
 
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
+			{
+				if (SqueezedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(SqueezedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, SqueezedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(
+							FixWithRandomImpl,
+							SqueezedTensor.Slice(ThreadSlices),
+							_Seed,
+							_Mean,
+							_Sigma,
+							CurDims
+						);
+						if (End == SqueezedShape[i])
+						{
+							_ThreadPool->Join();
+							return;
+						}
+					}
+				}
+			}
+			FixWithRandomImpl(SqueezedTensor, _Seed, _Mean, _Sigma, CurDims);
 		}
 		else
 			FixWithRandomImpl(SqueezedTensor, _Seed, _Mean, _Sigma, CurDims);
+	}
+
+	void GatherImpl(const Tensor& _Ret, const Tensor& _Input, const Tensor& _Indices, const SizeType CurDims)
+	{
+		auto Steps = _Indices.StepsBack();
+		for (auto& i : Steps)
+			i /= sizeof(ThisType);
+
+		const SizeType* __restrict ShapePtr = _Indices.Shape().data();
+		const SizeType* __restrict StepPtr = Steps.data();
+		const SizeType* __restrict BeginsPtr = _Indices.SliceBegins().data();
+		const SizeType* __restrict StridesPtr = _Indices.Strides().data();
+
+		const ThisType* IndicePtr = (ThisType*)_Indices.Data();
+
+		auto Cont = _Indices.CalcContinuous();
+		Cont.resize(5);
+		const SizeType* __restrict ContPtr = Cont.data();
+		const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
+		ShapeType DataIndice(CurDims, 0);
+
+		if (CurDims == 5)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
+				DataIndice[Axis0] = i;
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
+					DataIndice[Axis1] = j;
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
+						DataIndice[Axis2] = k;
+						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						{
+							const auto IndexAxis3 = IndexAxis2 +
+								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
+							DataIndice[Axis3] = l;
+							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							{
+								const auto IndexAxis4 = IndexAxis3 +
+									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
+								DataIndice[Axis4] = m;
+								_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis4])]);
+							}
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 4)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
+				DataIndice[Axis0] = i;
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
+					DataIndice[Axis1] = j;
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
+						DataIndice[Axis2] = k;
+						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						{
+							const auto IndexAxis3 = IndexAxis2 +
+								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
+							DataIndice[Axis3] = l;
+							_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis3])]);
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 3)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
+				DataIndice[Axis0] = i;
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
+					DataIndice[Axis1] = j;
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
+						DataIndice[Axis2] = k;
+						_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis2])]);
+					}
+				}
+			}
+		}
+		else if (CurDims == 2)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
+				DataIndice[Axis0] = i;
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
+					DataIndice[Axis1] = j;
+					_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis1])]);
+				}
+			}
+		}
+		else if (CurDims == 1)
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+				_Ret[i].Assign(_Input[SizeType(IndicePtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0]])]);
+	}
+
+	Tensor Gather(const Tensor& _Input, const Tensor& _Indices, ThreadPool* _ThreadPool)
+	{
+		const auto& _InputShape = _Input.Shape();
+		const auto& _IndicesShape = _Indices.Shape();
+		ShapeType _NewShape(_IndicesShape.begin(), _IndicesShape.end());
+		if (_InputShape.size() == 1)
+			_NewShape.emplace_back(1);
+		else
+			_NewShape.insert(_NewShape.end(), _InputShape.begin() + 1, _InputShape.end());
+		Tensor Ret(_NewShape, _Input.DType());
+		const auto TotalSize = VectorMul(_NewShape);
+		const auto CurDims = _Indices.DimCount();
+
+		if (CurDims > 5)
+			LibSvcThrow("Gather Operator Not Support Dim > 5!");
+
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			const auto SqueezedDims = (SizeType)_IndicesShape.size();
+
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
+			{
+				if (_IndicesShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(_IndicesShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, _IndicesShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return Ret;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(
+							GatherImpl,
+							Ret.Slice(ThreadSlices),
+							_Input,
+							_Indices.Slice(ThreadSlices),
+							CurDims
+						);
+						if (End == _IndicesShape[i])
+						{
+							_ThreadPool->Join();
+							return Ret;
+						}
+					}
+				}
+			}
+			GatherImpl(Ret, _Input, _Indices, CurDims);
+		}
+		else
+			GatherImpl(Ret, _Input, _Indices, CurDims);
+
+		return Ret;
+	}
+
+	void CastImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		if (_Src.DType() == TensorType::Boolean || _Src.DType() == TensorType::Int8)
+			CastFrom<ThisType, int8>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Int16)
+			CastFrom<ThisType, int16>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Int32)
+			CastFrom<ThisType, int32>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Int64)
+			CastFrom<ThisType, int64>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Float32)
+			CastFrom<ThisType, float32>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Float64)
+			CastFrom<ThisType, float64>(_Dst, _Src, CurDims);
+		else
+			LibSvcThrow("UnSupported Type!");
+		/*else if (_Src.DType() == TensorType::Float16)
+			CastFrom<ThisType, uint16>(_Dst, _Src, CurDims);
+		else if (_Src.DType() == TensorType::Complex32)
+			CastFrom<ThisType, int8>(_Dst, _Src, CurDims);*/
+
+	}
+
+	void Cast(const Tensor& _Dst, const Tensor& _Src, ThreadPool* _ThreadPool)
+	{
+		const auto SqueezedTensorA = _Dst.Squeeze();
+		const auto SqueezedTensorB = _Src.Squeeze();
+		const auto CurDims = (SizeType)SqueezedTensorA.Shape().size();
+		const auto& SqueezedShape = SqueezedTensorA.Shape();
+		const auto TotalSize = VectorMul(SqueezedShape);
+
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			const auto SqueezedDims = (SizeType)SqueezedShape.size();
+
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
+			{
+				if (SqueezedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(SqueezedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, SqueezedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+
+						_ThreadPool->Commit(
+							CastImpl,
+							SqueezedTensorA.Slice(ThreadSlices),
+							SqueezedTensorB.Slice(ThreadSlices),
+							CurDims
+						);
+
+						if (End == SqueezedShape[i])
+						{
+							_ThreadPool->Join();
+							return;
+						}
+					}
+				}
+			}
+			CastImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
+		}
+		else
+			CastImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
 	}
 
 }
