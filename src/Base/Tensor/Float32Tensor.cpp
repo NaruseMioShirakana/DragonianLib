@@ -39,7 +39,7 @@ namespace Float32
 
 		auto Steps = _Input.StepsBack();
 		for (auto& i : Steps)
-			i /= DType2Size(_Input.DType());
+			i /= sizeof(ThisType);
 
 		const SizeType* __restrict ShapePtr = _Input.Shape().data();
 		const SizeType* __restrict StepPtr = Steps.data();
@@ -77,15 +77,15 @@ namespace Float32
 				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
 				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
 				{
-					const auto IndexAxis1 = IndexAxis0 + 
+					const auto IndexAxis1 = IndexAxis0 +
 						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
 					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
 					{
-						const auto IndexAxis2 = IndexAxis1 + 
+						const auto IndexAxis2 = IndexAxis1 +
 							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
 						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
 						{
-							const auto IndexAxis3 = IndexAxis2 + 
+							const auto IndexAxis3 = IndexAxis2 +
 								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
 							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
 							{
@@ -181,7 +181,7 @@ namespace Float32
 
 		auto Steps = _Input.StepsBack();
 		for (auto& i : Steps)
-			i /= DType2Size(_Input.DType());
+			i /= sizeof(ThisType);
 		const SizeType* __restrict ShapePtr = _Input.Shape().data();
 		const SizeType* __restrict StepPtr = Steps.data();
 		const SizeType* __restrict BeginsPtr = _Input.SliceBegins().data();
@@ -330,10 +330,10 @@ namespace Float32
 
 		auto Steps1 = _InputA.StepsBack();
 		for (auto& i : Steps1)
-			i /= DType2Size(_InputA.DType());
+			i /= sizeof(ThisType);
 		auto Steps2 = _InputB.StepsBack();
 		for (auto& i : Steps2)
-			i /= DType2Size(_InputB.DType());
+			i /= sizeof(ThisType);
 		const SizeType* __restrict ShapePtr = _InputA.Shape().data();
 		const SizeType* __restrict StepPtr1 = Steps1.data();
 		const SizeType* __restrict StepPtr2 = Steps2.data();
@@ -504,7 +504,7 @@ namespace Float32
 
 		auto Steps = _Input.StepsBack();
 		for (auto& i : Steps)
-			i /= DType2Size(_Input.DType());
+			i /= sizeof(ThisType);
 		const SizeType* __restrict ShapePtr = _Input.Shape().data();
 		const SizeType* __restrict StepPtr = Steps.data();
 		const SizeType* __restrict BeginsPtr = _Input.SliceBegins().data();
@@ -623,47 +623,47 @@ namespace Float32
 
 	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType, ThreadPool* _ThreadPool)
 	{
-		auto SqueezedTensor = _Input.Squeeze();
+		if (_Input.IsBroadCasted())
+			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+
+		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
+		const auto& SqueezedShape = SqueezedTensor.Shape();
+		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if(_ThreadPool)
+		if(_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
 		{
-			const auto& SqueezedShape = SqueezedTensor.Shape();
+			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
-			const auto TotalSize = VectorMul(SqueezedShape);
-			if (SqueezedShape[0] <= LIBSVC_CONT_THRESHOLD_BACK &&
-				SqueezedShape[0] >= LIBSVC_CONT_THRESHOLD_FRONT &&
-				TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+			
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
 			{
-				for (SizeType i = 0; i < SqueezedShape[0]; ++i)
-					_ThreadPool->Commit(AssignImpl, SqueezedTensor[i], _Val, _ValType, CurDims);
-				return;
-			}
-			if(TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE && SqueezedTensor.IsContinuous())
-			{
-				constexpr SizeType ViewedSize = (LIBSVC_CONT_THRESHOLD_FRONT + LIBSVC_CONT_THRESHOLD_BACK) / 2;
-				auto ViewedTensor = SqueezedTensor.View({ ViewedSize, -1 });
-				for (SizeType i = 0; i < ViewedSize; ++i)
-					_ThreadPool->Commit(AssignImpl, SqueezedTensor[i], _Val, _ValType, CurDims);
-				return;
-			}
-			if(TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
-			{
-				if(SqueezedShape[0] > LIBSVC_CONT_THRESHOLD_BACK)
+				if (SqueezedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
 				{
-					const double _Step = (double)SqueezedShape[0] / (double)LIBSVC_CONT_THRESHOLD_BACK;
-					double _StepIt = 0.;
-					double _StepEnd = _Step;
+					const auto Step = Tensor::Ceil(SqueezedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, SqueezedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(AssignImpl, SqueezedTensor.Slice(ThreadSlices), _Val, _ValType, CurDims);
+						if(End == SqueezedShape[i])
+						{
+							_ThreadPool->Join();
+							return;
+						}
+					}
 				}
-				auto ViewedTensor = SqueezedTensor.CreateView();
-				for (SizeType i = 1; i < SqueezedDims; ++i)
-				{
-					
-				}
-				
 			}
-
-			_ThreadPool->Commit(AssignImpl, SqueezedTensor, _Val, _ValType, CurDims);
+			AssignImpl(SqueezedTensor, _Val, _ValType, CurDims);
 		}
 		else
 			AssignImpl(SqueezedTensor, _Val, _ValType, CurDims);
@@ -671,17 +671,81 @@ namespace Float32
 
 	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid, ThreadPool* _ThreadPool)
 	{
+		if (_Input.IsBroadCasted())
+			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+
 		const byte* Buffer = (const byte*)BufferVoid;
 		const byte* BufferEnd = (const byte*)BufferEndVoid;
-		if ((BufferEnd - Buffer) % DType2Size(_Input.DType()))
-			return;
-		auto SqueezedTensor = _Input.Squeeze();
+		if ((BufferEnd - Buffer) % sizeof(ThisType))
+			LibSvcThrow("Buffer Size MisMatch!");
+		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
 
-		if (_ThreadPool)
-		{
+		const auto& SqueezedShape = SqueezedTensor.Shape();
+		const auto TotalSize = VectorMul(SqueezedShape);
 
-			_ThreadPool->Commit(AssignBufferImpl, SqueezedTensor, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			const auto SqueezedDims = (SizeType)SqueezedShape.size();
+			auto BufferSize = BufferEnd - Buffer;
+
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
+			{
+				if (SqueezedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(SqueezedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, SqueezedShape[i]);
+						if (j >= End || Buffer >= BufferEnd)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						auto Tensor = SqueezedTensor.Slice(ThreadSlices);
+
+						const auto SizeRequired = VectorMul(Tensor.Shape()) * (SizeType)sizeof(ThisType);
+						if (BufferSize >= SizeRequired)
+						{
+							_ThreadPool->Commit(
+								AssignBufferImpl,
+								std::move(Tensor),
+								(const ThisType*)Buffer,
+								(const ThisType*)Buffer + SizeRequired,
+								CurDims
+							);
+							Buffer += SizeRequired;
+							BufferSize -= SizeRequired;
+						}
+						else
+						{
+							_ThreadPool->Commit(
+								AssignBufferImpl,
+								std::move(Tensor),
+								(const ThisType*)Buffer,
+								(const ThisType*)BufferEnd,
+								CurDims
+							);
+							Buffer = BufferEnd;
+							BufferSize = 0;
+						}
+
+						if (End == SqueezedShape[i] || Buffer >= BufferEnd)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+					}
+				}
+			}
+			AssignBufferImpl(SqueezedTensor, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
 		}
 		else
 			AssignBufferImpl(SqueezedTensor, (const ThisType*)Buffer, (const ThisType*)BufferEnd, CurDims);
@@ -689,19 +753,65 @@ namespace Float32
 
 	void AssignTensorBroadCasted(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
 	{
-		const auto CurDims = (SizeType)_InputA.Shape().size();
+		const auto SqueezedTensorA = _InputA.Squeeze();
+		const auto SqueezedTensorB = _InputB.Squeeze();
+		const auto CurDims = (SizeType)SqueezedTensorA.Shape().size();
+		const auto& SqueezedShape = SqueezedTensorA.Shape();
+		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool)
-			_ThreadPool->Commit(AssignTensorImpl, _InputA, _InputB, CurDims);
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			const auto SqueezedDims = (SizeType)SqueezedShape.size();
+
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < SqueezedDims; ++i)
+			{
+				if (SqueezedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(SqueezedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, SqueezedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+
+						_ThreadPool->Commit(
+							AssignTensorImpl,
+							SqueezedTensorA.Slice(ThreadSlices),
+							SqueezedTensorB.Slice(ThreadSlices),
+							CurDims
+						);
+
+						if (End == SqueezedShape[i])
+						{
+							_ThreadPool->Join();
+							return;
+						}
+					}
+				}
+			}
+			AssignTensorImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
+		}
 		else
-			AssignTensorImpl(_InputA, _InputB, CurDims);
+			AssignTensorImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
 	}
 
 	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
 	{
+		if (_InputA.IsBroadCasted())
+			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+
 		if (_InputB.IsScalar())
 		{
-			AssignValue(_InputA, _InputB.Data(), _InputB.DType(), _ThreadPool);
+			AssignValue(_InputA, _InputB.GetPtr(), _InputB.DType(), _ThreadPool);
 			return;
 		}
 

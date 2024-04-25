@@ -39,6 +39,11 @@ public:
 
     void Join();
 
+    int64 GetThreadCount() const
+    {
+        return ThreadCount_;
+    }
+
 private:
     std::vector<std::thread> Threads_;
     std::atomic<bool> Stoped_;

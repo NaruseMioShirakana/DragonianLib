@@ -233,6 +233,8 @@ Tensor Tensor::GatherRef(SizeType _Index) const
 	Ret.AlignSize_ = AlignSize_;
 	Ret.DataPtr_ = DataPtr_;
 
+	Ret.IsBroadCasted_ = IsBroadCasted_;
+
 	if (Ret.ShapeBack_.empty())
 	{
 		Ret.ShapeBack_.emplace_back(1);
@@ -534,7 +536,7 @@ Tensor Tensor::CreateView() const
 	Ret.DimStride_ = DimStride_;
 	Ret.CurIndices_ = CurIndices_;
 	Ret.AlignSize_ = AlignSize_;
-
+	Ret.IsBroadCasted_ = IsBroadCasted_;
 	Ret.DataPtr_ = DataPtr_;
 	
 	if(IsView())
@@ -563,7 +565,7 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 		const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, ShapeBack_[i]);
 		auto SliceEndPos = _SliceOptions[i].End;
 		if (SliceEndPos > ShapeBack_[i] || SliceEndPos < -(ShapeBack_[i] + 1))
-			LibSvcThrow("Indew Out Of Range!");
+			LibSvcThrow("Index Out Of Range!");
 		if (SliceEndPos == -(ShapeBack_[i] + 1))
 			SliceEndPos = -1;
 		else if (SliceEndPos < 0)
@@ -953,6 +955,7 @@ ShapeType Tensor::CalcContinuous() const
 Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, TensorType _ValueType, lpvoid _Val, ThreadPool* _ThreadPool)
 {
 	_Input.ThrowOnNotEnabled();
+
 	if (_Pad.size() > _Input.Shape().size())
 		LibSvcThrow("Dim Out Of Range");
 	auto Shape = _Input.Shape();
@@ -980,12 +983,53 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 	}
 
 	Tensor Ret(Shape, _Input.DType());
+
 	if (_Type == PaddingType::Zero)
+	{
 		Ret.FixZeros(_ThreadPool);
+		Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
+		return Ret;
+	}
 	if (_Type == PaddingType::Constant)
-		Ret.Assign(_Val,_ValueType,_ThreadPool);
+	{
+		Ret.Assign(_Val, _ValueType, _ThreadPool);
+		Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
+		return Ret;
+	}
 
 	Ret.Slice(SliceDst).Assign(_Input.Slice(SliceSrc), _ThreadPool);
+
+	if (_Type == PaddingType::Zero)
+	{
+		for (size_t i = _Pad.size() - 1; i < _Pad.size(); --i)
+		{
+			Vector<Range> RngFront, RngBack;
+			for (size_t j = 0; j < _Pad.size(); ++j)
+			{
+				if (i == j && !_Pad[i].IsNone)
+				{
+					if (_Pad[i].Begin <= 0)
+						RngFront.emplace_back(None);
+					else
+						RngFront.emplace_back(0, _Pad[i].Begin);
+					if (_Pad[i].End <= 0)
+						RngBack.emplace_back(None);
+					else
+						RngBack.emplace_back(InputShapePtr[i] + _Pad[i].Begin, -1);
+				}
+				else
+				{
+					RngFront.emplace_back(None);
+					RngBack.emplace_back(None);
+				}
+			}
+			if (!RangeIsAllNone(RngFront))
+				Ret.Slice(RngFront).FixZeros(_ThreadPool);
+			if (!RangeIsAllNone(RngBack))
+				Ret.Slice(RngBack).FixZeros(_ThreadPool);
+		}
+	}
+	
 
 	return Ret;
 }
@@ -1002,6 +1046,31 @@ Tensor Tensor::Pad(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType 
 			NewRange.emplace_back(TempRange[i].Begin, TempRange[i].End);
 	}
 	return Padding(_Input, NewRange, _Type, _ValueType, _Val, _ThreadPool);
+}
+
+Tensor Tensor::Repeat(const Tensor& _Input, const ShapeType& _Dims, const ShapeType& _Count)
+{
+	_Input.ThrowOnNotEnabled();
+	if (_Dims.size() != _Count.size())
+		LibSvcThrow("Size Of Dims And Count MisMatch!");
+	const auto& ShapeInp = _Input.Shape();
+	auto Shape = _Input.Shape();
+	const auto TensorAxis = (SizeType)Shape.size();
+	const auto DimCount = (SizeType)_Dims.size();
+	
+	for (SizeType i = 0; i < DimCount; ++i)
+	{
+		if (_Dims[i] < TensorAxis)
+			Shape[_Dims[i]] *= _Count[i];
+		else
+			LibSvcThrow("Axis Out Of Range!");
+	}
+
+	Vector<Range> Slices
+	for (SizeType i = 0; i < TensorAxis; ++i)
+	{
+		
+	}
 }
 
 LibSvcEnd

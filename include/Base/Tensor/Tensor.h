@@ -287,5 +287,11 @@ public:
 		lpvoid _Val = nullptr,
 		ThreadPool* _ThreadPool = nullptr
 	);
+
+	static Tensor Repeat(
+		const Tensor& _Input,
+		const ShapeType& _Dims,
+		const ShapeType& _Count
+	)
 };
 LibSvcEnd

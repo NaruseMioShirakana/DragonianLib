@@ -1,5 +1,6 @@
 #pragma once
 #include <complex>
+#include <set>
 #include <unordered_map>
 #include "Value.h"
 
@@ -75,6 +76,77 @@
 		LibSvcUnSupportedTypeException \
 }
 
+#if LIBSVC_ALIG_DIM_SHAPE == 8
+
+#define LibSvcADBIB(_Name, _Range, _StridePtr, _BeginPtr, _StepPtr, _Axis) \
+	const auto _Name##_0 = (((_Range) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_1 = ((((_Range) + 1) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_2 = ((((_Range) + 2) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_3 = ((((_Range) + 3) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_4 = ((((_Range) + 4) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_5 = ((((_Range) + 5) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_6 = ((((_Range) + 6) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_7 = ((((_Range) + 7) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis];
+
+#define LibSvcADBI(_Name1, _Name2, _Range, _StridePtr, _BeginPtr, _StepPtr, _Axis) \
+	const auto _Name1##_0 = (_Name2) + (((_Range) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_1 = (_Name2) +((((_Range) + 1) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_2 = (_Name2) +((((_Range) + 2) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_3 = (_Name2) +((((_Range) + 3) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_4 = (_Name2) +((((_Range) + 4) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_5 = (_Name2) +((((_Range) + 5) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_6 = (_Name2) +((((_Range) + 6) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_7 = (_Name2) +((((_Range) + 7) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis];
+
+#define LibSvcADBOP1D(_Assign, _Name1, _Name2, _Value) \
+	(_Assign)[_Name1##_0 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_1 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_2 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_3 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_4 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_5 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_6 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_7 + (_Name2)] = (_Value);
+
+#define LibSvcADBOP2D(_Assign, _Name1, _Name2, _Value) \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_0, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_1, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_2, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_3, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_4, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_5, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_6, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_7, _Value);
+
+#elif LIBSVC_ALIG_DIM_SHAPE == 4
+#define LibSvcADBIB(_Name, _Range, _StridePtr, _BeginPtr, _StepPtr, _Axis) \
+	const auto _Name##_0 = (((_Range) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_1 = ((((_Range) + 1) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_2 = ((((_Range) + 2) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name##_3 = ((((_Range) + 3) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis];
+
+#define LibSvcADBI(_Name1, _Name2, _Range, _StridePtr, _BeginPtr, _StepPtr, _Axis) \
+	const auto _Name1##_0 = (_Name2) + (((_Range) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_1 = (_Name2) +((((_Range) + 1) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_2 = (_Name2) +((((_Range) + 2) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis]; \
+	const auto _Name1##_3 = (_Name2) +((((_Range) + 3) * (_StridePtr)[_Axis]) + (_BeginPtr)[_Axis]) * (_StepPtr)[_Axis];
+
+#define LibSvcADBOP1D(_Assign, _Name1, _Name2, _Value) \
+	(_Assign)[_Name1##_0 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_1 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_2 + (_Name2)] = (_Value); \
+	(_Assign)[_Name1##_3 + (_Name2)] = (_Value);
+
+#define LibSvcADBOP2D(_Assign, _Name1, _Name2, _Value) \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_0, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_1, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_2, _Value); \
+	LibSvcADBOP1D(_Assign, _Name1, _Name2##_3, _Value);
+
+#else
+#error
+#endif
+
 #define LibSvcCastImpl(_DST_TYPE, _DST_VAL, _SRC_TYPE, _SRC_VAL) { \
 	_SRC_TYPE LIBSVC_CAST_TEMP = *(_SRC_TYPE*)(_SRC_VAL); \
 	(_DST_VAL) = (_DST_TYPE)LIBSVC_CAST_TEMP; \
@@ -101,6 +173,8 @@ LibSvcBegin
 using SizeType = int64;
 template <typename _Ty>
 using Vector = std::vector<_Ty>;
+template <typename _Ty>
+using ContainerSet = std::set<_Ty>;
 
 enum class TensorType
 {
