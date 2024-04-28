@@ -4,10 +4,10 @@
 #include <queue>
 #include <future>
 #include <mutex>
+#include <semaphore>
 
 LibSvcBegin
-
-class ThreadPool {
+	class ThreadPool {
 public:
     using Task = std::function<void()>;
 
@@ -21,6 +21,8 @@ public:
         if (Stoped_)
             LibSvcThrow("Thread Pool Is Not Initialized!");
 
+        std::lock_guard lg(JoinMx_);
+
         auto task = std::make_shared<std::packaged_task<RetType()>>(
             std::bind(std::forward<_FunTy>(_Function), std::forward<_ArgsTy>(_Args)...));
 
@@ -30,7 +32,7 @@ public:
             Tasks_.emplace([task] { (*task)(); });
         }
 
-        Condition_.notify_one();
+        Condition_.release();
 
         return ret;
     }
@@ -47,9 +49,10 @@ public:
 private:
     std::vector<std::thread> Threads_;
     std::atomic<bool> Stoped_;
-    std::mutex Mx_;
+    std::atomic<size_t> TaskProcessing_ = 0;
+    std::mutex Mx_, JoinMx_;
     std::queue<Task> Tasks_;
-    std::condition_variable Condition_;
+    std::counting_semaphore<256> Condition_{ 0 }, JoinCondition_{ 0 };
     int64 ThreadCount_ = 0; 
 
     void Run();

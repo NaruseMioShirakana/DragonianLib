@@ -4,6 +4,7 @@
 #include <random>
 #include "Tensor/TensorBase.h"
 #include "Util/ThreadPool.h"
+#include "Tensor/Macro.h"
 #include "Util/Avx256.h"
 
 LibSvcBegin
@@ -117,6 +118,54 @@ public:
 
 	//使用_Val填充整个Tensor
 	Tensor& operator=(float64 _Val);
+
+	Tensor operator+(const Tensor& _Right) const;
+
+	Tensor operator-(const Tensor& _Right) const;
+
+	Tensor operator*(const Tensor& _Right) const;
+
+	Tensor operator/(const Tensor& _Right) const;
+
+	Tensor operator+(int64 _Right) const;
+
+	Tensor operator-(int64 _Right) const;
+
+	Tensor operator*(int64 _Right) const;
+
+	Tensor operator/(int64 _Right) const;
+
+	Tensor operator+(float64 _Right) const;
+
+	Tensor operator-(float64 _Right) const;
+
+	Tensor operator*(float64 _Right) const;
+
+	Tensor operator/(float64 _Right) const;
+
+	Tensor& operator+=(const Tensor& _Right);
+
+	Tensor& operator-=(const Tensor& _Right);
+
+	Tensor& operator*=(const Tensor& _Right);
+
+	Tensor& operator/=(const Tensor& _Right);
+
+	Tensor& operator+=(int64 _Right);
+
+	Tensor& operator-=(int64 _Right);
+
+	Tensor& operator*=(int64 _Right);
+
+	Tensor& operator/=(int64 _Right);
+
+	Tensor& operator+=(float64 _Right);
+
+	Tensor& operator-=(float64 _Right);
+
+	Tensor& operator*=(float64 _Right);
+
+	Tensor& operator/=(float64 _Right);
 
 	Tensor operator[](SizeType _Index) const;
 
@@ -387,6 +436,34 @@ public:
 		TensorType _Dtype,
 		ThreadPool* _ThreadPool = nullptr
 	);
+
+public:
+	static Tensor Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Pow(const Tensor& _InputA, float64 _Val, ThreadPool* _ThreadPool = nullptr);
+	Tensor Pow(const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr) const;
+	Tensor Pow(float64 _Val, ThreadPool* _ThreadPool = nullptr) const;
+	Tensor& Pow_(const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr);
+	Tensor& Pow_(float64 _Val, ThreadPool* _ThreadPool = nullptr);
+
+	LibSvcTensorFnDef(Abs);
+	LibSvcTensorFnDef(Sin);
+	LibSvcTensorFnDef(Sinh);
+	LibSvcTensorFnDef(Cos);
+	LibSvcTensorFnDef(Cosh);
+	LibSvcTensorFnDef(Tan);
+	LibSvcTensorFnDef(Tanh);
+	LibSvcTensorFnDef(ASin);
+	LibSvcTensorFnDef(ACos);
+	LibSvcTensorFnDef(ATan);
+	LibSvcTensorFnDef(ASinh);
+	LibSvcTensorFnDef(ACosh);
+	LibSvcTensorFnDef(ATanh);
+	LibSvcTensorFnDef(Exp);
+	LibSvcTensorFnDef(Exp2);
+	LibSvcTensorFnDef(Exp10);
+	LibSvcTensorFnDef(Log);
+	LibSvcTensorFnDef(Log2);
+	LibSvcTensorFnDef(Log10);
 };
 
 template<typename _1Ty, typename _2Ty>
@@ -560,6 +637,595 @@ void CastFrom(const Tensor& _InputA, const Tensor& _InputB, const SizeType CurDi
 		{
 			DataPtr1[((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0]] =
 				(_1Ty)DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]];
+		}
+	}
+}
+
+template<typename _Type, typename _Fn, typename _AvxFn>
+void MonoOperators(
+	const Tensor& _Dst,
+	const Tensor& _Src,
+	const SizeType CurDims,
+	_Fn _Func = nullptr,
+	_AvxFn _AvxFunc = nullptr
+)
+{
+	_Type* DataPtr1 = (_Type*)_Dst.Data();
+	const _Type* DataPtr2 = (_Type*)_Src.Data();
+
+	if (!_Dst.IsBroadCasted() && !_Src.IsBroadCasted() && _Dst.IsContinuous() && _Src.IsContinuous())
+	{
+		DataPtr1 = (_Type*)_Dst.GetPtr();
+		DataPtr2 = (_Type*)_Src.GetPtr();
+		const size_t DataSize = VectorMul(_Dst.Shape());
+		const auto DataEnd = DataPtr1 + DataSize;
+		if (_AvxFunc)
+			_AvxFunc(DataPtr1, DataPtr2, DataSize);
+		else
+			while (DataPtr1 != DataEnd)
+				*(DataPtr1++) = (_Type)_Func(*(DataPtr2++));
+		return;
+	}
+
+	auto Steps1 = _Dst.StepsBack();
+	for (auto& i : Steps1)
+		i /= sizeof(_Type);
+	auto Steps2 = _Src.StepsBack();
+	for (auto& i : Steps2)
+		i /= sizeof(_Type);
+	const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+	const SizeType* __restrict StepPtr1 = Steps1.data();
+	const SizeType* __restrict StepPtr2 = Steps2.data();
+	const SizeType* __restrict BeginsPtr1 = _Dst.SliceBegins().data();
+	const SizeType* __restrict BeginsPtr2 = _Src.SliceBegins().data();
+	const SizeType* __restrict StridesPtr1 = _Dst.Strides().data();
+	const SizeType* __restrict StridesPtr2 = _Src.Strides().data();
+
+	if (CurDims > 5)
+	{
+		ShapeType CurIndice(CurDims, 0);
+		SizeType* __restrict IndicesPtr = CurIndice.data();
+		LibSvcCycle(
+			IndicesPtr,
+			ShapePtr,
+			CurDims,
+			{
+				SizeType Index1 = 0;
+				SizeType Index2 = 0;
+				for (SizeType i = 0; i < CurDims; ++i)
+				{
+					Index1 += ((IndicesPtr[i] * StridesPtr1[i]) + BeginsPtr1[i]) * StepPtr1[i];
+					Index2 += ((IndicesPtr[i] * StridesPtr2[i]) + BeginsPtr2[i]) * StepPtr2[i];
+				}
+				DataPtr1[Index1] = (_Type)_Func(DataPtr2[Index2]);
+			}
+		);
+
+		return;
+	}
+
+	auto Cont = _Dst.CalcContinuous();
+	Cont.resize(5);
+	const SizeType* __restrict ContPtr = Cont.data();
+	const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
+
+	if (CurDims == 5)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						{
+							const auto IndexAxis4A = IndexAxis3A +
+								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
+							const auto IndexAxis4B = IndexAxis3B +
+								((m * StridesPtr2[Axis4]) + BeginsPtr2[Axis4]) * StepPtr2[Axis4];
+							DataPtr1[IndexAxis4A] = (_Type)_Func(DataPtr2[IndexAxis4B]);
+						}
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 4)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						DataPtr1[IndexAxis3A] = (_Type)_Func(DataPtr2[IndexAxis3B]);
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 3)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					DataPtr1[IndexAxis2A] = (_Type)_Func(DataPtr2[IndexAxis2B]);
+				}
+			}
+		}
+	}
+	else if (CurDims == 2)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				DataPtr1[IndexAxis1A] = (_Type)_Func(DataPtr2[IndexAxis1B]);
+			}
+		}
+	}
+	else if (CurDims == 1)
+	{
+		for (SizeType i = 0; i < ShapePtr[0]; ++i)
+		{
+			DataPtr1[((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0]] =
+				(_Type)_Func(DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]]);
+		}
+	}
+}
+
+template<typename _Type, typename _Fn, typename _AvxFn>
+void MultiOperators(
+	const Tensor& _Dst,
+	const Tensor& _Src1,
+	const Tensor& _Src2,
+	const SizeType CurDims,
+	_Fn _Func = nullptr,
+	_AvxFn _AvxFunc = nullptr
+)
+{
+	_Type* DataPtr1 = (_Type*)_Dst.Data();
+	const _Type* DataPtr2 = (_Type*)_Src1.Data();
+	const _Type* DataPtr3 = (_Type*)_Src2.Data();
+
+	if (!_Dst.IsBroadCasted() && !_Src1.IsBroadCasted() && !_Src2.IsBroadCasted() && _Dst.IsContinuous() && _Src1.IsContinuous() && _Src2.IsContinuous())
+	{
+		DataPtr1 = (_Type*)_Dst.GetPtr();
+		DataPtr2 = (_Type*)_Src1.GetPtr();
+		DataPtr3 = (_Type*)_Src2.GetPtr();
+		const size_t DataSize = VectorMul(_Dst.Shape());
+		const auto DataEnd = DataPtr1 + DataSize;
+		if (_AvxFunc)
+			_AvxFunc(DataPtr1, DataPtr2, DataPtr3, DataSize);
+		else
+			while (DataPtr1 != DataEnd)
+				*(DataPtr1++) = (_Type)_Func(*(DataPtr2++), *(DataPtr3++));
+		return;
+	}
+
+	auto Steps1 = _Dst.StepsBack();
+	for (auto& i : Steps1)
+		i /= sizeof(_Type);
+	auto Steps2 = _Src1.StepsBack();
+	for (auto& i : Steps2)
+		i /= sizeof(_Type);
+	auto Steps3 = _Src2.StepsBack();
+	for (auto& i : Steps3)
+		i /= sizeof(_Type);
+	const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+	const SizeType* __restrict StepPtr1 = Steps1.data();
+	const SizeType* __restrict StepPtr2 = Steps2.data();
+	const SizeType* __restrict StepPtr3 = Steps3.data();
+	const SizeType* __restrict BeginsPtr1 = _Dst.SliceBegins().data();
+	const SizeType* __restrict BeginsPtr2 = _Src1.SliceBegins().data();
+	const SizeType* __restrict BeginsPtr3 = _Src2.SliceBegins().data();
+	const SizeType* __restrict StridesPtr1 = _Dst.Strides().data();
+	const SizeType* __restrict StridesPtr2 = _Src1.Strides().data();
+	const SizeType* __restrict StridesPtr3 = _Src2.Strides().data();
+
+	if (CurDims > 5)
+	{
+		ShapeType CurIndice(CurDims, 0);
+		SizeType* __restrict IndicesPtr = CurIndice.data();
+		LibSvcCycle(
+			IndicesPtr,
+			ShapePtr,
+			CurDims,
+			{
+				SizeType Index1 = 0;
+				SizeType Index2 = 0;
+				SizeType Index3 = 0;
+				for (SizeType i = 0; i < CurDims; ++i)
+				{
+					Index1 += ((IndicesPtr[i] * StridesPtr1[i]) + BeginsPtr1[i]) * StepPtr1[i];
+					Index2 += ((IndicesPtr[i] * StridesPtr2[i]) + BeginsPtr2[i]) * StepPtr2[i];
+					Index3 += ((IndicesPtr[i] * StridesPtr3[i]) + BeginsPtr3[i]) * StepPtr3[i];
+				}
+				DataPtr1[Index1] = (_Type)_Func(DataPtr2[Index2], DataPtr3[Index3]);
+			}
+		);
+
+		return;
+	}
+
+	auto Cont = _Dst.CalcContinuous();
+	Cont.resize(5);
+	const SizeType* __restrict ContPtr = Cont.data();
+	const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
+
+	if (CurDims == 5)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				const auto IndexAxis1C = IndexAxis0C +
+					((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					const auto IndexAxis2C = IndexAxis1C +
+						((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						const auto IndexAxis3C = IndexAxis2C +
+							((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
+						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						{
+							const auto IndexAxis4A = IndexAxis3A +
+								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
+							const auto IndexAxis4B = IndexAxis3B +
+								((m * StridesPtr2[Axis4]) + BeginsPtr2[Axis4]) * StepPtr2[Axis4];
+							const auto IndexAxis4C = IndexAxis3C +
+								((m * StridesPtr3[Axis4]) + BeginsPtr3[Axis4]) * StepPtr3[Axis4];
+							DataPtr1[IndexAxis4A] = (_Type)_Func(DataPtr2[IndexAxis4B], DataPtr3[IndexAxis4C]);
+						}
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 4)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				const auto IndexAxis1C = IndexAxis0C +
+					((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					const auto IndexAxis2C = IndexAxis1C +
+						((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						const auto IndexAxis3C = IndexAxis2C +
+							((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
+						DataPtr1[IndexAxis3A] = (_Type)_Func(DataPtr2[IndexAxis3B], DataPtr3[IndexAxis3C]);
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 3)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				const auto IndexAxis1C = IndexAxis0C +
+					((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					const auto IndexAxis2C = IndexAxis1C +
+						((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+					DataPtr1[IndexAxis2A] = (_Type)_Func(DataPtr2[IndexAxis2B], DataPtr3[IndexAxis2C]);
+				}
+			}
+		}
+	}
+	else if (CurDims == 2)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				const auto IndexAxis1C = IndexAxis0C +
+					((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+				DataPtr1[IndexAxis1A] = (_Type)_Func(DataPtr2[IndexAxis1B], DataPtr3[IndexAxis1C]);
+			}
+		}
+	}
+	else if (CurDims == 1)
+	{
+		for (SizeType i = 0; i < ShapePtr[0]; ++i)
+		{
+			DataPtr1[((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0]] =
+				(_Type)_Func(DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]],
+					DataPtr3[((i * StridesPtr3[0]) + BeginsPtr3[0]) * StepPtr3[0]]);
+		}
+	}
+}
+
+template<typename _Type, typename _Fn, typename _AvxFn>
+void MultiOperatorsScalar(
+	const Tensor& _Dst,
+	const Tensor& _Src1,
+	const _Type& _Src2,
+	const SizeType CurDims,
+	_Fn _Func = nullptr,
+	_AvxFn _AvxFunc = nullptr
+)
+{
+	_Type* DataPtr1 = (_Type*)_Dst.Data();
+	const _Type* DataPtr2 = (_Type*)_Src1.Data();
+
+	if (!_Dst.IsBroadCasted() && !_Src1.IsBroadCasted() && _Dst.IsContinuous() && _Src1.IsContinuous())
+	{
+		DataPtr1 = (_Type*)_Dst.GetPtr();
+		DataPtr2 = (_Type*)_Src1.GetPtr();
+		const size_t DataSize = VectorMul(_Dst.Shape());
+		const auto DataEnd = DataPtr1 + DataSize;
+		if (_AvxFunc)
+			_AvxFunc(DataPtr1, DataPtr2, _Src2, DataSize);
+		else
+			while (DataPtr1 != DataEnd)
+				*(DataPtr1++) = (_Type)_Func(*(DataPtr2++), _Src2);
+		return;
+	}
+
+	auto Steps1 = _Dst.StepsBack();
+	for (auto& i : Steps1)
+		i /= sizeof(_Type);
+	auto Steps2 = _Src1.StepsBack();
+	for (auto& i : Steps2)
+		i /= sizeof(_Type);
+	const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+	const SizeType* __restrict StepPtr1 = Steps1.data();
+	const SizeType* __restrict StepPtr2 = Steps2.data();
+	const SizeType* __restrict BeginsPtr1 = _Dst.SliceBegins().data();
+	const SizeType* __restrict BeginsPtr2 = _Src1.SliceBegins().data();
+	const SizeType* __restrict StridesPtr1 = _Dst.Strides().data();
+	const SizeType* __restrict StridesPtr2 = _Src1.Strides().data();
+
+	if (CurDims > 5)
+	{
+		ShapeType CurIndice(CurDims, 0);
+		SizeType* __restrict IndicesPtr = CurIndice.data();
+		LibSvcCycle(
+			IndicesPtr,
+			ShapePtr,
+			CurDims,
+			{
+				SizeType Index1 = 0;
+				SizeType Index2 = 0;
+				for (SizeType i = 0; i < CurDims; ++i)
+				{
+					Index1 += ((IndicesPtr[i] * StridesPtr1[i]) + BeginsPtr1[i]) * StepPtr1[i];
+					Index2 += ((IndicesPtr[i] * StridesPtr2[i]) + BeginsPtr2[i]) * StepPtr2[i];
+				}
+				DataPtr1[Index1] = (_Type)_Func(DataPtr2[Index2], _Src2);
+			}
+		);
+
+		return;
+	}
+
+	auto Cont = _Dst.CalcContinuous();
+	Cont.resize(5);
+	const SizeType* __restrict ContPtr = Cont.data();
+	const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
+
+	if (CurDims == 5)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						{
+							const auto IndexAxis4A = IndexAxis3A +
+								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
+							const auto IndexAxis4B = IndexAxis3B +
+								((m * StridesPtr2[Axis4]) + BeginsPtr2[Axis4]) * StepPtr2[Axis4];
+							DataPtr1[IndexAxis4A] = (_Type)_Func(DataPtr2[IndexAxis4B], _Src2);
+						}
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 4)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+					{
+						const auto IndexAxis3A = IndexAxis2A +
+							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+						const auto IndexAxis3B = IndexAxis2B +
+							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+						DataPtr1[IndexAxis3A] = (_Type)_Func(DataPtr2[IndexAxis3B], _Src2);
+					}
+				}
+			}
+		}
+	}
+	else if (CurDims == 3)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+				{
+					const auto IndexAxis2A = IndexAxis1A +
+						((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+					const auto IndexAxis2B = IndexAxis1B +
+						((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+					DataPtr1[IndexAxis2A] = (_Type)_Func(DataPtr2[IndexAxis2B], _Src2);
+				}
+			}
+		}
+	}
+	else if (CurDims == 2)
+	{
+		for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+		{
+			const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+			const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+			for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+			{
+				const auto IndexAxis1A = IndexAxis0A +
+					((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+				const auto IndexAxis1B = IndexAxis0B +
+					((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+				DataPtr1[IndexAxis1A] = (_Type)_Func(DataPtr2[IndexAxis1B], _Src2);
+			}
+		}
+	}
+	else if (CurDims == 1)
+	{
+		for (SizeType i = 0; i < ShapePtr[0]; ++i)
+		{
+			DataPtr1[((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0]] =
+				(_Type)_Func(DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]], _Src2);
 		}
 	}
 }

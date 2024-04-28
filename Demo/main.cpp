@@ -1,6 +1,7 @@
 #include "Tensor/Tensor.h"
 #include <iostream>
 #include <windows.h>
+#include "Tensor/Float32Tensor.h"
 
 template<typename _T = float>
 void PrintTensor(libsvc::Tensor& _Tensor)
@@ -17,6 +18,7 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 
 int main()
 {
+	libsvc::Tensor::SetThreadCount(8);
 	libsvc::ThreadPool Thp;
 	Thp.Init(8);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
@@ -27,6 +29,19 @@ int main()
 	Ten = libsvc::Tensor::Stack({ Ten ,Ten }, 0);
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';
+	Ten += Ten;
+	Ten.Sin_();
+	std::cout << "Op Test: \n";
+	Ten.Invoke(1, PrintTensor);
+	std::cout << "Sin Op Test: \n";
+	Ten.Sin().Invoke(1, PrintTensor);
+	std::cout << "Cos Op Test: \n";
+	Ten.Cos().Invoke(1, PrintTensor);
+	std::cout << "Tan Op Test: \n";
+	Ten.Tan().Invoke(1, PrintTensor);
+	std::cout << "Abs Op Test: \n";
+	Ten.Abs().Invoke(1, PrintTensor);
+	std::cout << "Op Test End.\n\n\n";
 	auto Tens = libsvc::Tensor::Cat({ Ten ,Ten }, 2);
 	Tens.Invoke(1, PrintTensor);
 	std::cout << '\n';
@@ -38,11 +53,12 @@ int main()
 	libsvc::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, libsvc::PaddingType::Reflect).Invoke(1, PrintTensor);
 	std::cout << '\n';
 	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32);
-	const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
-	for (int i = 0; i < 20; ++i)
+	for (int64_t i = 0; i < 20; ++i)
 	{
+		const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
+		Ten1919810.Fix(i);
 		QueryPerformanceCounter(&Time1);
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
 		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
@@ -53,6 +69,7 @@ int main()
 			libsvc::TensorType::Float32,
 			nullptr, &Thp
 		);*/
+		auto a = Ten1919810 * Ten1919810;
 		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);

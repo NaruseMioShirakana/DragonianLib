@@ -1136,6 +1136,432 @@ namespace Float64
 			CastImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
 	}
 
+	void AddImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcAddFn<ThisType>,
+			LibSvcVectorAdd<ThisType>
+		);
+	}
+
+	void SubImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcSubFn<ThisType>,
+			LibSvcVectorSub<ThisType>
+		);
+	}
+
+	void MulImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcMulFn<ThisType>,
+			LibSvcVectorMul<ThisType>
+		);
+	}
+
+	void DivImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcDivFn<ThisType>,
+			LibSvcVectorDiv<ThisType>
+		);
+	}
+
+	void PowImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			pow<ThisType, ThisType>,
+			LibSvcVectorPow<ThisType>
+		);
+	}
+
+	void AddImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcAddFn<ThisType>,
+			LibSvcVectorAddScalar<ThisType>
+		);
+	}
+
+	void SubImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcSubFn<ThisType>,
+			LibSvcVectorSubScalar<ThisType>
+		);
+	}
+
+	void MulImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcMulFn<ThisType>,
+			LibSvcVectorMulScalar<ThisType>
+		);
+	}
+
+	void DivImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcDivFn<ThisType>,
+			LibSvcVectorDivScalar<ThisType>
+		);
+	}
+
+	void PowImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			pow<ThisType, ThisType>,
+			LibSvcVectorPowScalar<ThisType>
+		);
+	}
+
+	LibSvcMultiOperatorFunctionImpl(Add, AddImpl);
+	LibSvcMultiOperatorFunctionImpl(Sub, SubImpl);
+	LibSvcMultiOperatorFunctionImpl(Mul, MulImpl);
+	LibSvcMultiOperatorFunctionImpl(Div, DivImpl);
+	LibSvcMultiOperatorFunctionImpl(Pow, PowImpl);
+	LibSvcMultiOperatorScalarFunctionImpl(Add, AddImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Sub, SubImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Mul, MulImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Div, DivImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Pow, PowImplScalar);
+	LibSvcMultiOperatorInplaceFunctionImpl(AddInplace, AddImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(SubInplace, SubImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(MulInplace, MulImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(DivInplace, DivImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(PowInplace, PowImpl);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(AddInplace, AddImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(SubInplace, SubImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(MulInplace, MulImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(DivInplace, DivImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(PowInplace, PowImplScalar);
+
+	void AbsImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::conditional_t<std::is_integral_v<ThisType>, int64,
+			std::enable_if_t<std::is_floating_point_v<ThisType>, float64>>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			abs,
+			LibSvcVectorAbs<ThisType>
+		);
+	}
+
+	void SinImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			sin,
+			LibSvcVectorSin<ThisType>
+		);
+	}
+
+	void SinhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			sinh,
+			LibSvcVectorSinh<ThisType>
+		);
+	}
+
+	void CosImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			cos,
+			LibSvcVectorCos<ThisType>
+		);
+	}
+
+	void CoshImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			cosh,
+			LibSvcVectorCosh<ThisType>
+		);
+	}
+
+	void TanImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			tan,
+			LibSvcVectorTan<ThisType>
+		);
+	}
+
+	void TanhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			tanh,
+			LibSvcVectorTanh<ThisType>
+		);
+	}
+
+	void ASinImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			asin,
+			LibSvcVectorASin<ThisType>
+		);
+	}
+
+	void ACosImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			acos,
+			LibSvcVectorACos<ThisType>
+		);
+	}
+
+	void ATanImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			atan,
+			LibSvcVectorATan<ThisType>
+		);
+	}
+
+	void ASinhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			asinh,
+			LibSvcVectorASinh<ThisType>
+		);
+	}
+
+	void ACoshImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			acosh,
+			LibSvcVectorACosh<ThisType>
+		);
+	}
+
+	void ATanhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			atanh,
+			LibSvcVectorATanh<ThisType>
+		);
+	}
+
+	void ExpImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			exp,
+			LibSvcVectorExp<ThisType>
+		);
+	}
+
+	void Exp10Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		MonoOperators<ThisType>(
+			_Dst,
+			_Src,
+			CurDims,
+			LibSvcExp10<ThisType>,
+			LibSvcVectorExp10<ThisType>
+		);
+	}
+
+	void Exp2Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			exp2,
+			LibSvcVectorExp2<ThisType>
+		);
+	}
+
+	void LogImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log,
+			LibSvcVectorLog<ThisType>
+		);
+	}
+
+	void Log2Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log2,
+			LibSvcVectorLog2<ThisType>
+		);
+	}
+
+	void Log10Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log10,
+			LibSvcVectorLog10<ThisType>
+		);
+	}
+
+	LibSvcMonoOperatorFunctionImpl(Abs, AbsImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Abs, AbsImpl);
+	LibSvcMonoOperatorFunctionImpl(Sin, SinImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Sin, SinImpl);
+	LibSvcMonoOperatorFunctionImpl(Sinh, SinhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Sinh, SinhImpl);
+	LibSvcMonoOperatorFunctionImpl(Cos, CosImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Cos, CosImpl);
+	LibSvcMonoOperatorFunctionImpl(Cosh, CoshImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Cosh, CoshImpl);
+	LibSvcMonoOperatorFunctionImpl(Tan, TanImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Tan, TanImpl);
+	LibSvcMonoOperatorFunctionImpl(Tanh, TanhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Tanh, TanhImpl);
+	LibSvcMonoOperatorFunctionImpl(ASin, ASinImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ASin, ASinImpl);
+	LibSvcMonoOperatorFunctionImpl(ACos, ACosImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ACos, ACosImpl);
+	LibSvcMonoOperatorFunctionImpl(ATan, ATanImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ATan, ATanImpl);
+	LibSvcMonoOperatorFunctionImpl(ASinh, ASinhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ASinh, ASinhImpl);
+	LibSvcMonoOperatorFunctionImpl(ACosh, ACoshImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ACosh, ACoshImpl);
+	LibSvcMonoOperatorFunctionImpl(ATanh, ATanhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ATanh, ATanhImpl);
+	LibSvcMonoOperatorFunctionImpl(Exp, ExpImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp, ExpImpl);
+	LibSvcMonoOperatorFunctionImpl(Exp2, Exp2Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp2, Exp2Impl);
+	LibSvcMonoOperatorFunctionImpl(Exp10, Exp10Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp10, Exp10Impl);
+	LibSvcMonoOperatorFunctionImpl(Log, LogImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log, LogImpl);
+	LibSvcMonoOperatorFunctionImpl(Log2, Log2Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log2, Log2Impl);
+	LibSvcMonoOperatorFunctionImpl(Log10, Log10Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log10, Log10Impl);
+
 }
 
 LibSvcEnd

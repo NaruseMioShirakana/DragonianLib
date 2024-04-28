@@ -323,7 +323,6 @@ Tensor& Tensor::operator=(float64 _Val)
 		ThreadPool Thp;
 		Thp.Init(_MaxThreadCount);
 		Fix(_Val, &Thp);
-		Thp.Join();
 	}
 	else
 		Fix(_Val);
@@ -338,11 +337,346 @@ Tensor& Tensor::operator=(int64 _Val)
 		ThreadPool Thp;
 		Thp.Init(_MaxThreadCount);
 		Fix(_Val, &Thp);
-		Thp.Join();
 	}
 	else
 		Fix(_Val);
 	return *this;
+}
+
+Tensor Tensor::operator+(const Tensor& _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Add, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Add, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator-(const Tensor& _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Sub, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Sub, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator*(const Tensor& _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Mul, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Mul, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator/(const Tensor& _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Div, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Div, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator+(int64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator-(int64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator*(int64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator/(int64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator+(float64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator-(float64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator*(float64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor Tensor::operator/(float64 _Right) const
+{
+	Tensor Ret(DType_);
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator+=(const Tensor& _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(AddInplace, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(AddInplace, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator-=(const Tensor& _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(SubInplace, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(SubInplace, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator*=(const Tensor& _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(MulInplace, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(MulInplace, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator/=(const Tensor& _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(DivInplace, *this, _Right, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(DivInplace, *this, _Right, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator+=(int64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator-=(int64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator*=(int64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator/=(int64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator+=(float64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator-=(float64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator*=(float64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
+}
+
+Tensor& Tensor::operator/=(float64 _Right)
+{
+	Tensor& Ret = *this;
+	if (_MaxThreadCount)
+	{
+		ThreadPool Thp;
+		Thp.Init(_MaxThreadCount);
+		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, &Thp);
+	}
+	else
+		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, nullptr);
+	return Ret;
 }
 
 Tensor Tensor::operator[](SizeType _Index) const
@@ -1363,5 +1697,73 @@ Tensor Tensor::Cast(TensorType _Dtype, ThreadPool* _ThreadPool) const
 {
 	return Cast(*this, _Dtype, _ThreadPool);
 }
+
+//Operators
+
+Tensor Tensor::Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
+{
+	_InputA.ThrowOnNotEnabled();
+	_InputB.ThrowOnNotEnabled();
+	if (_InputA.DType_ != _InputB.DType_)
+		LibSvcThrow("Type MisMatch!");
+	Tensor Ret(_InputA.DType_);
+	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, _InputB, _ThreadPool);
+	return Ret;
+}
+
+Tensor Tensor::Pow(const Tensor& _InputA, float64 _Val, ThreadPool* _ThreadPool)
+{
+	_InputA.ThrowOnNotEnabled();
+	Tensor Ret(_InputA.DType_);
+	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, &_Val, TensorType::Float64, _ThreadPool);
+	return Ret;
+}
+
+Tensor Tensor::Pow(const Tensor& _InputB, ThreadPool* _ThreadPool) const
+{
+	return Pow(*this, _InputB, _ThreadPool);
+}
+
+Tensor Tensor::Pow(float64 _Val, ThreadPool* _ThreadPool) const
+{
+	return Pow(*this, _Val, _ThreadPool);
+}
+
+Tensor& Tensor::Pow_(const Tensor& _InputB, ThreadPool* _ThreadPool)
+{
+	ThrowOnNotEnabled();
+	_InputB.ThrowOnNotEnabled();
+	if (DType_ != _InputB.DType_)
+		LibSvcThrow("Type MisMatch!");
+	LibSvcOperatorNoRetrun(PowInplace, *this, _InputB, _ThreadPool);
+	return *this;
+}
+
+Tensor& Tensor::Pow_(float64 _Val, ThreadPool* _ThreadPool)
+{
+	ThrowOnNotEnabled();
+	LibSvcOperatorNoRetrun(PowInplace, *this, &_Val, TensorType::Float64, _ThreadPool);
+	return *this;
+}
+
+LibSvcTensorFnImpl(Abs);
+LibSvcTensorFnImpl(Sin);
+LibSvcTensorFnImpl(Sinh);
+LibSvcTensorFnImpl(Cos);
+LibSvcTensorFnImpl(Cosh);
+LibSvcTensorFnImpl(Tan);
+LibSvcTensorFnImpl(Tanh);
+LibSvcTensorFnImpl(ASin);
+LibSvcTensorFnImpl(ACos);
+LibSvcTensorFnImpl(ATan);
+LibSvcTensorFnImpl(ASinh);
+LibSvcTensorFnImpl(ACosh);
+LibSvcTensorFnImpl(ATanh);
+LibSvcTensorFnImpl(Exp);
+LibSvcTensorFnImpl(Exp2);
+LibSvcTensorFnImpl(Exp10);
+LibSvcTensorFnImpl(Log);
+LibSvcTensorFnImpl(Log2);
+LibSvcTensorFnImpl(Log10);
 
 LibSvcEnd

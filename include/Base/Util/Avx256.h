@@ -158,35 +158,78 @@ static INLINE void LibSvcMemSet(void* const __restrict _Dst, const void* const _
 }
 
 template <typename _Ty>
+_Ty LibSvcAddFn(_Ty a, _Ty b)
+{
+	return a + b;
+}
+
+template <typename _Ty>
+_Ty LibSvcSubFn(_Ty a, _Ty b)
+{
+	return a - b;
+}
+
+template <typename _Ty>
+_Ty LibSvcMulFn(_Ty a, _Ty b)
+{
+	return a * b;
+}
+
+template <typename _Ty>
+_Ty LibSvcDivFn(_Ty a, _Ty b)
+{
+	return a / b;
+}
+
+template <typename _Ty>
 void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
-	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
+	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
 	{
 		if (_DataSize < Stride)
 			break;
-		const __m256i a_avx2 = _mm256_load_si256((const __m256i*)_SrcA);
-		const __m256i b_avx2 = _mm256_load_si256((const __m256i*)_SrcB);
-		__m256i result_avx2;
+		const __m256i a_avx2_1 = _mm256_load_si256((const __m256i*)_SrcA);
+		const __m256i b_avx2_1 = _mm256_load_si256((const __m256i*)_SrcB);
+		const __m256i a_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcA) + 1);
+		const __m256i b_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcB) + 1);
+		__m256i result_avx2_1, result_avx2_2;
 		if (std::is_same_v<_Ty, float>)
 		{
-			const auto res = _mm256_add_ps(*(const __m256*)(&a_avx2), *(const __m256*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_add_ps(*(const __m256*)(&a_avx2_1), *(const __m256*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_add_ps(*(const __m256*)(&a_avx2_2), *(const __m256*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, double>)
 		{
-			const auto res = _mm256_add_pd(*(const __m256d*)(&a_avx2), *(const __m256d*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_add_pd(*(const __m256d*)(&a_avx2_1), *(const __m256d*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_add_pd(*(const __m256d*)(&a_avx2_2), *(const __m256d*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, int8_t>)
-			result_avx2 = _mm256_add_epi8(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_add_epi8(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_add_epi8(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int16_t>)
-			result_avx2 = _mm256_add_epi16(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_add_epi16(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_add_epi16(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int32_t>)
-			result_avx2 = _mm256_add_epi32(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_add_epi32(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_add_epi32(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int64_t>)
-			result_avx2 = _mm256_add_epi64(a_avx2, b_avx2);
-		_mm256_store_si256((__m256i*)_Dst, result_avx2);
+		{
+			result_avx2_1 = _mm256_add_epi64(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_add_epi64(a_avx2_2, b_avx2_2);
+		}
+		_mm256_store_si256((__m256i*)_Dst, result_avx2_1);
+		_mm256_store_si256(((__m256i*)_Dst) + 1, result_avx2_2);
 		_Dst += Stride;
 		_SrcA += Stride;
 		_SrcB += Stride;
@@ -199,33 +242,52 @@ void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 template <typename _Ty>
 void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
-	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
+	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
 	{
 		if (_DataSize < Stride)
 			break;
-		const __m256i a_avx2 = _mm256_load_si256((const __m256i*)_SrcA);
-		const __m256i b_avx2 = _mm256_load_si256((const __m256i*)_SrcB);
-		__m256i result_avx2;
+		const __m256i a_avx2_1 = _mm256_load_si256((const __m256i*)_SrcA);
+		const __m256i b_avx2_1 = _mm256_load_si256((const __m256i*)_SrcB);
+		const __m256i a_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcA) + 1);
+		const __m256i b_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcB) + 1);
+		__m256i result_avx2_1, result_avx2_2;
 		if (std::is_same_v<_Ty, float>)
 		{
-			const auto res = _mm256_sub_ps(*(const __m256*)(&a_avx2), *(const __m256*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_sub_ps(*(const __m256*)(&a_avx2_1), *(const __m256*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_sub_ps(*(const __m256*)(&a_avx2_2), *(const __m256*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, double>)
 		{
-			const auto res = _mm256_sub_pd(*(const __m256d*)(&a_avx2), *(const __m256d*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_sub_pd(*(const __m256d*)(&a_avx2_1), *(const __m256d*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_sub_pd(*(const __m256d*)(&a_avx2_2), *(const __m256d*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, int8_t>)
-			result_avx2 = _mm256_sub_epi8(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_sub_epi8(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_sub_epi8(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int16_t>)
-			result_avx2 = _mm256_sub_epi16(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_sub_epi16(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_sub_epi16(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int32_t>)
-			result_avx2 = _mm256_sub_epi32(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_sub_epi32(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_sub_epi32(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int64_t>)
-			result_avx2 = _mm256_sub_epi64(a_avx2, b_avx2);
-		_mm256_store_si256((__m256i*)_Dst, result_avx2);
+		{
+			result_avx2_1 = _mm256_sub_epi64(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_sub_epi64(a_avx2_2, b_avx2_2);
+		}
+		_mm256_store_si256((__m256i*)_Dst, result_avx2_1);
+		_mm256_store_si256(((__m256i*)_Dst) + 1, result_avx2_2);
 		_Dst += Stride;
 		_SrcA += Stride;
 		_SrcB += Stride;
@@ -238,33 +300,51 @@ void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 template <typename _Ty>
 void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
-	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
+	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
 	{
 		if (_DataSize < Stride)
 			break;
-		const __m256i a_avx2 = _mm256_load_si256((const __m256i*)_SrcA);
-		const __m256i b_avx2 = _mm256_load_si256((const __m256i*)_SrcB);
-		__m256i result_avx2;
+		const __m256i a_avx2_1 = _mm256_load_si256((const __m256i*)_SrcA);
+		const __m256i b_avx2_1 = _mm256_load_si256((const __m256i*)_SrcB);
+		const __m256i a_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcA) + 1);
+		const __m256i b_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcB) + 1);
+		__m256i result_avx2_1, result_avx2_2;
 		if (std::is_same_v<_Ty, float>)
 		{
-			const auto res = _mm256_mul_ps(*(const __m256*)(&a_avx2), *(const __m256*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_mul_ps(*(const __m256*)(&a_avx2_1), *(const __m256*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_mul_ps(*(const __m256*)(&a_avx2_2), *(const __m256*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, double>)
 		{
-			const auto res = _mm256_mul_pd(*(const __m256d*)(&a_avx2), *(const __m256d*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_mul_pd(*(const __m256d*)(&a_avx2_1), *(const __m256d*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_mul_pd(*(const __m256d*)(&a_avx2_2), *(const __m256d*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, int8_t>)
+		{
 			break;
+		}
 		else if (std::is_same_v<_Ty, int16_t>)
-			result_avx2 = _mm256_mullo_epi16(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_mullo_epi16(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_mullo_epi16(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int32_t>)
-			result_avx2 = _mm256_mullo_epi32(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_mullo_epi32(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_mullo_epi32(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int64_t>)
-			result_avx2 = _mm256_mullo_epi64(a_avx2, b_avx2);
-		_mm256_store_si256((__m256i*)_Dst, result_avx2);
+		{
+			result_avx2_1 = _mm256_mullo_epi64(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_mullo_epi64(a_avx2_2, b_avx2_2);
+		}
+		_mm256_store_si256((__m256i*)_Dst, result_avx2_1);
+		_mm256_store_si256(((__m256i*)_Dst) + 1, result_avx2_2);
 		_Dst += Stride;
 		_SrcA += Stride;
 		_SrcB += Stride;
@@ -277,33 +357,52 @@ void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 template <typename _Ty>
 void LibSvcVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
-	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
+	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
 	{
 		if (_DataSize < Stride)
 			break;
-		const __m256i a_avx2 = _mm256_load_si256((const __m256i*)_SrcA);
-		const __m256i b_avx2 = _mm256_load_si256((const __m256i*)_SrcB);
-		__m256i result_avx2;
+		const __m256i a_avx2_1 = _mm256_load_si256((const __m256i*)_SrcA);
+		const __m256i b_avx2_1 = _mm256_load_si256((const __m256i*)_SrcB);
+		const __m256i a_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcA) + 1);
+		const __m256i b_avx2_2 = _mm256_load_si256(((const __m256i*)_SrcB) + 1);
+		__m256i result_avx2_1, result_avx2_2;
 		if (std::is_same_v<_Ty, float>)
 		{
-			const auto res = _mm256_div_ps(*(const __m256*)(&a_avx2), *(const __m256*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_div_ps(*(const __m256*)(&a_avx2_1), *(const __m256*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_div_ps(*(const __m256*)(&a_avx2_2), *(const __m256*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, double>)
 		{
-			const auto res = _mm256_div_pd(*(const __m256d*)(&a_avx2), *(const __m256d*)(&b_avx2));
-			result_avx2 = *(const __m256i*)(&res);
+			auto res = _mm256_div_pd(*(const __m256d*)(&a_avx2_1), *(const __m256d*)(&b_avx2_1));
+			result_avx2_1 = *(const __m256i*)(&res);
+			res = _mm256_div_pd(*(const __m256d*)(&a_avx2_2), *(const __m256d*)(&b_avx2_2));
+			result_avx2_2 = *(const __m256i*)(&res);
 		}
 		else if (std::is_same_v<_Ty, int8_t>)
-			result_avx2 = _mm256_div_epi8(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_div_epi8(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_div_epi8(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int16_t>)
-			result_avx2 = _mm256_div_epi16(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_div_epi16(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_div_epi16(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int32_t>)
-			result_avx2 = _mm256_div_epi32(a_avx2, b_avx2);
+		{
+			result_avx2_1 = _mm256_div_epi32(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_div_epi32(a_avx2_2, b_avx2_2);
+		}
 		else if (std::is_same_v<_Ty, int64_t>)
-			result_avx2 = _mm256_div_epi64(a_avx2, b_avx2);
-		_mm256_store_si256((__m256i*)_Dst, result_avx2);
+		{
+			result_avx2_1 = _mm256_div_epi64(a_avx2_1, b_avx2_1);
+			result_avx2_2 = _mm256_div_epi64(a_avx2_2, b_avx2_2);
+		}
+		_mm256_store_si256((__m256i*)_Dst, result_avx2_1);
+		_mm256_store_si256(((__m256i*)_Dst) + 1, result_avx2_2);
 		_Dst += Stride;
 		_SrcA += Stride;
 		_SrcB += Stride;
@@ -314,7 +413,7 @@ void LibSvcVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void LibSvcVectorAddScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -363,7 +462,7 @@ void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataS
 }
 
 template <typename _Ty>
-void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void LibSvcVectorSubScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -412,7 +511,7 @@ void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataS
 }
 
 template <typename _Ty>
-void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void LibSvcVectorMulScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -461,7 +560,7 @@ void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataS
 }
 
 template <typename _Ty>
-void LibSvcVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void LibSvcVectorDivScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -538,7 +637,7 @@ void LibSvcVectorAbs(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)abs(*(++_Src));
+		*(_Dst++) = (_Ty)abs(*(_Src++));
 }
 
 template <typename _Ty>
@@ -576,7 +675,7 @@ void LibSvcVectorSin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)sin(*(++_Src));
+		*(_Dst++) = (_Ty)sin((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -614,7 +713,7 @@ void LibSvcVectorSinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)sinh(*(++_Src));
+		*(_Dst++) = (_Ty)sinh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -652,7 +751,7 @@ void LibSvcVectorCos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)cos(*(++_Src));
+		*(_Dst++) = (_Ty)cos((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -690,7 +789,7 @@ void LibSvcVectorCosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)cosh(*(++_Src));
+		*(_Dst++) = (_Ty)cosh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -728,7 +827,7 @@ void LibSvcVectorTan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)tan(*(++_Src));
+		*(_Dst++) = (_Ty)tan((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -766,7 +865,7 @@ void LibSvcVectorTanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)tanh(*(++_Src));
+		*(_Dst++) = (_Ty)tanh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -804,7 +903,7 @@ void LibSvcVectorASin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)asin(*(++_Src));
+		*(_Dst++) = (_Ty)asin((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -842,7 +941,7 @@ void LibSvcVectorACos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)acos(*(++_Src));
+		*(_Dst++) = (_Ty)acos((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -880,7 +979,7 @@ void LibSvcVectorATan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)atan(*(++_Src));
+		*(_Dst++) = (_Ty)atan((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -918,7 +1017,7 @@ void LibSvcVectorASinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)asinh(*(++_Src));
+		*(_Dst++) = (_Ty)asinh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -956,7 +1055,7 @@ void LibSvcVectorACosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)acosh(*(++_Src));
+		*(_Dst++) = (_Ty)acosh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -994,7 +1093,7 @@ void LibSvcVectorATanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)atanh(*(++_Src));
+		*(_Dst++) = (_Ty)atanh((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -1032,7 +1131,13 @@ void LibSvcVectorExp(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)exp(*(++_Src));
+		*(_Dst++) = (_Ty)exp((double)*(_Src++));
+}
+
+template <typename _Ty>
+_Ty LibSvcExp10(_Ty inp)
+{
+	return (_Ty)pow((_Ty)10, inp);
 }
 
 template <typename _Ty>
@@ -1070,7 +1175,7 @@ void LibSvcVectorExp10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)exp10(*(++_Src));
+		*(_Dst++) = (_Ty)LibSvcExp10((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -1108,7 +1213,7 @@ void LibSvcVectorExp2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)exp2(*(++_Src));
+		*(_Dst++) = (_Ty)exp2((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -1146,7 +1251,7 @@ void LibSvcVectorLog(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)log(*(++_Src));
+		*(_Dst++) = (_Ty)log((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -1184,7 +1289,7 @@ void LibSvcVectorLog10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)log10(*(++_Src));
+		*(_Dst++) = (_Ty)log10((double)*(_Src++));
 }
 
 template <typename _Ty>
@@ -1222,11 +1327,11 @@ void LibSvcVectorLog2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)log2(*(++_Src));
+		*(_Dst++) = (_Ty)log2((double)*(_Src++));
 }
 
 template <typename _Ty>
-void LibSvcVectorPow(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void LibSvcVectorPowScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 

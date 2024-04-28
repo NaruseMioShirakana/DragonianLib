@@ -1135,6 +1135,638 @@ namespace Float32
 		else
 			CastImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
 	}
+
+	void AddImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcAddFn<ThisType>,
+			LibSvcVectorAdd<ThisType>
+		);
+		/*using _Type = ThisType;
+		_Type* DataPtr1 = (_Type*)_Dst.Data();
+		const _Type* DataPtr2 = (_Type*)_Src1.Data();
+		const _Type* DataPtr3 = (_Type*)_Src2.Data();
+
+		if (!_Dst.IsBroadCasted() && !_Src1.IsBroadCasted() && !_Src2.IsBroadCasted() && _Dst.IsContinuous() && _Src1.IsContinuous() && _Src2.IsContinuous())
+		{
+			DataPtr1 = (_Type*)_Dst.GetPtr();
+			DataPtr2 = (_Type*)_Src1.GetPtr();
+			DataPtr3 = (_Type*)_Src2.GetPtr();
+			const size_t DataSize = VectorMul(_Dst.Shape());
+			const auto DataEnd = DataPtr1 + DataSize;
+			LibSvcVectorAdd(DataPtr1, DataPtr2, DataPtr3, DataSize);
+			return;
+		}
+
+		auto Steps1 = _Dst.StepsBack();
+		for (auto& i : Steps1)
+			i /= sizeof(_Type);
+		auto Steps2 = _Src1.StepsBack();
+		for (auto& i : Steps2)
+			i /= sizeof(_Type);
+		auto Steps3 = _Src2.StepsBack();
+		for (auto& i : Steps3)
+			i /= sizeof(_Type);
+		const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+		const SizeType* __restrict StepPtr1 = Steps1.data();
+		const SizeType* __restrict StepPtr2 = Steps2.data();
+		const SizeType* __restrict StepPtr3 = Steps3.data();
+		const SizeType* __restrict BeginsPtr1 = _Dst.SliceBegins().data();
+		const SizeType* __restrict BeginsPtr2 = _Src1.SliceBegins().data();
+		const SizeType* __restrict BeginsPtr3 = _Src2.SliceBegins().data();
+		const SizeType* __restrict StridesPtr1 = _Dst.Strides().data();
+		const SizeType* __restrict StridesPtr2 = _Src1.Strides().data();
+		const SizeType* __restrict StridesPtr3 = _Src2.Strides().data();
+
+		if (CurDims > 5)
+		{
+			ShapeType CurIndice(CurDims, 0);
+			SizeType* __restrict IndicesPtr = CurIndice.data();
+			LibSvcCycle(
+				IndicesPtr,
+				ShapePtr,
+				CurDims,
+				{
+					SizeType Index1 = 0;
+					SizeType Index2 = 0;
+					SizeType Index3 = 0;
+					for (SizeType i = 0; i < CurDims; ++i)
+					{
+						Index1 += ((IndicesPtr[i] * StridesPtr1[i]) + BeginsPtr1[i]) * StepPtr1[i];
+						Index2 += ((IndicesPtr[i] * StridesPtr2[i]) + BeginsPtr2[i]) * StepPtr2[i];
+						Index3 += ((IndicesPtr[i] * StridesPtr3[i]) + BeginsPtr3[i]) * StepPtr3[i];
+					}
+					DataPtr1[Index1] = (DataPtr2[Index2] + DataPtr3[Index3]);
+				}
+			);
+
+			return;
+		}
+
+		auto Cont = _Dst.CalcContinuous();
+		Cont.resize(5);
+		const SizeType* __restrict ContPtr = Cont.data();
+		const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
+
+		if (CurDims == 5)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+				const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+				const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+					const auto IndexAxis1C = IndexAxis0C +
+						((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2A = IndexAxis1A +
+							((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+						const auto IndexAxis2C = IndexAxis1C +
+							((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						{
+							const auto IndexAxis3A = IndexAxis2A +
+								((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+							const auto IndexAxis3B = IndexAxis2B +
+								((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+							const auto IndexAxis3C = IndexAxis2C +
+								((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
+							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							{
+								const auto IndexAxis4A = IndexAxis3A +
+									((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
+								const auto IndexAxis4B = IndexAxis3B +
+									((m * StridesPtr2[Axis4]) + BeginsPtr2[Axis4]) * StepPtr2[Axis4];
+								const auto IndexAxis4C = IndexAxis3C +
+									((m * StridesPtr3[Axis4]) + BeginsPtr3[Axis4]) * StepPtr3[Axis4];
+								DataPtr1[IndexAxis4A] = (DataPtr2[IndexAxis4B] + DataPtr3[IndexAxis4C]);
+							}
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 4)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+				const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+				const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+					const auto IndexAxis1C = IndexAxis0C +
+						((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2A = IndexAxis1A +
+							((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+						const auto IndexAxis2C = IndexAxis1C +
+							((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						{
+							const auto IndexAxis3A = IndexAxis2A +
+								((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
+							const auto IndexAxis3B = IndexAxis2B +
+								((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
+							const auto IndexAxis3C = IndexAxis2C +
+								((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
+							DataPtr1[IndexAxis3A] = (DataPtr2[IndexAxis3B] + DataPtr3[IndexAxis3C]);
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 3)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+				const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+				const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+					const auto IndexAxis1C = IndexAxis0C +
+						((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					{
+						const auto IndexAxis2A = IndexAxis1A +
+							((k * StridesPtr1[Axis2]) + BeginsPtr1[Axis2]) * StepPtr1[Axis2];
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[Axis2]) + BeginsPtr2[Axis2]) * StepPtr2[Axis2];
+						const auto IndexAxis2C = IndexAxis1C +
+							((k * StridesPtr3[Axis2]) + BeginsPtr3[Axis2]) * StepPtr3[Axis2];
+						DataPtr1[IndexAxis2A] = (DataPtr2[IndexAxis2B] + DataPtr3[IndexAxis2C]);
+					}
+				}
+			}
+		}
+		else if (CurDims == 2)
+		{
+			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[Axis0]) + BeginsPtr1[Axis0]) * StepPtr1[Axis0];
+				const auto IndexAxis0B = ((i * StridesPtr2[Axis0]) + BeginsPtr2[Axis0]) * StepPtr2[Axis0];
+				const auto IndexAxis0C = ((i * StridesPtr3[Axis0]) + BeginsPtr3[Axis0]) * StepPtr3[Axis0];
+				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[Axis1]) + BeginsPtr1[Axis1]) * StepPtr1[Axis1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[Axis1]) + BeginsPtr2[Axis1]) * StepPtr2[Axis1];
+					const auto IndexAxis1C = IndexAxis0C +
+						((j * StridesPtr3[Axis1]) + BeginsPtr3[Axis1]) * StepPtr3[Axis1];
+					DataPtr1[IndexAxis1A] = (DataPtr2[IndexAxis1B] + DataPtr3[IndexAxis1C]);
+				}
+			}
+		}
+		else if (CurDims == 1)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				DataPtr1[((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0]] =
+					(DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]] +
+						DataPtr3[((i * StridesPtr3[0]) + BeginsPtr3[0]) * StepPtr3[0]]);
+			}
+		}*/
+	}
+
+	void SubImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcSubFn<ThisType>,
+			LibSvcVectorSub<ThisType>
+		);
+	}
+
+	void MulImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcMulFn<ThisType>,
+			LibSvcVectorMul<ThisType>
+		);
+	}
+
+	void DivImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcDivFn<ThisType>,
+			LibSvcVectorDiv<ThisType>
+		);
+	}
+
+	void PowImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		MultiOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			pow<ThisType, ThisType>,
+			LibSvcVectorPow<ThisType>
+		);
+	}
+
+	void AddImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcAddFn<ThisType>,
+			LibSvcVectorAddScalar<ThisType>
+		);
+	}
+
+	void SubImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcSubFn<ThisType>,
+			LibSvcVectorSubScalar<ThisType>
+		);
+	}
+
+	void MulImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcMulFn<ThisType>,
+			LibSvcVectorMulScalar<ThisType>
+		);
+	}
+
+	void DivImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			LibSvcDivFn<ThisType>,
+			LibSvcVectorDivScalar<ThisType>
+		);
+	}
+
+	void PowImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		MultiOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			pow<ThisType, ThisType>,
+			LibSvcVectorPowScalar<ThisType>
+		);
+	}
+
+	LibSvcMultiOperatorFunctionImpl(Add, AddImpl);
+	LibSvcMultiOperatorFunctionImpl(Sub, SubImpl);
+	LibSvcMultiOperatorFunctionImpl(Mul, MulImpl);
+	LibSvcMultiOperatorFunctionImpl(Div, DivImpl);
+	LibSvcMultiOperatorFunctionImpl(Pow, PowImpl);
+	LibSvcMultiOperatorScalarFunctionImpl(Add, AddImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Sub, SubImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Mul, MulImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Div, DivImplScalar);
+	LibSvcMultiOperatorScalarFunctionImpl(Pow, PowImplScalar);
+	LibSvcMultiOperatorInplaceFunctionImpl(AddInplace, AddImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(SubInplace, SubImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(MulInplace, MulImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(DivInplace, DivImpl);
+	LibSvcMultiOperatorInplaceFunctionImpl(PowInplace, PowImpl);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(AddInplace, AddImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(SubInplace, SubImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(MulInplace, MulImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(DivInplace, DivImplScalar);
+	LibSvcMultiOperatorScalarInplaceFunctionImpl(PowInplace, PowImplScalar);
+
+	void AbsImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::conditional_t<std::is_integral_v<ThisType>, int64,
+			std::enable_if_t<std::is_floating_point_v<ThisType>, float64>>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			abs,
+			LibSvcVectorAbs<ThisType>
+		);
+	}
+
+	void SinImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			sin,
+			LibSvcVectorSin<ThisType>
+		);
+	}
+
+	void SinhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			sinh,
+			LibSvcVectorSinh<ThisType>
+		);
+	}
+
+	void CosImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			cos,
+			LibSvcVectorCos<ThisType>
+		);
+	}
+
+	void CoshImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			cosh,
+			LibSvcVectorCosh<ThisType>
+		);
+	}
+
+	void TanImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			tan,
+			LibSvcVectorTan<ThisType>
+		);
+	}
+
+	void TanhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			tanh,
+			LibSvcVectorTanh<ThisType>
+		);
+	}
+
+	void ASinImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			asin,
+			LibSvcVectorASin<ThisType>
+		);
+	}
+
+	void ACosImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			acos,
+			LibSvcVectorACos<ThisType>
+		);
+	}
+
+	void ATanImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			atan,
+			LibSvcVectorATan<ThisType>
+		);
+	}
+
+	void ASinhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			asinh,
+			LibSvcVectorASinh<ThisType>
+		);
+	}
+
+	void ACoshImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			acosh,
+			LibSvcVectorACosh<ThisType>
+		);
+	}
+
+	void ATanhImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			atanh,
+			LibSvcVectorATanh<ThisType>
+		);
+	}
+
+	void ExpImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			exp,
+			LibSvcVectorExp<ThisType>
+		);
+	}
+
+	void Exp10Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		MonoOperators<ThisType>(
+			_Dst,
+			_Src,
+			CurDims,
+			LibSvcExp10<ThisType>,
+			LibSvcVectorExp10<ThisType>
+		);
+	}
+
+	void Exp2Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			exp2,
+			LibSvcVectorExp2<ThisType>
+		);
+	}
+
+	void LogImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log,
+			LibSvcVectorLog<ThisType>
+		);
+	}
+
+	void Log2Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log2,
+			LibSvcVectorLog2<ThisType>
+		);
+	}
+
+	void Log10Impl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		using _MonoOpFnArgType = std::_Common_float_type_t<ThisType, ThisType>;
+		using _MonoOpFnType = _MonoOpFnArgType(*)(_MonoOpFnArgType);
+		MonoOperators<ThisType, _MonoOpFnType>(
+			_Dst,
+			_Src,
+			CurDims,
+			log10,
+			LibSvcVectorLog10<ThisType>
+		);
+	}
+
+	LibSvcMonoOperatorFunctionImpl(Abs, AbsImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Abs, AbsImpl);
+	LibSvcMonoOperatorFunctionImpl(Sin, SinImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Sin, SinImpl);
+	LibSvcMonoOperatorFunctionImpl(Sinh, SinhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Sinh, SinhImpl);
+	LibSvcMonoOperatorFunctionImpl(Cos, CosImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Cos, CosImpl);
+	LibSvcMonoOperatorFunctionImpl(Cosh, CoshImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Cosh, CoshImpl);
+	LibSvcMonoOperatorFunctionImpl(Tan, TanImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Tan, TanImpl);
+	LibSvcMonoOperatorFunctionImpl(Tanh, TanhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Tanh, TanhImpl);
+	LibSvcMonoOperatorFunctionImpl(ASin, ASinImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ASin, ASinImpl);
+	LibSvcMonoOperatorFunctionImpl(ACos, ACosImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ACos, ACosImpl);
+	LibSvcMonoOperatorFunctionImpl(ATan, ATanImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ATan, ATanImpl);
+	LibSvcMonoOperatorFunctionImpl(ASinh, ASinhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ASinh, ASinhImpl);
+	LibSvcMonoOperatorFunctionImpl(ACosh, ACoshImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ACosh, ACoshImpl);
+	LibSvcMonoOperatorFunctionImpl(ATanh, ATanhImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(ATanh, ATanhImpl);
+	LibSvcMonoOperatorFunctionImpl(Exp, ExpImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp, ExpImpl);
+	LibSvcMonoOperatorFunctionImpl(Exp2, Exp2Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp2, Exp2Impl);
+	LibSvcMonoOperatorFunctionImpl(Exp10, Exp10Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Exp10, Exp10Impl);
+	LibSvcMonoOperatorFunctionImpl(Log, LogImpl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log, LogImpl);
+	LibSvcMonoOperatorFunctionImpl(Log2, Log2Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log2, Log2Impl);
+	LibSvcMonoOperatorFunctionImpl(Log10, Log10Impl);
+	LibSvcMonoOperatorInplaceFunctionImpl(Log10, Log10Impl);
+
 }
 
 LibSvcEnd

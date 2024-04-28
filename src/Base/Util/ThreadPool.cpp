@@ -4,7 +4,7 @@
 LibSvcBegin
 ThreadPool::~ThreadPool() {
     Stoped_ = true;
-    Condition_.notify_all();
+	Condition_.release((ptrdiff_t)Threads_.size());
     for (auto& CurTask : Threads_)
         if (CurTask.joinable()) CurTask.join();
 }
@@ -30,27 +30,29 @@ void ThreadPool::Init(int64 _ThreadCount) {
 }
 
 void ThreadPool::Run() {
-    while (true) {
+    while (!Stoped_) {
         Task task;
         {
+            Condition_.acquire();
             std::unique_lock lock(Mx_);
-            Condition_.wait(lock, [this] { return Stoped_ || !(Tasks_.empty()); });
             if (Tasks_.empty())
-                return;
+                continue;
             task = std::move(Tasks_.front());
             Tasks_.pop();
         }
+        ++TaskProcessing_;
         task();
+        --TaskProcessing_;
+        if (Tasks_.empty() && !TaskProcessing_)
+            JoinCondition_.release();
     }
 }
 
 void ThreadPool::Join()
 {
-    Stoped_ = true;
-    Condition_.notify_all();
-    for (auto& CurTask : Threads_)
-        if (CurTask.joinable()) CurTask.join();
-    Init();
+    std::lock_guard lg(JoinMx_);
+    //Condition_.release();
+    JoinCondition_.acquire();
 }
 
 LibSvcEnd
