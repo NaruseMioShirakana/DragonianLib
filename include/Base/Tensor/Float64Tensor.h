@@ -56,5 +56,22 @@ namespace Float64
 	LibSvcMonoOperatorFunctionDef(Log);
 	LibSvcMonoOperatorFunctionDef(Log2);
 	LibSvcMonoOperatorFunctionDef(Log10);
+
+	Tensor Less(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor Greater(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor Equal(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor LessEqual(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor GreaterEqual(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor NotEqual(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
+	Tensor Less(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	Tensor Greater(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	Tensor Equal(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	Tensor LessEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	Tensor GreaterEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+	Tensor NotEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+
+	LibSvcMonoOperatorFunctionDef(Floor);
+	LibSvcMonoOperatorFunctionDef(Ceil);
+	LibSvcMonoOperatorFunctionDef(Round);
 }
 LibSvcEnd

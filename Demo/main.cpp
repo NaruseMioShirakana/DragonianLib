@@ -16,6 +16,19 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 	std::cout << "\n";
 }
 
+template <>
+void PrintTensor<bool>(libsvc::Tensor& _Tensor)
+{
+	for (libsvc::SizeType i = 0; i < _Tensor.Size(0); ++i)
+	{
+		std::cout << '[';
+		for (libsvc::SizeType j = 0; j < _Tensor.Size(1); ++j)
+			std::cout << ((_Tensor.Item<bool>({ i,j })) ? "true " : "false") << ", ";
+		std::cout << "]\n";
+	}
+	std::cout << "\n";
+}
+
 int main()
 {
 	libsvc::Tensor::SetThreadCount(8);
@@ -41,6 +54,14 @@ int main()
 	Ten.Tan().Invoke(1, PrintTensor);
 	std::cout << "Abs Op Test: \n";
 	Ten.Abs().Invoke(1, PrintTensor);
+	std::cout << "Ceil Op Test: \n";
+	Ten.Ceil().Invoke(1, PrintTensor);
+	std::cout << "Floor Op Test: \n";
+	Ten.Floor().Invoke(1, PrintTensor);
+	std::cout << "Compare Op Test: \n";
+	(Ten.Abs() == Ten).Invoke(1, PrintTensor<bool>);
+	(Ten.Abs() != Ten).Invoke(1, PrintTensor<bool>);
+	((Ten.Abs() != Ten) + (Ten.Abs() == Ten)).Invoke(1, PrintTensor<bool>);
 	std::cout << "Op Test End.\n\n\n";
 	auto Tens = libsvc::Tensor::Cat({ Ten ,Ten }, 2);
 	Tens.Invoke(1, PrintTensor);

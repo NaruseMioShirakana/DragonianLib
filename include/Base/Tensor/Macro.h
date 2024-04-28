@@ -19,6 +19,33 @@ Tensor& Tensor::_Name##_(ThreadPool* _ThreadPool) \
 	return *this; \
 }
 
+#define LibSvcFloatTensorFnImpl(_Name) \
+Tensor Tensor::_Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
+{ \
+	_Input.ThrowOnNotEnabled(); \
+	Tensor Ret(_Input.DType_); \
+	if (_Input.DType_ == TensorType::Float64) \
+		Ret = ::libsvc::Float64::_Name(_Input, _ThreadPool); \
+	else if (_Input.DType_ == TensorType::Float32) \
+		Ret = ::libsvc::Float32::_Name(_Input, _ThreadPool); \
+	else \
+		return _Input.CreateView(); \
+	return Ret; \
+} \
+Tensor Tensor::_Name(ThreadPool* _ThreadPool) const \
+{ \
+	return _Name(*this, _ThreadPool); \
+} \
+Tensor& Tensor::_Name##_(ThreadPool* _ThreadPool) \
+{ \
+	ThrowOnNotEnabled(); \
+	if (DType_ == TensorType::Float64) \
+		::libsvc::Float64::_Name##Inplace(*this, _ThreadPool); \
+	else if (DType_ == TensorType::Float32) \
+		::libsvc::Float32::_Name##Inplace(*this, _ThreadPool); \
+	return *this; \
+}
+
 #define LibSvcTensorFnDef(_Name) \
 static Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool = nullptr); \
 Tensor _Name(ThreadPool* _ThreadPool = nullptr) const; \
@@ -371,4 +398,129 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 	} \
 	else \
 		_OpFn(Result, InputA, _Value, CurDims); \
+}
+
+#define LibSvcCompareOperatorFunctionImpl(_Name, _OpFn) \
+Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
+{ \
+	if (_A.DType() != _B.DType()) \
+		LibSvcThrow("Type MisMatch!"); \
+ \
+	const auto BroadCast = Tensor::BroadCast(_A, _B); \
+	Tensor Ret(BroadCast.first.Shape(), TensorType::Boolean); \
+	const auto InputA = BroadCast.first.Squeeze(); \
+	const auto InputB = BroadCast.second.Squeeze(); \
+	const auto Result = Ret.Squeeze(); \
+ \
+	const auto CurDims = (SizeType)InputA.Shape().size(); \
+	const auto& InputShape = InputA.Shape(); \
+	const auto TotalSize = VectorMul(InputShape); \
+ \
+	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	{ \
+		const auto NWorkers = _ThreadPool->GetThreadCount(); \
+		const auto SqueezedDims = (SizeType)InputShape.size(); \
+ \
+		Vector<Range> Slices; \
+		for (SizeType i = 0; i < SqueezedDims; ++i) \
+		{ \
+			if (InputShape[i] < NWorkers) \
+				Slices.emplace_back(None); \
+			else \
+			{ \
+				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
+				for (SizeType j = 0; ; j += Step) \
+				{ \
+					const auto End = std::min(j + Step, InputShape[i]); \
+					if (j >= End) \
+					{ \
+						_ThreadPool->Join(); \
+						return Ret; \
+					} \
+					auto ThreadSlices = Slices; \
+					ThreadSlices.emplace_back(j, End); \
+ \
+					_ThreadPool->Commit( \
+						_OpFn, \
+						Result.Slice(ThreadSlices), \
+						InputA.Slice(ThreadSlices), \
+						InputB.Slice(ThreadSlices), \
+						CurDims \
+					); \
+ \
+					if (End == InputShape[i]) \
+					{ \
+						_ThreadPool->Join(); \
+						return Ret; \
+					} \
+				} \
+			} \
+		} \
+		_OpFn(Result, InputA, InputB, CurDims); \
+	} \
+	else \
+		_OpFn(Result, InputA, InputB, CurDims); \
+ \
+	return Ret; \
+}
+
+#define LibSvcCompareOperatorScalarFunctionImpl(_Name, _OpFn) \
+Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool) \
+{ \
+	const auto _Value = CastFrom(_ValType, _Val); \
+ \
+	Tensor Ret(_A.Shape(), TensorType::Boolean); \
+	const auto InputA = _A.Squeeze(); \
+	const auto Result = Ret.Squeeze(); \
+ \
+	const auto CurDims = (SizeType)InputA.Shape().size(); \
+	const auto& InputShape = InputA.Shape(); \
+	const auto TotalSize = VectorMul(InputShape); \
+ \
+	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	{ \
+		const auto NWorkers = _ThreadPool->GetThreadCount(); \
+		const auto SqueezedDims = (SizeType)InputShape.size(); \
+ \
+		Vector<Range> Slices; \
+		for (SizeType i = 0; i < SqueezedDims; ++i) \
+		{ \
+			if (InputShape[i] < NWorkers) \
+				Slices.emplace_back(None); \
+			else \
+			{ \
+				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
+				for (SizeType j = 0; ; j += Step) \
+				{ \
+					const auto End = std::min(j + Step, InputShape[i]); \
+					if (j >= End) \
+					{ \
+						_ThreadPool->Join(); \
+						return Ret; \
+					} \
+					auto ThreadSlices = Slices; \
+					ThreadSlices.emplace_back(j, End); \
+ \
+					_ThreadPool->Commit( \
+						_OpFn, \
+						Result.Slice(ThreadSlices), \
+						InputA.Slice(ThreadSlices), \
+						_Value, \
+						CurDims \
+					); \
+ \
+					if (End == InputShape[i]) \
+					{ \
+						_ThreadPool->Join(); \
+						return Ret; \
+					} \
+				} \
+			} \
+		} \
+		_OpFn(Result, InputA, _Value, CurDims); \
+	} \
+	else \
+		_OpFn(Result, InputA, _Value, CurDims); \
+ \
+	return Ret; \
 }

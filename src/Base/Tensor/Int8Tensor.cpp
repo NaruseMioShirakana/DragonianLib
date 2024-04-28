@@ -1560,6 +1560,151 @@ namespace Int8
 	LibSvcMonoOperatorFunctionImpl(Log10, Log10Impl);
 	LibSvcMonoOperatorInplaceFunctionImpl(Log10, Log10Impl);
 
+	void LessImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Less<ThisType>
+		);
+	}
+
+	void LessImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Less<ThisType>
+		);
+	}
+
+	void GreaterImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Greater<ThisType>
+		);
+	}
+
+	void GreaterImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Greater<ThisType>
+		);
+	}
+
+	void EqualImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Equal<ThisType>
+		);
+	}
+
+	void EqualImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::Equal<ThisType>
+		);
+	}
+
+	void LessEqualImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::LessEqual<ThisType>
+		);
+	}
+
+	void LessEqualImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::LessEqual<ThisType>
+		);
+	}
+
+	void GreaterEqualImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::GreaterEqual<ThisType>
+		);
+	}
+
+	void GreaterEqualImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::GreaterEqual<ThisType>
+		);
+	}
+
+	void NotEqualImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
+	{
+		CompareOperators<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::NotEqual<ThisType>
+		);
+	}
+
+	void NotEqualImplScalar(const Tensor& _Dst, const Tensor& _Src1, const ThisType& _Src2, const SizeType CurDims)
+	{
+		CompareOperatorsScalar<ThisType>(
+			_Dst,
+			_Src1,
+			_Src2,
+			CurDims,
+			::libsvc::NotEqual<ThisType>
+		);
+	}
+
+	LibSvcCompareOperatorFunctionImpl(Less, LessImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(Less, LessImplScalar);
+	LibSvcCompareOperatorFunctionImpl(Greater, GreaterImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(Greater, GreaterImplScalar);
+	LibSvcCompareOperatorFunctionImpl(Equal, EqualImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(Equal, EqualImplScalar);
+	LibSvcCompareOperatorFunctionImpl(LessEqual, LessEqualImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(LessEqual, LessEqualImplScalar);
+	LibSvcCompareOperatorFunctionImpl(GreaterEqual, GreaterEqualImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(GreaterEqual, GreaterEqualImplScalar);
+	LibSvcCompareOperatorFunctionImpl(NotEqual, NotEqualImpl);
+	LibSvcCompareOperatorScalarFunctionImpl(NotEqual, NotEqualImplScalar);
+
 }
 
 LibSvcEnd
