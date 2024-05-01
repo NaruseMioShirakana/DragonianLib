@@ -85,13 +85,29 @@ bool RangeIsAllNone(const Vector<Range>& _Input);
 class Tensor : public TensorBase
 {
 public:
+	using InvokeFnType = void(*)(Tensor&);
+
 	Tensor() = delete;
 	~Tensor() override;
 	Tensor(TensorType _DType) :TensorBase(_DType) {}
 	Tensor(const ShapeType& _Shape, TensorType _DType);
 	Tensor(const Tensor& _Left);
 	Tensor(Tensor&& _Right) noexcept;
-	using InvokeFnType = void(*)(Tensor&);
+	static Tensor FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool = nullptr);
+	static Tensor LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Ones(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Zeros(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
+	static Tensor ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
+	static Tensor ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Rand(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Randn(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
+	static Tensor OnesLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
+	static Tensor ZerosLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
+	static Tensor ConstantLike(const Tensor& _Shape, double _Val, ThreadPool* _ThreadPool = nullptr);
+	static Tensor ConstantLike(const Tensor& _Shape, int64 _Val, ThreadPool* _ThreadPool = nullptr);
+	static Tensor RandLike(const Tensor& _Shape, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
+	static Tensor RandnLike(const Tensor& _Shape, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
+
 	static void SetThreadCount(SizeType _Count);
 
 protected:
@@ -108,8 +124,22 @@ protected:
 
 	std::deque<Tensor*> ViewChild_;
 	mutable std::mutex ViewMx_;
-
+	
 public:
+	//提醒运算符不要使用线程池
+	Tensor& DoNotUseThreadPool()
+	{
+		UseThreadPool_ = false;
+		return *this;
+	}
+
+	//提醒运算符使用线程池
+	Tensor& PlUseThreadPool()
+	{
+		UseThreadPool_ = true;
+		return *this;
+	}
+
 	//使用Indice获取一个数据
 	template <typename Ref>
 	Ref& Item(const ShapeType& _Indices)
@@ -122,6 +152,24 @@ public:
 	//获取当前第一个数据
 	template <typename Ref>
 	Ref& Item()
+	{
+		if (sizeof(Ref) != AlignSize_)
+			LibSvcThrow("TypeError!");
+		return *(Ref*)(GetPtr());
+	}
+
+	//使用Indice获取一个数据
+	template <typename Ref>
+	const Ref& Item(const ShapeType& _Indices) const
+	{
+		if (sizeof(Ref) != AlignSize_)
+			LibSvcThrow("TypeError!");
+		return *(Ref*)(Data(_Indices));
+	}
+
+	//获取当前第一个数据
+	template <typename Ref>
+	const Ref& Item() const
 	{
 		if (sizeof(Ref) != AlignSize_)
 			LibSvcThrow("TypeError!");
@@ -261,6 +309,9 @@ public:
 
 	//创建一个当前Tensor的View，改变其轴排列顺序，返回该View
 	Tensor Permute(const ShapeType& _DPremute) const;
+
+	//创建一个当前Tensor的View，将其_Dim轴与Last轴互换排列顺序，返回该View
+	Tensor SwapLastDim(SizeType _Dim) const;
 
 	//在一个Tensor的指定轴调用函数
 	static void Invoke(Tensor& _Tensor, SizeType InvokedDim, InvokeFnType _Fn);
@@ -524,6 +575,9 @@ public:
 	LibSvcTensorFnDef(Floor);
 	LibSvcTensorFnDef(Ceil);
 	LibSvcTensorFnDef(Round);
+
+private:
+	bool UseThreadPool_ = true;
 };
 
 template<typename _1Ty, typename _2Ty>
@@ -609,7 +663,7 @@ void CastFrom(const Tensor& _InputA, const Tensor& _InputB, const SizeType CurDi
 							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
 						const auto IndexAxis3B = IndexAxis2B +
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -793,7 +847,7 @@ void MonoOperators(
 							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
 						const auto IndexAxis3B = IndexAxis2B +
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -995,7 +1049,7 @@ void MultiOperators(
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
 						const auto IndexAxis3C = IndexAxis2C +
 							((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -1198,7 +1252,7 @@ void MultiOperatorsScalar(
 							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
 						const auto IndexAxis3B = IndexAxis2B +
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -1396,7 +1450,7 @@ void CompareOperators(
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
 						const auto IndexAxis3C = IndexAxis2C +
 							((l * StridesPtr3[Axis3]) + BeginsPtr3[Axis3]) * StepPtr3[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -1595,7 +1649,7 @@ void CompareOperatorsScalar(
 							((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
 						const auto IndexAxis3B = IndexAxis2B +
 							((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
-						for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+						for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 						{
 							const auto IndexAxis4A = IndexAxis3A +
 								((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];

@@ -13,7 +13,7 @@ private:
 	std::unordered_map<std::wstring, Value*> Layers_;
 
 public:
-	void loadData(ggml_context* _WeightDict, bool _Strict) override;
+	void loadData(const DictType& _WeightDict, bool _Strict) override;
 	void saveData(FileGuard& _File) override;
 };
 
@@ -28,7 +28,7 @@ public:
 protected:
 
 public:
-	void loadData(ggml_context* _WeightDict, bool _Strict) override;
+	void loadData(const DictType& _WeightDict, bool _Strict) override;
 	void saveData(FileGuard& _File) override;
 
 };

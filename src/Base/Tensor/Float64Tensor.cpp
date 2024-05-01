@@ -87,7 +87,7 @@ namespace Float64
 						{
 							const auto IndexAxis3 = IndexAxis2 +
 								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
-							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 							{
 								const auto IndexAxis4 = IndexAxis3 +
 									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
@@ -230,7 +230,7 @@ namespace Float64
 						{
 							const auto IndexAxis3 = IndexAxis2 +
 								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
-							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 							{
 								const auto IndexAxis4 = IndexAxis3 +
 									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
@@ -394,7 +394,7 @@ namespace Float64
 								((l * StridesPtr1[Axis3]) + BeginsPtr1[Axis3]) * StepPtr1[Axis3];
 							const auto IndexAxis3B = IndexAxis2B +
 								((l * StridesPtr2[Axis3]) + BeginsPtr2[Axis3]) * StepPtr2[Axis3];
-							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 							{
 								const auto IndexAxis4A = IndexAxis3A +
 									((m * StridesPtr1[Axis4]) + BeginsPtr1[Axis4]) * StepPtr1[Axis4];
@@ -551,7 +551,7 @@ namespace Float64
 						{
 							const auto IndexAxis3 = IndexAxis2 +
 								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
-							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 							{
 								const auto IndexAxis4 = IndexAxis3 +
 									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
@@ -918,7 +918,7 @@ namespace Float64
 							const auto IndexAxis3 = IndexAxis2 +
 								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
 							DataIndice[Axis3] = l;
-							for (SizeType m = 0; l < ShapePtr[Axis4]; ++m)
+							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
 							{
 								const auto IndexAxis4 = IndexAxis3 +
 									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
@@ -1135,6 +1135,8 @@ namespace Float64
 		else
 			CastImpl(SqueezedTensorA, SqueezedTensorB, CurDims);
 	}
+
+	//Operators
 
 	void AddImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
 	{
@@ -1752,6 +1754,627 @@ namespace Float64
 	LibSvcMonoOperatorInplaceFunctionImpl(Round, RoundImpl);
 	LibSvcMonoOperatorFunctionImpl(Floor, FloorImpl);
 	LibSvcMonoOperatorInplaceFunctionImpl(Floor, FloorImpl);
+
+	void SumImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
+	{
+		ThisType* DataPtr1 = (ThisType*)_Dst.Data();
+		const ThisType* DataPtr2 = (ThisType*)_Src.Data();
+
+		auto Steps1 = _Dst.StepsBack();
+		for (auto& i : Steps1)
+			i /= sizeof(ThisType);
+		auto Steps2 = _Src.StepsBack();
+		for (auto& i : Steps2)
+			i /= sizeof(ThisType);
+		const SizeType* __restrict ShapePtr = _Src.Shape().data();
+		const SizeType* __restrict StepPtr1 = Steps1.data();
+		const SizeType* __restrict StepPtr2 = Steps2.data();
+		const SizeType* __restrict BeginsPtr1 = _Dst.SliceBegins().data();
+		const SizeType* __restrict BeginsPtr2 = _Src.SliceBegins().data();
+		const SizeType* __restrict StridesPtr1 = _Dst.Strides().data();
+		const SizeType* __restrict StridesPtr2 = _Src.Strides().data();
+
+		if (CurDims > 5)
+		{
+			const auto LoopDim = CurDims - 1;
+			ShapeType CurIndice(LoopDim, 0);
+			SizeType* __restrict IndicesPtr = CurIndice.data();
+			LibSvcCycle(
+				IndicesPtr,
+				ShapePtr,
+				LoopDim,
+				{
+					SizeType Index1 = 0;
+					SizeType Index2 = 0;
+					for (SizeType i = 0; i < LoopDim; ++i)
+					{
+						Index1 += ((IndicesPtr[i] * StridesPtr1[i]) + BeginsPtr1[i]) * StepPtr1[i];
+						Index2 += ((IndicesPtr[i] * StridesPtr2[i]) + BeginsPtr2[i]) * StepPtr2[i];
+					}
+					DataPtr1[Index1] = ThisType(0);
+					for (SizeType i = 0; i < ShapePtr[LoopDim]; ++i)
+					{
+						const auto IndexAxisLB = Index2 + ((i * StridesPtr2[LoopDim]) + BeginsPtr2[LoopDim]) * StepPtr2[LoopDim];
+						DataPtr1[Index1] += DataPtr2[IndexAxisLB];
+					}
+				}
+			);
+
+			return;
+		}
+
+		if (CurDims == 5)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0];
+				const auto IndexAxis0B = ((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[1]) + BeginsPtr1[1]) * StepPtr1[1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[1]) + BeginsPtr2[1]) * StepPtr2[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2A = IndexAxis1A +
+							((k * StridesPtr1[2]) + BeginsPtr1[2]) * StepPtr1[2];
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[2]) + BeginsPtr2[2]) * StepPtr2[2];
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
+						{
+							const auto IndexAxis3A = IndexAxis2A +
+								((l * StridesPtr1[3]) + BeginsPtr1[3]) * StepPtr1[3];
+							const auto IndexAxis3B = IndexAxis2B +
+								((l * StridesPtr2[3]) + BeginsPtr2[3]) * StepPtr2[3];
+							DataPtr1[IndexAxis3A] = ThisType(0);
+							for (SizeType m = 0; m < ShapePtr[4]; ++m)
+							{
+								const auto IndexAxis4B = IndexAxis3B +
+									((m * StridesPtr2[4]) + BeginsPtr2[4]) * StepPtr2[4];
+								DataPtr1[IndexAxis3A] += DataPtr2[IndexAxis4B];
+							}
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 4)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0];
+				const auto IndexAxis0B = ((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[1]) + BeginsPtr1[1]) * StepPtr1[1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[1]) + BeginsPtr2[1]) * StepPtr2[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2A = IndexAxis1A +
+							((k * StridesPtr1[2]) + BeginsPtr1[2]) * StepPtr1[2];
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[2]) + BeginsPtr2[2]) * StepPtr2[2];
+						DataPtr1[IndexAxis2A] = ThisType(0);
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
+						{
+							const auto IndexAxis3B = IndexAxis2B +
+								((l * StridesPtr2[3]) + BeginsPtr2[3]) * StepPtr2[3];
+							DataPtr1[IndexAxis2A] += DataPtr2[IndexAxis3B];
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 3)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0];
+				const auto IndexAxis0B = ((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1A = IndexAxis0A +
+						((j * StridesPtr1[1]) + BeginsPtr1[1]) * StepPtr1[1];
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[1]) + BeginsPtr2[1]) * StepPtr2[1];
+					DataPtr1[IndexAxis1A] = ThisType(0);
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2B = IndexAxis1B +
+							((k * StridesPtr2[2]) + BeginsPtr2[2]) * StepPtr2[2];
+						DataPtr1[IndexAxis1A] += DataPtr2[IndexAxis2B];
+					}
+				}
+			}
+		}
+		else if (CurDims == 2)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0A = ((i * StridesPtr1[0]) + BeginsPtr1[0]) * StepPtr1[0];
+				const auto IndexAxis0B = ((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0];
+				DataPtr1[IndexAxis0A] = ThisType(0);
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1B = IndexAxis0B +
+						((j * StridesPtr2[1]) + BeginsPtr2[1]) * StepPtr2[1];
+					DataPtr1[IndexAxis0A] += DataPtr2[IndexAxis1B];
+				}
+			}
+		}
+		else if (CurDims == 1)
+		{
+			DataPtr1[BeginsPtr1[0] * StepPtr1[0]] = ThisType(0);
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				DataPtr1[BeginsPtr1[0] * StepPtr1[0]] +=
+					DataPtr2[((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0]];
+			}
+		}
+	}
+
+	void CumSumImpl(const Tensor& _Dst, const SizeType CurDims)
+	{
+		ThisType* __restrict DataPtr = (ThisType*)_Dst.Data();
+
+		auto Steps = _Dst.StepsBack();
+		for (auto& i : Steps)
+			i /= sizeof(ThisType);
+
+		const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+		const SizeType* __restrict StepPtr = Steps.data();
+		const SizeType* __restrict BeginsPtr = _Dst.SliceBegins().data();
+		const SizeType* __restrict StridesPtr = _Dst.Strides().data();
+
+		if (CurDims > 5)
+		{
+			const auto LoopDim = CurDims - 1;
+			ShapeType CurIndice(LoopDim, 0);
+			SizeType* __restrict IndicesPtr = CurIndice.data();
+			LibSvcCycle(
+				IndicesPtr,
+				ShapePtr,
+				LoopDim,
+				{
+					SizeType Index = 0;
+					for (SizeType i = 0; i < LoopDim; ++i)
+						Index += ((IndicesPtr[i] * StridesPtr[i]) + BeginsPtr[i]) * StepPtr[i];
+					for (SizeType ldvar = 1; ldvar < ShapePtr[LoopDim]; ++ldvar)
+					{
+						const auto IndexAxisCur = Index +
+							((ldvar * StridesPtr[LoopDim]) + BeginsPtr[LoopDim]) * StepPtr[LoopDim];
+						const auto IndexAxisLast = Index +
+							(((ldvar - 1) * StridesPtr[LoopDim]) + BeginsPtr[LoopDim]) * StepPtr[LoopDim];
+						DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+					}
+				}
+			);
+
+			return;
+		}
+
+		if (CurDims == 5)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
+						{
+							const auto IndexAxis3 = IndexAxis2 +
+								((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							for (SizeType ldvar = 1; ldvar < ShapePtr[4]; ++ldvar)
+							{
+								const auto IndexAxisCur = IndexAxis3 +
+									((ldvar * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
+								const auto IndexAxisLast = IndexAxis3 +
+									(((ldvar - 1) * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
+								DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+							}
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 4)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						for (SizeType ldvar = 1; ldvar < ShapePtr[3]; ++ldvar)
+						{
+							const auto IndexAxisCur = IndexAxis2 +
+								((ldvar * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							const auto IndexAxisLast = IndexAxis2 +
+								(((ldvar - 1) * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 3)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType ldvar = 1; ldvar < ShapePtr[2]; ++ldvar)
+					{
+						const auto IndexAxisCur = IndexAxis1 +
+							((ldvar * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						const auto IndexAxisLast = IndexAxis1 +
+							(((ldvar - 1) * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+					}
+				}
+			}
+		}
+		else if (CurDims == 2)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType ldvar = 1; ldvar < ShapePtr[1]; ++ldvar)
+				{
+					const auto IndexAxisCur = IndexAxis0 +
+						((ldvar * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto IndexAxisLast = IndexAxis0 +
+						(((ldvar - 1) * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+				}
+			}
+		}
+		else if (CurDims == 1)
+		{
+			for (SizeType ldvar = 1; ldvar < ShapePtr[0]; ++ldvar)
+			{
+				const auto IndexAxisCur = ((ldvar * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto IndexAxisLast = (((ldvar - 1) * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				DataPtr[IndexAxisCur] += DataPtr[IndexAxisLast];
+			}
+		}
+	}
+
+	void CumProdImpl(const Tensor& _Dst, const SizeType CurDims)
+	{
+		ThisType* __restrict DataPtr = (ThisType*)_Dst.Data();
+
+		auto Steps = _Dst.StepsBack();
+		for (auto& i : Steps)
+			i /= sizeof(ThisType);
+
+		const SizeType* __restrict ShapePtr = _Dst.Shape().data();
+		const SizeType* __restrict StepPtr = Steps.data();
+		const SizeType* __restrict BeginsPtr = _Dst.SliceBegins().data();
+		const SizeType* __restrict StridesPtr = _Dst.Strides().data();
+
+		if (CurDims > 5)
+		{
+			const auto LoopDim = CurDims - 1;
+			ShapeType CurIndice(LoopDim, 0);
+			SizeType* __restrict IndicesPtr = CurIndice.data();
+			LibSvcCycle(
+				IndicesPtr,
+				ShapePtr,
+				LoopDim,
+				{
+					SizeType Index = 0;
+					for (SizeType i = 0; i < LoopDim; ++i)
+						Index += ((IndicesPtr[i] * StridesPtr[i]) + BeginsPtr[i]) * StepPtr[i];
+					for (SizeType ldvar = 1; ldvar < ShapePtr[LoopDim]; ++ldvar)
+					{
+						const auto IndexAxisCur = Index +
+							((ldvar * StridesPtr[LoopDim]) + BeginsPtr[LoopDim]) * StepPtr[LoopDim];
+						const auto IndexAxisLast = Index +
+							(((ldvar - 1) * StridesPtr[LoopDim]) + BeginsPtr[LoopDim]) * StepPtr[LoopDim];
+						DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+					}
+				}
+			);
+
+			return;
+		}
+
+		if (CurDims == 5)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
+						{
+							const auto IndexAxis3 = IndexAxis2 +
+								((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							for (SizeType ldvar = 1; ldvar < ShapePtr[4]; ++ldvar)
+							{
+								const auto IndexAxisCur = IndexAxis3 +
+									((ldvar * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
+								const auto IndexAxisLast = IndexAxis3 +
+									(((ldvar - 1) * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
+								DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+							}
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 4)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
+					{
+						const auto IndexAxis2 = IndexAxis1 +
+							((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						for (SizeType ldvar = 1; ldvar < ShapePtr[3]; ++ldvar)
+						{
+							const auto IndexAxisCur = IndexAxis2 +
+								((ldvar * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							const auto IndexAxisLast = IndexAxis2 +
+								(((ldvar - 1) * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+						}
+					}
+				}
+			}
+		}
+		else if (CurDims == 3)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
+				{
+					const auto IndexAxis1 = IndexAxis0 +
+						((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					for (SizeType ldvar = 1; ldvar < ShapePtr[2]; ++ldvar)
+					{
+						const auto IndexAxisCur = IndexAxis1 +
+							((ldvar * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						const auto IndexAxisLast = IndexAxis1 +
+							(((ldvar - 1) * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+					}
+				}
+			}
+		}
+		else if (CurDims == 2)
+		{
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				for (SizeType ldvar = 1; ldvar < ShapePtr[1]; ++ldvar)
+				{
+					const auto IndexAxisCur = IndexAxis0 +
+						((ldvar * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto IndexAxisLast = IndexAxis0 +
+						(((ldvar - 1) * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+				}
+			}
+		}
+		else if (CurDims == 1)
+		{
+			for (SizeType ldvar = 1; ldvar < ShapePtr[0]; ++ldvar)
+			{
+				const auto IndexAxisCur = ((ldvar * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto IndexAxisLast = (((ldvar - 1) * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				DataPtr[IndexAxisCur] *= DataPtr[IndexAxisLast];
+			}
+		}
+	}
+
+	Tensor Sum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool)
+	{
+		const auto _Dims = _Src.DimCount();
+		//const auto& _Shape = _Src.Shape();
+		auto _NewShape = _Src.Shape();
+		_Axis = Tensor::CalcIndex(_Axis, _Dims);
+		_NewShape[_Axis] = 1;
+
+		//Used By Squeezed Operator
+		bool ReqSqu = false;
+		if (_NewShape.size() > 1)
+		{
+			_NewShape.erase(_NewShape.begin() + _Axis);
+			ReqSqu = true;
+		}
+
+		Tensor Output(_NewShape, _Src.DType());
+
+		const auto InputRef = _Src.SwapLastDim(_Axis);
+		//auto ReturnRef = Output.SwapLastDim(_Axis);
+		auto ReturnRef = Output.CreateView();
+
+		//Used By Squeezed Operator
+		if (ReqSqu)
+			ReturnRef = ReturnRef.UnSqueeze(-1);
+
+		const auto& PermutedShape = InputRef.Shape();
+		const auto TotalSize = VectorMul(PermutedShape);
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < _Dims - 1; ++i)
+			{
+				if (PermutedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(PermutedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, PermutedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(
+							SumImpl,
+							ReturnRef.Slice(ThreadSlices),
+							InputRef.Slice(ThreadSlices),
+							_Dims
+						);
+						if (End == PermutedShape[i])
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+					}
+				}
+			}
+		}
+
+		SumImpl(ReturnRef, InputRef, _Dims);
+
+		return Output;
+	}
+
+	Tensor CumSum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool)
+	{
+		const auto _Dims = _Src.DimCount();
+		//const auto& _Shape = _Src.Shape();
+		//auto _NewShape = _Src.Shape();
+		_Axis = Tensor::CalcIndex(_Axis, _Dims);
+
+		Tensor Output = _Src.Clone(_ThreadPool);
+
+		const auto ReturnRef = Output.SwapLastDim(_Axis);
+
+		const auto& PermutedShape = ReturnRef.Shape();
+		const auto TotalSize = VectorMul(PermutedShape);
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < _Dims - 1; ++i)
+			{
+				if (PermutedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(PermutedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, PermutedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(
+							CumSumImpl,
+							ReturnRef.Slice(ThreadSlices),
+							_Dims
+						);
+						if (End == PermutedShape[i])
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+					}
+				}
+			}
+		}
+
+		CumSumImpl(ReturnRef, _Dims);
+
+		return Output;
+	}
+
+	Tensor CumProd(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool)
+	{
+		const auto _Dims = _Src.DimCount();
+		//const auto& _Shape = _Src.Shape();
+		//auto _NewShape = _Src.Shape();
+		_Axis = Tensor::CalcIndex(_Axis, _Dims);
+
+		Tensor Output = _Src.Clone(_ThreadPool);
+
+		const auto ReturnRef = Output.SwapLastDim(_Axis);
+
+		const auto& PermutedShape = ReturnRef.Shape();
+		const auto TotalSize = VectorMul(PermutedShape);
+		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		{
+			const auto NWorkers = _ThreadPool->GetThreadCount();
+			Vector<Range> Slices;
+			for (SizeType i = 0; i < _Dims - 1; ++i)
+			{
+				if (PermutedShape[i] < NWorkers)
+					Slices.emplace_back(None);
+				else
+				{
+					const auto Step = Tensor::Ceil(PermutedShape[i], NWorkers);
+					for (SizeType j = 0; ; j += Step)
+					{
+						const auto End = std::min(j + Step, PermutedShape[i]);
+						if (j >= End)
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+						auto ThreadSlices = Slices;
+						ThreadSlices.emplace_back(j, End);
+						_ThreadPool->Commit(
+							CumProdImpl,
+							ReturnRef.Slice(ThreadSlices),
+							_Dims
+						);
+						if (End == PermutedShape[i])
+						{
+							_ThreadPool->Join();
+							return Output;
+						}
+					}
+				}
+			}
+		}
+
+		CumProdImpl(ReturnRef, _Dims);
+
+		return Output;
+	}
 }
 
 LibSvcEnd

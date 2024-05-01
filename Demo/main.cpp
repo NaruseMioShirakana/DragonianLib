@@ -38,6 +38,10 @@ int main()
 	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32);
 	Ten.RandnFix();
 	Ten.Invoke(1, PrintTensor);
+	std::cout << "\nGather Op Test\n";
+	Ten.Gather(libsvc::Tensor::ConstantOf({ 2,2 }, 0ll, libsvc::TensorType::Int64)).Invoke(1, PrintTensor);
+	std::cout << "\nCumSum Op Test\n";
+	libsvc::Tensor::Diff(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
 	std::cout << '\n';
 	Ten = libsvc::Tensor::Stack({ Ten ,Ten }, 0);
 	Ten.Invoke(1, PrintTensor);
@@ -80,6 +84,7 @@ int main()
 	{
 		const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 		Ten1919810.Fix(i);
+		std::cout << Ten1919810.Item<float>() << " CostTime:";
 		QueryPerformanceCounter(&Time1);
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
 		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
@@ -90,7 +95,7 @@ int main()
 			libsvc::TensorType::Float32,
 			nullptr, &Thp
 		);*/
-		auto a = Ten1919810 * Ten1919810;
+		auto a = libsvc::Tensor::Diff(Ten1919810, 1, &Thp);
 		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
@@ -102,7 +107,9 @@ int main()
 		//Thp.Join();
 		QueryPerformanceCounter(&Time2);
 		std::cout << double(Time2.QuadPart - Time1.QuadPart) * 1. / (double)Freq.QuadPart << '\n';
+		//a.Invoke(1, PrintTensor);
 	}
+	std::cout << "\n\n\n";
 	Ten.FixOnes();
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';

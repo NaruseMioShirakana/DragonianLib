@@ -69,5 +69,9 @@ namespace Int16
 	Tensor LessEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
 	Tensor GreaterEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
 	Tensor NotEqual(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
+
+	Tensor Sum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
+	Tensor CumSum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
+	Tensor CumProd(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
 }
 LibSvcEnd

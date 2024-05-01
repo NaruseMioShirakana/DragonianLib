@@ -41,6 +41,11 @@ public:
 
     void Join();
 
+    bool Enabled() const
+    {
+        return !Stoped_;
+    }
+
     int64 GetThreadCount() const
     {
         return ThreadCount_;

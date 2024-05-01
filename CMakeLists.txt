@@ -10,6 +10,7 @@ add_definitions(-DLIBSVC_ALIG_DIM_SHAPE=8)  #Don't Change This Value'
 add_definitions(-DLIBSVC_CONT_THRESHOLD_FRONT=8)
 add_definitions(-DLIBSVC_CONT_THRESHOLD_BACK=32)
 add_definitions(-DLIBSVC_CONT_THRESHOLD_MIN_SIZE=65536)
+add_definitions(-DLIBSVC_NAME_MAX_SIZE=1024)
 add_definitions(-DUNICODE)
 
 set(LIBSVC_LIB libsvc)
@@ -64,11 +65,8 @@ else()
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include/Base)
-include_directories(${PROJECT_SOURCE_DIR}/ggml/include)
 
-add_subdirectory(ggml)
-
-target_link_libraries(${LIBSVC_LIB} PUBLIC ggml)
+target_link_libraries(${LIBSVC_LIB} PUBLIC)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET libsvc PROPERTY CXX_STANDARD 23)

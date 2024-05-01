@@ -14,7 +14,7 @@ Module::Module(Module* _Parent, const std::wstring& _Name)
 		RegName_ = _Name;
 }
 
-void Module::loadData(ggml_context* _WeightDict, bool _Strict)
+void Module::loadData(const DictType& _WeightDict, bool _Strict)
 {
 	for (const auto& it : Layers_ | std::views::values)
 		it->loadData(_WeightDict, _Strict);

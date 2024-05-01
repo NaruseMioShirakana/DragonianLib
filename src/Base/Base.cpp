@@ -2,7 +2,6 @@
 #include <windows.h>
 #include <unordered_map>
 #include "Base.h"
-#include "ggml-backend.h"
 
 LibSvcBegin
 

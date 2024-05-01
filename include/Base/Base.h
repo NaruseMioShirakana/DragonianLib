@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
-#include "ggml-alloc.h"
 #include "Util/Logger.h"
 
 #if LIBSVC_ALLOC_ALIG > 1
@@ -65,6 +64,8 @@ using uint64 = uint64_t;
 struct NoneType {};
 static constexpr NoneType None;
 
+using DictType = int;
+
 #ifdef _WIN32
 #pragma pack(push, 1)
 #else
@@ -73,7 +74,7 @@ static constexpr NoneType None;
 struct WeightHeader
 {
 	int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
-	char LayerName[GGML_MAX_NAME] = { 0 };
+	char LayerName[LIBSVC_NAME_MAX_SIZE] = { 0 };
 	char Type[16] = { 0 };
 };
 #ifdef _WIN32

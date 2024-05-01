@@ -73,5 +73,9 @@ namespace Float64
 	LibSvcMonoOperatorFunctionDef(Floor);
 	LibSvcMonoOperatorFunctionDef(Ceil);
 	LibSvcMonoOperatorFunctionDef(Round);
+
+	Tensor Sum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
+	Tensor CumSum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
+	Tensor CumProd(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
 }
 LibSvcEnd
