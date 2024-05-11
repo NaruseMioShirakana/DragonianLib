@@ -208,6 +208,66 @@ Tensor Tensor::RandnLike(const Tensor& _Shape, int64_t _Seed, double _Mean, doub
 	return Ret;
 }
 
+Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool)
+{
+	if (_Dtype != TensorType::Float64 && _Dtype != TensorType::Float32)
+		LibSvcThrow("Type Error!");
+	ShapeType _Shape(1, 0);
+	_Shape[0] = SizeType((_End - _Begin) / _Step);
+	if (_Shape[0] <= 0)
+		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
+	Tensor Ret(_Shape, _Dtype);
+	Ret.Assign(_Step, _ThreadPool);
+
+	if(_Dtype == TensorType::Float32)
+	{
+		*(float32*)Ret.GetPtr() = (float32)_Begin;
+		Float32::CumSumImpl(Ret, 1);
+	}
+	else if(_Dtype == TensorType::Float64)
+	{
+		*(float64*)Ret.GetPtr() = _Begin;
+		Float64::CumSumImpl(Ret, 1);
+	}
+
+	return Ret;
+}
+
+Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool)
+{
+	if (_Dtype < TensorType::Int8)
+		LibSvcThrow("Type Error!");
+	ShapeType _Shape(1, 0);
+	_Shape[0] = SizeType((_End - _Begin) / _Step);
+	if (_Shape[0] <= 0)
+		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
+	Tensor Ret(_Shape, _Dtype);
+	Ret.Assign(_Step, _ThreadPool);
+
+	if (_Dtype == TensorType::Int8)
+	{
+		*(int8*)Ret.GetPtr() = (int8)_Begin;
+		Int8::CumSumImpl(Ret, 1);
+	}
+	else if (_Dtype == TensorType::Int16)
+	{
+		*(int16*)Ret.GetPtr() = (int16)_Begin;
+		Int16::CumSumImpl(Ret, 1);
+	}
+	else if (_Dtype == TensorType::Int32)
+	{
+		*(int32*)Ret.GetPtr() = (int32)_Begin;
+		Int32::CumSumImpl(Ret, 1);
+	}
+	else if (_Dtype == TensorType::Int64)
+	{
+		*(int64*)Ret.GetPtr() = _Begin;
+		Int64::CumSumImpl(Ret, 1);
+	}
+
+	return Ret;
+}
+
 //Private
 
 void Tensor::Free()

@@ -6,6 +6,7 @@
 #include "Util/ThreadPool.h"
 #include "Tensor/Macro.h"
 #include "Util/Avx256.h"
+#include "Util/SpecialOperator.h"
 
 LibSvcBegin
 template<typename _Type>
@@ -76,6 +77,16 @@ enum class PaddingType
 	Replicate
 };
 
+enum class InterpolateType
+{
+	Nearest,
+	Linear,
+	Bilinear,
+	Bicubic,
+	Trilinear,
+	Area,
+};
+
 using SliceOptions = Vector<Range>;
 
 SizeType VectorMul(const ShapeType& _Input);
@@ -107,6 +118,8 @@ public:
 	static Tensor ConstantLike(const Tensor& _Shape, int64 _Val, ThreadPool* _ThreadPool = nullptr);
 	static Tensor RandLike(const Tensor& _Shape, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
 	static Tensor RandnLike(const Tensor& _Shape, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
+	static Tensor Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr);
 
 	static void SetThreadCount(SizeType _Count);
 

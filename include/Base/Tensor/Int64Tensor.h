@@ -73,5 +73,7 @@ namespace Int64
 	Tensor Sum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
 	Tensor CumSum(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
 	Tensor CumProd(const Tensor& _Src, SizeType _Axis, ThreadPool* _ThreadPool);
+	void CumSumImpl(const Tensor& _Dst, const SizeType CurDims);
+	void CumProdImpl(const Tensor& _Dst, const SizeType CurDims);
 }
 LibSvcEnd

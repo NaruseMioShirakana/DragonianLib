@@ -34,6 +34,8 @@ int main()
 	libsvc::Tensor::SetThreadCount(8);
 	libsvc::ThreadPool Thp;
 	Thp.Init(8);
+	libsvc::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
+	std::cout << "\nGather Op Test\n";
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
 	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32);
 	Ten.RandnFix();
@@ -95,7 +97,7 @@ int main()
 			libsvc::TensorType::Float32,
 			nullptr, &Thp
 		);*/
-		auto a = libsvc::Tensor::Diff(Ten1919810, 1, &Thp);
+		auto a = libsvc::Tensor::Sum(Ten1919810, 1, &Thp);
 		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);

@@ -1,4 +1,3 @@
-
 #include "Tensor/Float32Tensor.h"
 
 LibSvcBegin
@@ -2374,6 +2373,86 @@ namespace Float32
 		CumProdImpl(ReturnRef, _Dims);
 
 		return Output;
+	}
+
+	void NearestInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+		
+	}
+
+	void LinearInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+		InterpImpl<ThisType>(
+			_Dst,
+			_Src,
+			CurDims,
+			Linear1DImpl<ThisType>
+		);
+	}
+
+	void BilinearInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+
+	}
+
+	void TrilinearInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+
+	}
+
+	void BicubicInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+
+	}
+
+	void AreaInterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims
+	)
+	{
+
+	}
+
+	void InterpolateImpl(
+		const Tensor& _Dst,
+		const Tensor& _Src,
+		const SizeType CurDims,
+		InterpolateType _Type = InterpolateType::Nearest
+	)
+	{
+		if(_Type == InterpolateType::Nearest)
+			NearestInterpolateImpl(_Dst, _Src, CurDims - 1);
+		else if (_Type == InterpolateType::Linear)
+			LinearInterpolateImpl(_Dst, _Src, CurDims - 1);
+		else if (_Type == InterpolateType::Bilinear)
+			BilinearInterpolateImpl(_Dst, _Src, CurDims - 2);
+		else if (_Type == InterpolateType::Trilinear)
+			TrilinearInterpolateImpl(_Dst, _Src, CurDims - 3);
+		else if (_Type == InterpolateType::Bicubic)
+			BicubicInterpolateImpl(_Dst, _Src, CurDims - 3);
+		else if (_Type == InterpolateType::Area)
+			AreaInterpolateImpl(_Dst, _Src, CurDims - 3);
 	}
 }
 
