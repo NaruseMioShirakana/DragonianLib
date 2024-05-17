@@ -877,52 +877,45 @@ namespace Float32
 			FixWithRandomImpl(SqueezedTensor, _Seed, _Mean, _Sigma, CurDims);
 	}
 
-	void GatherImpl(const Tensor& _Ret, const Tensor& _Input, const Tensor& _Indices, const SizeType CurDims)
+	void GatherImpl(const Tensor& _Ret, const Tensor& _Input, const Tensor& _Indices, SizeType _Axis, const SizeType CurDims)
 	{
 		auto Steps = _Indices.StepsBack();
 		for (auto& i : Steps)
-			i /= sizeof(ThisType);
+			i /= _Indices.GetAlignSize();
 
 		const SizeType* __restrict ShapePtr = _Indices.Shape().data();
 		const SizeType* __restrict StepPtr = Steps.data();
 		const SizeType* __restrict BeginsPtr = _Indices.SliceBegins().data();
 		const SizeType* __restrict StridesPtr = _Indices.Strides().data();
+		const int32* IndicePtr = (int32*)_Indices.Data();
 
-		const ThisType* IndicePtr = (ThisType*)_Indices.Data();
-
-		auto Cont = _Indices.CalcContinuous();
-		Cont.resize(5);
-		const SizeType* __restrict ContPtr = Cont.data();
-		const SizeType Axis0 = ContPtr[0], Axis1 = ContPtr[1], Axis2 = ContPtr[2], Axis3 = ContPtr[3], Axis4 = ContPtr[4];
-		ShapeType DataIndice(CurDims, 0);
-
+		SliceOptions SliceOpti(_Input.DimCount(), None);
+		auto& CurSli = SliceOpti[_Axis];
 		if (CurDims == 5)
 		{
-			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
-				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
-				DataIndice[Axis0] = i;
-				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto Tensor0 = _Ret[i];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
-					const auto IndexAxis1 = IndexAxis0 +
-						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
-					DataIndice[Axis1] = j;
-					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto Tensor1 = Tensor0[j];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
-						const auto IndexAxis2 = IndexAxis1 +
-							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
-						DataIndice[Axis2] = k;
-						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						const auto Tensor2 = Tensor1[k];
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
 						{
-							const auto IndexAxis3 = IndexAxis2 +
-								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
-							DataIndice[Axis3] = l;
-							for (SizeType m = 0; m < ShapePtr[Axis4]; ++m)
+							const auto IndexAxis3 = IndexAxis2 + ((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							const auto Tensor3 = Tensor2[l];
+							for (SizeType m = 0; m < ShapePtr[4]; ++m)
 							{
-								const auto IndexAxis4 = IndexAxis3 +
-									((m * StridesPtr[Axis4]) + BeginsPtr[Axis4]) * StepPtr[Axis4];
-								DataIndice[Axis4] = m;
-								_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis4])]);
+								const auto IndexAxis4 = IndexAxis3 + ((m * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
+								const auto Tensor4 = Tensor3[m];
+								const auto CIndex = SizeType(IndicePtr[IndexAxis4]);
+								CurSli = { CIndex, CIndex + 1 };
+								Tensor4.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
 							}
 						}
 					}
@@ -931,26 +924,25 @@ namespace Float32
 		}
 		else if (CurDims == 4)
 		{
-			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
-				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
-				DataIndice[Axis0] = i;
-				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto Tensor0 = _Ret[i];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
-					const auto IndexAxis1 = IndexAxis0 +
-						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
-					DataIndice[Axis1] = j;
-					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto Tensor1 = Tensor0[j];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
-						const auto IndexAxis2 = IndexAxis1 +
-							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
-						DataIndice[Axis2] = k;
-						for (SizeType l = 0; l < ShapePtr[Axis3]; ++l)
+						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						const auto Tensor2 = Tensor1[k];
+						for (SizeType l = 0; l < ShapePtr[3]; ++l)
 						{
-							const auto IndexAxis3 = IndexAxis2 +
-								((l * StridesPtr[Axis3]) + BeginsPtr[Axis3]) * StepPtr[Axis3];
-							DataIndice[Axis3] = l;
-							_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis3])]);
+							const auto IndexAxis3 = IndexAxis2 + ((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
+							const auto Tensor3 = Tensor2[l];
+							const auto CIndex = SizeType(IndicePtr[IndexAxis3]);
+							CurSli = { CIndex, CIndex + 1 };
+							Tensor3.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
 						}
 					}
 				}
@@ -958,54 +950,66 @@ namespace Float32
 		}
 		else if (CurDims == 3)
 		{
-			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
-				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
-				DataIndice[Axis0] = i;
-				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto Tensor0 = _Ret[i];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
-					const auto IndexAxis1 = IndexAxis0 +
-						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
-					DataIndice[Axis1] = j;
-					for (SizeType k = 0; k < ShapePtr[Axis2]; ++k)
+					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto Tensor1 = Tensor0[j];
+					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
-						const auto IndexAxis2 = IndexAxis1 +
-							((k * StridesPtr[Axis2]) + BeginsPtr[Axis2]) * StepPtr[Axis2];
-						DataIndice[Axis2] = k;
-						_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis2])]);
+						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
+						const auto Tensor2 = Tensor1[k];
+						const auto CIndex = SizeType(IndicePtr[IndexAxis2]);
+						CurSli = { CIndex, CIndex + 1 };
+						Tensor2.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
 					}
 				}
 			}
 		}
 		else if (CurDims == 2)
 		{
-			for (SizeType i = 0; i < ShapePtr[Axis0]; ++i)
+			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
-				const auto IndexAxis0 = ((i * StridesPtr[Axis0]) + BeginsPtr[Axis0]) * StepPtr[Axis0];
-				DataIndice[Axis0] = i;
-				for (SizeType j = 0; j < ShapePtr[Axis1]; ++j)
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto Tensor0 = _Ret[i];
+				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
-					const auto IndexAxis1 = IndexAxis0 +
-						((j * StridesPtr[Axis1]) + BeginsPtr[Axis1]) * StepPtr[Axis1];
-					DataIndice[Axis1] = j;
-					_Ret[DataIndice].Assign(_Input[SizeType(IndicePtr[IndexAxis1])]);
+					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
+					const auto Tensor1 = Tensor0[j];
+					const auto CIndex = SizeType(IndicePtr[IndexAxis1]);
+					CurSli = { CIndex, CIndex + 1 };
+					Tensor1.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
 				}
 			}
 		}
 		else if (CurDims == 1)
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
-				_Ret[i].Assign(_Input[SizeType(IndicePtr[((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0]])]);
+			{
+				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto CIndex = SizeType(IndicePtr[IndexAxis0]);
+				CurSli = { CIndex, CIndex + 1 };
+				_Ret[i].Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+			}
 	}
 
-	Tensor Gather(const Tensor& _Input, const Tensor& _Indices, ThreadPool* _ThreadPool)
+	Tensor Gather(const Tensor& _Input, const Tensor& _IndicesInp, SizeType _Axis, ThreadPool* _ThreadPool)
 	{
-		const auto& _InputShape = _Input.Shape();
+		auto _Indices = _IndicesInp.Cast(TensorType::Int32, _ThreadPool);
+		if (!_Indices.IsContinuous())
+			_Indices = _Indices.Continuous(_ThreadPool);
+		auto _InputShape = _Input.Shape();
 		const auto& _IndicesShape = _Indices.Shape();
 		ShapeType _NewShape(_IndicesShape.begin(), _IndicesShape.end());
 		if (_InputShape.size() == 1)
 			_NewShape.emplace_back(1);
 		else
-			_NewShape.insert(_NewShape.end(), _InputShape.begin() + 1, _InputShape.end());
+		{
+			_InputShape.erase(_InputShape.begin() + _Axis);
+			_NewShape.insert(_NewShape.end(), _InputShape.begin(), _InputShape.end());
+		}
 		Tensor Ret(_NewShape, _Input.DType());
 		const auto TotalSize = VectorMul(_NewShape);
 		const auto CurDims = _Indices.DimCount();
@@ -1041,6 +1045,7 @@ namespace Float32
 							Ret.Slice(ThreadSlices),
 							_Input, 
 							_Indices.Slice(ThreadSlices),
+							_Axis,
 							CurDims
 						);
 						if (End == _IndicesShape[i])
@@ -1051,10 +1056,10 @@ namespace Float32
 					}
 				}
 			}
-			GatherImpl(Ret, _Input, _Indices, CurDims);
+			GatherImpl(Ret, _Input, _Indices, _Axis, CurDims);
 		}
 		else
-			GatherImpl(Ret, _Input, _Indices, CurDims);
+			GatherImpl(Ret, _Input, _Indices, _Axis, CurDims);
 
 		return Ret;
 	}

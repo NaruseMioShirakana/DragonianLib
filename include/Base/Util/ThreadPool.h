@@ -51,6 +51,11 @@ public:
         return ThreadCount_;
     }
 
+    operator ThreadPool*()
+    {
+        return this;
+    }
+
 private:
     std::vector<std::thread> Threads_;
     std::atomic<bool> Stoped_;

@@ -12,6 +12,24 @@
 
 LibSvcBegin
 
+template<typename _T>
+size_t GetObjectSize(const std::vector<_T>& _Input, ShapeType& _Shape)
+{
+	if (_Input.empty())
+		return 0;
+	_Shape.emplace_back(_Input.size());
+	return _Input.size() * GetObjectSize(_Input[0], _Shape);
+}
+
+template<typename _T>
+size_t GetObjectSize(const std::initializer_list<_T>& _Input, ShapeType& _Shape)
+{
+	if (_Input.empty())
+		return 0;
+	_Shape.emplace_back(_Input.size());
+	return _Input.size() * GetObjectSize(_Input[0], _Shape);
+}
+
 ThreadPool GlobalThreadPool;
 
 SizeType VectorMul(const ShapeType& _Input)
@@ -1530,6 +1548,8 @@ Tensor Tensor::Squeeze(SizeType Dim) const
 Tensor Tensor::Squeeze() const
 {
 	auto Ret = CreateView();
+	if (DimCount() == 1)
+		return Ret;
 	auto Iter = std::ranges::find(Ret.ShapeBack_, 1);
 	while (Iter != Ret.ShapeBack_.end())
 	{
@@ -1962,7 +1982,7 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 		for (SizeType i = 0; i < (SizeType)_Inputs.size(); ++i)
 		{
 			CurSlice = { i , i + 1 };
-			Ret.Slice(SliceOptions).Assign(_Inputs[i], _ThreadPool);
+			Ret.Slice(SliceOptions).Squeeze(_Dim).Assign(_Inputs[i], _ThreadPool);
 		}
 	}
 	return Ret;
@@ -2009,18 +2029,19 @@ Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _Th
 	return Ret;
 }
 
-Tensor Tensor::Gather(const Tensor& _Input, const Tensor& _Indices, ThreadPool* _ThreadPool)
+Tensor Tensor::Gather(const Tensor& _Input, const Tensor& _Indices, SizeType _Axis, ThreadPool* _ThreadPool)
 {
 	_Input.ThrowOnNotEnabled();
 	_Indices.ThrowOnNotEnabled();
+	_Axis = CalcIndex(_Axis, _Input.DimCount());
 	Tensor Ret(_Input.DType_);
-	LibSvcOperator(_Input.DType_, Ret, Gather, _Input, _Indices, _ThreadPool);
+	LibSvcOperator(_Input.DType_, Ret, Gather, _Input, _Indices, _Axis, _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Gather(const Tensor& _Indices, ThreadPool* _ThreadPool) const
+Tensor Tensor::Gather(const Tensor& _Indices, SizeType _Axis, ThreadPool* _ThreadPool) const
 {
-	return Gather(*this, _Indices, _ThreadPool);
+	return Gather(*this, _Indices, _Axis, _ThreadPool);
 }
 
 Tensor Tensor::Cast(const Tensor& _Input, TensorType _Dtype, ThreadPool* _ThreadPool)

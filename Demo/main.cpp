@@ -11,7 +11,7 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 		std::cout << '[';
 		for (libsvc::SizeType j = 0; j < _Tensor.Size(1); ++j)
 			std::cout << _Tensor.Item<_T>({ i,j }) << ", ";
-		std::cout << "]\n";
+		std::cout << "],\n";
 	}
 	std::cout << "\n";
 }
@@ -35,17 +35,20 @@ int main()
 	libsvc::ThreadPool Thp;
 	Thp.Init(8);
 	libsvc::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
-	std::cout << "\nGather Op Test\n";
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
 	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32);
 	Ten.RandnFix();
+	std::cout << "\nTen:\n";
 	Ten.Invoke(1, PrintTensor);
 	std::cout << "\nGather Op Test\n";
-	Ten.Gather(libsvc::Tensor::ConstantOf({ 2,2 }, 0ll, libsvc::TensorType::Int64)).Invoke(1, PrintTensor);
-	std::cout << "\nCumSum Op Test\n";
+	auto Indices = libsvc::Tensor::ConstantOf({ 2,2 }, 0ll, libsvc::TensorType::Int64);
+	Indices[0][0] = 0ll; Indices[0][1] = 1ll; Indices[1][0] = 2ll; Indices[1][1] = 1ll;
+	Indices.Invoke(1, PrintTensor<libsvc::SizeType>);
+	Ten.Gather(Indices, 1).Invoke(1, PrintTensor);
+	std::cout << "\nDiff Op Test\n";
 	libsvc::Tensor::Diff(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
 	std::cout << '\n';
-	Ten = libsvc::Tensor::Stack({ Ten ,Ten }, 0);
+	Ten = libsvc::Tensor::Stack({ Ten ,Ten, Ten }, 0);
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';
 	Ten += Ten;
@@ -82,12 +85,18 @@ int main()
 	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32);
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
+	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
 	for (int64_t i = 0; i < 20; ++i)
 	{
 		const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
+		const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32);
+		auto Emb = Embedding[0];
 		Ten1919810.Fix(i);
 		std::cout << Ten1919810.Item<float>() << " CostTime:";
 		QueryPerformanceCounter(&Time1);
+		//Embedding.Gather(Indices, 0, Thp);
+		Embedding.Assign(Embedding);
+			
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
 		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
 		/*libsvc::Tensor::Pad(
@@ -97,7 +106,7 @@ int main()
 			libsvc::TensorType::Float32,
 			nullptr, &Thp
 		);*/
-		auto a = libsvc::Tensor::Sum(Ten1919810, 1, &Thp);
+		//auto a = libsvc::Tensor::Diff(Ten1919810, 1, &Thp);
 		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);

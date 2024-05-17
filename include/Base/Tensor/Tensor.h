@@ -122,6 +122,10 @@ public:
 	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr);
 
 	static void SetThreadCount(SizeType _Count);
+	SizeType GetAlignSize() const
+	{
+		return AlignSize_;
+	}
 
 protected:
 	byte* DataPtr_ = nullptr;
@@ -419,6 +423,7 @@ public:
 	//沿着Axis[0]，获取当前Tensor中Indices处的Tensor（新建Tensor）
 	Tensor Gather(
 		const Tensor& _Indices,
+		SizeType _Axis = 0,
 		ThreadPool* _ThreadPool = nullptr
 	) const;
 
@@ -521,6 +526,7 @@ public:
 	static Tensor Gather(
 		const Tensor& _Input,
 		const Tensor& _Indices,
+		SizeType _Axis = 0,
 		ThreadPool* _ThreadPool = nullptr
 	);
 
