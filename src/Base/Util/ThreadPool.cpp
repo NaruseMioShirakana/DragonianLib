@@ -43,7 +43,7 @@ void ThreadPool::Run() {
         ++TaskProcessing_;
         task();
         --TaskProcessing_;
-        if (Tasks_.empty() && !TaskProcessing_)
+        if (Tasks_.empty() && !TaskProcessing_ && Joinable)
             JoinCondition_.release();
     }
 }
@@ -52,7 +52,9 @@ void ThreadPool::Join()
 {
     std::lock_guard lg(JoinMx_);
     //Condition_.release();
+    Joinable = true;
     JoinCondition_.acquire();
+    Joinable = false;
 }
 
 LibSvcEnd

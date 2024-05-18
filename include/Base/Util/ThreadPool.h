@@ -63,6 +63,7 @@ private:
     std::mutex Mx_, JoinMx_;
     std::queue<Task> Tasks_;
     std::counting_semaphore<256> Condition_{ 0 }, JoinCondition_{ 0 };
+    bool Joinable = false;
     int64 ThreadCount_ = 0; 
 
     void Run();

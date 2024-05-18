@@ -86,16 +86,19 @@ int main()
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
 	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
+	Indices[1].Assign(1ll);
 	for (int64_t i = 0; i < 20; ++i)
 	{
 		const libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 		const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32);
+		Embedding[0].Assign(i);
+		Embedding[1].Assign(i + 1);
 		auto Emb = Embedding[0];
 		Ten1919810.Fix(i);
 		std::cout << Ten1919810.Item<float>() << " CostTime:";
 		QueryPerformanceCounter(&Time1);
-		//Embedding.Gather(Indices, 0, Thp);
-		Embedding.Assign(Embedding);
+		auto Out = Embedding.Gather(Indices, 0, Thp);
+		//Embedding.Assign(Embedding);
 			
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
 		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
@@ -118,7 +121,7 @@ int main()
 		//Thp.Join();
 		QueryPerformanceCounter(&Time2);
 		std::cout << double(Time2.QuadPart - Time1.QuadPart) * 1. / (double)Freq.QuadPart << '\n';
-		//a.Invoke(1, PrintTensor);
+		//Out.Invoke(1, PrintTensor);
 	}
 	std::cout << "\n\n\n";
 	Ten.FixOnes();

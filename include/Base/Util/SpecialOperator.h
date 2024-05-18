@@ -1,6 +1,131 @@
 #pragma once
 #include "Base.h"
 LibSvcBegin
+template <typename GType>
+void GatherImp(
+	const SizeType* __restrict _Shape,
+	const SizeType* __restrict _Stride,
+	const SizeType* __restrict _BeginPtr,
+	const SizeType* __restrict _Step,
+	GType* _Dst,
+	const GType* _Src,
+	SizeType NDims,
+	bool IsContinuous,
+	SizeType TotalSize
+)
+{
+	if (IsContinuous)
+	{
+		LibSvcMemCpy(_Dst, _Src, TotalSize);
+		return;
+	}
+
+	if (NDims > 5)
+	{
+		Vector<SizeType> CurIndice(NDims, 0);
+		SizeType* __restrict IndicesPtr = CurIndice.data();
+		LibSvcCycle(
+			IndicesPtr,
+			_Shape,
+			NDims,
+			{
+				SizeType Index = 0;
+				for (SizeType i = 0; i < NDims; ++i)
+					Index += ((IndicesPtr[i] * _Stride[i]) + _BeginPtr[i]) * _Step[i];
+				*(_Dst++) = _Src[Index];
+			}
+		);
+		return;
+	}
+
+	if (NDims == 5)
+	{
+		for (SizeType i = 0; i < _Shape[0]; ++i)
+		{
+			const auto Index0 = ((i * _Stride[0]) + _BeginPtr[0]) * _Step[0];
+			for (SizeType j = 0; j < _Shape[1]; ++j)
+			{
+				const auto Index1 = Index0 +
+					((j * _Stride[1]) + _BeginPtr[1]) * _Step[1];
+				for (SizeType k = 0; k < _Shape[2]; ++k)
+				{
+					const auto Index2 = Index1 +
+						((k * _Stride[2]) + _BeginPtr[2]) * _Step[2];
+					for (SizeType l = 0; l < _Shape[3]; ++l)
+					{
+						const auto Index3 = Index2 +
+							((l * _Stride[3]) + _BeginPtr[3]) * _Step[3];
+						for (SizeType m = 0; m < _Shape[4]; ++m)
+						{
+							const auto Index4 = Index3 +
+								((m * _Stride[4]) + _BeginPtr[4]) * _Step[4];
+							*(_Dst++) = _Src[Index4];
+						}
+					}
+				}
+			}
+		}
+	}
+	else if (NDims == 4)
+	{
+		for (SizeType i = 0; i < _Shape[0]; ++i)
+		{
+			const auto Index0 = ((i * _Stride[0]) + _BeginPtr[0]) * _Step[0];
+			for (SizeType j = 0; j < _Shape[1]; ++j)
+			{
+				const auto Index1 = Index0 +
+					((j * _Stride[1]) + _BeginPtr[1]) * _Step[1];
+				for (SizeType k = 0; k < _Shape[2]; ++k)
+				{
+					const auto Index2 = Index1 +
+						((k * _Stride[2]) + _BeginPtr[2]) * _Step[2];
+					for (SizeType l = 0; l < _Shape[3]; ++l)
+					{
+						const auto Index3 = Index2 +
+							((l * _Stride[3]) + _BeginPtr[3]) * _Step[3];
+						*(_Dst++) = _Src[Index3];
+					}
+				}
+			}
+		}
+	}
+	else if (NDims == 3)
+	{
+		for (SizeType i = 0; i < _Shape[0]; ++i)
+		{
+			const auto Index0 = ((i * _Stride[0]) + _BeginPtr[0]) * _Step[0];
+			for (SizeType j = 0; j < _Shape[1]; ++j)
+			{
+				const auto Index1 = Index0 +
+					((j * _Stride[1]) + _BeginPtr[1]) * _Step[1];
+				for (SizeType k = 0; k < _Shape[2]; ++k)
+				{
+					const auto Index2 = Index1 +
+						((k * _Stride[2]) + _BeginPtr[2]) * _Step[2];
+					*(_Dst++) = _Src[Index2];
+				}
+			}
+		}
+	}
+	else if (NDims == 2)
+	{
+		for (SizeType i = 0; i < _Shape[0]; ++i)
+		{
+			const auto Index0 = ((i * _Stride[0]) + _BeginPtr[0]) * _Step[0];
+			for (SizeType j = 0; j < _Shape[1]; ++j)
+			{
+				const auto Index1 = Index0 +
+					((j * _Stride[1]) + _BeginPtr[1]) * _Step[1];
+				*(_Dst++) = _Src[Index1];
+			}
+		}
+	}
+	else if (NDims == 1)
+	{
+		for (SizeType i = 0; i < _Shape[0]; ++i)
+			*(_Dst++) = _Src[((i * _Stride[0]) + _BeginPtr[0]) * _Step[0]];
+	}
+}
 
 template <typename ThisType, typename Tensor, typename _InterpFn>
 void InterpImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims, _InterpFn _Fn)

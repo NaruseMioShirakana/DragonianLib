@@ -126,6 +126,10 @@ public:
 	{
 		return AlignSize_;
 	}
+	std::mutex& GetRelMx() const
+	{
+		return RelMx_;
+	}
 
 protected:
 	byte* DataPtr_ = nullptr;
@@ -140,7 +144,7 @@ protected:
 	bool IsBroadCasted_ = false;
 
 	std::deque<Tensor*> ViewChild_;
-	mutable std::mutex ViewMx_;
+	mutable std::mutex ViewMx_, RelMx_;
 	
 public:
 	//提醒运算符不要使用线程池

@@ -85,6 +85,8 @@ Tensor::Tensor(const Tensor& _Left) : TensorBase(_Left.DType_)
 
 Tensor::Tensor(Tensor&& _Right) noexcept : TensorBase(_Right.DType_)
 {
+	std::lock_guard LockRel(_Right.RelMx_);
+
 	ShapeBack_ = std::move(_Right.ShapeBack_);
 	StepFront_ = std::move(_Right.StepFront_);
 	StepBack_ = std::move(_Right.StepBack_);
@@ -290,6 +292,7 @@ Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, 
 
 void Tensor::Free()
 {
+	std::lock_guard LockRel(RelMx_);
 	if (DataPtr_ && !IsView())
 	{
 		ClearViewChilds();
@@ -297,15 +300,18 @@ void Tensor::Free()
 	}
 	else if(IsView())
 	{
-		if(ViewParent_->ViewParent_)
-			LibSvcThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
 		std::lock_guard Lock(ViewParent_->ViewMx_);
-		auto& Views = ViewParent_->ViewChild_;
-		const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
-		if (Iter != Views.end())
-			Views.erase(Iter);
-		else
-			LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+		if (ViewParent_)
+		{
+			if (ViewParent_->ViewParent_)
+				LibSvcThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
+			auto& Views = ViewParent_->ViewChild_;
+			const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
+			if (Iter != Views.end())
+				Views.erase(Iter);
+			else
+				LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+		}
 	}
 	DataPtr_ = nullptr;
 	ViewParent_ = nullptr;
@@ -458,6 +464,7 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 		return *this;
 	if (_Right.ViewParent_ && _Right.ViewParent_ == this)
 		LibSvcThrow("Assign To Parent Is Not Allowed!");
+	std::lock_guard LockRel(_Right.RelMx_);
 	Free();
 	DType_ = _Right.DType_;
 	ShapeBack_ = std::move(_Right.ShapeBack_);
@@ -1243,7 +1250,7 @@ Tensor Tensor::CreateView() const
 	Ret.AlignSize_ = AlignSize_;
 	Ret.IsBroadCasted_ = IsBroadCasted_;
 	Ret.DataPtr_ = DataPtr_;
-	
+
 	if(IsView())
 		Ret.ViewParent_ = ViewParent_;
 	else
