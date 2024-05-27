@@ -65,8 +65,8 @@ int main()
 	Indices[0][0] = 0ll; Indices[0][1] = 1ll; Indices[1][0] = 2ll; Indices[1][1] = 1ll;
 	Indices.Invoke(1, PrintTensor<libsvc::SizeType>);
 	Ten.Gather(Indices, 1).Invoke(1, PrintTensor);
-	std::cout << "\nDiff Op Test\n";
-	libsvc::Tensor::Diff(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
+	std::cout << "\nCumSum Op Test\n";
+	libsvc::Tensor::CumSum(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
 	std::cout << '\n';
 	Ten = libsvc::Tensor::Stack({ Ten ,Ten, Ten }, 0);
 	Ten.Invoke(1, PrintTensor);

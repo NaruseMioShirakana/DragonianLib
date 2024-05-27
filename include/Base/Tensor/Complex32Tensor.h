@@ -1,5 +1,5 @@
 #pragma once
-#include "Tensor/Tensor.h"
+#include "Tensor/TensorOperator.h"
 LibSvcBegin
 namespace Complex32
 {
