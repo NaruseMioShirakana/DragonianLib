@@ -98,22 +98,23 @@ namespace libsvc
 	void Logger::log(const std::wstring& format)
 	{
 		std::lock_guard mtx(mx);
-		if(custom_logger_fn)
+		if (custom_logger_fn)
 		{
 			cloggerfn(format.c_str(), nullptr);
 			return;
 		}
-#ifndef libsvccmd
-		_wfopen_s(&log_file, logpath.c_str(), L"a+");
-		if (log_file)
+		if (filelogger)
 		{
-			fprintf_s(log_file, "%s\n", to_byte_string(format).c_str());
-			fclose(log_file);
-			log_file = nullptr;
+			_wfopen_s(&log_file, logpath.c_str(), L"a+");
+			if (log_file)
+			{
+				fprintf_s(log_file, "%s\n", to_byte_string(format).c_str());
+				fclose(log_file);
+				log_file = nullptr;
+			}
 		}
-#else
-		fprintf_s(stdout, "%s\n", to_byte_string(format).c_str());
-#endif
+		else
+			fprintf_s(stdout, "%s\n", to_byte_string(format).c_str());
 	}
 
 	void Logger::log(const char* format)
@@ -124,17 +125,18 @@ namespace libsvc
 			cloggerfn(nullptr, format);
 			return;
 		}
-#ifndef libsvccmd
-		_wfopen_s(&log_file, logpath.c_str(), L"a+");
-		if (log_file)
+		if (filelogger)
 		{
-			fprintf_s(log_file, "%s\n", format);
-			fclose(log_file);
-			log_file = nullptr;
+			_wfopen_s(&log_file, logpath.c_str(), L"a+");
+			if (log_file)
+			{
+				fprintf_s(log_file, "%s\n", format);
+				fclose(log_file);
+				log_file = nullptr;
+			}
 		}
-#else
-		fprintf_s(stdout, "%s\n", format);
-#endif
+		else
+			fprintf_s(stdout, "%s\n", format);
 	}
 
 	void Logger::error(const std::wstring& format)
@@ -146,24 +148,25 @@ namespace libsvc
 			cerror_fn(format.c_str(), nullptr);
 			return;
 		}
-#ifndef libsvccmd
-		_wfopen_s(&log_file, logpath.c_str(), L"a+");
-		_wfopen_s(&error_file, errorpath.c_str(), L"a+");
-		if (log_file)
+		if (filelogger)
 		{
-			fprintf(log_file, "[ERROR]%s\n", to_byte_string(format).c_str());
-			fclose(log_file);
-			log_file = nullptr;
+			_wfopen_s(&log_file, logpath.c_str(), L"a+");
+			_wfopen_s(&error_file, errorpath.c_str(), L"a+");
+			if (log_file)
+			{
+				fprintf(log_file, "[ERROR]%s\n", to_byte_string(format).c_str());
+				fclose(log_file);
+				log_file = nullptr;
+			}
+			if (error_file)
+			{
+				fprintf(error_file, "[ERROR]%s\n", to_byte_string(format).c_str());
+				fclose(error_file);
+				error_file = nullptr;
+			}
 		}
-		if (error_file)
-		{
-			fprintf(error_file, "[ERROR]%s\n", to_byte_string(format).c_str());
-			fclose(error_file);
-			error_file = nullptr;
-		}
-#else
-		fprintf(stdout, "[ERROR]%s\n", to_byte_string(format).c_str());
-#endif
+		else
+			fprintf(stdout, "[ERROR]%s\n", to_byte_string(format).c_str());
 	}
 
 	void Logger::error(const char* format)
@@ -175,24 +178,25 @@ namespace libsvc
 			cerror_fn(nullptr, format);
 			return;
 		}
-#ifndef libsvccmd
-		_wfopen_s(&log_file, logpath.c_str(), L"a+");
-		_wfopen_s(&error_file, errorpath.c_str(), L"a+");
-		if (log_file)
+		if (filelogger)
 		{
-			fprintf(log_file, "[ERROR]%s\n", format);
-			fclose(log_file);
-			log_file = nullptr;
+			_wfopen_s(&log_file, logpath.c_str(), L"a+");
+			_wfopen_s(&error_file, errorpath.c_str(), L"a+");
+			if (log_file)
+			{
+				fprintf(log_file, "[ERROR]%s\n", format);
+				fclose(log_file);
+				log_file = nullptr;
+			}
+			if (error_file)
+			{
+				fprintf(error_file, "[ERROR]%s\n", format);
+				fclose(error_file);
+				error_file = nullptr;
+			}
 		}
-		if (error_file)
-		{
-			fprintf(error_file, "[ERROR]%s\n", format);
-			fclose(error_file);
-			error_file = nullptr;
-		}
-#else
-		fprintf(stdout, "[ERROR]%s\n", format);
-#endif
+		else
+			fprintf(stdout, "[ERROR]%s\n", format);
 	}
 
 	Logger& GetLogger()

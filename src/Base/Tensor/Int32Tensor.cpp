@@ -878,45 +878,94 @@ namespace Int32
 			FixWithRandomImpl(SqueezedTensor, _Seed, _Mean, _Sigma, CurDims);
 	}
 
-	void GatherImpl(const Tensor& _Ret, const Tensor& _Input, const Tensor& _Indices, SizeType _Axis, const SizeType CurDims)
+	void GatherImpl(const Tensor& _Ret, const Tensor& _Input, const Tensor& _Indices, const SizeType CurDims)
 	{
 		auto Steps = _Indices.StepsBack();
 		for (auto& i : Steps)
 			i /= _Indices.GetAlignSize();
 
+		auto InputSteps = _Input.StepsBack();
+		for (auto& i : InputSteps)
+			i /= _Input.GetAlignSize();
+
+		bool Cont = _Input.IsContinuous();
+
 		const SizeType* __restrict ShapePtr = _Indices.Shape().data();
 		const SizeType* __restrict StepPtr = Steps.data();
 		const SizeType* __restrict BeginsPtr = _Indices.SliceBegins().data();
 		const SizeType* __restrict StridesPtr = _Indices.Strides().data();
-		const int32* IndicePtr = (int32*)_Indices.Data();
 
-		SliceOptions SliceOpti(_Input.DimCount(), None);
-		auto& CurSli = SliceOpti[_Axis];
+		const SizeType GatherDims = _Input.DimCount() - 1;
+		const SizeType* InputShapePtr = _Input.Shape().data();
+		const SizeType InputSize = InputShapePtr[0];
+		++InputShapePtr;
+		const SizeType* InputStepPtr = InputSteps.data();
+		const SizeType InputStep = InputStepPtr[0] * _Input.GetAlignSize();
+		++InputStepPtr;
+		const SizeType* InputBeginsPtr = _Input.SliceBegins().data();
+		const SizeType InputBegin = InputBeginsPtr[0];
+		++InputBeginsPtr;
+		const SizeType* InputStridesPtr = _Input.Strides().data();
+		const SizeType InputStride = InputStridesPtr[0];
+		++InputStridesPtr;
+
+		SizeType TotalSize = sizeof(ThisType);
+		for (SizeType i = 0; i < GatherDims; ++i)
+			TotalSize *= InputShapePtr[i];
+
+		const SizeType* const __restrict RetStepPtr = _Ret.StepsBack().data();
+		const SizeType* const __restrict RetBeginsPtr = _Ret.SliceBegins().data();
+		const SizeType* const __restrict RetStridesPtr = _Ret.Strides().data();
+
+		const int32* IndicePtr = (int32*)_Indices.Data();
+		const auto RetPtr = _Ret.Data();
+		const auto InputPtr = _Input.Data();
+
+		//SliceOptions SliceOpti(_Input.DimCount(), None);
+		//auto& CurSli = SliceOpti[_Axis];
 		if (CurDims == 5)
 		{
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
 				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
-				const auto Tensor0 = _Ret[i];
+				const auto RIndexAxis0 = ((i * RetStridesPtr[0]) + RetBeginsPtr[0]) * RetStepPtr[0];
 				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
 					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
-					const auto Tensor1 = Tensor0[j];
+					const auto RIndexAxis1 = RIndexAxis0 +
+						((j * RetStridesPtr[1]) + RetBeginsPtr[1]) * RetStepPtr[1];
 					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
 						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
-						const auto Tensor2 = Tensor1[k];
+						const auto RIndexAxis2 = RIndexAxis1 +
+							((k * RetStridesPtr[2]) + RetBeginsPtr[2]) * RetStepPtr[2];
 						for (SizeType l = 0; l < ShapePtr[3]; ++l)
 						{
 							const auto IndexAxis3 = IndexAxis2 + ((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
-							const auto Tensor3 = Tensor2[l];
+							const auto RIndexAxis3 = RIndexAxis2 +
+								((l * RetStridesPtr[3]) + RetBeginsPtr[3]) * RetStepPtr[3];
 							for (SizeType m = 0; m < ShapePtr[4]; ++m)
 							{
 								const auto IndexAxis4 = IndexAxis3 + ((m * StridesPtr[4]) + BeginsPtr[4]) * StepPtr[4];
-								const auto Tensor4 = Tensor3[m];
+								const auto RIndexAxis4 = RIndexAxis3 +
+									((m * RetStridesPtr[4]) + RetBeginsPtr[4]) * RetStepPtr[4];
 								const auto CIndex = SizeType(IndicePtr[IndexAxis4]);
-								CurSli = { CIndex, CIndex + 1 };
-								Tensor4.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+								if (CIndex < InputSize)
+								{
+									GatherImp<ThisType>(
+										InputShapePtr,
+										InputStridesPtr,
+										InputBeginsPtr,
+										InputStepPtr,
+										(ThisType*)(RetPtr + RIndexAxis4),
+										(ThisType*)(InputPtr + ((CIndex * InputStride) + InputBegin) * InputStep),
+										GatherDims,
+										Cont,
+										TotalSize
+									);
+								}
+								else
+									LibSvcThrow("Index Out Of Range!");
 							}
 						}
 					}
@@ -928,22 +977,39 @@ namespace Int32
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
 				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
-				const auto Tensor0 = _Ret[i];
+				const auto RIndexAxis0 = ((i * RetStridesPtr[0]) + RetBeginsPtr[0]) * RetStepPtr[0];
 				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
 					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
-					const auto Tensor1 = Tensor0[j];
+					const auto RIndexAxis1 = RIndexAxis0 +
+						((j * RetStridesPtr[1]) + RetBeginsPtr[1]) * RetStepPtr[1];
 					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
 						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
-						const auto Tensor2 = Tensor1[k];
+						const auto RIndexAxis2 = RIndexAxis1 +
+							((k * RetStridesPtr[2]) + RetBeginsPtr[2]) * RetStepPtr[2];
 						for (SizeType l = 0; l < ShapePtr[3]; ++l)
 						{
 							const auto IndexAxis3 = IndexAxis2 + ((l * StridesPtr[3]) + BeginsPtr[3]) * StepPtr[3];
-							const auto Tensor3 = Tensor2[l];
+							const auto RIndexAxis3 = RIndexAxis2 +
+								((l * RetStridesPtr[3]) + RetBeginsPtr[3]) * RetStepPtr[3];
 							const auto CIndex = SizeType(IndicePtr[IndexAxis3]);
-							CurSli = { CIndex, CIndex + 1 };
-							Tensor3.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+							if (CIndex < InputSize)
+							{
+								GatherImp<ThisType>(
+									InputShapePtr,
+									InputStridesPtr,
+									InputBeginsPtr,
+									InputStepPtr,
+									(ThisType*)(RetPtr + RIndexAxis3),
+									(ThisType*)(InputPtr + ((CIndex * InputStride) + InputBegin) * InputStep),
+									GatherDims,
+									Cont,
+									TotalSize
+								);
+							}
+							else
+								LibSvcThrow("Index Out Of Range!");
 						}
 					}
 				}
@@ -954,18 +1020,34 @@ namespace Int32
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
 				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
-				const auto Tensor0 = _Ret[i];
+				const auto RIndexAxis0 = ((i * RetStridesPtr[0]) + RetBeginsPtr[0]) * RetStepPtr[0];
 				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
 					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
-					const auto Tensor1 = Tensor0[j];
+					const auto RIndexAxis1 = RIndexAxis0 +
+						((j * RetStridesPtr[1]) + RetBeginsPtr[1]) * RetStepPtr[1];
 					for (SizeType k = 0; k < ShapePtr[2]; ++k)
 					{
 						const auto IndexAxis2 = IndexAxis1 + ((k * StridesPtr[2]) + BeginsPtr[2]) * StepPtr[2];
-						const auto Tensor2 = Tensor1[k];
+						const auto RIndexAxis2 = RIndexAxis1 +
+							((k * RetStridesPtr[2]) + RetBeginsPtr[2]) * RetStepPtr[2];
 						const auto CIndex = SizeType(IndicePtr[IndexAxis2]);
-						CurSli = { CIndex, CIndex + 1 };
-						Tensor2.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+						if (CIndex < InputSize)
+						{
+							GatherImp<ThisType>(
+								InputShapePtr,
+								InputStridesPtr,
+								InputBeginsPtr,
+								InputStepPtr,
+								(ThisType*)(RetPtr + RIndexAxis2),
+								(ThisType*)(InputPtr + ((CIndex * InputStride) + InputBegin) * InputStep),
+								GatherDims,
+								Cont,
+								TotalSize
+							);
+						}
+						else
+							LibSvcThrow("Index Out Of Range!");
 					}
 				}
 			}
@@ -975,14 +1057,29 @@ namespace Int32
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
 				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
-				const auto Tensor0 = _Ret[i];
+				const auto RIndexAxis0 = ((i * RetStridesPtr[0]) + RetBeginsPtr[0]) * RetStepPtr[0];
 				for (SizeType j = 0; j < ShapePtr[1]; ++j)
 				{
 					const auto IndexAxis1 = IndexAxis0 + ((j * StridesPtr[1]) + BeginsPtr[1]) * StepPtr[1];
-					const auto Tensor1 = Tensor0[j];
+					const auto RIndexAxis1 = RIndexAxis0 +
+						((j * RetStridesPtr[1]) + RetBeginsPtr[1]) * RetStepPtr[1];
 					const auto CIndex = SizeType(IndicePtr[IndexAxis1]);
-					CurSli = { CIndex, CIndex + 1 };
-					Tensor1.Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+					if (CIndex < InputSize)
+					{
+						GatherImp<ThisType>(
+							InputShapePtr,
+							InputStridesPtr,
+							InputBeginsPtr,
+							InputStepPtr,
+							(ThisType*)(RetPtr + RIndexAxis1),
+							(ThisType*)(InputPtr + ((CIndex * InputStride) + InputBegin) * InputStep),
+							GatherDims,
+							Cont,
+							TotalSize
+						);
+					}
+					else
+						LibSvcThrow("Index Out Of Range!");
 				}
 			}
 		}
@@ -990,30 +1087,50 @@ namespace Int32
 			for (SizeType i = 0; i < ShapePtr[0]; ++i)
 			{
 				const auto IndexAxis0 = ((i * StridesPtr[0]) + BeginsPtr[0]) * StepPtr[0];
+				const auto RIndexAxis0 = ((i * RetStridesPtr[0]) + RetBeginsPtr[0]) * RetStepPtr[0];
 				const auto CIndex = SizeType(IndicePtr[IndexAxis0]);
-				CurSli = { CIndex, CIndex + 1 };
-				_Ret[i].Assign(_Input.Slice(SliceOpti).Squeeze(_Axis));
+				if (CIndex < InputSize && CIndex >= 0)
+				{
+					GatherImp<ThisType>(
+						InputShapePtr,
+						InputStridesPtr,
+						InputBeginsPtr,
+						InputStepPtr,
+						(ThisType*)(RetPtr + RIndexAxis0),
+						(ThisType*)(InputPtr + ((CIndex * InputStride) + InputBegin) * InputStep),
+						GatherDims,
+						Cont,
+						TotalSize
+					);
+				}
+				else
+					LibSvcThrow("Index Out Of Range!");
 			}
 	}
 
 	Tensor Gather(const Tensor& _Input, const Tensor& _IndicesInp, SizeType _Axis, ThreadPool* _ThreadPool)
 	{
+		if (_Input.DimCount() <= 1)
+			LibSvcThrow("Shape Of Input Should > 1!");
+
 		auto _Indices = _IndicesInp.Cast(TensorType::Int32, _ThreadPool);
 		if (!_Indices.IsContinuous())
 			_Indices = _Indices.Continuous(_ThreadPool);
 		auto _InputShape = _Input.Shape();
 		const auto& _IndicesShape = _Indices.Shape();
-		ShapeType _NewShape(_IndicesShape.begin(), _IndicesShape.end());
-		if (_InputShape.size() == 1)
-			_NewShape.emplace_back(1);
-		else
-		{
-			_InputShape.erase(_InputShape.begin() + _Axis);
-			_NewShape.insert(_NewShape.end(), _InputShape.begin(), _InputShape.end());
-		}
+
+		ShapeType _NewShape = _IndicesShape;
+		_InputShape.erase(_InputShape.begin() + _Axis);
+		_NewShape.insert(_NewShape.end(), _InputShape.begin(), _InputShape.end());
 		Tensor Ret(_NewShape, _Input.DType());
+
 		const auto TotalSize = VectorMul(_NewShape);
 		const auto CurDims = _Indices.DimCount();
+
+		auto DPer = VectorArangeImpl(0ll, _Input.DimCount(), 1ll);
+		DPer.erase(DPer.begin() + _Axis);
+		DPer.insert(DPer.begin(), _Axis);
+		const auto InputPPermuted = _Input.Permute(DPer);
 
 		if (CurDims > 5)
 			LibSvcThrow("Gather Operator Not Support Dim > 5!");
@@ -1044,9 +1161,8 @@ namespace Int32
 						_ThreadPool->Commit(
 							GatherImpl,
 							Ret.Slice(ThreadSlices),
-							_Input,
+							InputPPermuted,
 							_Indices.Slice(ThreadSlices),
-							_Axis,
 							CurDims
 						);
 						if (End == _IndicesShape[i])
@@ -1057,10 +1173,10 @@ namespace Int32
 					}
 				}
 			}
-			GatherImpl(Ret, _Input, _Indices, _Axis, CurDims);
+			GatherImpl(Ret, InputPPermuted, _Indices, CurDims);
 		}
 		else
-			GatherImpl(Ret, _Input, _Indices, _Axis, CurDims);
+			GatherImpl(Ret, InputPPermuted, _Indices, CurDims);
 
 		return Ret;
 	}

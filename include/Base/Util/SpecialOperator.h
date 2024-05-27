@@ -378,19 +378,26 @@ void Linear1DImpl(
 	const SizeType* __restrict _X0Step
 )
 {
-	const auto XiVec = VectorArangeImpl(0ll, _XiShape[0], (double)_XiShape[0] / (double)_X0Shape[0]);
-	const double* __restrict _Xi = XiVec.data();
+	const auto XiVec = VectorArangeImpl(0ll, _XiShape[0], (float)_XiShape[0] / (float)_X0Shape[0]);
+	const float* __restrict _Xi = XiVec.data();
 	for (SizeType i = 0; i < _XiShape[0]; ++i)
 	{
 		const auto _X0BeginVal = floor(_Xi[i]);
 		const auto _X0Begin = (SizeType)_X0BeginVal;
 		auto _X0End = (SizeType)ceil(_Xi[i]);
 		if (_X0End <= _X0Begin) ++_X0End;
-		if (_X0End > _X0Shape[0]) break;
+		if (i == _XiShape[0] - 1)
+		{
+			const auto _Y0IdxB = (((_X0Begin - 1) * _X0Stride[0]) + _X0BeginPtr[0]) * _X0Step[0];
+			const auto _T0IdxE = ((_X0Begin * _X0Stride[0]) + _X0BeginPtr[0]) * _X0Step[0];
+			_Yi[((i * _XiStride[0]) + _XiBeginPtr[0]) * _XiStep[0]] =
+				_Y0[_T0IdxE] + _Type(float(_Y0[_T0IdxE] - _Y0[_Y0IdxB]) * (_Xi[i] - _X0BeginVal));
+			break;
+		}
 		const auto _Y0IdxB = ((_X0Begin * _X0Stride[0]) + _X0BeginPtr[0]) * _X0Step[0];
 		const auto _T0IdxE = ((_X0End * _X0Stride[0]) + _X0BeginPtr[0]) * _X0Step[0];
 		_Yi[((i * _XiStride[0]) + _XiBeginPtr[0]) * _XiStep[0]] =
-			_Y0[_Y0IdxB] + (_Y0[_T0IdxE] - _Y0[_Y0IdxB]) * (_Xi[i] - _X0BeginVal);
+			_Y0[_Y0IdxB] + _Type(float(_Y0[_T0IdxE] - _Y0[_Y0IdxB]) * (_Xi[i] - _X0BeginVal));
 	}
 }
 

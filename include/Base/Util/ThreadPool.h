@@ -56,6 +56,11 @@ public:
         return this;
     }
 
+    void EnableTimeLogger(bool _Enabled)
+    {
+        LogTime_ = _Enabled;
+    }
+
 private:
     std::vector<std::thread> Threads_;
     std::atomic<bool> Stoped_;
@@ -64,7 +69,8 @@ private:
     std::queue<Task> Tasks_;
     std::counting_semaphore<256> Condition_{ 0 }, JoinCondition_{ 0 };
     bool Joinable = false;
-    int64 ThreadCount_ = 0; 
+    int64 ThreadCount_ = 0;
+    bool LogTime_ = false;
 
     void Run();
 };

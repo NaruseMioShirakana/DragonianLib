@@ -1,6 +1,10 @@
 #include "Util/ThreadPool.h"
 #include "Util/Logger.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 LibSvcBegin
 ThreadPool::~ThreadPool() {
     Stoped_ = true;
@@ -30,6 +34,10 @@ void ThreadPool::Init(int64 _ThreadCount) {
 }
 
 void ThreadPool::Run() {
+#ifdef _WIN32
+    LARGE_INTEGER Time1, Time2, Freq;
+    QueryPerformanceFrequency(&Freq);
+#endif
     while (!Stoped_) {
         Task task;
         {
@@ -38,10 +46,21 @@ void ThreadPool::Run() {
             if (Tasks_.empty())
                 continue;
             task = std::move(Tasks_.front());
+            ++TaskProcessing_;
             Tasks_.pop();
         }
-        ++TaskProcessing_;
+#ifdef WIN32
+        if(LogTime_)
+            QueryPerformanceCounter(&Time1);
+#endif
         task();
+#ifdef WIN32
+        if (LogTime_)
+        {
+	        QueryPerformanceCounter(&Time2);
+            LogMessage(("[Thread] Task Cost Time:" + std::to_string(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + "ms").c_str());
+        }
+#endif
         --TaskProcessing_;
         if (Tasks_.empty() && !TaskProcessing_ && Joinable)
             JoinCondition_.release();
@@ -55,6 +74,8 @@ void ThreadPool::Join()
     Joinable = true;
     JoinCondition_.acquire();
     Joinable = false;
+    if (LogTime_)
+        LogMessage("[Thread] All Task Finished!");
 }
 
 LibSvcEnd

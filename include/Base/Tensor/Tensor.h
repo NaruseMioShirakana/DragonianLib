@@ -9,42 +9,6 @@
 #include "Util/SpecialOperator.h"
 
 LibSvcBegin
-template<typename _Type>
-bool Greater(const _Type& _A, const _Type& _B)
-{
-	return _A > _B;
-}
-
-template<typename _Type>
-bool Less(const _Type& _A, const _Type& _B)
-{
-	return _A < _B;
-}
-
-template<typename _Type>
-bool Equal(const _Type& _A, const _Type& _B)
-{
-	return _A == _B;
-}
-
-template<typename _Type>
-bool GreaterEqual(const _Type& _A, const _Type& _B)
-{
-	return _A >= _B;
-}
-
-template<typename _Type>
-bool LessEqual(const _Type& _A, const _Type& _B)
-{
-	return _A <= _B;
-}
-
-template<typename _Type>
-bool NotEqual(const _Type& _A, const _Type& _B)
-{
-	return _A != _B;
-}
-
 using ShapeType = Vector<SizeType>;
 using ShapeIterator = ShapeType::iterator;
 
@@ -122,6 +86,7 @@ public:
 	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr);
 
 	static void SetThreadCount(SizeType _Count);
+	static void EnableTimeLogger(bool _Enabled);
 	SizeType GetAlignSize() const
 	{
 		return AlignSize_;
@@ -602,6 +567,43 @@ public:
 private:
 	bool UseThreadPool_ = true;
 };
+
+
+template<typename _Type>
+bool Greater(const _Type& _A, const _Type& _B)
+{
+	return _A > _B;
+}
+
+template<typename _Type>
+bool Less(const _Type& _A, const _Type& _B)
+{
+	return _A < _B;
+}
+
+template<typename _Type>
+bool Equal(const _Type& _A, const _Type& _B)
+{
+	return _A == _B;
+}
+
+template<typename _Type>
+bool GreaterEqual(const _Type& _A, const _Type& _B)
+{
+	return _A >= _B;
+}
+
+template<typename _Type>
+bool LessEqual(const _Type& _A, const _Type& _B)
+{
+	return _A <= _B;
+}
+
+template<typename _Type>
+bool NotEqual(const _Type& _A, const _Type& _B)
+{
+	return _A != _B;
+}
 
 template<typename _1Ty, typename _2Ty>
 void CastFrom(const Tensor& _InputA, const Tensor& _InputB, const SizeType CurDims)
@@ -1769,7 +1771,7 @@ void CustomMultiOperatorImpl(
 	const Tensor& _Dst,
 	const Tensor& _Src1,
 	const Tensor& _Src2,
-	const SizeType CurDims, 
+	const SizeType CurDims,
 	_FnType _Fn,
 	_BackEndFnType _BackEndFn
 )
@@ -1850,4 +1852,7 @@ static Tensor CustomMultiOperator(
 
 	return Ret;
 }
+
+
+
 LibSvcEnd

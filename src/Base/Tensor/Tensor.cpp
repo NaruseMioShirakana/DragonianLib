@@ -126,6 +126,11 @@ void Tensor::SetThreadCount(SizeType _Count)
 	GlobalThreadPool.Init(_Count);
 }
 
+void Tensor::EnableTimeLogger(bool _Enabled)
+{
+	GlobalThreadPool.EnableTimeLogger(_Enabled);
+}
+
 Tensor Tensor::FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool)
 {
 	ShapeType _Shape;
@@ -1672,7 +1677,7 @@ ShapeType Tensor::CalcContinuous() const
 {
 	const auto Dims = DimCount();
 	if (Dims == 1)
-		return { 0, 0, 0, 0, 0 };
+		return { 0, 0, 0, 0, 0, 0 };
 	Vector<std::pair<SizeType, SizeType>> Ret;
 	Ret.reserve(Dims);
 	for (SizeType i = 0; i < Dims; ++i)
