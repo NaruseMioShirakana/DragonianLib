@@ -14,6 +14,10 @@ ThreadPool::~ThreadPool() {
 }
 
 void ThreadPool::Init(int64 _ThreadCount) {
+#ifdef _WIN32
+    if (GetPriorityClass(GetCurrentProcess()) != REALTIME_PRIORITY_CLASS)
+        SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+#endif
     if (_ThreadCount == 0)
         _ThreadCount = ThreadCount_;
     if (_ThreadCount == 0)
@@ -28,7 +32,12 @@ void ThreadPool::Init(int64 _ThreadCount) {
     Stoped_ = false;
     Threads_.clear();
     for (int64 i = 0; i < _ThreadCount; i++)
-        Threads_.emplace_back(&ThreadPool::Run, this);
+    {
+	    Threads_.emplace_back(&ThreadPool::Run, this);
+#ifdef _WIN32
+        Threads_.back().get_id()._Get_underlying_id();
+#endif
+    }
 
     ThreadCount_ = _ThreadCount;
 }

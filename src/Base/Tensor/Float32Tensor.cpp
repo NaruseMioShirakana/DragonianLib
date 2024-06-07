@@ -2167,7 +2167,8 @@ namespace Float32
 	void NearestInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 		
@@ -2176,13 +2177,15 @@ namespace Float32
 	void LinearInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 		InterpImpl<ThisType>(
 			_Dst,
 			_Src,
 			CurDims,
+			_InterpDim,
 			Linear1DImpl<ThisType>
 		);
 	}
@@ -2190,7 +2193,8 @@ namespace Float32
 	void BilinearInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 
@@ -2199,7 +2203,8 @@ namespace Float32
 	void TrilinearInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 
@@ -2208,7 +2213,8 @@ namespace Float32
 	void BicubicInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 
@@ -2217,7 +2223,8 @@ namespace Float32
 	void AreaInterpolateImpl(
 		const Tensor& _Dst,
 		const Tensor& _Src,
-		const SizeType CurDims
+		const SizeType CurDims,
+		const SizeType _InterpDim
 	)
 	{
 
@@ -2231,17 +2238,17 @@ namespace Float32
 	)
 	{
 		if(_Type == InterpolateType::Nearest)
-			NearestInterpolateImpl(_Dst, _Src, CurDims - 1);
+			NearestInterpolateImpl(_Dst, _Src, CurDims, 1);
 		else if (_Type == InterpolateType::Linear)
-			LinearInterpolateImpl(_Dst, _Src, CurDims - 1);
+			LinearInterpolateImpl(_Dst, _Src, CurDims, 1);
 		else if (_Type == InterpolateType::Bilinear)
-			BilinearInterpolateImpl(_Dst, _Src, CurDims - 2);
+			BilinearInterpolateImpl(_Dst, _Src, CurDims, 2);
 		else if (_Type == InterpolateType::Trilinear)
-			TrilinearInterpolateImpl(_Dst, _Src, CurDims - 3);
+			TrilinearInterpolateImpl(_Dst, _Src, CurDims, 3);
 		else if (_Type == InterpolateType::Bicubic)
-			BicubicInterpolateImpl(_Dst, _Src, CurDims - 3);
+			BicubicInterpolateImpl(_Dst, _Src, CurDims, 3);
 		else if (_Type == InterpolateType::Area)
-			AreaInterpolateImpl(_Dst, _Src, CurDims - 3);
+			AreaInterpolateImpl(_Dst, _Src, CurDims, 3);
 	}
 }
 

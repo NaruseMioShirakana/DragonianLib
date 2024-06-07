@@ -1191,19 +1191,25 @@ bool Tensor::HasViewedFeature() const
 	return !IsContinuous();
 }
 
-bool Tensor::IsContinuous() const
+bool Tensor::IsContinuous(SizeType _Dim) const
 {
-	for (const auto i : DimStride_)
-		if (i != 1)
+	_Dim = CalcIndex(_Dim, DimCount());
+
+	for (size_t i = _Dim; i < DimStride_.size(); ++i)
+		if (DimStride_[i] != 1)
 			return false;
-	for (size_t i = 1; i < SliceBegin_.size(); ++i)
+
+	for (size_t i = 1 + _Dim; i < SliceBegin_.size(); ++i)
 		if (SliceBegin_[i] != 0)
 			return false;
+
 	if (StepBack_.back() != AlignSize_)
 		return false;
-	for (size_t i = 1; i < StepBack_.size(); ++i)
+
+	for (size_t i = 1 + _Dim; i < StepBack_.size(); ++i)
 		if (StepBack_[i - 1] / ShapeBack_[i] != StepBack_[i])
 			return false;
+
 	return true;
 }
 
@@ -1602,7 +1608,7 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _A, const Tensor& _B)
 		else
 		{
 			First.ShapeBack_.emplace_back(1);
-			First.StepBack_.emplace_back(First.StepBack_.back());
+			First.StepBack_.emplace_back(1);
 			First.SliceBegin_.emplace_back(0);
 			First.DimStride_.emplace_back(0);
 			First.IsBroadCasted_ = true;
@@ -1612,7 +1618,7 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _A, const Tensor& _B)
 		else
 		{
 			Second.ShapeBack_.emplace_back(1);
-			Second.StepBack_.emplace_back(First.StepBack_.back());
+			Second.StepBack_.emplace_back(1);
 			Second.SliceBegin_.emplace_back(0);
 			Second.DimStride_.emplace_back(0);
 			Second.IsBroadCasted_ = true;

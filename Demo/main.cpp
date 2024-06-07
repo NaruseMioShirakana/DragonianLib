@@ -107,12 +107,11 @@ int main()
 	QueryPerformanceFrequency(&Freq);
 	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
 	Indices[1].Assign(1ll);
-	libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 	const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32);
-	Ten1919810.Fix(1.1);
+	libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
 	for (int64_t i = 0; i < 20; ++i)
 	{
-		
+		//Ten1919810.RandFix(&Thp);
 		Embedding[0].Assign(i);
 		Embedding[1].Assign(i + 1);
 		auto Emb = Embedding[0];
@@ -133,7 +132,7 @@ int main()
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
 		//a.Continuous(&Thp);
-		Ten1919810 = Ten1919810 * Ten1919810;
+		Ten1919810 + Ten1919810;
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{0,192} }).Continuous(); });
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{192,384} }).Continuous(); });
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{384,572} }).Continuous(); });

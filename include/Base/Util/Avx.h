@@ -188,6 +188,12 @@ _Ty LibSvcModFn(_Ty a, _Ty b)
 }
 
 template <typename _Ty>
+_Ty LibSvcExp10(_Ty inp)
+{
+	return (_Ty)pow((_Ty)10, inp);
+}
+
+template <typename _Ty>
 void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
@@ -1138,12 +1144,6 @@ void LibSvcVectorExp(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
 		*(_Dst++) = (_Ty)exp((double)*(_Src++));
-}
-
-template <typename _Ty>
-_Ty LibSvcExp10(_Ty inp)
-{
-	return (_Ty)pow((_Ty)10, inp);
 }
 
 template <typename _Ty>

@@ -5,13 +5,13 @@
 #include "Tensor/TensorBase.h"
 #include "Util/ThreadPool.h"
 #include "Tensor/Macro.h"
-#include "Util/Avx256.h"
+#include "Util/Avx.h"
 #include "Util/SpecialOperator.h"
 
 LibSvcBegin
 using ShapeType = Vector<SizeType>;
 using ShapeIterator = ShapeType::iterator;
-
+static inline double DoubleZero = 0.;
 struct Range
 {
 	SizeType Begin = 0;
@@ -113,7 +113,7 @@ protected:
 	
 public:
 	//提醒运算符不要使用线程池
-	Tensor& DoNotUseThreadPool()
+	Tensor& DisableThreadPool()
 	{
 		UseThreadPool_ = false;
 		return *this;
@@ -273,7 +273,7 @@ public:
 	bool HasViewedFeature() const;
 
 	//当前Tensor的索引顺序是否严格内存连续
-	bool IsContinuous() const;
+	bool IsContinuous(SizeType _Dim = 0) const;
 
 	//当前Tensor是否可以通过Permute变得索引顺序内存连续
 	bool IsTranSposedContinuous() const;
@@ -340,9 +340,11 @@ public:
 
 	//使用随机数填充整个Tensor
 	void RandFix(uint64 _Seed = 114514, ThreadPool* _ThreadPool = nullptr) const;
+	void RandFix(ThreadPool* _ThreadPool) const { RandFix(114514, _ThreadPool); }
 
 	//使用正态生成的随机数填充整个Tensor
 	void RandnFix(uint64 _Seed = 114514, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr) const;
+	void RandnFix(ThreadPool* _ThreadPool) const { RandnFix(114514, 0., 1., _ThreadPool); }
 
 	//获取当前Tensor的缓冲区首地址（如果Tensor为View则返回View源的）
 	byte* Buffer() const;
@@ -395,6 +397,13 @@ public:
 		SizeType _Axis = 0,
 		ThreadPool* _ThreadPool = nullptr
 	) const;
+	Tensor Gather(
+		const Tensor& _Indices,
+		ThreadPool* _ThreadPool
+	) const
+	{
+		return Gather(_Indices, 0, _ThreadPool);
+	}
 
 	//转换Tensor的类型（新建Tensor）
 	Tensor Cast(
