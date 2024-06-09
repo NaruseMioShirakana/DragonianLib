@@ -1,3 +1,9 @@
-[submodule "OpenBLAS"]
-	path = OpenBLAS
+[submodule "Third-Party-Libraries/OpenBLAS"]
+	path = Third-Party-Libraries/OpenBLAS
 	url = https://github.com/OpenMathLib/OpenBLAS
+[submodule "Third-Party-Libraries/ffmpeg"]
+	path = Third-Party-Libraries/ffmpeg
+	url = https://github.com/FFmpeg/FFmpeg
+[submodule "Third-Party-Libraries/World"]
+	path = Third-Party-Libraries/World
+	url = https://github.com/mmorise/World

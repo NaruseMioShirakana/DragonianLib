@@ -365,3 +365,4 @@ FodyWeavers.xsd
 /runtime
 /library
 /OpenBlasRelease/lib
+/Third-Party-Libraries/OpenBlasRelease/lib
