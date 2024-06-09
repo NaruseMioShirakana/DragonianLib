@@ -31,32 +31,19 @@ void PrintTensor<bool>(libsvc::Tensor& _Tensor)
 
 int main()
 {
-	auto VectorA = libsvc::VectorArangeImpl(0, 20000, 233.f);
-	libsvc::Vector<float> VectorB(40000);
-	int64_t AShape[] = { 20000 }, BShape[] = { 40000 }, Stride[] = { 1 }, Step[] = { 1 }, Begin[] = { 0 };
 
-	auto time = clock();
-	for (int i = 0; i < 768; ++i)
-	{
-		libsvc::Linear1DImpl(
-		   VectorB.data(), BShape, Stride, Begin, Step, 
-		   VectorA.data(), AShape, Stride, Begin, Step
-	   );
-	}
-	std::cout << clock() - time;
-
-	libsvc::Tensor aaaaaaaaaaaaa{ {114,514,810}, libsvc::TensorType::Float32 };
+	libsvc::Tensor aaaaaaaaaaaaa{ {114,514,810}, libsvc::TensorType::Float32, libsvc::Device::CPU };
 	aaaaaaaaaaaaa.Assign(1.f);
 	aaaaaaaaaaaaa.Permute({2,0,1}).Assign(1.f);
 
 	libsvc::Tensor::SetThreadCount(8);
-	libsvc::Tensor::EnableTimeLogger(true);
+	libsvc::Tensor::EnableTimeLogger(false);
 	libsvc::ThreadPool Thp;
 	Thp.EnableTimeLogger(true);
 	Thp.Init(8);
 	libsvc::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
-	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32);
+	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
 	Ten.RandnFix();
 	std::cout << "\nTen:\n";
 	Ten.Invoke(1, PrintTensor);
@@ -102,13 +89,13 @@ int main()
 	std::cout << '\n';
 	libsvc::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, libsvc::PaddingType::Reflect).Invoke(1, PrintTensor);
 	std::cout << '\n';
-	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32);
+	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
 	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
 	Indices[1].Assign(1ll);
-	const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32);
-	libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32);
+	const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+	libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
 	for (int64_t i = 0; i < 20; ++i)
 	{
 		//Ten1919810.RandFix(&Thp);

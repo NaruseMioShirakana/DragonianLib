@@ -4,7 +4,7 @@
 Tensor Tensor::_Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	_Input.ThrowOnNotEnabled(); \
-	Tensor Ret(_Input.DType_); \
+	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice()); \
 	LibSvcOperator(_Input.DType_, Ret, _Name, _Input, _ThreadPool); \
 	return Ret; \
 } \
@@ -23,7 +23,7 @@ Tensor& Tensor::_Name##_(ThreadPool* _ThreadPool) \
 Tensor Tensor::_Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	_Input.ThrowOnNotEnabled(); \
-	Tensor Ret(_Input.DType_); \
+	Tensor Ret(_Input.DType_, _Input.GetDevice()); \
 	if (_Input.DType_ == TensorType::Float64) \
 		Ret = ::libsvc::Float64::_Name(_Input, _ThreadPool); \
 	else if (_Input.DType_ == TensorType::Float32) \
@@ -58,7 +58,7 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool)
 #define LibSvcMonoOperatorFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
-	Tensor Ret(_Input.Shape(), _Input.DType()); \
+	Tensor Ret(_Input.Shape(), _Input.DType(), _Input.GetDevice()); \
 	const auto InputSqueeze = _Input.Squeeze(); \
 	const auto Result = Ret.Squeeze(); \
 	const auto CurDims = (SizeType)InputSqueeze.Shape().size(); \
@@ -162,9 +162,11 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 { \
 	if (_A.DType() != _B.DType()) \
 		LibSvcThrow("Type MisMatch!"); \
+	if (_A.GetDevice() != _B.GetDevice()) \
+		LibSvcThrow("Device MisMatch!"); \
  \
 	const auto BroadCast = Tensor::BroadCast(_A, _B); \
-	Tensor Ret(BroadCast.first.Shape(), BroadCast.first.DType()); \
+	Tensor Ret(BroadCast.first.Shape(), BroadCast.first.DType(), _A.GetDevice()); \
 	const auto InputA = BroadCast.first.Squeeze(); \
 	const auto InputB = BroadCast.second.Squeeze(); \
 	const auto Result = Ret.Squeeze(); \
@@ -226,7 +228,7 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 { \
 	const auto _Value = CastFrom(_ValType, _Val); \
  \
-	Tensor Ret(_A.Shape(), _A.DType()); \
+	Tensor Ret(_A.Shape(), _A.DType(), _A.GetDevice()); \
 	const auto InputA = _A.Squeeze(); \
 	const auto Result = Ret.Squeeze(); \
  \
@@ -405,9 +407,11 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 { \
 	if (_A.DType() != _B.DType()) \
 		LibSvcThrow("Type MisMatch!"); \
+	if (_A.GetDevice() != _B.GetDevice()) \
+		LibSvcThrow("Device MisMatch!"); \
  \
 	const auto BroadCast = Tensor::BroadCast(_A, _B); \
-	Tensor Ret(BroadCast.first.Shape(), TensorType::Boolean); \
+	Tensor Ret(BroadCast.first.Shape(), TensorType::Boolean, _A.GetDevice()); \
 	const auto InputA = BroadCast.first.Squeeze(); \
 	const auto InputB = BroadCast.second.Squeeze(); \
 	const auto Result = Ret.Squeeze(); \
@@ -469,7 +473,7 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 { \
 	const auto _Value = CastFrom(_ValType, _Val); \
  \
-	Tensor Ret(_A.Shape(), TensorType::Boolean); \
+	Tensor Ret(_A.Shape(), TensorType::Boolean, _A.GetDevice()); \
 	const auto InputA = _A.Squeeze(); \
 	const auto Result = Ret.Squeeze(); \
  \

@@ -136,10 +136,7 @@ namespace Int8
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
 
 		if (BufferEnd < Buffer)
-		{
-			LogMessage("[Operator] BufferEnd* < Buffer* Is True, Make Sure BufferEnd* > Buffer*");
-			return;
-		}
+			LibSvcThrow("[Operator] BufferEnd* < Buffer*, Make Sure BufferEnd* > Buffer*");
 
 		if (_Input.IsContinuous())
 		{
@@ -677,8 +674,11 @@ namespace Int8
 		if (_InputA.DType() != _InputB.DType())
 			LibSvcThrow("Type MisMatch!");
 
+		if (_InputA.GetDevice() != _InputB.GetDevice())
+			LibSvcThrow("Device MisMatch!");
+
 		if (_InputA.IsBroadCasted())
-			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+			LibSvcThrow("You Can't Assign To a BroadCasted Tensor!");
 
 		if (_InputB.IsScalar())
 		{
@@ -879,6 +879,8 @@ namespace Int8
 
 	Tensor Gather(const Tensor& _Input, const Tensor& _IndicesInp, SizeType _Axis, ThreadPool* _ThreadPool)
 	{
+		if (_Input.GetDevice() != _IndicesInp.GetDevice())
+			LibSvcThrow("Device MisMatch!");
 		if (_Input.DimCount() <= 1)
 			LibSvcThrow("Shape Of Input Should > 1!");
 
@@ -891,7 +893,7 @@ namespace Int8
 		ShapeType _NewShape = _IndicesShape;
 		_InputShape.erase(_InputShape.begin() + _Axis);
 		_NewShape.insert(_NewShape.end(), _InputShape.begin(), _InputShape.end());
-		Tensor Ret(_NewShape, _Input.DType());
+		Tensor Ret(_NewShape, _Input.DType(), _Input.GetDevice());
 
 		const auto TotalSize = VectorMul(_NewShape);
 		const auto CurDims = _Indices.DimCount();
@@ -975,6 +977,9 @@ namespace Int8
 
 	void Cast(const Tensor& _Dst, const Tensor& _Src, ThreadPool* _ThreadPool)
 	{
+		if (_Dst.GetDevice() != _Src.GetDevice())
+			LibSvcThrow("Device MisMatch!");
+
 		const auto SqueezedTensorA = _Dst.Squeeze();
 		const auto SqueezedTensorB = _Src.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensorA.Shape().size();
@@ -1955,7 +1960,7 @@ namespace Int8
 			ReqSqu = true;
 		}
 
-		Tensor Output(_NewShape, _Src.DType());
+		Tensor Output(_NewShape, _Src.DType(), _Src.GetDevice());
 
 		const auto InputRef = _Src.SwapLastDim(_Axis);
 		//auto ReturnRef = Output.SwapLastDim(_Axis);

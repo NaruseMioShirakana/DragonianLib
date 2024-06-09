@@ -1,12 +1,10 @@
 #pragma once
 #include <deque>
 #include <ranges>
-#include <random>
+#include "Alloc.h"
 #include "Tensor/TensorBase.h"
 #include "Util/ThreadPool.h"
 #include "Tensor/Macro.h"
-#include "Util/Avx.h"
-#include "Util/SpecialOperator.h"
 
 LibSvcBegin
 using ShapeType = Vector<SizeType>;
@@ -64,26 +62,26 @@ public:
 
 	Tensor() = delete;
 	~Tensor() override;
-	Tensor(TensorType _DType) :TensorBase(_DType) {}
-	Tensor(const ShapeType& _Shape, TensorType _DType);
+	Tensor(TensorType _DType, Device _Device) :TensorBase(_DType), Device_(GetMemoryProvider(_Device)) {}
+	Tensor(const ShapeType& _Shape, TensorType _DType, Device _Device);
 	Tensor(const Tensor& _Left);
 	Tensor(Tensor&& _Right) noexcept;
-	static Tensor FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool = nullptr);
-	static Tensor LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Ones(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Zeros(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
-	static Tensor ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
-	static Tensor ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Rand(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Randn(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
+	static Tensor FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor Ones(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor Zeros(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor Rand(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor Randn(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
 	static Tensor OnesLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
 	static Tensor ZerosLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
 	static Tensor ConstantLike(const Tensor& _Shape, double _Val, ThreadPool* _ThreadPool = nullptr);
 	static Tensor ConstantLike(const Tensor& _Shape, int64 _Val, ThreadPool* _ThreadPool = nullptr);
 	static Tensor RandLike(const Tensor& _Shape, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
 	static Tensor RandnLike(const Tensor& _Shape, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
-	static Tensor Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype = TensorType::Float32, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
 
 	static void SetThreadCount(SizeType _Count);
 	static void EnableTimeLogger(bool _Enabled);
@@ -94,6 +92,14 @@ public:
 	std::mutex& GetRelMx() const
 	{
 		return RelMx_;
+	}
+	Device GetDevice() const
+	{
+		return Device_->GetDevice();
+	}
+	Allocator GetAllocator() const
+	{
+		return Device_;
 	}
 
 protected:
@@ -391,6 +397,8 @@ public:
 	//获取遍历该张量开销最小的轴序
 	ShapeType CalcContinuous() const;
 
+	bool IsTransposed(size_t _Size) const;
+
 	//沿着Axis[0]，获取当前Tensor中Indices处的Tensor（新建Tensor）
 	Tensor Gather(
 		const Tensor& _Indices,
@@ -575,6 +583,7 @@ public:
 
 private:
 	bool UseThreadPool_ = true;
+	Allocator Device_;
 };
 
 LibSvcEnd

@@ -54,7 +54,7 @@ TensorType Type2DType(const std::string& _Type)
 	const auto res = __Ty2DTy.find(_Type);
 	if (res != __Ty2DTy.end())
 		return res->second;
-	LibSvcThrow("Type Error!")
+	LibSvcThrow("Type Error!");
 }
 
 const std::string& DType2Type(TensorType _Type)
@@ -62,7 +62,7 @@ const std::string& DType2Type(TensorType _Type)
 	const auto res = __DTy2Ty.find(_Type);
 	if (res != __DTy2Ty.end())
 		return res->second;
-	LibSvcThrow("Type Error!")
+	LibSvcThrow("Type Error!");
 }
 
 int64 Type2Size(const std::string& _Type)
@@ -70,7 +70,7 @@ int64 Type2Size(const std::string& _Type)
 	const auto res = __Ty2Size.find(_Type);
 	if (res != __Ty2Size.end())
 		return res->second;
-	LibSvcThrow("Type Error!")
+	LibSvcThrow("Type Error!");
 }
 
 int64 DType2Size(TensorType _Type)
@@ -78,7 +78,7 @@ int64 DType2Size(TensorType _Type)
 	const auto res = __DTy2Size.find(_Type);
 	if (res != __DTy2Size.end())
 		return res->second;
-	LibSvcThrow("Type Error!")
+	LibSvcThrow("Type Error!");
 }
 
 TensorType TensorBase::DType() const

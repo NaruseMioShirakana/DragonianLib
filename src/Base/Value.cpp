@@ -13,8 +13,6 @@ Value& Value::load(const std::wstring& _Path, bool _Strict)
 		LibSvcThrow("Failed To Open File!");
 	DictFile.Close();
 
-
-
 	//loadData(WeightData_, _Strict);
 	return *this;
 }

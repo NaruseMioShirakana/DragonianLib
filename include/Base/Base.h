@@ -1,19 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
-#include "Util/Logger.h"
-
-#if LIBSVC_ALLOC_ALIG > 1
-#if _MSC_VER
-#define LIBSVC_MALLOC(size) _aligned_malloc(size, LIBSVC_ALLOC_ALIG)
-#define LIBSVC_FREE(ptr) _aligned_free(ptr)
-#else
-#error
-#endif
-#else
-#define LIBSVC_MALLOC(size) malloc(size)
-#define LIBSVC_FREE(size) free(size)
-#endif
 
 #ifndef UNUSED
 #define UNUSED(x) (void)(x)
@@ -23,7 +10,7 @@
 #define LibSvcEnd }
 #define LIBSVCND [[nodiscard]]
 
-#define LibSvcThrowImpl(message, exception_type) {\
+#define LibSvcThrowImpl(message, exception_type) do {\
 	const std::string __LibSvc__Message__ = message;\
 	const std::string __LibSvc__Message__Prefix__ =\
 	std::string("[In File: \"") + std::filesystem::path(__FILE__).filename().string() + "\", " +\
@@ -32,7 +19,7 @@
 	if (__LibSvc__Message__.substr(0, __LibSvc__Message__Prefix__.length()) != __LibSvc__Message__Prefix__)\
 		throw exception_type((__LibSvc__Message__Prefix__ + __LibSvc__Message__).c_str());\
 	throw exception_type(__LibSvc__Message__.c_str());\
-}
+} while(0)
 
 #define LibSvcThrow(message) LibSvcThrowImpl(message, std::exception)
 

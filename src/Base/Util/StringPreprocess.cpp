@@ -1,11 +1,12 @@
 #include "Util/StringPreprocess.h"
+#include <regex>
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #error
 #endif
 
-std::string to_byte_string(const std::wstring& input)
+std::string WideStringToUTF8(const std::wstring& input)
 {
 #ifdef _WIN32
 	std::vector<char> ByteString(input.length() * 6);
@@ -25,7 +26,7 @@ std::string to_byte_string(const std::wstring& input)
 #endif
 }
 
-std::string to_ansi_string(const std::wstring& input)
+std::string UnicodeToAnsi(const std::wstring& input)
 {
 #ifdef _WIN32
 	std::vector<char> ByteString(input.length() * 6);
@@ -45,7 +46,7 @@ std::string to_ansi_string(const std::wstring& input)
 #endif
 }
 
-std::wstring to_wide_string(const std::string& input)
+std::wstring UTF8ToWideString(const std::string& input)
 {
 #ifdef _WIN32
 	std::vector<wchar_t> WideString(input.length() * 2);
@@ -63,24 +64,36 @@ std::wstring to_wide_string(const std::string& input)
 #endif
 }
 
-std::wstring string_vector_to_string(const std::vector<std::string>& vector)
+std::wregex newlinereg(L"\\n");
+std::wregex returnreg(L"\\r");
+std::wregex refreg(L"\"");
+
+std::wstring& replace_sp(std::wstring inp)
+{
+	inp = std::regex_replace(inp, newlinereg, L"\\n");
+	inp = std::regex_replace(inp, returnreg, L"\\r");
+	inp = std::regex_replace(inp, refreg, L"\\\"");
+	return inp;
+}
+
+std::wstring SerializeStringVector(const std::vector<std::string>& vector)
 {
 	std::wstring vecstr = L"[";
 	for (const auto& it : vector)
 		if (!it.empty())
-			vecstr += L'\"' + to_wide_string(it) + L"\", ";
+			vecstr += L'\"' + replace_sp(UTF8ToWideString(it)) + L"\", ";
 	if (vecstr.length() > 2)
 		vecstr = vecstr.substr(0, vecstr.length() - 2);
 	vecstr += L']';
 	return vecstr;
 }
 
-std::wstring wstring_vector_to_string(const std::vector<std::wstring>& vector)
+std::wstring SerializeStringVector(const std::vector<std::wstring>& vector)
 {
 	std::wstring vecstr = L"[";
 	for (const auto& it : vector)
 		if (!it.empty())
-			vecstr += L'\"' + it + L"\", ";
+			vecstr += L'\"' + replace_sp(it) + L"\", ";
 	if (vecstr.length() > 2)
 		vecstr = vecstr.substr(0, vecstr.length() - 2);
 	vecstr += L']';

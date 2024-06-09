@@ -7,6 +7,9 @@ class Value
 public:
 	Value() = default;
 	Value(const Value& _Left) = delete;
+	Value& operator=(const Value& _Left) = delete;
+	Value(Value&& _Right) noexcept = delete;
+	Value& operator=(Value&& _Right) noexcept = delete;
 	virtual ~Value();
 
 protected:

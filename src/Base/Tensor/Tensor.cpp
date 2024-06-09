@@ -1,5 +1,5 @@
 #include <random>
-
+#include "Tensor/OperatorMacro.h"
 #include "Tensor/Tensor.h"
 #include "Tensor/Int8Tensor.h"
 #include "Tensor/Int16Tensor.h"
@@ -54,7 +54,7 @@ Tensor::~Tensor()
 	Free();
 }
 
-Tensor::Tensor(const ShapeType& _Shape, TensorType _DType) : TensorBase(_DType)
+Tensor::Tensor(const ShapeType& _Shape, TensorType _DType, Device _Device) : TensorBase(_DType), Device_(GetMemoryProvider(_Device))
 {
 	for (const auto i : _Shape)
 		if (i <= 0)
@@ -62,18 +62,18 @@ Tensor::Tensor(const ShapeType& _Shape, TensorType _DType) : TensorBase(_DType)
 	AlignSize_ = DType2Size(DType_);
 	ShapeBack_ = _Shape;
 	StepFront_.clear();
-	StepBack_ = { _Shape.begin() + 1,_Shape.end() };
+	StepBack_ = { _Shape.begin() + 1,_Shape.end(), ShapeType::allocator_type()};
 	StepBack_.emplace_back(AlignSize_);
 	std::ranges::reverse(StepBack_);
 	for (size_t i = 1; i < StepBack_.size(); ++i)
 		StepBack_[i] *= StepBack_[i - 1];
 	std::ranges::reverse(StepBack_);
-	SliceBegin_ = { _Shape.size(),0, ShapeType::allocator_type() };
-	DimStride_ = { _Shape.size(),1, ShapeType::allocator_type() };
+	SliceBegin_ = { _Shape.size(),0ll, ShapeType::allocator_type() };
+	DimStride_ = { _Shape.size(),1ll, ShapeType::allocator_type() };
 	CurIndices_.clear();
 
 	ViewParent_ = nullptr;
-	DataPtr_ = (byte*)LIBSVC_MALLOC(VectorMul(ShapeBack_) * AlignSize_);
+	DataPtr_ = Device_->Allocate(VectorMul(ShapeBack_) * AlignSize_);
 	ViewChild_.clear();
 }
 
@@ -83,7 +83,7 @@ Tensor::Tensor(const Tensor& _Left) : TensorBase(_Left.DType_)
 	*this = _Left.CreateView();
 }
 
-Tensor::Tensor(Tensor&& _Right) noexcept : TensorBase(_Right.DType_)
+Tensor::Tensor(Tensor&& _Right) noexcept : TensorBase(_Right.DType_), Device_(_Right.Device_)
 {
 	std::lock_guard LockRel(_Right.RelMx_);
 
@@ -131,109 +131,109 @@ void Tensor::EnableTimeLogger(bool _Enabled)
 	GlobalThreadPool.EnableTimeLogger(_Enabled);
 }
 
-Tensor Tensor::FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool)
+Tensor Tensor::FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool, Device _Device)
 {
 	ShapeType _Shape;
 	_Shape.emplace_back((SizeType)_Array.size());
-	Tensor Ret(_Shape, TensorType::Float32);
+	Tensor Ret(_Shape, TensorType::Float32, _Device);
 	Ret.Assign(_Array.data(), (SizeType)(_Array.size() * sizeof(float32)), _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool)
+Tensor Tensor::LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool, Device _Device)
 {
 	ShapeType _Shape;
 	_Shape.emplace_back((SizeType)_Array.size());
-	Tensor Ret(_Shape, TensorType::Int64);
+	Tensor Ret(_Shape, TensorType::Int64, _Device);
 	Ret.Assign(_Array.data(), (SizeType)(_Array.size() * sizeof(int64)), _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Ones(const ShapeType& _Shape, TensorType _Type, ThreadPool* _ThreadPool)
+Tensor Tensor::Ones(const ShapeType& _Shape, TensorType _Type, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.FixOnes(_ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Zeros(const ShapeType& _Shape, TensorType _Type, ThreadPool* _ThreadPool)
+Tensor Tensor::Zeros(const ShapeType& _Shape, TensorType _Type, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.FixZeros(_ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type, ThreadPool* _ThreadPool)
+Tensor Tensor::ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.Assign(&_Val, TensorType::Float64, _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type, ThreadPool* _ThreadPool)
+Tensor Tensor::ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.Assign(&_Val, TensorType::Int64, _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Rand(const ShapeType& _Shape, TensorType _Type, int64_t _Seed, ThreadPool* _ThreadPool)
+Tensor Tensor::Rand(const ShapeType& _Shape, TensorType _Type, int64_t _Seed, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.RandFix(_Seed, _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Randn(const ShapeType& _Shape, TensorType _Type, int64_t _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)
+Tensor Tensor::Randn(const ShapeType& _Shape, TensorType _Type, int64_t _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool, Device _Device)
 {
-	Tensor Ret(_Shape, _Type);
+	Tensor Ret(_Shape, _Type, _Device);
 	Ret.RandnFix(_Seed, _Mean, _Sigma, _ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::OnesLike(const Tensor& _Shape, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.FixOnes(_ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::ZerosLike(const Tensor& _Shape, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.FixZeros(_ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::ConstantLike(const Tensor& _Shape, double _Val, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.Assign(&_Val, TensorType::Float64, _ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::ConstantLike(const Tensor& _Shape, int64 _Val, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.Assign(&_Val, TensorType::Int64, _ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::RandLike(const Tensor& _Shape, int64_t _Seed, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.RandFix(_Seed, _ThreadPool);
 	return Ret;
 }
 
 Tensor Tensor::RandnLike(const Tensor& _Shape, int64_t _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)
 {
-	Tensor Ret(_Shape.Shape(), _Shape.DType());
+	Tensor Ret(_Shape.Shape(), _Shape.DType(), _Shape.Device_->GetDevice());
 	Ret.RandnFix(_Seed, _Mean, _Sigma, _ThreadPool);
 	return Ret;
 }
 
-Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool)
+Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool, Device _Device)
 {
 	if (_Dtype != TensorType::Float64 && _Dtype != TensorType::Float32)
 		LibSvcThrow("Type Error!");
@@ -241,7 +241,7 @@ Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _D
 	_Shape[0] = SizeType((_End - _Begin) / _Step);
 	if (_Shape[0] <= 0)
 		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
-	Tensor Ret(_Shape, _Dtype);
+	Tensor Ret(_Shape, _Dtype, _Device);
 	Ret.Assign(_Step, _ThreadPool);
 
 	if(_Dtype == TensorType::Float32)
@@ -258,7 +258,7 @@ Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _D
 	return Ret;
 }
 
-Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool)
+Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool, Device _Device)
 {
 	if (_Dtype < TensorType::Int8)
 		LibSvcThrow("Type Error!");
@@ -266,7 +266,7 @@ Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, 
 	_Shape[0] = SizeType((_End - _Begin) / _Step);
 	if (_Shape[0] <= 0)
 		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
-	Tensor Ret(_Shape, _Dtype);
+	Tensor Ret(_Shape, _Dtype, _Device);
 	Ret.Assign(_Step, _ThreadPool);
 
 	if (_Dtype == TensorType::Int8)
@@ -301,7 +301,7 @@ void Tensor::Free()
 	if (DataPtr_ && !IsView())
 	{
 		ClearViewChilds();
-		LIBSVC_FREE(DataPtr_);
+		Device_->Free(DataPtr_);
 	}
 	else if(IsView())
 	{
@@ -385,7 +385,7 @@ bool Tensor::HasChild(const Tensor* _Child) const
 
 void Tensor::ReCalcViewInfo()
 {
-	StepBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
+	StepBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end(), ShapeType::allocator_type() };
 	StepBack_.emplace_back(AlignSize_);
 	std::ranges::reverse(StepBack_);
 	for (size_t i = 1; i < StepBack_.size(); ++i)
@@ -413,17 +413,17 @@ void Tensor::Assign1D(const void* _Val) const
 Tensor Tensor::GatherRef(SizeType _Index) const
 {
 	const auto Idx = CalcIndex(_Index, ShapeBack_.front());
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	Ret.DType_ = DType_;
 
-	Ret.ShapeBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end() };
+	Ret.ShapeBack_ = { ShapeBack_.begin() + 1,ShapeBack_.end(), ShapeType::allocator_type() };
 
 	Ret.StepFront_ = StepFront_;
 	Ret.StepFront_.emplace_back(StepBack_.front());
 
-	Ret.StepBack_ = { StepBack_.begin() + 1,StepBack_.end() };
-	Ret.SliceBegin_ = { SliceBegin_.begin() + 1,SliceBegin_.end() };
-	Ret.DimStride_ = { DimStride_.begin() + 1,DimStride_.end() };
+	Ret.StepBack_ = { StepBack_.begin() + 1,StepBack_.end(), ShapeType::allocator_type() };
+	Ret.SliceBegin_ = { SliceBegin_.begin() + 1,SliceBegin_.end(), ShapeType::allocator_type() };
+	Ret.DimStride_ = { DimStride_.begin() + 1,DimStride_.end(), ShapeType::allocator_type() };
 
 	Ret.CurIndices_ = CurIndices_;
 	Ret.CurIndices_.emplace_back(SliceBegin_.front() + (Idx * DimStride_.front()));
@@ -504,7 +504,7 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 		DataPtr_ = _Right.DataPtr_;
 		ViewChild_.clear();
 	}
-
+	Device_ = _Right.Device_;
 	return *this;
 }
 
@@ -528,7 +528,7 @@ Tensor& Tensor::operator=(int64 _Val)
 
 Tensor Tensor::operator+(const Tensor& _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Add, *this, _Right, &GlobalThreadPool);
@@ -540,7 +540,7 @@ Tensor Tensor::operator+(const Tensor& _Right) const
 
 Tensor Tensor::operator-(const Tensor& _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Sub, *this, _Right, &GlobalThreadPool);
@@ -552,7 +552,7 @@ Tensor Tensor::operator-(const Tensor& _Right) const
 
 Tensor Tensor::operator*(const Tensor& _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Mul, *this, _Right, &GlobalThreadPool);
@@ -564,7 +564,7 @@ Tensor Tensor::operator*(const Tensor& _Right) const
 
 Tensor Tensor::operator/(const Tensor& _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Div, *this, _Right, &GlobalThreadPool);
@@ -576,7 +576,7 @@ Tensor Tensor::operator/(const Tensor& _Right) const
 
 Tensor Tensor::operator+(int64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -588,7 +588,7 @@ Tensor Tensor::operator+(int64 _Right) const
 
 Tensor Tensor::operator-(int64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -600,7 +600,7 @@ Tensor Tensor::operator-(int64 _Right) const
 
 Tensor Tensor::operator*(int64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -612,7 +612,7 @@ Tensor Tensor::operator*(int64 _Right) const
 
 Tensor Tensor::operator/(int64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -624,7 +624,7 @@ Tensor Tensor::operator/(int64 _Right) const
 
 Tensor Tensor::operator+(float64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -636,7 +636,7 @@ Tensor Tensor::operator+(float64 _Right) const
 
 Tensor Tensor::operator-(float64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -648,7 +648,7 @@ Tensor Tensor::operator-(float64 _Right) const
 
 Tensor Tensor::operator*(float64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -660,7 +660,7 @@ Tensor Tensor::operator*(float64 _Right) const
 
 Tensor Tensor::operator/(float64 _Right) const
 {
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -816,7 +816,7 @@ Tensor& Tensor::operator/=(float64 _Right)
 
 Tensor Tensor::operator<(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Less, *this, _Right, &GlobalThreadPool);
@@ -828,7 +828,7 @@ Tensor Tensor::operator<(const Tensor& _Right) const
 
 Tensor Tensor::operator<(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -840,7 +840,7 @@ Tensor Tensor::operator<(float64 _Right) const
 
 Tensor Tensor::operator<(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -852,7 +852,7 @@ Tensor Tensor::operator<(int64 _Right) const
 
 Tensor Tensor::operator>(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Greater, *this, _Right, &GlobalThreadPool);
@@ -864,7 +864,7 @@ Tensor Tensor::operator>(const Tensor& _Right) const
 
 Tensor Tensor::operator>(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -876,7 +876,7 @@ Tensor Tensor::operator>(float64 _Right) const
 
 Tensor Tensor::operator>(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_&& GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -888,7 +888,7 @@ Tensor Tensor::operator>(int64 _Right) const
 
 Tensor Tensor::operator==(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Equal, *this, _Right, &GlobalThreadPool);
@@ -900,7 +900,7 @@ Tensor Tensor::operator==(const Tensor& _Right) const
 
 Tensor Tensor::operator==(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -912,7 +912,7 @@ Tensor Tensor::operator==(float64 _Right) const
 
 Tensor Tensor::operator==(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -924,7 +924,7 @@ Tensor Tensor::operator==(int64 _Right) const
 
 Tensor Tensor::operator>=(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, GreaterEqual, *this, _Right, &GlobalThreadPool);
@@ -936,7 +936,7 @@ Tensor Tensor::operator>=(const Tensor& _Right) const
 
 Tensor Tensor::operator>=(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -948,7 +948,7 @@ Tensor Tensor::operator>=(float64 _Right) const
 
 Tensor Tensor::operator>=(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -960,7 +960,7 @@ Tensor Tensor::operator>=(int64 _Right) const
 
 Tensor Tensor::operator<=(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, LessEqual, *this, _Right, &GlobalThreadPool);
@@ -972,7 +972,7 @@ Tensor Tensor::operator<=(const Tensor& _Right) const
 
 Tensor Tensor::operator<=(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -984,7 +984,7 @@ Tensor Tensor::operator<=(float64 _Right) const
 
 Tensor Tensor::operator<=(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -996,7 +996,7 @@ Tensor Tensor::operator<=(int64 _Right) const
 
 Tensor Tensor::operator!=(const Tensor& _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, NotEqual, *this, _Right, &GlobalThreadPool);
@@ -1008,7 +1008,7 @@ Tensor Tensor::operator!=(const Tensor& _Right) const
 
 Tensor Tensor::operator!=(float64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
@@ -1020,7 +1020,7 @@ Tensor Tensor::operator!=(float64 _Right) const
 
 Tensor Tensor::operator!=(int64 _Right) const
 {
-	Tensor Ret(TensorType::Boolean);
+	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
@@ -1242,7 +1242,7 @@ bool Tensor::IsView() const
 Tensor Tensor::Clone(ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	Tensor Ret(ShapeBack_, DType_);
+	Tensor Ret(ShapeBack_, DType_, Device_->GetDevice());
 	Ret.Assign(*this, _ThreadPool);
 	return Ret;
 }
@@ -1250,7 +1250,7 @@ Tensor Tensor::Clone(ThreadPool* _ThreadPool) const
 Tensor Tensor::CreateView() const
 {
 	ThrowOnNotEnabled();
-	Tensor Ret(DType_);
+	Tensor Ret(DType_, Device_->GetDevice());
 	Ret.DType_ = DType_;
 	Ret.ShapeBack_ = ShapeBack_;
 	Ret.StepFront_ = StepFront_;
@@ -1683,7 +1683,7 @@ ShapeType Tensor::CalcContinuous() const
 {
 	const auto Dims = DimCount();
 	if (Dims == 1)
-		return { 0, 0, 0, 0, 0, 0 };
+		return ShapeType(6, 0);
 	Vector<std::pair<SizeType, SizeType>> Ret;
 	Ret.reserve(Dims);
 	for (SizeType i = 0; i < Dims; ++i)
@@ -1694,6 +1694,15 @@ ShapeType Tensor::CalcContinuous() const
 	for (const auto& i : Ret | std::views::values)
 		Rtn.emplace_back(i);
 	return Rtn;
+}
+
+bool Tensor::IsTransposed(size_t _Size) const
+{
+	if (*(StepBack_.end() - 2) != _Size)
+		return false;
+	if (*(StepBack_.end() - 1) != _Size * *(ShapeBack_.end() - 2))
+		return false;
+	return true;
 }
 
 Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingType _Type, TensorType _ValueType, lpvoid _Val, ThreadPool* _ThreadPool)
@@ -1726,7 +1735,7 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 		SliceDst.emplace_back(_Pad[i].Begin, InputShapePtr[i] + _Pad[i].Begin);
 	}
 
-	Tensor Ret(Shape, _Input.DType());
+	Tensor Ret(Shape, _Input.DType(), _Input.GetDevice());
 
 	if (_Type == PaddingType::Zero || (_Type == PaddingType::Constant && !_Val))
 	{
@@ -1940,7 +1949,7 @@ Tensor Tensor::Repeat(const Tensor& _Input, const Vector<std::pair<SizeType, Siz
 			LibSvcThrow("Axis Out Of Range!");
 	}
 
-	Tensor Rtn(Shape, _Input.DType());
+	Tensor Rtn(Shape, _Input.DType(), _Input.GetDevice());
 	Rtn.Slice(SliceTotal).Assign(_Input, _ThreadPool);
 
 	for (SizeType i = 0; i < DimCount; ++i)
@@ -1968,6 +1977,11 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 		LibSvcThrow("Inputs Can Not Be Empty!");
 	if (_Inputs.size() == 1)
 		return _Inputs[0].Clone(_ThreadPool);
+	auto _Dev = _Inputs[0].GetDevice();
+	for (const auto& it : _Inputs)
+		if (it.GetDevice() != _Dev)
+			LibSvcThrow("Device Of Input Must Be Equal!");
+
 	const auto& FShape = _Inputs[0].Shape();
 	const auto NDims = _Inputs[0].DimCount();
 	_Dim = CalcIndex(_Dim, NDims + 1);
@@ -1983,7 +1997,7 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 
 	ShapeType Shape = FShape;
 	Shape.insert(Shape.begin() + _Dim, (SizeType)_Inputs.size());
-	Tensor Ret(Shape, _Inputs[0].DType());
+	Tensor Ret(Shape, _Inputs[0].DType(), _Dev);
 
 	Vector<Range> SliceOptions(Shape.size(), None);
 	auto& CurSlice = SliceOptions[_Dim];
@@ -2016,6 +2030,11 @@ Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _Th
 		LibSvcThrow("Inputs Can Not Be Empty!");
 	if (_Inputs.size() == 1)
 		return _Inputs[0].Clone(_ThreadPool);
+	auto _Dev = _Inputs[0].GetDevice();
+	for (const auto& it : _Inputs)
+		if (it.GetDevice() != _Dev)
+			LibSvcThrow("Device Of Input Must Be Equal!");
+
 	const auto& FShape = _Inputs[0].Shape();
 	const auto NDims = _Inputs[0].DimCount();
 	_Dim = CalcIndex(_Dim, NDims);
@@ -2034,7 +2053,7 @@ Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _Th
 		}
 	}
 
-	Tensor Ret(Shape, _Inputs[0].DType());
+	Tensor Ret(Shape, _Inputs[0].DType(), _Dev);
 	Vector<Range> SliceOptions(Shape.size(), None);
 	auto& CurSlice = SliceOptions[_Dim];
 	CurSlice = { 0,0 };
@@ -2052,7 +2071,7 @@ Tensor Tensor::Gather(const Tensor& _Input, const Tensor& _Indices, SizeType _Ax
 	_Input.ThrowOnNotEnabled();
 	_Indices.ThrowOnNotEnabled();
 	_Axis = CalcIndex(_Axis, _Input.DimCount());
-	Tensor Ret(_Input.DType_);
+	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice());
 	LibSvcOperator(_Input.DType_, Ret, Gather, _Input, _Indices, _Axis, _ThreadPool);
 	return Ret;
 }
@@ -2067,7 +2086,7 @@ Tensor Tensor::Cast(const Tensor& _Input, TensorType _Dtype, ThreadPool* _Thread
 	_Input.ThrowOnNotEnabled();
 	if (_Input.DType_ == _Dtype)
 		return _Input.CreateView();
-	Tensor Ret(_Input.Shape(), _Dtype);
+	Tensor Ret(_Input.Shape(), _Dtype, _Input.Device_->GetDevice());
 	LibSvcOperatorDTypeNoRetrun(_Dtype, Cast, Ret, _Input, _ThreadPool);
 	return Ret;
 }
@@ -2081,7 +2100,7 @@ Tensor Tensor::Sum(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadPool
 {
 	_Input.ThrowOnNotEnabled();
 	
-	Tensor Ret(_Input.DType());
+	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
 	LibSvcOperator(_Input.DType(), Ret, Sum, _Input, _Axis, _ThreadPool);
 
 	return Ret;
@@ -2096,7 +2115,7 @@ Tensor Tensor::Diff(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadPoo
 	SliceInfo1[_Axis] = { 0, -2 };
 	SliceInfo2[_Axis] = { 1,-1 };
 
-	Tensor Ret(_Input.DType_);
+	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice());
 	LibSvcOperator(_Input.DType_, Ret, Sub, _Input.Slice(SliceInfo2), _Input.Slice(SliceInfo1), _ThreadPool);
 
 	return Ret;
@@ -2106,7 +2125,7 @@ Tensor Tensor::CumSum(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadP
 {
 	_Input.ThrowOnNotEnabled();
 
-	Tensor Ret(_Input.DType());
+	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
 	LibSvcOperator(_Input.DType(), Ret, CumSum, _Input, _Axis, _ThreadPool);
 
 	return Ret;
@@ -2116,7 +2135,7 @@ Tensor Tensor::CumProd(const Tensor& _Input, SizeType _Axis, ThreadPool* _Thread
 {
 	_Input.ThrowOnNotEnabled();
 
-	Tensor Ret(_Input.DType());
+	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
 	LibSvcOperator(_Input.DType(), Ret, CumProd, _Input, _Axis, _ThreadPool);
 
 	return Ret;
@@ -2130,7 +2149,7 @@ Tensor Tensor::Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _Th
 	_InputB.ThrowOnNotEnabled();
 	if (_InputA.DType_ != _InputB.DType_)
 		LibSvcThrow("Type MisMatch!");
-	Tensor Ret(_InputA.DType_);
+	Tensor Ret(_InputA.DType_, _InputA.Device_->GetDevice());
 	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, _InputB, _ThreadPool);
 	return Ret;
 }
@@ -2138,7 +2157,7 @@ Tensor Tensor::Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _Th
 Tensor Tensor::Pow(const Tensor& _InputA, float64 _Val, ThreadPool* _ThreadPool)
 {
 	_InputA.ThrowOnNotEnabled();
-	Tensor Ret(_InputA.DType_);
+	Tensor Ret(_InputA.DType_, _InputA.Device_->GetDevice());
 	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, &_Val, TensorType::Float64, _ThreadPool);
 	return Ret;
 }

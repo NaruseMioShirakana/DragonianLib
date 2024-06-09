@@ -1,7 +1,6 @@
 #pragma once
 #include <filesystem>
 #include <mutex>
-#include "Util/StringPreprocess.h"
 
 namespace libsvc{
 
@@ -14,20 +13,18 @@ namespace libsvc{
 		Logger();
 		~Logger();
 		Logger(logger_fn error_fn, logger_fn log_fn);
+		Logger(const Logger&) = delete;
+		Logger(Logger&&) = delete;
+		Logger& operator=(const Logger&) = delete;
+		Logger& operator=(Logger&&) = delete;
 		void log(const std::wstring&);
 		void log(const char*);
 		void error(const std::wstring&);
 		void error(const char*);
-		void enable(bool _filelogger)
-		{
-			filelogger = _filelogger;
-		}
+		void set_custom_logger(logger_fn error, logger_fn log);
 	private:
 		bool custom_logger_fn = false;
-		std::filesystem::path cur_log_dir, logpath, errorpath;
 		logger_fn cerror_fn = nullptr, cloggerfn = nullptr;
-		FILE* log_file = nullptr, * error_file = nullptr;
-		bool filelogger = false;
 		std::mutex mx;
 	};
 

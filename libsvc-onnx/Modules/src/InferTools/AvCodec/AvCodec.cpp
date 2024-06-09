@@ -1,63 +1,23 @@
-﻿#include "../../header/InferTools/AvCodec/AvCodeResample.h"
+﻿#include "InferTools/AvCodec/AvCodec.h"
+#include "StringPreprocess.hpp"
 
-
-AudioPreprocess::WAV_HEADER AudioPreprocess::GetHeader(const std::wstring& path)
+std::vector<double> AvCodec::arange(double start, double end, double step, double div)
 {
-    WAV_HEADER header;
-    char buf[1024];
-    FILE* stream;
-    _wfreopen_s(&stream, path.c_str(), L"rb", stderr);
-    if (stream == nullptr) {
-        throw (std::exception("Wav Load Error"));
-    }
-    fread(buf, 1, 1024, stream);
-    int pos = 0;
-    while (pos < InferTools::Wav::HEAD_LENGTH) {
-        if ((buf[pos] == 'R') && (buf[pos + 1] == 'I') && (buf[pos + 2] == 'F') && (buf[pos + 3] == 'F')) {
-            pos += 4;
-            break;
-        }
-        ++pos;
-    }
-    if (pos >= InferTools::Wav::HEAD_LENGTH)
-        throw (std::exception("Don't order fried rice (annoyed)"));
-    header.ChunkSize = *(int*)&buf[pos];
-    pos += 8;
-    while (pos < InferTools::Wav::HEAD_LENGTH) {
-        if ((buf[pos] == 'f') && (buf[pos + 1] == 'm') && (buf[pos + 2] == 't')) {
-            pos += 4;
-            break;
-        }
-        ++pos;
-    }
-    if (pos >= InferTools::Wav::HEAD_LENGTH)
-        throw (std::exception("Don't order fried rice (annoyed)"));
-    header.Subchunk1Size = *(int*)&buf[pos];
-    pos += 4;
-    header.AudioFormat = *(short*)&buf[pos];
-    pos += 2;
-    header.NumOfChan = *(short*)&buf[pos];
-    if (stream != nullptr) {
-        fclose(stream);
-    }
-    return header;
-}
-
-std::vector<double> AudioPreprocess::arange(double start, double end, double step, double div)
-{
-    std::vector<double> output;
-    while (start < end)
+    std::vector<double> output(size_t((end - start) / step));
+    auto outputptr = output.begin();
+    const auto outputptrend = output.end();
+    while (outputptr != outputptrend)
     {
-        output.push_back(start / div);
+        *(outputptr++) = start / div;
         start += step;
     }
     return output;
 }
 
-std::vector<short> AudioPreprocess::codec(const std::wstring& path, int sr)
+std::vector<short> AvCodec::codec(const std::wstring& path, int sr)
 {
-    //if (path.substr(path.rfind(L'.')) == L".wav")
-    //    return resample(path, sr);
+
+
     std::vector<uint8_t> outData;
     int ret = avformat_open_input(&avFormatContext, to_byte_string(path).c_str(), nullptr, nullptr);
     if (ret != 0) {
@@ -155,7 +115,7 @@ std::vector<short> AudioPreprocess::codec(const std::wstring& path, int sr)
     return { outWav , outWav + RawWavLen };
 }
 
-void AudioPreprocess::release()
+void AvCodec::release()
 {
     if (packet)
         av_packet_free(&packet);
@@ -166,7 +126,7 @@ void AudioPreprocess::release()
     if (swrContext)
         swr_free(&swrContext);
     if (avCodecContext)
-        avcodec_close(avCodecContext);
+        avcodec_free_context(&avCodecContext);
     if (avFormatContext)
         avformat_close_input(&avFormatContext);
     inFrame = nullptr;
@@ -177,7 +137,7 @@ void AudioPreprocess::release()
     packet = nullptr;
 }
 
-void AudioPreprocess::init()
+void AvCodec::init()
 {
     inFrame = av_frame_alloc();
     out_buffer = nullptr;
@@ -187,12 +147,12 @@ void AudioPreprocess::init()
     packet = nullptr;
 }
 
-AudioPreprocess::AudioPreprocess()
+AvCodec::AvCodec()
 {
-    inFrame = av_frame_alloc();
-    out_buffer = nullptr;
-    swrContext = swr_alloc();
-    avCodecContext = avcodec_alloc_context3(nullptr);
-    avFormatContext = avformat_alloc_context();
-    packet = nullptr;
+    init();
+}
+
+AvCodec::~AvCodec()
+{
+    release();
 }

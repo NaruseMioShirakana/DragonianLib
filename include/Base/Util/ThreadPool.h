@@ -7,7 +7,8 @@
 #include <semaphore>
 
 LibSvcBegin
-	class ThreadPool {
+
+class ThreadPool {
 public:
     using Task = std::function<void()>;
 

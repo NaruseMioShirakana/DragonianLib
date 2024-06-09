@@ -1,7 +1,6 @@
 #pragma once
 #include "Tensor/Tensor.h"
 
-
 LibSvcBegin
 
 class Module : public Value

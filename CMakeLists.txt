@@ -1,15 +1,20 @@
 ﻿cmake_minimum_required (VERSION 3.13)
 
 #Options
-option(LIVSVC_CUDA                    "cuda backend" OFF)
-option(LIVSVC_ROCM                    "rocm backend" OFF)
-option(LIVSVC_SHARED_LIBS             "build shared libs" OFF)
-option(LIVSVC_ONNXRUNTIME             "build ort libs" OFF)
-option(SVC_BUILD_DEMO                 "SVC_BUILD_DEMO" ON)
+option(LIVSVC_DML                     "dml backend"         OFF)
+option(LIVSVC_CUDA                    "cuda backend"        OFF)
+option(LIVSVC_ROCM                    "rocm backend"        OFF)
+option(LIVSVC_SHARED_LIBS             "build shared libs"   OFF)
+option(LIVSVC_ONNXRUNTIME             "build ort libs"      OFF)
+option(LIBSVC_BUILD_DEMO              "build demo"          ON)
+if(NOT DEFINED LIBSVC_FFMPEG_OUTDIR)
+    set(LIBSVC_FFMPEG_OUTDIR "Third-Party-Libraries/ffmpeg/bin")
+endif()
 add_definitions(-DLIBSVC_ALLOC_ALIG=32)
 add_definitions(-DLIBSVC_ALIG_DIM_SHAPE=8)  #Don't Change This Value'
 add_definitions(-DLIBSVC_CONT_THRESHOLD_FRONT=8)
 add_definitions(-DLIBSVC_CONT_THRESHOLD_BACK=32)
+add_definitions(-DLIBSVC_EMPTY_CAPACITY=16)
 add_definitions(-DLIBSVC_CONT_THRESHOLD_MIN_SIZE=65536)
 add_definitions(-DLIBSVC_NAME_MAX_SIZE=1024)
 add_definitions(-DUNICODE)
@@ -29,11 +34,13 @@ if(LIVSVC_ONNXRUNTIME)
     message("Onnx Build")
 else()
     if(LIVSVC_CUDA)
-    
+        add_definitions(-DLIBSVC_ENABLECUDA)
     endif()
-
     if (LIVSVC_ROCM)
-    
+        add_definitions(-DLIBSVC_ENABLEROCM)
+    endif ()
+    if (LIVSVC_DML)
+        add_definitions(-DLIBSVC_ENABLEDML)
     endif ()
 endif ()
 
@@ -84,6 +91,8 @@ if(LIVSVC_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.h
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.cpp
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.c
+        ${PROJECT_SOURCE_DIR}/my-stl/*.cpp
+        ${PROJECT_SOURCE_DIR}/my-stl/*.h
     )
 else()
     LibSvcAddFiles(PROJECT_SOURCES
@@ -91,6 +100,8 @@ else()
         ${PROJECT_SOURCE_DIR}/include/*.h
         ${PROJECT_SOURCE_DIR}/src/*.cpp
         ${PROJECT_SOURCE_DIR}/src/*.c
+        ${PROJECT_SOURCE_DIR}/my-stl/*.cpp
+        ${PROJECT_SOURCE_DIR}/my-stl/*.h
     )
 endif()
 
@@ -107,14 +118,34 @@ endif()
 #link
 if(MSVC)
     message("MSVC Build")
-    include_directories(${PROJECT_SOURCE_DIR}/OpenBlasRelease/include)
-    target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/OpenBlasRelease/lib/libopenblas.lib)
+    include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBlasRelease/include)
+    target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBlasRelease/lib/libopenblas.lib)
 else()
-    add_subdirectory(OpenBLAS)
-    include_directories(${PROJECT_SOURCE_DIR}/OpenBLAS)
+    add_subdirectory(Third-Party-Libraries/OpenBLAS)
+    include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBLAS)
     target_link_libraries(${LIBSVC_LIB} PUBLIC OpenBLAS)
 endif()
+include_directories(${PROJECT_SOURCE_DIR}/my-stl)
 
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avcodec.lib)
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avformat.lib)
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avutil.lib)
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swresample.lib)
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swscale.lib)
+include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ffmpeg)
+
+add_subdirectory(Third-Party-Libraries/World)
+target_link_libraries(${LIBSVC_LIB} PUBLIC world)
+target_link_libraries(${LIBSVC_LIB} PUBLIC world_tool)
+include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/World/src/world)
+
+if(LIVSVC_ONNXRUNTIME)
+    
+else()
+    
+endif()
+
+#project include
 if(LIVSVC_ONNXRUNTIME)
     include_directories(${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/header)
     include_directories(${PROJECT_SOURCE_DIR}/libsvc-onnx)
@@ -129,6 +160,9 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 #demo
-if (SVC_BUILD_DEMO)
+if (LIBSVC_BUILD_DEMO)
+    if(LIVSVC_ONNXRUNTIME)
+        set(LibSvcOrtDemo on)
+    endif()
     add_subdirectory(Demo)
 endif()
