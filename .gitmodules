@@ -7,3 +7,6 @@
 [submodule "Third-Party-Libraries/World"]
 	path = Third-Party-Libraries/World
 	url = https://github.com/mmorise/World
+[submodule "Third-Party-Libraries/Faiss"]
+	path = Third-Party-Libraries/Faiss
+	url = https://github.com/facebookresearch/faiss
