@@ -39,12 +39,13 @@ int main()
 	libsvc::Tensor::SetThreadCount(8);
 	libsvc::Tensor::EnableTimeLogger(false);
 	libsvc::ThreadPool Thp;
-	Thp.EnableTimeLogger(true);
+	Thp.EnableTimeLogger(false);
 	Thp.Init(8);
 	libsvc::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
 	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
 	Ten.RandnFix();
+	auto a = Ten;
 	std::cout << "\nTen:\n";
 	Ten.Invoke(1, PrintTensor);
 	std::cout << "\nGather Op Test\n";
@@ -95,12 +96,14 @@ int main()
 	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
 	Indices[1].Assign(1ll);
 	const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
-	libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+	
 	for (int64_t i = 0; i < 20; ++i)
 	{
-		//Ten1919810.RandFix(&Thp);
+		libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+		Ten1919810.RandFix(&Thp);
 		Embedding[0].Assign(i);
 		Embedding[1].Assign(i + 1);
+		//Ten1919810.Assign(i);
 		auto Emb = Embedding[0];
 		QueryPerformanceCounter(&Time1);
 		//auto Out = Embedding.Gather(Indices, 0, Thp);
@@ -119,7 +122,13 @@ int main()
 		//auto a = Ten1919810.Permute({ 0,2,1 });
 		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
 		//a.Continuous(&Thp);
-		Ten1919810 + Ten1919810;
+		auto Res = ((Ten1919810 + Ten1919810) == Ten1919810 * 2.);
+		std::cout << (bool)*(Res.Buffer()) << '\n';
+		std::cout << (bool)*(Res.Buffer() + 1) << '\n';
+		std::cout << (bool)*(Res.Buffer() + 2) << '\n';
+		std::cout << (bool)*(Res.Buffer() + 3) << '\n';
+		std::cout << (bool)*(Res.Buffer() + 4) << '\n';
+
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{0,192} }).Continuous(); });
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{192,384} }).Continuous(); });
 		//Thp.Commit([&]() { a.Slice({ libsvc::None,{384,572} }).Continuous(); });

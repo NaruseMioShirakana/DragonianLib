@@ -18,7 +18,7 @@
 #include <memory>
 #include <vector>
 
-#include "../../../header/InferTools/DataStruct/KDTree.hpp"
+#include "KDTree.hpp"
 
 KDNode::KDNode() = default;
 

@@ -113,7 +113,6 @@ protected:
 	ShapeType CurIndices_;
 	int64_t AlignSize_ = 4;
 	bool IsBroadCasted_ = false;
-
 	std::deque<Tensor*> ViewChild_;
 	mutable std::mutex ViewMx_, RelMx_;
 	

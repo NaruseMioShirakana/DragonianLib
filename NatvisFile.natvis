@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="libsvcstd::Vector&lt;*&gt;">
+		<DisplayString>{{ size={_MyLast - _MyFirst}, capacity={_MyEnd - _MyFirst}, _MyFirst={_MyFirst} }}</DisplayString>
+		<Expand>
+			<Item Name="[size]" ExcludeView="simple">_MyLast - _MyFirst</Item>
+			<Item Name="[capacity]" ExcludeView="simple">_MyEnd - _MyFirst</Item>
+			<Synthetic Name="[data]">
+				<DisplayString>{{ size={_MyLast - _MyFirst} }}</DisplayString>
+				<Expand>
+					<ArrayItems>
+						<Size>_MyLast - _MyFirst</Size>
+						<ValuePointer>_MyFirst</ValuePointer>
+					</ArrayItems>
+				</Expand>
+			</Synthetic>
+			<Synthetic Name="[container]">
+				<DisplayString>{{ capacity={_MyEnd - _MyFirst} }}</DisplayString>
+				<Expand>
+					<ArrayItems>
+						<Size>_MyEnd - _MyFirst</Size>
+						<ValuePointer>_MyFirst</ValuePointer>
+					</ArrayItems>
+				</Expand>
+			</Synthetic>
+		</Expand>
+	</Type>
+	<Type Name="libsvc::Tensor">
+		<DisplayString>{{ Shape = { ShapeBack_ }, Type = { DType_ }, Device = { Device_->Type_ }, Buffer = { DataPtr_ } }}</DisplayString>
+		<Expand>
+			<Synthetic Name="[AxisAttribute]">
+				<DisplayString>{{ Shape = { ShapeBack_ }, Step = { StepBack_ }, SliceBegin = { SliceBegin_ }, SliceStride = { DimStride_ } }}</DisplayString>
+				<Expand>
+					<Item Name="[Shape]" ExcludeView="simple">ShapeBack_</Item>
+					<Item Name="[Step]" ExcludeView="simple">StepBack_</Item>
+					<Item Name="[SliceBegin]" ExcludeView="simple">SliceBegin_</Item>
+					<Item Name="[SliceStride]" ExcludeView="simple">DimStride_</Item>
+				</Expand>
+			</Synthetic>
+			<Synthetic Name="[Data]">
+				<DisplayString Condition="(bool)DataPtr_">{{ Shape = { ShapeBack_ } }}</DisplayString>
+				<DisplayString Condition="!(bool)DataPtr_">{{ Buffer = { DataPtr_ } }}</DisplayString>
+				<Expand>
+					<Item Name="[Buffer]" Condition="!(bool)DataPtr_">DataPtr_</Item>
+					<Synthetic Name="[Source]" Condition="(bool)DataPtr_"> 
+						<DisplayString>{{ Step = { StepBack_ } }}</DisplayString>
+						<Expand>
+							<CustomListItems MaxItemsPerView="5000" Condition="ShapeBack_.size() == 6">
+								<Variable Name="Axis0" InitialValue="SliceBegin_[0]" />
+								<Variable Name="Axis0Idx" InitialValue="0" />
+								<Variable Name="Axis1" InitialValue="SliceBegin_[1]" />
+								<Variable Name="Axis1Idx" InitialValue="0" />
+								<Variable Name="Axis2" InitialValue="SliceBegin_[2]" />
+								<Variable Name="Axis2Idx" InitialValue="0" />
+								<Variable Name="Axis3" InitialValue="SliceBegin_[3]" />
+								<Variable Name="Axis3Idx" InitialValue="0" />
+								<Variable Name="Axis4" InitialValue="SliceBegin_[4]" />
+								<Variable Name="Axis4Idx" InitialValue="0" />
+								<Variable Name="Axis5" InitialValue="SliceBegin_[5]" />
+								<Variable Name="Axis5Idx" InitialValue="0" />
+					
+								<Size>ShapeBack_[0] * ShapeBack_[1] * ShapeBack_[2] * ShapeBack_[3] * ShapeBack_[4] * ShapeBack_[5]</Size>
+								<Loop>
+									<Break Condition="Axis0 >= ShapeBack_[0] * DimStride_[0]"/>
+									<Exec>Axis0Idx = Axis0 * StepBack_[0]</Exec>
+									<Loop>
+										<Break Condition="Axis1 >= ShapeBack_[1] * DimStride_[1]"/>
+										<Exec>Axis1Idx = Axis0Idx + Axis1 * StepBack_[1]</Exec>
+										<Loop>
+											<Break Condition="Axis2 >= ShapeBack_[2] * DimStride_[2]"/>
+											<Exec>Axis2Idx = Axis1Idx + Axis2 * StepBack_[2]</Exec>
+											<Loop>
+												<Break Condition="Axis3 >= ShapeBack_[3] * DimStride_[3]"/>
+												<Exec>Axis3Idx = Axis2Idx + Axis3 * StepBack_[3]</Exec>
+												<Loop>
+													<Break Condition="Axis4 >= ShapeBack_[4] * DimStride_[4]"/>
+													<Exec>Axis4Idx = Axis3Idx + Axis4 * StepBack_[4]</Exec>
+													<Loop>
+														<Break Condition="Axis5 >= ShapeBack_[5] * DimStride_[5]"/>
+														<Exec>Axis5Idx = Axis4Idx + Axis5 * StepBack_[5]</Exec>
+														<Item Condition="DType_ == 0">*((bool*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 1">*((float*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 2">*((short*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 3">*((float*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 4">*((double*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 5">*((int8_t*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 6">*((int16_t*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 7">*((int32_t*)(DataPtr_ + Axis5Idx))</Item>
+														<Item Condition="DType_ == 8">*((int64_t*)(DataPtr_ + Axis5Idx))</Item>
+														<Exec>Axis5 += DimStride_[5]</Exec>
+													</Loop>
+													<Exec>Axis4 += DimStride_[4]</Exec>
+												</Loop>
+												<Exec>Axis3 += DimStride_[3]</Exec>
+											</Loop>
+											<Exec>Axis2 += DimStride_[2]</Exec>
+										</Loop>
+										<Exec>Axis1 += DimStride_[1]</Exec>
+									</Loop>
+									<Exec>Axis0 += DimStride_[0]</Exec>
+								</Loop>
+							</CustomListItems>
+							<CustomListItems MaxItemsPerView="5000" Condition="ShapeBack_.size() == 5">
+								<Variable Name="Axis0" InitialValue="SliceBegin_[0]" />
+								<Variable Name="Axis0Idx" InitialValue="0" />
+								<Variable Name="Axis1" InitialValue="SliceBegin_[1]" />
+								<Variable Name="Axis1Idx" InitialValue="0" />
+								<Variable Name="Axis2" InitialValue="SliceBegin_[2]" />
+								<Variable Name="Axis2Idx" InitialValue="0" />
+								<Variable Name="Axis3" InitialValue="SliceBegin_[3]" />
+								<Variable Name="Axis3Idx" InitialValue="0" />
+								<Variable Name="Axis4" InitialValue="SliceBegin_[4]" />
+								<Variable Name="Axis4Idx" InitialValue="0" />
+
+								<Size>ShapeBack_[0] * ShapeBack_[1] * ShapeBack_[2] * ShapeBack_[3] * ShapeBack_[4]</Size>
+								<Loop>
+									<Break Condition="Axis0 >= ShapeBack_[0] * DimStride_[0]"/>
+									<Exec>Axis0Idx = Axis0 * StepBack_[0]</Exec>
+									<Loop>
+										<Break Condition="Axis1 >= ShapeBack_[1] * DimStride_[1]"/>
+										<Exec>Axis1Idx = Axis0Idx + Axis1 * StepBack_[1]</Exec>
+										<Loop>
+											<Break Condition="Axis2 >= ShapeBack_[2] * DimStride_[2]"/>
+											<Exec>Axis2Idx = Axis1Idx + Axis2 * StepBack_[2]</Exec>
+											<Loop>
+												<Break Condition="Axis3 >= ShapeBack_[3] * DimStride_[3]"/>
+												<Exec>Axis3Idx = Axis2Idx + Axis3 * StepBack_[3]</Exec>
+												<Loop>
+													<Break Condition="Axis4 >= ShapeBack_[4] * DimStride_[4]"/>
+													<Exec>Axis4Idx = Axis3Idx + Axis4 * StepBack_[4]</Exec>
+													<Item Condition="DType_ == 0">*((bool*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 1">*((float*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 2">*((short*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 3">*((float*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 4">*((double*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 5">*((int8_t*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 6">*((int16_t*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 7">*((int32_t*)(DataPtr_ + Axis4Idx))</Item>
+													<Item Condition="DType_ == 8">*((int64_t*)(DataPtr_ + Axis4Idx))</Item>
+													<Exec>Axis4 += DimStride_[4]</Exec>
+												</Loop>
+												<Exec>Axis3 += DimStride_[3]</Exec>
+											</Loop>
+											<Exec>Axis2 += DimStride_[2]</Exec>
+										</Loop>
+										<Exec>Axis1 += DimStride_[1]</Exec>
+									</Loop>
+									<Exec>Axis0 += DimStride_[0]</Exec>
+								</Loop>
+							</CustomListItems>
+							<CustomListItems MaxItemsPerView="5000" Condition="ShapeBack_.size() == 4">
+								<Variable Name="Axis0" InitialValue="SliceBegin_[0]" />
+								<Variable Name="Axis0Idx" InitialValue="0" />
+								<Variable Name="Axis1" InitialValue="SliceBegin_[1]" />
+								<Variable Name="Axis1Idx" InitialValue="0" />
+								<Variable Name="Axis2" InitialValue="SliceBegin_[2]" />
+								<Variable Name="Axis2Idx" InitialValue="0" />
+								<Variable Name="Axis3" InitialValue="SliceBegin_[3]" />
+								<Variable Name="Axis3Idx" InitialValue="0" />
+
+								<Size>ShapeBack_[0] * ShapeBack_[1] * ShapeBack_[2] * ShapeBack_[3]</Size>
+								<Loop>
+									<Break Condition="Axis0 >= ShapeBack_[0] * DimStride_[0]"/>
+									<Exec>Axis0Idx = Axis0 * StepBack_[0]</Exec>
+									<Loop>
+										<Break Condition="Axis1 >= ShapeBack_[1] * DimStride_[1]"/>
+										<Exec>Axis1Idx = Axis0Idx + Axis1 * StepBack_[1]</Exec>
+										<Loop>
+											<Break Condition="Axis2 >= ShapeBack_[2] * DimStride_[2]"/>
+											<Exec>Axis2Idx = Axis1Idx + Axis2 * StepBack_[2]</Exec>
+											<Loop>
+												<Break Condition="Axis3 >= ShapeBack_[3] * DimStride_[3]"/>
+												<Exec>Axis3Idx = Axis2Idx + Axis3 * StepBack_[3]</Exec>
+												<Item Condition="DType_ == 0">*((bool*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 1">*((float*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 2">*((short*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 3">*((float*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 4">*((double*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 5">*((int8_t*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 6">*((int16_t*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 7">*((int32_t*)(DataPtr_ + Axis3Idx))</Item>
+												<Item Condition="DType_ == 8">*((int64_t*)(DataPtr_ + Axis3Idx))</Item>
+												<Exec>Axis3 += DimStride_[3]</Exec>
+											</Loop>
+											<Exec>Axis2 += DimStride_[2]</Exec>
+										</Loop>
+										<Exec>Axis1 += DimStride_[1]</Exec>
+									</Loop>
+									<Exec>Axis0 += DimStride_[0]</Exec>
+								</Loop>
+							</CustomListItems>
+							<CustomListItems MaxItemsPerView="5000" Condition="ShapeBack_.size() == 3">
+								<Variable Name="Axis0" InitialValue="SliceBegin_[0]" />
+								<Variable Name="Axis0Idx" InitialValue="0" />
+								<Variable Name="Axis1" InitialValue="SliceBegin_[1]" />
+								<Variable Name="Axis1Idx" InitialValue="0" />
+								<Variable Name="Axis2" InitialValue="SliceBegin_[2]" />
+								<Variable Name="Axis2Idx" InitialValue="0" />
+								<Variable Name="Axis3" InitialValue="SliceBegin_[3]" />
+								<Variable Name="Axis3Idx" InitialValue="0" />
+
+								<Size>ShapeBack_[0] * ShapeBack_[1] * ShapeBack_[2]</Size>
+								<Loop>
+									<Break Condition="Axis0 >= ShapeBack_[0] * DimStride_[0]"/>
+									<Exec>Axis0Idx = Axis0 * StepBack_[0]</Exec>
+									<Loop>
+										<Break Condition="Axis1 >= ShapeBack_[1] * DimStride_[1]"/>
+										<Exec>Axis1Idx = Axis0Idx + Axis1 * StepBack_[1]</Exec>
+										<Loop>
+											<Break Condition="Axis2 >= ShapeBack_[2] * DimStride_[2]"/>
+											<Exec>Axis2Idx = Axis1Idx + Axis2 * StepBack_[2]</Exec>
+											<Item Condition="DType_ == 0">*((bool*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 1">*((float*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 2">*((short*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 3">*((float*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 4">*((double*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 5">*((int8_t*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 6">*((int16_t*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 7">*((int32_t*)(DataPtr_ + Axis2Idx))</Item>
+											<Item Condition="DType_ == 8">*((int64_t*)(DataPtr_ + Axis2Idx))</Item>
+											<Exec>Axis2 += DimStride_[2]</Exec>
+										</Loop>
+										<Exec>Axis1 += DimStride_[1]</Exec>
+									</Loop>
+									<Exec>Axis0 += DimStride_[0]</Exec>
+								</Loop>
+							</CustomListItems>
+							<CustomListItems MaxItemsPerView="5000" Condition="ShapeBack_.size() == 2">
+								<Variable Name="Axis0" InitialValue="SliceBegin_[0]" />
+								<Variable Name="Axis0Idx" InitialValue="0" />
+								<Variable Name="Axis1" InitialValue="SliceBegin_[1]" />
+								<Variable Name="Axis1Idx" InitialValue="0" />
+								<Variable Name="Axis2" InitialValue="SliceBegin_[2]" />
+								<Variable Name="Axis2Idx" InitialValue="0" />
+								<Variable Name="Axis3" InitialValue="SliceBegin_[3]" />
+								<Variable Name="Axis3Idx" InitialValue="0" />
+
+								<Size>ShapeBack_[0] * ShapeBack_[1]</Size>
+								<Loop>
+									<Break Condition="Axis0 >= ShapeBack_[0] * DimStride_[0]"/>
+									<Exec>Axis0Idx = Axis0 * StepBack_[0]</Exec>
+									<Loop>
+										<Break Condition="Axis1 >= ShapeBack_[1] * DimStride_[1]"/>
+										<Exec>Axis1Idx = Axis0Idx + Axis1 * StepBack_[1]</Exec>
+										<Item Condition="DType_ == 0">*((bool*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 1">*((float*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 2">*((short*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 3">*((float*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 4">*((double*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 5">*((int8_t*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 6">*((int16_t*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 7">*((int32_t*)(DataPtr_ + Axis1Idx))</Item>
+										<Item Condition="DType_ == 8">*((int64_t*)(DataPtr_ + Axis1Idx))</Item>
+										<Exec>Axis1 += DimStride_[1]</Exec>
+									</Loop>
+									<Exec>Axis0 += DimStride_[0]</Exec>
+								</Loop>
+							</CustomListItems>
+						</Expand>
+					</Synthetic>
+					<Synthetic Name="[ContinuousView]" Condition="(bool)DataPtr_">
+						<DisplayString>{{ Step = { StepBack_ } }}</DisplayString>
+						<Expand>
+							<ArrayItems Condition="DType_ == 0">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(bool*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 1">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(float*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 2">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(unsigned short*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 3">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(float*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 4">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(double*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 5">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(int8_t*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 6">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(int16_t*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 7">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(int32_t*)DataPtr_</ValuePointer>
+							</ArrayItems>
+							<ArrayItems Condition="DType_ == 8">
+								<Direction>Forward</Direction>
+								<Rank>ShapeBack_.size()</Rank>
+								<Size>ShapeBack_[$i]</Size>
+								<ValuePointer>(int64_t*)DataPtr_</ValuePointer>
+							</ArrayItems>
+						</Expand>
+					</Synthetic>
+				</Expand>
+			</Synthetic>
+			<Synthetic Name="[View]">
+				<DisplayString>{{ IsView = { (bool)ViewParent_ } }}</DisplayString>
+				<Expand>
+					<Item Name="Parent" Condition="ViewParent_ != 0">ViewParent_</Item>
+					<Item Name="Child" Condition="(bool)ViewChild_._Mypair._Myval2._Map">ViewChild_</Item>
+				</Expand>
+			</Synthetic>
+		</Expand>
+	</Type>
+</AutoVisualizer>

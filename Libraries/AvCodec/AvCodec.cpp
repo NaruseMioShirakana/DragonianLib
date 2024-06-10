@@ -1,11 +1,10 @@
-﻿#include "InferTools/AvCodec/AvCodec.h"
-#include "StringPreprocess.hpp"
+﻿#include "AvCodec.h"
 
-std::vector<double> AvCodec::arange(double start, double end, double step, double div)
+libsvcstd::Vector<double> libsvc::AvCodec::Arange(double start, double end, double step, double div)
 {
-    std::vector<double> output(size_t((end - start) / step));
-    auto outputptr = output.begin();
-    const auto outputptrend = output.end();
+    libsvcstd::Vector<double> output(size_t((end - start) / step));
+    auto outputptr = output.Begin();
+    const auto outputptrend = output.End();
     while (outputptr != outputptrend)
     {
         *(outputptr++) = start / div;
@@ -14,40 +13,51 @@ std::vector<double> AvCodec::arange(double start, double end, double step, doubl
     return output;
 }
 
-std::vector<short> AvCodec::codec(const std::wstring& path, int sr)
+libsvcstd::Vector<int16_t> libsvc::AvCodec::Decode(const char* path, int samplingRate)
 {
+    libsvcstd::Vector<uint8_t> outData;
+    char ErrorMessage[1024];
 
+    int ErrorCode = avformat_open_input(&avFormatContext, path, nullptr, nullptr);
+    if (ErrorCode) 
+    {
+        av_strerror(ErrorCode, ErrorMessage, 1024);
+        throw std::exception(ErrorMessage);
+    }
 
-    std::vector<uint8_t> outData;
-    int ret = avformat_open_input(&avFormatContext, to_byte_string(path).c_str(), nullptr, nullptr);
-    if (ret != 0) {
-        LibDLVoiceCodecThrow(std::string("Can't Open Audio File [ErrCode]") + std::to_string(ret));
+    ErrorCode = avformat_find_stream_info(avFormatContext, nullptr);
+    if (ErrorCode)
+    {
+        av_strerror(ErrorCode, ErrorMessage, 1024);
+        throw std::exception(ErrorMessage);
     }
-    ret = avformat_find_stream_info(avFormatContext, nullptr);
-    if (ret < 0) {
-        LibDLVoiceCodecThrow("Can't Get Audio Info");
-    }
-    int streamIndex = 0;
+
+    int streamIndex = -1;
     for (unsigned i = 0; i < avFormatContext->nb_streams; ++i) {
         const AVMediaType avMediaType = avFormatContext->streams[i]->codecpar->codec_type;
         if (avMediaType == AVMEDIA_TYPE_AUDIO) {
             streamIndex = static_cast<int>(i);
         }
     }
+
+    if (streamIndex == -1)
+        throw std::exception("input file has no audio stream!");
+
     const AVCodecParameters* avCodecParameters = avFormatContext->streams[streamIndex]->codecpar;
     const AVCodecID avCodecId = avCodecParameters->codec_id;
     const AVCodec* avCodec = avcodec_find_decoder(avCodecId);
     if (avCodec == nullptr)
-        LibDLVoiceCodecThrow("Don't order fried rice (annoyed)");
-    if (avCodecContext == nullptr) {
-        LibDLVoiceCodecThrow("Can't Get Decoder Info");
-    }
+        throw std::exception("unable to find a matching decoder!");
+    if (avCodecContext == nullptr) 
+        throw std::exception("Can't Get Decoder Info");
+    
     avcodec_parameters_to_context(avCodecContext, avCodecParameters);
     ret = avcodec_open2(avCodecContext, avCodec, nullptr);
-    if (ret < 0) {
-        LibDLVoiceCodecThrow("Can't Open Decoder");
+    if (ErrorCode)
+    {
+        av_strerror(ErrorCode, ErrorMessage, 1024);
+        throw std::exception(ErrorMessage);
     }
-    packet = (AVPacket*)av_malloc(sizeof(AVPacket));
     const AVSampleFormat inFormat = avCodecContext->sample_fmt;
     constexpr AVSampleFormat  outFormat = AV_SAMPLE_FMT_S16;
     const int inSampleRate = avCodecContext->sample_rate;
@@ -64,7 +74,7 @@ std::vector<short> AvCodec::codec(const std::wstring& path, int sr)
         else if (head.NumOfChan == 2)
             in_ch_layout = AV_CH_LAYOUT_STEREO;
         else
-            LibDLVoiceCodecThrow("unsupported Channel Num");
+            throw std::exception("unsupported Channel Num");
     }
     constexpr uint64_t out_ch_layout = AV_CH_LAYOUT_MONO;
     swr_alloc_set_opts(swrContext, out_ch_layout, outFormat, outSampleRate,
@@ -111,18 +121,17 @@ std::vector<short> AvCodec::codec(const std::wstring& path, int sr)
         delete[] yi;
         return DataChun;
     }
-    release();
     return { outWav , outWav + RawWavLen };
 }
 
-void AvCodec::release()
+void libsvc::AvCodec::Release()
 {
     if (packet)
         av_packet_free(&packet);
     if (inFrame)
         av_frame_free(&inFrame);
-    if (out_buffer)
-        av_free(out_buffer);
+    if (outBuffer)
+        av_free(outBuffer);
     if (swrContext)
         swr_free(&swrContext);
     if (avCodecContext)
@@ -130,29 +139,35 @@ void AvCodec::release()
     if (avFormatContext)
         avformat_close_input(&avFormatContext);
     inFrame = nullptr;
-    out_buffer = nullptr;
+    outBuffer = nullptr;
     swrContext = nullptr;
     avCodecContext = nullptr;
     avFormatContext = nullptr;
     packet = nullptr;
 }
 
-void AvCodec::init()
+void libsvc::AvCodec::Init()
 {
     inFrame = av_frame_alloc();
-    out_buffer = nullptr;
     swrContext = swr_alloc();
     avCodecContext = avcodec_alloc_context3(nullptr);
     avFormatContext = avformat_alloc_context();
-    packet = nullptr;
+    packet = av_packet_alloc();
+    outBuffer = nullptr;
+
+    if (!avFormatContext || !packet || !inFrame)
+    {
+        Release();
+    	throw std::bad_alloc();
+    }
 }
 
-AvCodec::AvCodec()
+libsvc::AvCodec::AvCodec()
 {
-    init();
+    Init();
 }
 
-AvCodec::~AvCodec()
+libsvc::AvCodec::~AvCodec()
 {
-    release();
+    Release();
 }

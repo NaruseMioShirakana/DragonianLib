@@ -26,7 +26,7 @@ public:
 		Destory();
 	}
 
-	Vector(SizeType _Size, Allocator _Alloc)
+	Vector(SizeType _Size = 0, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -52,7 +52,7 @@ public:
 		}
 	}
 
-	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc)
+	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -84,7 +84,7 @@ public:
 		}
 	}
 
-	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc)
+	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -95,17 +95,17 @@ public:
 		*_Block = nullptr;
 	}
 
-	Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
+	Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_Begin, _End, _Alloc);
 	}
 
-	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc)
+	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_Buffer, _Buffer + _Size, _Alloc);
 	}
 
-	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc)
+	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_List.begin(), _List.end(), _Alloc);
 	}

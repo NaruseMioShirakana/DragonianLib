@@ -2,14 +2,11 @@
 
 #Options
 option(LIVSVC_DML                     "dml backend"         OFF)
-option(LIVSVC_CUDA                    "cuda backend"        OFF)
+option(LIVSVC_CUDA                    "cuda backend"        ON)
 option(LIVSVC_ROCM                    "rocm backend"        OFF)
 option(LIVSVC_SHARED_LIBS             "build shared libs"   OFF)
 option(LIVSVC_ONNXRUNTIME             "build ort libs"      OFF)
 option(LIBSVC_BUILD_DEMO              "build demo"          ON)
-if(NOT DEFINED LIBSVC_FFMPEG_OUTDIR)
-    set(LIBSVC_FFMPEG_OUTDIR "Third-Party-Libraries/ffmpeg/bin")
-endif()
 add_definitions(-DLIBSVC_ALLOC_ALIG=32)
 add_definitions(-DLIBSVC_ALIG_DIM_SHAPE=8)  #Don't Change This Value'
 add_definitions(-DLIBSVC_CONT_THRESHOLD_FRONT=8)
@@ -18,6 +15,9 @@ add_definitions(-DLIBSVC_EMPTY_CAPACITY=16)
 add_definitions(-DLIBSVC_CONT_THRESHOLD_MIN_SIZE=65536)
 add_definitions(-DLIBSVC_NAME_MAX_SIZE=1024)
 add_definitions(-DUNICODE)
+set(FAISS_ENABLE_PYTHON OFF)
+set(FAISS_ENABLE_GPU OFF)
+set(LIBSVC_LANGUAGES CXX)
 
 #functions
 function(LibSvcAddFiles _out)
@@ -35,9 +35,12 @@ if(LIVSVC_ONNXRUNTIME)
 else()
     if(LIVSVC_CUDA)
         add_definitions(-DLIBSVC_ENABLECUDA)
+        set(FAISS_ENABLE_GPU ON)
+        list(APPEND LIBSVC_LANGUAGES CUDA)
     endif()
     if (LIVSVC_ROCM)
         add_definitions(-DLIBSVC_ENABLEROCM)
+        list(APPEND LIBSVC_LANGUAGES HIP)
     endif ()
     if (LIVSVC_DML)
         add_definitions(-DLIBSVC_ENABLEDML)
@@ -45,7 +48,34 @@ else()
 endif ()
 
 #project
-project (${LIBSVC_LIB})
+project (
+    ${LIBSVC_LIB} 
+    VERSION 1.0.0
+    LANGUAGES ${LIBSVC_LANGUAGES}
+)
+
+if(NOT DEFINED FFMPEG_LIBRARIES)
+    set(FFMPEG_LIBRARIES)
+    set(LIBSVC_FFMPEG_OUTDIR "Third-Party-Libraries/ffmpeg/bin")
+    list(
+        APPEND FFMPEG_LIBRARIES
+        ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avcodec.lib
+        ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avformat.lib
+        ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avutil.lib
+        ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swresample.lib
+        ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swscale.lib
+    )
+endif()
+if(NOT DEFINED FFMPEG_INCLUDE_DIRS)
+    set(FFMPEG_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ffmpeg)
+endif()
+
+if(NOT DEFINED BLAS_LIBRARIES)
+    set(BLAS_LIBRARIES)
+endif()
+if(NOT DEFINED BLAS_INCLUDE_DIRS)
+    set(BLAS_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBLAS)
+endif()
 
 #outdirs
 if(LIVSVC_ONNXRUNTIME)
@@ -91,8 +121,10 @@ if(LIVSVC_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.h
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.cpp
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.c
-        ${PROJECT_SOURCE_DIR}/my-stl/*.cpp
-        ${PROJECT_SOURCE_DIR}/my-stl/*.h
+        ${PROJECT_SOURCE_DIR}/Libraries/*.cpp
+        ${PROJECT_SOURCE_DIR}/Libraries/*.h
+        ${PROJECT_SOURCE_DIR}/Libraries/*.c
+        ${PROJECT_SOURCE_DIR}/Libraries/*.hpp
     )
 else()
     LibSvcAddFiles(PROJECT_SOURCES
@@ -100,44 +132,46 @@ else()
         ${PROJECT_SOURCE_DIR}/include/*.h
         ${PROJECT_SOURCE_DIR}/src/*.cpp
         ${PROJECT_SOURCE_DIR}/src/*.c
-        ${PROJECT_SOURCE_DIR}/my-stl/*.cpp
-        ${PROJECT_SOURCE_DIR}/my-stl/*.h
+        ${PROJECT_SOURCE_DIR}/Libraries/*.cpp
+        ${PROJECT_SOURCE_DIR}/Libraries/*.h
+        ${PROJECT_SOURCE_DIR}/Libraries/*.c
+        ${PROJECT_SOURCE_DIR}/Libraries/*.hpp
     )
 endif()
 
+set(BUILD_SHARED_LIBS OFF)
+set(BUILD_STATIC_LIBS ON)
 #build shared lib?
 if(LIVSVC_SHARED_LIBS)
     add_library(${LIBSVC_LIB} SHARED ${PROJECT_SOURCES})
     add_definitions(-DLIBSVC_EXPORT)
-    target_compile_definitions(${LIBSVC_LIB} PRIVATE -DLIBSVC_DLL)
+    target_compile_definitions(${LIBSVC_LIB} PRIVATE -DLIBSVC_EXPORT)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
     add_library(${LIBSVC_LIB} STATIC ${PROJECT_SOURCES})
 endif()
 
 #link
-if(MSVC)
-    message("MSVC Build")
-    include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBlasRelease/include)
-    target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBlasRelease/lib/libopenblas.lib)
-else()
+set(BUILD_TESTING OFF)
+set(BLA_STATIC ON)
+set(BLA_VENDOR OpenBLAS)
+if(NOT BLAS_LIBRARIES)
     add_subdirectory(Third-Party-Libraries/OpenBLAS)
-    include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/OpenBLAS)
-    target_link_libraries(${LIBSVC_LIB} PUBLIC OpenBLAS)
+    target_link_libraries(${LIBSVC_LIB} PUBLIC openblas)
+else()
+    target_link_libraries(${LIBSVC_LIB} PUBLIC ${BLAS_LIBRARIES})
 endif()
-include_directories(${PROJECT_SOURCE_DIR}/my-stl)
+include_directories(${BLAS_INCLUDE_DIRS})
 
-target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avcodec.lib)
-target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avformat.lib)
-target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/avutil.lib)
-target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swresample.lib)
-target_link_libraries(${LIBSVC_LIB} PUBLIC ${PROJECT_SOURCE_DIR}/${LIBSVC_FFMPEG_OUTDIR}/swscale.lib)
-include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ffmpeg)
+target_link_libraries(${LIBSVC_LIB} PUBLIC ${FFMPEG_LIBRARIES})
+include_directories(${FFMPEG_INCLUDE_DIRS})
 
 add_subdirectory(Third-Party-Libraries/World)
 target_link_libraries(${LIBSVC_LIB} PUBLIC world)
 target_link_libraries(${LIBSVC_LIB} PUBLIC world_tool)
 include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/World/src/world)
+
+
 
 if(LIVSVC_ONNXRUNTIME)
     
@@ -153,10 +187,20 @@ if(LIVSVC_ONNXRUNTIME)
 else()
     include_directories(${PROJECT_SOURCE_DIR}/include/Base)
 endif()
+include_directories(${PROJECT_SOURCE_DIR}/Libraries/MyTemplateLibrary)
+include_directories(${PROJECT_SOURCE_DIR}/Libraries/AvCodec)
+include_directories(${PROJECT_SOURCE_DIR}/Libraries/K-DimensionalTree)
 
 #standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)
     set_property(TARGET libsvc PROPERTY CXX_STANDARD 23)
+endif()
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+else()
+    target_link_options(${LIBSVC_LIB} PRIVATE 
+        /NATVIS:${PROJECT_SOURCE_DIR}/NatvisFile.natvis
+    )
 endif()
 
 #demo
