@@ -366,3 +366,6 @@ FodyWeavers.xsd
 /library
 /OpenBlasRelease/lib
 /Third-Party-Libraries/OpenBlasRelease/lib
+/Third-Party-Libraries/OnnxRuntimeDmlProvider
+/Third-Party-Libraries/onnxruntime
+/Third-Party-Libraries/fftw-3.3.10

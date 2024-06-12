@@ -10,3 +10,9 @@
 [submodule "Third-Party-Libraries/Faiss"]
 	path = Third-Party-Libraries/Faiss
 	url = https://github.com/facebookresearch/faiss
+[submodule "libsvc-onnx/Third-Party-Libraries/fftw"]
+	path = libsvc-onnx/Third-Party-Libraries/fftw
+	url = https://github.com/FFTW/fftw3
+[submodule "Third-Party-Libraries/fftw"]
+	path = Third-Party-Libraries/fftw
+	url = https://github.com/FFTW/fftw3
