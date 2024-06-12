@@ -6,7 +6,7 @@
 #include <mutex>
 #include <semaphore>
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 class ThreadPool {
 public:
@@ -20,7 +20,7 @@ public:
         using RetType = decltype(_Function(_Args...));
 
         if (Stoped_)
-            LibSvcThrow("Thread Pool Is Not Initialized!");
+            DragonianLibThrow("Thread Pool Is Not Initialized!");
 
         std::lock_guard lg(JoinMx_);
 
@@ -76,4 +76,4 @@ private:
     void Run();
 };
 
-LibSvcEnd
+DragonianLibSpaceEnd

@@ -1,15 +1,22 @@
 #include "Tensor/Tensor.h"
 #include <iostream>
 #include <windows.h>
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
 #include "Tensor/Float32Tensor.h"
+#include "AvCodec.h"
 
 template<typename _T = float>
-void PrintTensor(libsvc::Tensor& _Tensor)
+void PrintTensor(DragonianLib::Tensor& _Tensor)
 {
-	for (libsvc::SizeType i = 0; i < _Tensor.Size(0); ++i)
+	for (DragonianLib::SizeType i = 0; i < _Tensor.Size(0); ++i)
 	{
 		std::cout << '[';
-		for (libsvc::SizeType j = 0; j < _Tensor.Size(1); ++j)
+		for (DragonianLib::SizeType j = 0; j < _Tensor.Size(1); ++j)
 			std::cout << _Tensor.Item<_T>({ i,j }) << ", ";
 		std::cout << "],\n";
 	}
@@ -17,46 +24,45 @@ void PrintTensor(libsvc::Tensor& _Tensor)
 }
 
 template <>
-void PrintTensor<bool>(libsvc::Tensor& _Tensor)
+void PrintTensor<bool>(DragonianLib::Tensor& _Tensor)
 {
-	for (libsvc::SizeType i = 0; i < _Tensor.Size(0); ++i)
+	for (DragonianLib::SizeType i = 0; i < _Tensor.Size(0); ++i)
 	{
 		std::cout << '[';
-		for (libsvc::SizeType j = 0; j < _Tensor.Size(1); ++j)
+		for (DragonianLib::SizeType j = 0; j < _Tensor.Size(1); ++j)
 			std::cout << ((_Tensor.Item<bool>({ i,j })) ? "true " : "false") << ", ";
 		std::cout << "]\n";
 	}
 	std::cout << "\n";
 }
 
-int main()
+void Demo()
 {
-
-	libsvc::Tensor aaaaaaaaaaaaa{ {114,514,810}, libsvc::TensorType::Float32, libsvc::Device::CPU };
+	DragonianLib::Tensor aaaaaaaaaaaaa{ {114,514,810}, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU };
 	aaaaaaaaaaaaa.Assign(1.f);
-	aaaaaaaaaaaaa.Permute({2,0,1}).Assign(1.f);
+	aaaaaaaaaaaaa.Permute({ 2,0,1 }).Assign(1.f);
 
-	libsvc::Tensor::SetThreadCount(8);
-	libsvc::Tensor::EnableTimeLogger(false);
-	libsvc::ThreadPool Thp;
+	DragonianLib::Tensor::SetThreadCount(8);
+	DragonianLib::Tensor::EnableTimeLogger(false);
+	DragonianLib::ThreadPool Thp;
 	Thp.EnableTimeLogger(false);
 	Thp.Init(8);
-	libsvc::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
+	DragonianLib::Tensor::Arange(1., 5., 0.3).UnSqueeze(0).Invoke(1, PrintTensor);
 	constexpr float Temp[10]{ 114,514,1919,810,1453,721,996,7,1919,810 };
-	libsvc::Tensor Ten({ 3,5 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+	DragonianLib::Tensor Ten({ 3,5 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
 	Ten.RandnFix();
 	auto a = Ten;
 	std::cout << "\nTen:\n";
 	Ten.Invoke(1, PrintTensor);
 	std::cout << "\nGather Op Test\n";
-	auto Indices = libsvc::Tensor::ConstantOf({ 2,2 }, 0ll, libsvc::TensorType::Int64);
+	auto Indices = DragonianLib::Tensor::ConstantOf({ 2,2 }, 0ll, DragonianLib::TensorType::Int64);
 	Indices[0][0] = 0ll; Indices[0][1] = 1ll; Indices[1][0] = 2ll; Indices[1][1] = 1ll;
-	Indices.Invoke(1, PrintTensor<libsvc::SizeType>);
+	Indices.Invoke(1, PrintTensor<DragonianLib::SizeType>);
 	Ten.Gather(Indices, 1).Invoke(1, PrintTensor);
 	std::cout << "\nCumSum Op Test\n";
-	libsvc::Tensor::CumSum(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
+	DragonianLib::Tensor::CumSum(Ten, 0, nullptr).UnSqueeze(0).Invoke(1, PrintTensor);
 	std::cout << '\n';
-	Ten = libsvc::Tensor::Stack({ Ten ,Ten, Ten }, 0);
+	Ten = DragonianLib::Tensor::Stack({ Ten ,Ten, Ten }, 0);
 	Ten.Invoke(1, PrintTensor);
 	std::cout << '\n';
 	Ten += Ten;
@@ -80,26 +86,26 @@ int main()
 	(Ten.Abs() != Ten).Invoke(1, PrintTensor<bool>);
 	((Ten.Abs() != Ten) + (Ten.Abs() == Ten)).Invoke(1, PrintTensor<bool>);
 	std::cout << "Op Test End.\n\n\n";
-	auto Tens = libsvc::Tensor::Cat({ Ten ,Ten }, 2);
+	auto Tens = DragonianLib::Tensor::Cat({ Ten ,Ten }, 2);
 	Tens.Invoke(1, PrintTensor);
 	std::cout << '\n';
-	Tens = libsvc::Tensor::Cat({ Ten ,Ten }, -1);
+	Tens = DragonianLib::Tensor::Cat({ Ten ,Ten }, -1);
 	Tens.Invoke(1, PrintTensor);
 	std::cout << '\n';
-	Tens.Cast(libsvc::TensorType::Int64).Invoke(1, PrintTensor<int64_t>);
+	Tens.Cast(DragonianLib::TensorType::Int64).Invoke(1, PrintTensor<int64_t>);
 	std::cout << '\n';
-	libsvc::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, libsvc::PaddingType::Reflect).Invoke(1, PrintTensor);
+	DragonianLib::Tensor::Pad(Ten, { {1, 2}, {1, 2} }, DragonianLib::PaddingType::Reflect).Invoke(1, PrintTensor);
 	std::cout << '\n';
-	const libsvc::Tensor Ten114514({ 1,514,1,1919 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+	const DragonianLib::Tensor Ten114514({ 1,514,1,1919 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
 	LARGE_INTEGER Time1, Time2, Freq;
 	QueryPerformanceFrequency(&Freq);
-	Indices = libsvc::Tensor::ConstantOf({ 1000 }, 0ll, libsvc::TensorType::Int64);
+	Indices = DragonianLib::Tensor::ConstantOf({ 1000 }, 0ll, DragonianLib::TensorType::Int64);
 	Indices[1].Assign(1ll);
-	const libsvc::Tensor Embedding({ 1000,768 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
-	
+	const DragonianLib::Tensor Embedding({ 1000,768 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
+
 	for (int64_t i = 0; i < 20; ++i)
 	{
-		libsvc::Tensor Ten1919810({ 1,768,100000 }, libsvc::TensorType::Float32, libsvc::Device::CPU);
+		DragonianLib::Tensor Ten1919810({ 1,768,100000 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
 		Ten1919810.RandFix(&Thp);
 		Embedding[0].Assign(i);
 		Embedding[1].Assign(i + 1);
@@ -109,18 +115,18 @@ int main()
 		//auto Out = Embedding.Gather(Indices, 0, Thp);
 		//Embedding.Assign(Embedding);
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
-		//libsvc::Tensor::Pad(Ten114514, {libsvc::None,19 },libsvc::PaddingType::Zero, libsvc::TensorType::Float32,nullptr, &Thp);
-		/*libsvc::Tensor::Pad(
+		//DragonianLib::Tensor::Pad(Ten114514, {DragonianLib::None,19 },DragonianLib::PaddingType::Zero, DragonianLib::TensorType::Float32,nullptr, &Thp);
+		/*DragonianLib::Tensor::Pad(
 			Ten1919810,
-			{libsvc::None,1 },
-			libsvc::PaddingType::Replicate,
-			libsvc::TensorType::Float32,
+			{DragonianLib::None,1 },
+			DragonianLib::PaddingType::Replicate,
+			DragonianLib::TensorType::Float32,
 			nullptr, &Thp
 		);*/
-		//auto a = libsvc::Tensor::Diff(Ten1919810, 1, &Thp);
-		//libsvc::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
+		//auto a = DragonianLib::Tensor::Diff(Ten1919810, 1, &Thp);
+		//DragonianLib::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
-		//libsvc::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
+		//DragonianLib::Tensor::Repeat(Ten1919810, { {0, 2} }, &Thp);
 		//a.Continuous(&Thp);
 		auto Res = ((Ten1919810 + Ten1919810) == Ten1919810 * 2.);
 		std::cout << (bool)*(Res.Buffer()) << '\n';
@@ -129,10 +135,10 @@ int main()
 		std::cout << (bool)*(Res.Buffer() + 3) << '\n';
 		std::cout << (bool)*(Res.Buffer() + 4) << '\n';
 
-		//Thp.Commit([&]() { a.Slice({ libsvc::None,{0,192} }).Continuous(); });
-		//Thp.Commit([&]() { a.Slice({ libsvc::None,{192,384} }).Continuous(); });
-		//Thp.Commit([&]() { a.Slice({ libsvc::None,{384,572} }).Continuous(); });
-		//Thp.Commit([&]() { a.Slice({ libsvc::None,{572,768} }).Continuous(); });
+		//Thp.Commit([&]() { a.Slice({ DragonianLib::None,{0,192} }).Continuous(); });
+		//Thp.Commit([&]() { a.Slice({ DragonianLib::None,{192,384} }).Continuous(); });
+		//Thp.Commit([&]() { a.Slice({ DragonianLib::None,{384,572} }).Continuous(); });
+		//Thp.Commit([&]() { a.Slice({ DragonianLib::None,{572,768} }).Continuous(); });
 		//Thp.Join();
 		QueryPerformanceCounter(&Time2);
 		std::cout << i << " CostTime:" << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << "ms\n";
@@ -180,6 +186,67 @@ int main()
 	Tennnnn.Invoke(1, PrintTensor);
 	std::cout << '\n';
 	Tennnnn.Clone().Invoke(1, PrintTensor);
+}
+
+int main()
+{
+	{
+		int OutputSamplingRate = 48000;
+		int Channels = 1;
+		bool OutFloat = true;
+		bool OutPlanar = false;
+
+		auto Audio = DragonianLib::AvCodec().Decode(
+		   R"(D:/VSGIT/MoeSS - Release/Testdata/a.wav)",
+		   OutputSamplingRate,
+		   Channels,
+		   OutFloat,
+		   OutPlanar
+		);
+
+		auto AudioFloat = DragonianLib::AvCodec().DecodeFloat(
+			R"(D:/VSGIT/MoeSS - Release/Testdata/a.wav)",
+			OutputSamplingRate,
+			Channels,
+			OutPlanar
+		);
+
+		auto AudioSigned16 = DragonianLib::AvCodec().DecodeSigned16(
+			R"(D:/VSGIT/MoeSS - Release/Testdata/a.wav)",
+			OutputSamplingRate,
+			Channels,
+			OutPlanar
+		);
+
+		DragonianLib::WritePCMData(
+			LR"(D:/VSGIT/MoeSS - Release/Testdata/testAudioSigned16.wav)",
+			AudioSigned16,
+			OutputSamplingRate,
+			Channels,
+			OutPlanar
+		);
+
+		DragonianLib::WritePCMData(
+			LR"(D:/VSGIT/MoeSS - Release/Testdata/testAudioFloat.wav)",
+			AudioFloat,
+			OutputSamplingRate,
+			Channels,
+			OutPlanar
+		);
+
+		DragonianLib::WritePCMData(
+			LR"(D:/VSGIT/MoeSS - Release/Testdata/testAudio.wav)",
+			Audio,
+			OutputSamplingRate,
+			Channels,
+			OutFloat,
+			OutPlanar
+		);
+	}
+
+	system("pause");
+	//return 0;
+	Demo();
 	system("pause");
 	return 0;
 }

@@ -23,7 +23,7 @@
 #include <map>
 #include "SVC.hpp"
 
-MoeVoiceStudioCoreHeader
+LibSvcHeader
 
 /**
  * \brief Reflow模型
@@ -31,50 +31,25 @@ MoeVoiceStudioCoreHeader
 class ReflowSvc : public SingingVoiceConversion
 {
 public:
-    ReflowSvc(const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
-    /**
-     * \brief 加载Reflow模型
-     * \param _PathDict 路径，Key分别为["Hubert", "Hifigan", "Encoder", "VelocityFn", "AfterProcess"]
-     * \param _Config 配置Json
-     * \param _ProgressCallback 进度条回调函数
-     * \param ExecutionProvider_ Provider
-     * \param DeviceID_ GPU设备ID
-     * \param ThreadCount_ 线程数
-     */
-    ReflowSvc(const std::map<std::string,std::wstring>& _PathDict, const MJson& _Config, const ProgressCallback& _ProgressCallback,
-                 ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-                 unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
     ReflowSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
         unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
 
 	~ReflowSvc() override;
 
-    void load(const std::map<std::string, std::wstring>& _PathDict, const MJson& _Config, const ProgressCallback& _ProgressCallback);
-
     void Destory();
 
-    [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcData& _Slice,
-        const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const override;
+    [[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(const SingleSlice& _Slice, const InferenceParams& _Params, size_t& _Process) const override;
 
-    [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcSlice& _Slice, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, size_t& _Process) const override;
+    [[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(const DragonianLibSTL::Vector<int16_t>& _PCMData, long _SrcSamplingRate, const InferenceParams& _Params) const override;
 
-    [[nodiscard]] std::vector<std::wstring> Inference(std::wstring& _Paths, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-        const InferTools::SlicerSettings& _SlicerSettings) const override;
-
-    [[nodiscard]] std::vector<int16_t> InferPCMData(const std::vector<int16_t>& PCMData, long srcSr, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const override;
-
-    [[nodiscard]] std::vector<int16_t> ShallowDiffusionInference(
-		std::vector<float>& _16KAudioHubert,
-        const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-        std::pair<std::vector<float>, int64_t>& _Mel,
-        const std::vector<float>& _SrcF0,
-        const std::vector<float>& _SrcVolume,
-        const std::vector<std::vector<float>>& _SrcSpeakerMap,
+    [[nodiscard]] DragonianLibSTL::Vector<int16_t> ShallowDiffusionInference(
+        DragonianLibSTL::Vector<float>& _16KAudioHubert,
+        const InferenceParams& _Params,
+        std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
+        const DragonianLibSTL::Vector<float>& _SrcF0,
+        const DragonianLibSTL::Vector<float>& _SrcVolume,
+        const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
         size_t& Process,
         int64_t SrcSize
     ) const;
@@ -94,7 +69,7 @@ public:
         return melBins;
     }
 
-    void NormMel(std::vector<float>& MelSpec) const;
+    void NormMel(DragonianLibSTL::Vector<float>& MelSpec) const;
 
 private:
     Ort::Session* encoder = nullptr;
@@ -117,4 +92,4 @@ private:
     const std::vector<const char*> OutputNamesEncoder = { "x", "cond", "f0_pred" };
 };
 
-MoeVoiceStudioCoreEnd
+LibSvcEnd

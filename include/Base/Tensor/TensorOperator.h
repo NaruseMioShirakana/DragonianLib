@@ -4,7 +4,7 @@
 #include "Util/Avx.h"
 #include "Tensor/OperatorMacro.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 template <typename GType>
 void GatherImp(
@@ -21,7 +21,7 @@ void GatherImp(
 {
 	if (IsContinuous)
 	{
-		LibSvcMemCpy(_Dst, _Src, TotalSize);
+		DragonianLibMemCpy(_Dst, _Src, TotalSize);
 		return;
 	}
 
@@ -29,7 +29,7 @@ void GatherImp(
 	{
 		Vector<SizeType> CurIndice(NDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			_Shape,
 			NDims,
@@ -214,7 +214,7 @@ void CastFrom(const Tensor& _InputA, const Tensor& _InputB, const SizeType CurDi
 		const SizeType* __restrict StridesPtr2 = _InputB.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -364,7 +364,7 @@ void MonoOperators(
 		const SizeType* __restrict StridesPtr2 = _Src.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -523,7 +523,7 @@ void MultiOperators(
 		const SizeType* __restrict StridesPtr3 = _Src2.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -702,7 +702,7 @@ void MultiOperatorsScalar(
 		const SizeType* __restrict StridesPtr2 = _Src1.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -857,7 +857,7 @@ void CompareOperators(
 		const SizeType* __restrict StridesPtr3 = _Src2.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -1032,7 +1032,7 @@ void CompareOperatorsScalar(
 		const SizeType* __restrict StridesPtr2 = _Src1.Strides().data();
 		ShapeType CurIndice(CurDims, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtr,
 			CurDims,
@@ -1174,7 +1174,7 @@ void PtrOperatorSingle(
 
 	if ((!_Dst.IsContinuous(_TotalDim) && !DstIsTransposed) ||
 		(!_Src.IsContinuous(_TotalDim) && !SrcIsTransposed))
-		LibSvcThrow("Input Of This Operator Must Be Continuous!");
+		DragonianLibThrow("Input Of This Operator Must Be Continuous!");
 
 	_Type* DataPtrDst = (_Type*)_Dst.Data();
 	_Type* DataPtrSrc = (_Type*)_Src.Data();
@@ -1199,7 +1199,7 @@ void PtrOperatorSingle(
 		const SizeType* __restrict StridesPtrSrc = _Src.Strides().data();
 		Vector<SizeType> CurIndice(_TotalDim, 0);
 		SizeType* __restrict IndicesPtr = CurIndice.data();
-		LibSvcCycle(
+		DragonianLibCycle(
 			IndicesPtr,
 			ShapePtrDst,
 			_TotalDim,
@@ -1334,4 +1334,4 @@ void PtrOperatorSingle(
 
 void PtrOperatorMono();
 
-LibSvcEnd
+DragonianLibSpaceEnd

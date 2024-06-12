@@ -1,7 +1,7 @@
 
 #include "Tensor/Float64Tensor.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 namespace Float64
 {
@@ -9,16 +9,16 @@ namespace Float64
 	ThisType CastFrom(TensorType _Type, cpvoid _Val)
 	{
 		ThisType Ret;
-		LibSvcTypeSwitch(
+		DragonianLibTypeSwitch(
 			_Type,
-			LibSvcCastImpl(ThisType, Ret, bool, _Val),
-			LibSvcCastImpl(ThisType, Ret, int8, _Val),
-			LibSvcCastImpl(ThisType, Ret, int16, _Val),
-			LibSvcCastImpl(ThisType, Ret, int32, _Val),
-			LibSvcCastImpl(ThisType, Ret, int64, _Val),
+			DragonianLibCastImpl(ThisType, Ret, bool, _Val),
+			DragonianLibCastImpl(ThisType, Ret, int8, _Val),
+			DragonianLibCastImpl(ThisType, Ret, int16, _Val),
+			DragonianLibCastImpl(ThisType, Ret, int32, _Val),
+			DragonianLibCastImpl(ThisType, Ret, int64, _Val),
 			UNUSED(),
-			LibSvcCastImpl(ThisType, Ret, float32, _Val),
-			LibSvcCastImpl(ThisType, Ret, float64, _Val),
+			DragonianLibCastImpl(ThisType, Ret, float32, _Val),
+			DragonianLibCastImpl(ThisType, Ret, float64, _Val),
 			UNUSED()
 		);
 		return Ret;
@@ -33,7 +33,7 @@ namespace Float64
 		{
 			DataPtr = (ThisType*)_Input.GetPtr();
 			const size_t BufferSize = VectorMul(_Input.Shape()) * sizeof(ThisType);
-			LibSvcMemSet(DataPtr, &_Value, BufferSize, sizeof(ThisType));
+			DragonianLibMemSet(DataPtr, &_Value, BufferSize, sizeof(ThisType));
 			return;
 		}
 
@@ -48,7 +48,7 @@ namespace Float64
 			const SizeType* __restrict StridesPtr = _Input.Strides().data();
 			ShapeType CurIndice(CurDims, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				CurDims,
@@ -137,13 +137,13 @@ namespace Float64
 		ThisType* __restrict DataPtr = (ThisType*)_Input.Data();
 
 		if (BufferEnd < Buffer)
-			LibSvcThrow("[Operator] BufferEnd* < Buffer*, Make Sure BufferEnd* > Buffer*");
+			DragonianLibThrow("[Operator] BufferEnd* < Buffer*, Make Sure BufferEnd* > Buffer*");
 
 		if (_Input.IsContinuous())
 		{
 			DataPtr = (ThisType*)_Input.GetPtr();
 			const size_t BufferSize = (BufferEnd - Buffer) * sizeof(ThisType);
-			LibSvcMemCpy(DataPtr, Buffer, BufferSize);
+			DragonianLibMemCpy(DataPtr, Buffer, BufferSize);
 			return;
 		}
 
@@ -158,7 +158,7 @@ namespace Float64
 			const SizeType* __restrict StridesPtr = _Input.Strides().data();
 			ShapeType CurIndice(CurDims, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				CurDims,
@@ -252,7 +252,7 @@ namespace Float64
 			DataPtr1 = (ThisType*)_InputA.GetPtr();
 			DataPtr2 = (ThisType*)_InputB.GetPtr();
 			const size_t BufferSize = VectorMul(_InputA.Shape()) * sizeof(ThisType);
-			LibSvcMemCpy(DataPtr1, DataPtr2, BufferSize);
+			DragonianLibMemCpy(DataPtr1, DataPtr2, BufferSize);
 			return;
 		}
 
@@ -273,7 +273,7 @@ namespace Float64
 			const SizeType* __restrict StridesPtr2 = _InputB.Strides().data();
 			ShapeType CurIndice(CurDims, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				CurDims,
@@ -407,7 +407,7 @@ namespace Float64
 			const SizeType* __restrict StridesPtr = _Input.Strides().data();
 			ShapeType CurIndice(CurDims, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				CurDims,
@@ -490,14 +490,14 @@ namespace Float64
 	void AssignValue(const Tensor& _Input, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool)
 	{
 		if (_Input.IsBroadCasted())
-			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+			DragonianLibThrow("You Can't Assign To A BroadCasted Tensor!");
 
 		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
 		const auto& SqueezedShape = SqueezedTensor.Shape();
 		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
@@ -538,19 +538,19 @@ namespace Float64
 	void AssignBuffer(const Tensor& _Input, cpvoid BufferVoid, cpvoid BufferEndVoid, ThreadPool* _ThreadPool)
 	{
 		if (_Input.IsBroadCasted())
-			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+			DragonianLibThrow("You Can't Assign To A BroadCasted Tensor!");
 
 		const byte* Buffer = (const byte*)BufferVoid;
 		const byte* BufferEnd = (const byte*)BufferEndVoid;
 		if ((BufferEnd - Buffer) % sizeof(ThisType))
-			LibSvcThrow("Buffer Size MisMatch!");
+			DragonianLibThrow("Buffer Size MisMatch!");
 		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
 
 		const auto& SqueezedShape = SqueezedTensor.Shape();
 		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
@@ -625,7 +625,7 @@ namespace Float64
 		const auto& SqueezedShape = SqueezedTensorA.Shape();
 		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
@@ -673,13 +673,13 @@ namespace Float64
 	void AssignTensor(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool)
 	{
 		if (_InputA.DType() != _InputB.DType())
-			LibSvcThrow("Type MisMatch!");
+			DragonianLibThrow("Type MisMatch!");
 
 		if (_InputA.GetDevice() != _InputB.GetDevice())
-			LibSvcThrow("Device MisMatch!");
+			DragonianLibThrow("Device MisMatch!");
 
 		if (_InputA.IsBroadCasted())
-			LibSvcThrow("You Can't Assign To a BroadCasted Tensor!");
+			DragonianLibThrow("You Can't Assign To a BroadCasted Tensor!");
 
 		if (_InputB.IsScalar())
 		{
@@ -695,14 +695,14 @@ namespace Float64
 	void FixWithRandom(const Tensor& _Input, uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool)
 	{
 		if (_Input.IsBroadCasted())
-			LibSvcThrow("You Can't Assign To A BroadCasted Tensor!");
+			DragonianLibThrow("You Can't Assign To A BroadCasted Tensor!");
 
 		const auto SqueezedTensor = _Input.Squeeze();
 		const auto CurDims = (SizeType)SqueezedTensor.Shape().size();
 		const auto& SqueezedShape = SqueezedTensor.Shape();
 		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
@@ -869,7 +869,7 @@ namespace Float64
 									);
 								}
 								else
-									LibSvcThrow("Index Out Of Range!");
+									DragonianLibThrow("Index Out Of Range!");
 							}
 						}
 					}
@@ -881,9 +881,9 @@ namespace Float64
 	Tensor Gather(const Tensor& _Input, const Tensor& _IndicesInp, SizeType _Axis, ThreadPool* _ThreadPool)
 	{
 		if (_Input.GetDevice() != _IndicesInp.GetDevice())
-			LibSvcThrow("Device MisMatch!");
+			DragonianLibThrow("Device MisMatch!");
 		if (_Input.DimCount() <= 1)
-			LibSvcThrow("Shape Of Input Should > 1!");
+			DragonianLibThrow("Shape Of Input Should > 1!");
 
 		auto _Indices = _IndicesInp.Cast(TensorType::Int32, _ThreadPool);
 		if (!_Indices.IsContinuous())
@@ -905,9 +905,9 @@ namespace Float64
 		const auto InputPPermuted = _Input.Permute(DPer);
 
 		if (CurDims > 6)
-			LibSvcThrow("Gather Operator Not Support Dim > 6!");
+			DragonianLibThrow("Gather Operator Not Support Dim > 6!");
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)_IndicesShape.size();
@@ -968,7 +968,7 @@ namespace Float64
 		else if (_Src.DType() == TensorType::Float64)
 			CastFrom<ThisType, float64>(_Dst, _Src, CurDims);
 		else
-			LibSvcThrow("UnSupported Type!");
+			DragonianLibThrow("UnSupported Type!");
 		/*else if (_Src.DType() == TensorType::Float16)
 			CastFrom<ThisType, uint16>(_Dst, _Src, CurDims);
 		else if (_Src.DType() == TensorType::Complex32)
@@ -979,7 +979,7 @@ namespace Float64
 	void Cast(const Tensor& _Dst, const Tensor& _Src, ThreadPool* _ThreadPool)
 	{
 		if (_Dst.GetDevice() != _Src.GetDevice())
-			LibSvcThrow("Device MisMatch!");
+			DragonianLibThrow("Device MisMatch!");
 
 		const auto SqueezedTensorA = _Dst.Squeeze();
 		const auto SqueezedTensorB = _Src.Squeeze();
@@ -987,7 +987,7 @@ namespace Float64
 		const auto& SqueezedShape = SqueezedTensorA.Shape();
 		const auto TotalSize = VectorMul(SqueezedShape);
 
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			const auto SqueezedDims = (SizeType)SqueezedShape.size();
@@ -1041,8 +1041,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcAddFn<ThisType>,
-			LibSvcVectorAdd<ThisType>
+			DragonianLibAddFn<ThisType>,
+			DragonianLibVectorAdd<ThisType>
 		);
 	}
 
@@ -1053,8 +1053,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcSubFn<ThisType>,
-			LibSvcVectorSub<ThisType>
+			DragonianLibSubFn<ThisType>,
+			DragonianLibVectorSub<ThisType>
 		);
 	}
 
@@ -1065,8 +1065,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcMulFn<ThisType>,
-			LibSvcVectorMul<ThisType>
+			DragonianLibMulFn<ThisType>,
+			DragonianLibVectorMul<ThisType>
 		);
 	}
 
@@ -1077,8 +1077,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcDivFn<ThisType>,
-			LibSvcVectorDiv<ThisType>
+			DragonianLibDivFn<ThisType>,
+			DragonianLibVectorDiv<ThisType>
 		);
 	}
 
@@ -1090,7 +1090,7 @@ namespace Float64
 			_Src2,
 			CurDims,
 			pow<ThisType, ThisType>,
-			LibSvcVectorPow<ThisType>
+			DragonianLibVectorPow<ThisType>
 		);
 	}
 
@@ -1101,8 +1101,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcAddFn<ThisType>,
-			LibSvcVectorAddScalar<ThisType>
+			DragonianLibAddFn<ThisType>,
+			DragonianLibVectorAddScalar<ThisType>
 		);
 	}
 
@@ -1113,8 +1113,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcSubFn<ThisType>,
-			LibSvcVectorSubScalar<ThisType>
+			DragonianLibSubFn<ThisType>,
+			DragonianLibVectorSubScalar<ThisType>
 		);
 	}
 
@@ -1125,8 +1125,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcMulFn<ThisType>,
-			LibSvcVectorMulScalar<ThisType>
+			DragonianLibMulFn<ThisType>,
+			DragonianLibVectorMulScalar<ThisType>
 		);
 	}
 
@@ -1137,8 +1137,8 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			LibSvcDivFn<ThisType>,
-			LibSvcVectorDivScalar<ThisType>
+			DragonianLibDivFn<ThisType>,
+			DragonianLibVectorDivScalar<ThisType>
 		);
 	}
 
@@ -1150,30 +1150,30 @@ namespace Float64
 			_Src2,
 			CurDims,
 			pow<ThisType, ThisType>,
-			LibSvcVectorPowScalar<ThisType>
+			DragonianLibVectorPowScalar<ThisType>
 		);
 	}
 
-	LibSvcMultiOperatorFunctionImpl(Add, AddImpl);
-	LibSvcMultiOperatorFunctionImpl(Sub, SubImpl);
-	LibSvcMultiOperatorFunctionImpl(Mul, MulImpl);
-	LibSvcMultiOperatorFunctionImpl(Div, DivImpl);
-	LibSvcMultiOperatorFunctionImpl(Pow, PowImpl);
-	LibSvcMultiOperatorScalarFunctionImpl(Add, AddImplScalar);
-	LibSvcMultiOperatorScalarFunctionImpl(Sub, SubImplScalar);
-	LibSvcMultiOperatorScalarFunctionImpl(Mul, MulImplScalar);
-	LibSvcMultiOperatorScalarFunctionImpl(Div, DivImplScalar);
-	LibSvcMultiOperatorScalarFunctionImpl(Pow, PowImplScalar);
-	LibSvcMultiOperatorInplaceFunctionImpl(AddInplace, AddImpl);
-	LibSvcMultiOperatorInplaceFunctionImpl(SubInplace, SubImpl);
-	LibSvcMultiOperatorInplaceFunctionImpl(MulInplace, MulImpl);
-	LibSvcMultiOperatorInplaceFunctionImpl(DivInplace, DivImpl);
-	LibSvcMultiOperatorInplaceFunctionImpl(PowInplace, PowImpl);
-	LibSvcMultiOperatorScalarInplaceFunctionImpl(AddInplace, AddImplScalar);
-	LibSvcMultiOperatorScalarInplaceFunctionImpl(SubInplace, SubImplScalar);
-	LibSvcMultiOperatorScalarInplaceFunctionImpl(MulInplace, MulImplScalar);
-	LibSvcMultiOperatorScalarInplaceFunctionImpl(DivInplace, DivImplScalar);
-	LibSvcMultiOperatorScalarInplaceFunctionImpl(PowInplace, PowImplScalar);
+	DragonianLibMultiOperatorFunctionImpl(Add, AddImpl);
+	DragonianLibMultiOperatorFunctionImpl(Sub, SubImpl);
+	DragonianLibMultiOperatorFunctionImpl(Mul, MulImpl);
+	DragonianLibMultiOperatorFunctionImpl(Div, DivImpl);
+	DragonianLibMultiOperatorFunctionImpl(Pow, PowImpl);
+	DragonianLibMultiOperatorScalarFunctionImpl(Add, AddImplScalar);
+	DragonianLibMultiOperatorScalarFunctionImpl(Sub, SubImplScalar);
+	DragonianLibMultiOperatorScalarFunctionImpl(Mul, MulImplScalar);
+	DragonianLibMultiOperatorScalarFunctionImpl(Div, DivImplScalar);
+	DragonianLibMultiOperatorScalarFunctionImpl(Pow, PowImplScalar);
+	DragonianLibMultiOperatorInplaceFunctionImpl(AddInplace, AddImpl);
+	DragonianLibMultiOperatorInplaceFunctionImpl(SubInplace, SubImpl);
+	DragonianLibMultiOperatorInplaceFunctionImpl(MulInplace, MulImpl);
+	DragonianLibMultiOperatorInplaceFunctionImpl(DivInplace, DivImpl);
+	DragonianLibMultiOperatorInplaceFunctionImpl(PowInplace, PowImpl);
+	DragonianLibMultiOperatorScalarInplaceFunctionImpl(AddInplace, AddImplScalar);
+	DragonianLibMultiOperatorScalarInplaceFunctionImpl(SubInplace, SubImplScalar);
+	DragonianLibMultiOperatorScalarInplaceFunctionImpl(MulInplace, MulImplScalar);
+	DragonianLibMultiOperatorScalarInplaceFunctionImpl(DivInplace, DivImplScalar);
+	DragonianLibMultiOperatorScalarInplaceFunctionImpl(PowInplace, PowImplScalar);
 
 	void AbsImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
 	{
@@ -1185,7 +1185,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			abs,
-			LibSvcVectorAbs<ThisType>
+			DragonianLibVectorAbs<ThisType>
 		);
 	}
 
@@ -1198,7 +1198,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			sin,
-			LibSvcVectorSin<ThisType>
+			DragonianLibVectorSin<ThisType>
 		);
 	}
 
@@ -1211,7 +1211,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			sinh,
-			LibSvcVectorSinh<ThisType>
+			DragonianLibVectorSinh<ThisType>
 		);
 	}
 
@@ -1224,7 +1224,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			cos,
-			LibSvcVectorCos<ThisType>
+			DragonianLibVectorCos<ThisType>
 		);
 	}
 
@@ -1237,7 +1237,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			cosh,
-			LibSvcVectorCosh<ThisType>
+			DragonianLibVectorCosh<ThisType>
 		);
 	}
 
@@ -1250,7 +1250,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			tan,
-			LibSvcVectorTan<ThisType>
+			DragonianLibVectorTan<ThisType>
 		);
 	}
 
@@ -1263,7 +1263,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			tanh,
-			LibSvcVectorTanh<ThisType>
+			DragonianLibVectorTanh<ThisType>
 		);
 	}
 
@@ -1276,7 +1276,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			asin,
-			LibSvcVectorASin<ThisType>
+			DragonianLibVectorASin<ThisType>
 		);
 	}
 
@@ -1289,7 +1289,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			acos,
-			LibSvcVectorACos<ThisType>
+			DragonianLibVectorACos<ThisType>
 		);
 	}
 
@@ -1302,7 +1302,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			atan,
-			LibSvcVectorATan<ThisType>
+			DragonianLibVectorATan<ThisType>
 		);
 	}
 
@@ -1315,7 +1315,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			asinh,
-			LibSvcVectorASinh<ThisType>
+			DragonianLibVectorASinh<ThisType>
 		);
 	}
 
@@ -1328,7 +1328,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			acosh,
-			LibSvcVectorACosh<ThisType>
+			DragonianLibVectorACosh<ThisType>
 		);
 	}
 
@@ -1341,7 +1341,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			atanh,
-			LibSvcVectorATanh<ThisType>
+			DragonianLibVectorATanh<ThisType>
 		);
 	}
 
@@ -1354,7 +1354,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			exp,
-			LibSvcVectorExp<ThisType>
+			DragonianLibVectorExp<ThisType>
 		);
 	}
 
@@ -1364,8 +1364,8 @@ namespace Float64
 			_Dst,
 			_Src,
 			CurDims,
-			LibSvcExp10<ThisType>,
-			LibSvcVectorExp10<ThisType>
+			DragonianLibExp10<ThisType>,
+			DragonianLibVectorExp10<ThisType>
 		);
 	}
 
@@ -1378,7 +1378,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			exp2,
-			LibSvcVectorExp2<ThisType>
+			DragonianLibVectorExp2<ThisType>
 		);
 	}
 
@@ -1391,7 +1391,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			log,
-			LibSvcVectorLog<ThisType>
+			DragonianLibVectorLog<ThisType>
 		);
 	}
 
@@ -1404,7 +1404,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			log2,
-			LibSvcVectorLog2<ThisType>
+			DragonianLibVectorLog2<ThisType>
 		);
 	}
 
@@ -1417,48 +1417,48 @@ namespace Float64
 			_Src,
 			CurDims,
 			log10,
-			LibSvcVectorLog10<ThisType>
+			DragonianLibVectorLog10<ThisType>
 		);
 	}
 
-	LibSvcMonoOperatorFunctionImpl(Abs, AbsImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Abs, AbsImpl);
-	LibSvcMonoOperatorFunctionImpl(Sin, SinImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Sin, SinImpl);
-	LibSvcMonoOperatorFunctionImpl(Sinh, SinhImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Sinh, SinhImpl);
-	LibSvcMonoOperatorFunctionImpl(Cos, CosImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Cos, CosImpl);
-	LibSvcMonoOperatorFunctionImpl(Cosh, CoshImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Cosh, CoshImpl);
-	LibSvcMonoOperatorFunctionImpl(Tan, TanImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Tan, TanImpl);
-	LibSvcMonoOperatorFunctionImpl(Tanh, TanhImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Tanh, TanhImpl);
-	LibSvcMonoOperatorFunctionImpl(ASin, ASinImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ASin, ASinImpl);
-	LibSvcMonoOperatorFunctionImpl(ACos, ACosImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ACos, ACosImpl);
-	LibSvcMonoOperatorFunctionImpl(ATan, ATanImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ATan, ATanImpl);
-	LibSvcMonoOperatorFunctionImpl(ASinh, ASinhImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ASinh, ASinhImpl);
-	LibSvcMonoOperatorFunctionImpl(ACosh, ACoshImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ACosh, ACoshImpl);
-	LibSvcMonoOperatorFunctionImpl(ATanh, ATanhImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(ATanh, ATanhImpl);
-	LibSvcMonoOperatorFunctionImpl(Exp, ExpImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Exp, ExpImpl);
-	LibSvcMonoOperatorFunctionImpl(Exp2, Exp2Impl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Exp2, Exp2Impl);
-	LibSvcMonoOperatorFunctionImpl(Exp10, Exp10Impl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Exp10, Exp10Impl);
-	LibSvcMonoOperatorFunctionImpl(Log, LogImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Log, LogImpl);
-	LibSvcMonoOperatorFunctionImpl(Log2, Log2Impl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Log2, Log2Impl);
-	LibSvcMonoOperatorFunctionImpl(Log10, Log10Impl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Log10, Log10Impl);
+	DragonianLibMonoOperatorFunctionImpl(Abs, AbsImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Abs, AbsImpl);
+	DragonianLibMonoOperatorFunctionImpl(Sin, SinImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Sin, SinImpl);
+	DragonianLibMonoOperatorFunctionImpl(Sinh, SinhImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Sinh, SinhImpl);
+	DragonianLibMonoOperatorFunctionImpl(Cos, CosImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Cos, CosImpl);
+	DragonianLibMonoOperatorFunctionImpl(Cosh, CoshImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Cosh, CoshImpl);
+	DragonianLibMonoOperatorFunctionImpl(Tan, TanImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Tan, TanImpl);
+	DragonianLibMonoOperatorFunctionImpl(Tanh, TanhImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Tanh, TanhImpl);
+	DragonianLibMonoOperatorFunctionImpl(ASin, ASinImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ASin, ASinImpl);
+	DragonianLibMonoOperatorFunctionImpl(ACos, ACosImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ACos, ACosImpl);
+	DragonianLibMonoOperatorFunctionImpl(ATan, ATanImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ATan, ATanImpl);
+	DragonianLibMonoOperatorFunctionImpl(ASinh, ASinhImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ASinh, ASinhImpl);
+	DragonianLibMonoOperatorFunctionImpl(ACosh, ACoshImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ACosh, ACoshImpl);
+	DragonianLibMonoOperatorFunctionImpl(ATanh, ATanhImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(ATanh, ATanhImpl);
+	DragonianLibMonoOperatorFunctionImpl(Exp, ExpImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Exp, ExpImpl);
+	DragonianLibMonoOperatorFunctionImpl(Exp2, Exp2Impl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Exp2, Exp2Impl);
+	DragonianLibMonoOperatorFunctionImpl(Exp10, Exp10Impl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Exp10, Exp10Impl);
+	DragonianLibMonoOperatorFunctionImpl(Log, LogImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Log, LogImpl);
+	DragonianLibMonoOperatorFunctionImpl(Log2, Log2Impl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Log2, Log2Impl);
+	DragonianLibMonoOperatorFunctionImpl(Log10, Log10Impl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Log10, Log10Impl);
 
 	void LessImpl(const Tensor& _Dst, const Tensor& _Src1, const Tensor& _Src2, const SizeType CurDims)
 	{
@@ -1467,7 +1467,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Less<ThisType>
+			::DragonianLib::Less<ThisType>
 		);
 	}
 
@@ -1478,7 +1478,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Less<ThisType>
+			::DragonianLib::Less<ThisType>
 		);
 	}
 
@@ -1489,7 +1489,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Greater<ThisType>
+			::DragonianLib::Greater<ThisType>
 		);
 	}
 
@@ -1500,7 +1500,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Greater<ThisType>
+			::DragonianLib::Greater<ThisType>
 		);
 	}
 
@@ -1511,7 +1511,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Equal<ThisType>
+			::DragonianLib::Equal<ThisType>
 		);
 	}
 
@@ -1522,7 +1522,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::Equal<ThisType>
+			::DragonianLib::Equal<ThisType>
 		);
 	}
 
@@ -1533,7 +1533,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::LessEqual<ThisType>
+			::DragonianLib::LessEqual<ThisType>
 		);
 	}
 
@@ -1544,7 +1544,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::LessEqual<ThisType>
+			::DragonianLib::LessEqual<ThisType>
 		);
 	}
 
@@ -1555,7 +1555,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::GreaterEqual<ThisType>
+			::DragonianLib::GreaterEqual<ThisType>
 		);
 	}
 
@@ -1566,7 +1566,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::GreaterEqual<ThisType>
+			::DragonianLib::GreaterEqual<ThisType>
 		);
 	}
 
@@ -1577,7 +1577,7 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::NotEqual<ThisType>
+			::DragonianLib::NotEqual<ThisType>
 		);
 	}
 
@@ -1588,22 +1588,22 @@ namespace Float64
 			_Src1,
 			_Src2,
 			CurDims,
-			::libsvc::NotEqual<ThisType>
+			::DragonianLib::NotEqual<ThisType>
 		);
 	}
 
-	LibSvcCompareOperatorFunctionImpl(Less, LessImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(Less, LessImplScalar);
-	LibSvcCompareOperatorFunctionImpl(Greater, GreaterImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(Greater, GreaterImplScalar);
-	LibSvcCompareOperatorFunctionImpl(Equal, EqualImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(Equal, EqualImplScalar);
-	LibSvcCompareOperatorFunctionImpl(LessEqual, LessEqualImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(LessEqual, LessEqualImplScalar);
-	LibSvcCompareOperatorFunctionImpl(GreaterEqual, GreaterEqualImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(GreaterEqual, GreaterEqualImplScalar);
-	LibSvcCompareOperatorFunctionImpl(NotEqual, NotEqualImpl);
-	LibSvcCompareOperatorScalarFunctionImpl(NotEqual, NotEqualImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(Less, LessImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(Less, LessImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(Greater, GreaterImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(Greater, GreaterImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(Equal, EqualImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(Equal, EqualImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(LessEqual, LessEqualImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(LessEqual, LessEqualImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(GreaterEqual, GreaterEqualImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(GreaterEqual, GreaterEqualImplScalar);
+	DragonianLibCompareOperatorFunctionImpl(NotEqual, NotEqualImpl);
+	DragonianLibCompareOperatorScalarFunctionImpl(NotEqual, NotEqualImplScalar);
 
 	void CeilImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
 	{
@@ -1614,7 +1614,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			ceil,
-			LibSvcVectorCeil<ThisType>
+			DragonianLibVectorCeil<ThisType>
 		);
 	}
 
@@ -1627,7 +1627,7 @@ namespace Float64
 			_Src,
 			CurDims,
 			round,
-			LibSvcVectorRound<ThisType>
+			DragonianLibVectorRound<ThisType>
 		);
 	}
 
@@ -1640,16 +1640,16 @@ namespace Float64
 			_Src,
 			CurDims,
 			floor,
-			LibSvcVectorFloor<ThisType>
+			DragonianLibVectorFloor<ThisType>
 		);
 	}
 
-	LibSvcMonoOperatorFunctionImpl(Ceil, CeilImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Ceil, CeilImpl);
-	LibSvcMonoOperatorFunctionImpl(Round, RoundImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Round, RoundImpl);
-	LibSvcMonoOperatorFunctionImpl(Floor, FloorImpl);
-	LibSvcMonoOperatorInplaceFunctionImpl(Floor, FloorImpl);
+	DragonianLibMonoOperatorFunctionImpl(Ceil, CeilImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Ceil, CeilImpl);
+	DragonianLibMonoOperatorFunctionImpl(Round, RoundImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Round, RoundImpl);
+	DragonianLibMonoOperatorFunctionImpl(Floor, FloorImpl);
+	DragonianLibMonoOperatorInplaceFunctionImpl(Floor, FloorImpl);
 
 	void SumImpl(const Tensor& _Dst, const Tensor& _Src, const SizeType CurDims)
 	{
@@ -1674,7 +1674,7 @@ namespace Float64
 			const auto LoopDim = CurDims - 1;
 			ShapeType CurIndice(LoopDim, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				LoopDim,
@@ -1800,7 +1800,7 @@ namespace Float64
 			const auto LoopDim = CurDims - 1;
 			ShapeType CurIndice(LoopDim, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				LoopDim,
@@ -1904,7 +1904,7 @@ namespace Float64
 			const auto LoopDim = CurDims - 1;
 			ShapeType CurIndice(LoopDim, 0);
 			SizeType* __restrict IndicesPtr = CurIndice.data();
-			LibSvcCycle(
+			DragonianLibCycle(
 				IndicesPtr,
 				ShapePtr,
 				LoopDim,
@@ -2020,7 +2020,7 @@ namespace Float64
 
 		const auto& PermutedShape = InputRef.Shape();
 		const auto TotalSize = VectorMul(PermutedShape);
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			Vector<Range> Slices;
@@ -2075,7 +2075,7 @@ namespace Float64
 
 		const auto& PermutedShape = ReturnRef.Shape();
 		const auto TotalSize = VectorMul(PermutedShape);
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			Vector<Range> Slices;
@@ -2129,7 +2129,7 @@ namespace Float64
 
 		const auto& PermutedShape = ReturnRef.Shape();
 		const auto TotalSize = VectorMul(PermutedShape);
-		if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE)
+		if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 		{
 			const auto NWorkers = _ThreadPool->GetThreadCount();
 			Vector<Range> Slices;
@@ -2171,4 +2171,4 @@ namespace Float64
 	}
 }
 
-LibSvcEnd
+DragonianLibSpaceEnd

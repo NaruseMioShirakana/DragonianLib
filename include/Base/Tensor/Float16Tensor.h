@@ -1,6 +1,6 @@
 #pragma once
 #include "Tensor/TensorOperator.h"
-LibSvcBegin
+DragonianLibSpaceBegin
 namespace Float16
 {
 	using ThisType = uint16;
@@ -10,4 +10,4 @@ namespace Float16
 	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType);
 
 }
-LibSvcEnd
+DragonianLibSpaceEnd

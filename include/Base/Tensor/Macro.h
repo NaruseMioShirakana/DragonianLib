@@ -1,11 +1,11 @@
 #pragma once
 
-#define LibSvcTensorFnImpl(_Name) \
+#define DragonianLibTensorFnImpl(_Name) \
 Tensor Tensor::_Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	_Input.ThrowOnNotEnabled(); \
 	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice()); \
-	LibSvcOperator(_Input.DType_, Ret, _Name, _Input, _ThreadPool); \
+	DragonianLibOperator(_Input.DType_, Ret, _Name, _Input, _ThreadPool); \
 	return Ret; \
 } \
 Tensor Tensor::_Name(ThreadPool* _ThreadPool) const \
@@ -15,19 +15,19 @@ Tensor Tensor::_Name(ThreadPool* _ThreadPool) const \
 Tensor& Tensor::_Name##_(ThreadPool* _ThreadPool) \
 { \
 	ThrowOnNotEnabled(); \
-	LibSvcOperatorNoRetrun(_Name##Inplace, *this, _ThreadPool); \
+	DragonianLibOperatorNoRetrun(_Name##Inplace, *this, _ThreadPool); \
 	return *this; \
 }
 
-#define LibSvcFloatTensorFnImpl(_Name) \
+#define DragonianLibFloatTensorFnImpl(_Name) \
 Tensor Tensor::_Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	_Input.ThrowOnNotEnabled(); \
 	Tensor Ret(_Input.DType_, _Input.GetDevice()); \
 	if (_Input.DType_ == TensorType::Float64) \
-		Ret = ::libsvc::Float64::_Name(_Input, _ThreadPool); \
+		Ret = ::DragonianLib::Float64::_Name(_Input, _ThreadPool); \
 	else if (_Input.DType_ == TensorType::Float32) \
-		Ret = ::libsvc::Float32::_Name(_Input, _ThreadPool); \
+		Ret = ::DragonianLib::Float32::_Name(_Input, _ThreadPool); \
 	else \
 		return _Input.CreateView(); \
 	return Ret; \
@@ -40,22 +40,22 @@ Tensor& Tensor::_Name##_(ThreadPool* _ThreadPool) \
 { \
 	ThrowOnNotEnabled(); \
 	if (DType_ == TensorType::Float64) \
-		::libsvc::Float64::_Name##Inplace(*this, _ThreadPool); \
+		::DragonianLib::Float64::_Name##Inplace(*this, _ThreadPool); \
 	else if (DType_ == TensorType::Float32) \
-		::libsvc::Float32::_Name##Inplace(*this, _ThreadPool); \
+		::DragonianLib::Float32::_Name##Inplace(*this, _ThreadPool); \
 	return *this; \
 }
 
-#define LibSvcTensorFnDef(_Name) \
+#define DragonianLibTensorFnDef(_Name) \
 static Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool = nullptr); \
 Tensor _Name(ThreadPool* _ThreadPool = nullptr) const; \
 Tensor& _Name##_(ThreadPool* _ThreadPool = nullptr)
 
-#define LibSvcMonoOperatorFunctionDef(_Name) \
+#define DragonianLibMonoOperatorFunctionDef(_Name) \
 Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool); \
 void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool)
 
-#define LibSvcMonoOperatorFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMonoOperatorFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	Tensor Ret(_Input.Shape(), _Input.DType(), _Input.GetDevice()); \
@@ -64,7 +64,7 @@ Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputSqueeze.Shape().size(); \
 	const auto& InputShape = InputSqueeze.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -107,7 +107,7 @@ Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 	return Ret; \
 }
 
-#define LibSvcMonoOperatorInplaceFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMonoOperatorInplaceFunctionImpl(_Name, _OpFn) \
 void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 { \
 	const auto InputSqueeze = _Input.Squeeze(); \
@@ -115,7 +115,7 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputSqueeze.Shape().size(); \
 	const auto& InputShape = InputSqueeze.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -157,13 +157,13 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 		_OpFn(Result, InputSqueeze, CurDims); \
 }
 
-#define LibSvcMultiOperatorFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMultiOperatorFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 { \
 	if (_A.DType() != _B.DType()) \
-		LibSvcThrow("Type MisMatch!"); \
+		DragonianLibThrow("Type MisMatch!"); \
 	if (_A.GetDevice() != _B.GetDevice()) \
-		LibSvcThrow("Device MisMatch!"); \
+		DragonianLibThrow("Device MisMatch!"); \
  \
 	const auto BroadCast = Tensor::BroadCast(_A, _B); \
 	Tensor Ret(BroadCast.first.Shape(), BroadCast.first.DType(), _A.GetDevice()); \
@@ -175,7 +175,7 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -223,7 +223,7 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	return Ret; \
 }
 
-#define LibSvcMultiOperatorScalarFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMultiOperatorScalarFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool) \
 { \
 	const auto _Value = CastFrom(_ValType, _Val); \
@@ -236,7 +236,7 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -284,11 +284,11 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 	return Ret; \
 }
 
-#define LibSvcMultiOperatorInplaceFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMultiOperatorInplaceFunctionImpl(_Name, _OpFn) \
 void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 { \
 	if (_A.DType() != _B.DType()) \
-		LibSvcThrow("Type MisMatch!"); \
+		DragonianLibThrow("Type MisMatch!"); \
  \
 	const auto InputA = _A.Squeeze(); \
 	const auto InputB = _A.BroadCast(_B).Squeeze(); \
@@ -298,7 +298,7 @@ void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -344,7 +344,7 @@ void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 		_OpFn(Result, InputA, InputB, CurDims); \
 }
 
-#define LibSvcMultiOperatorScalarInplaceFunctionImpl(_Name, _OpFn) \
+#define DragonianLibMultiOperatorScalarInplaceFunctionImpl(_Name, _OpFn) \
 void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool) \
 { \
 	const auto _Value = CastFrom(_ValType, _Val); \
@@ -356,7 +356,7 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -402,13 +402,13 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 		_OpFn(Result, InputA, _Value, CurDims); \
 }
 
-#define LibSvcCompareOperatorFunctionImpl(_Name, _OpFn) \
+#define DragonianLibCompareOperatorFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 { \
 	if (_A.DType() != _B.DType()) \
-		LibSvcThrow("Type MisMatch!"); \
+		DragonianLibThrow("Type MisMatch!"); \
 	if (_A.GetDevice() != _B.GetDevice()) \
-		LibSvcThrow("Device MisMatch!"); \
+		DragonianLibThrow("Device MisMatch!"); \
  \
 	const auto BroadCast = Tensor::BroadCast(_A, _B); \
 	Tensor Ret(BroadCast.first.Shape(), TensorType::Boolean, _A.GetDevice()); \
@@ -420,7 +420,7 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
@@ -468,7 +468,7 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	return Ret; \
 }
 
-#define LibSvcCompareOperatorScalarFunctionImpl(_Name, _OpFn) \
+#define DragonianLibCompareOperatorScalarFunctionImpl(_Name, _OpFn) \
 Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool) \
 { \
 	const auto _Value = CastFrom(_ValType, _Val); \
@@ -481,7 +481,7 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
  \
-	if (_ThreadPool && TotalSize > LIBSVC_CONT_THRESHOLD_MIN_SIZE) \
+	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \

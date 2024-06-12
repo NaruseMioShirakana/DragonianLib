@@ -1,11 +1,11 @@
 #include "Alloc.h"
 #include <exception>
 
-namespace libsvc
+namespace DragonianLib
 {
 	MemoryProvider::MemoryProvider()
 	{
-		_Provider[0] = new libsvcstd::CPUAllocator;
+		_Provider[0] = new DragonianLibSTL::CPUAllocator;
 		_Provider[1] = nullptr;
 		_Provider[2] = nullptr;
 		_Provider[3] = nullptr;
@@ -28,7 +28,7 @@ namespace libsvc
 	}
 }
 
-LIBSVCSTLBEGIN
+DRAGONIANLIBSTLBEGIN
 
 unsigned char* BaseAllocator::Allocate(size_t _Size)
 {
@@ -47,15 +47,15 @@ Device BaseAllocator::GetDevice() const
 
 unsigned char* CPUAllocator::Allocate(size_t _Size)
 {
-#if LIBSVC_ALLOC_ALIG > 1
+#if DRAGONIANLIB_ALLOC_ALIG > 1
 #if _MSC_VER
-	return (unsigned char*)_aligned_malloc(_Size, LIBSVC_ALLOC_ALIG);
+	return (unsigned char*)_aligned_malloc(_Size, DRAGONIANLIB_ALLOC_ALIG);
 #else
-	auto _Block = (unsigned char*)malloc(_Size + LIBSVC_ALLOC_ALIG * 2);
-	if (size_t(_Block) % LIBSVC_ALLOC_ALIG == 0)
+	auto _Block = (unsigned char*)malloc(_Size + DRAGONIANLIB_ALLOC_ALIG * 2);
+	if (size_t(_Block) % DRAGONIANLIB_ALLOC_ALIG == 0)
 		return _Block;
 	*(_Block++) = 1ui8;
-	while (size_t(_Block) % LIBSVC_ALLOC_ALIG)
+	while (size_t(_Block) % DRAGONIANLIB_ALLOC_ALIG)
 		*(_Block++) = 0ui8;
 	return _Block;
 #endif
@@ -66,11 +66,14 @@ unsigned char* CPUAllocator::Allocate(size_t _Size)
 
 void CPUAllocator::Free(void* _Block)
 {
-#if LIBSVC_ALLOC_ALIG > 1
+#if DRAGONIANLIB_ALLOC_ALIG > 1
 #if _MSC_VER
 	_aligned_free(_Block);
 #else
 	auto Block = (unsigned char*)_Block;
+	--Block;
+	if (*Block != 0ui8 && *Block != 1ui8)
+		free(_Block);
 	while (*Block != 1ui8)
 		--Block;
 	free(Block);
@@ -80,4 +83,4 @@ void CPUAllocator::Free(void* _Block)
 #endif
 }
 
-LIBSVCSTLEND
+DRAGONIANLIBSTLEND

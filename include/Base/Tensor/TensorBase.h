@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include "Value.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 using SizeType = int64;
 template <typename _Ty>
 using Vector = std::vector<_Ty>;
@@ -51,4 +51,4 @@ public:
 	TensorType DType() const;
 };
 
-LibSvcEnd
+DragonianLibSpaceEnd

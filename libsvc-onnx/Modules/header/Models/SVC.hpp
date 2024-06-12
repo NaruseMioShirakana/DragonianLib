@@ -21,13 +21,12 @@
 
 #pragma once
 #include "ModelBase.hpp"
-#include "../Logger/MoeSSLogger.hpp"
-#include "../InferTools/inferTools.hpp"
-#include "../InferTools/TensorExtractor/TensorExtractorManager.hpp"
-#include "../InferTools/Cluster/MoeVSClusterManager.hpp"
+#include "InferTools/TensorExtractor/TensorExtractorManager.hpp"
+#include "Cluster/ClusterManager.hpp"
 
-MoeVoiceStudioCoreHeader
+LibSvcHeader
 
+using OrtTensors = std::vector<Ort::Value>;
 /*
 class OnnxModule
 {
@@ -93,55 +92,47 @@ protected:
 };
  */
 
-class SingingVoiceConversion : public MoeVoiceStudioModule
+class SingingVoiceConversion : public LibSvcModule
 {
 public:
 	SingingVoiceConversion(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_ = 0);
 
 	/**
-	 * \brief 输入路径推理
-	 * \param _Paths 路径，多个路径使用换行符隔开
-	 * \param _InferParams 推理参数
-	 * \param _SlicerSettings 切片机配置
-	 * \return 输出路径
-	 */
-	[[nodiscard]] std::vector<std::wstring> Inference(std::wstring& _Paths,
-		const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-		const InferTools::SlicerSettings& _SlicerSettings) const override;
-
-	/**
-	 * \brief 推理一个音频
-	 * \param _Slice 音频数据
-	 * \param _InferParams 推理参数
+	 * \brief 推理一个切片
+	 * \param _Slice 切片数据
+	 * \param _Params 推理参数
+	 * \param _Process 推理进度指针
 	 * \return 推理结果（PCM signed-int16 单声道）
 	 */
-	[[nodiscard]] virtual std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcData& _Slice,
-	                                                          const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const;
-
-	/**
-	 * \brief 推理一个音频（使用引用）
-	 * \param _Slice 音频数据引用
-	 * \param _InferParams 推理参数
-	 * \param _Process 推理进度
-	 * \return 推理结果（PCM signed-int16 单声道）
-	 */
-	[[nodiscard]] virtual std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcSlice& _Slice,
-		const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, size_t& _Process) const;
+	[[nodiscard]] virtual DragonianLibSTL::Vector<int16_t> SliceInference(
+		const SingleSlice& _Slice,
+		const InferenceParams& _Params,
+		size_t& _Process
+	) const;
 
 	/**
 	 * \brief 推理一个音频（使用PCM）
-	 * \param PCMData 输入的PCM数据（signed-int16 单声道）
-	 * \param srcSr 输入PCM的采样率
-	 * \param _InferParams 推理参数
+	 * \param _PCMData 输入的PCM数据（signed-int16 单声道）
+	 * \param _SrcSamplingRate 输入PCM的采样率
+	 * \param _Params 推理参数
 	 * \return 推理结果（PCM signed-int16 单声道）
 	 */
-	[[nodiscard]] virtual std::vector<int16_t> InferPCMData(const std::vector<int16_t>& PCMData, long srcSr, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const;
+	[[nodiscard]] virtual DragonianLibSTL::Vector<int16_t> InferPCMData(
+		const DragonianLibSTL::Vector<int16_t>& _PCMData,
+		long _SrcSamplingRate, 
+		const InferenceParams& _Params
+	) const;
 
 	//提取音量
-	[[nodiscard]] static std::vector<float> ExtractVolume(const std::vector<int16_t>& OrgAudio, int hop_size);
+	[[nodiscard]] static DragonianLibSTL::Vector<float> ExtractVolume(
+		const DragonianLibSTL::Vector<int16_t>& _Audio,
+		int _HopSize
+	);
 
 	//提取音量
-	[[nodiscard]] std::vector<float> ExtractVolume(const std::vector<double>& OrgAudio) const;
+	[[nodiscard]] DragonianLibSTL::Vector<float> ExtractVolume(
+		const DragonianLibSTL::Vector<double>& _Audio
+	) const;
 
 	//获取HopSize
 	[[nodiscard]] int GetHopSize() const
@@ -162,37 +153,42 @@ public:
 	}
 
 	//获取角色混合启用状态
-	[[nodiscard]] bool CharaMixEnabled() const
+	[[nodiscard]] bool SpeakerMixEnabled() const
 	{
 		return EnableCharaMix;
 	}
 
 	/**
 	 * \brief 切片一个音频
-	 * \param input 输入的PCM数据（signed-int16 单声道）
-	 * \param _slice_pos 切片位置（单位为采样）
-	 * \param _slicer 切片机设置
+	 * \param _InputPCM 输入的PCM数据（signed-int16 单声道）
+	 * \param _SlicePos 切片位置（单位为采样）
+	 * \param _SlicerConfig 切片机设置
 	 * \return 音频数据
 	 */
-	LibSvcApi [[nodiscard]] static MoeVSProjectSpace::MoeVoiceStudioSvcData GetAudioSlice(const std::vector<int16_t>& input,
-	                                                                      const std::vector<size_t>& _slice_pos,
-	                                                                      const InferTools::SlicerSettings& _slicer);
+	[[nodiscard]] static SingleAudio GetAudioSlice(
+		const DragonianLibSTL::Vector<int16_t>& _InputPCM,
+		const DragonianLibSTL::Vector<size_t>& _SlicePos,
+		const SlicerSettings& _SlicerConfig
+	);
 
 	/**
 	 * \brief 预处理音频数据
-	 * \param input 完成切片的音频数据
-	 * \param __SamplingRate 采样率
-	 * \param __HopSize HopSize
-	 * \param _f0_method F0算法
+	 * \param _Input 完成切片的音频数据
+	 * \param _SamplingRate 采样率
+	 * \param _HopSize HopSize
+	 * \param _F0Method F0算法
 	 */
-	LibSvcApi static void PreProcessAudio(MoeVSProjectSpace::MoeVoiceStudioSvcData& input,
-	                            int __SamplingRate = 48000, int __HopSize = 512, const std::wstring& _f0_method = L"Dio");
+	static void PreProcessAudio(
+		SingleAudio& _Input,
+		int _SamplingRate = 48000, 
+		int _HopSize = 512, 
+		const std::wstring& _F0Method = L"Dio"
+	);
 
 	~SingingVoiceConversion() override;
 
 protected:
-	MoeVSTensorPreprocess::TensorExtractor _TensorExtractor;
-
+	TensorExtractor _TensorExtractor;
 	Ort::Session* hubert = nullptr;
 
 	int HopSize = 320;
@@ -201,7 +197,7 @@ protected:
 	bool EnableCharaMix = false;
 	bool EnableVolume = false;
 
-	MoeVoiceStudioCluster::MoeVSCluster Cluster;
+	DragonianLib::ClusterWrp Cluster;
 
 	int64_t ClusterCenterSize = 10000;
 	bool EnableCluster = false;
@@ -209,6 +205,11 @@ protected:
 
 	const std::vector<const char*> hubertOutput = { "embed" };
 	const std::vector<const char*> hubertInput = { "source" };
+private:
+	SingingVoiceConversion& operator=(SingingVoiceConversion&&) = delete;
+	SingingVoiceConversion& operator=(const SingingVoiceConversion&) = delete;
+	SingingVoiceConversion(const SingingVoiceConversion&) = delete;
+	SingingVoiceConversion(SingingVoiceConversion&&) = delete;
 };
 
-MoeVoiceStudioCoreEnd
+LibSvcEnd

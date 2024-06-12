@@ -1,6 +1,6 @@
 #pragma once
 #include "Tensor/TensorOperator.h"
-LibSvcBegin
+DragonianLibSpaceBegin
 namespace Int32
 {
 	using ThisType = int32;
@@ -37,25 +37,25 @@ namespace Int32
 	void DivInplace(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
 	void PowInplace(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _ThreadPool);
 
-	LibSvcMonoOperatorFunctionDef(Abs);
-	LibSvcMonoOperatorFunctionDef(Sin);
-	LibSvcMonoOperatorFunctionDef(Sinh);
-	LibSvcMonoOperatorFunctionDef(Cos);
-	LibSvcMonoOperatorFunctionDef(Cosh);
-	LibSvcMonoOperatorFunctionDef(Tan);
-	LibSvcMonoOperatorFunctionDef(Tanh);
-	LibSvcMonoOperatorFunctionDef(ASin);
-	LibSvcMonoOperatorFunctionDef(ACos);
-	LibSvcMonoOperatorFunctionDef(ATan);
-	LibSvcMonoOperatorFunctionDef(ASinh);
-	LibSvcMonoOperatorFunctionDef(ACosh);
-	LibSvcMonoOperatorFunctionDef(ATanh);
-	LibSvcMonoOperatorFunctionDef(Exp);
-	LibSvcMonoOperatorFunctionDef(Exp2);
-	LibSvcMonoOperatorFunctionDef(Exp10);
-	LibSvcMonoOperatorFunctionDef(Log);
-	LibSvcMonoOperatorFunctionDef(Log2);
-	LibSvcMonoOperatorFunctionDef(Log10);
+	DragonianLibMonoOperatorFunctionDef(Abs);
+	DragonianLibMonoOperatorFunctionDef(Sin);
+	DragonianLibMonoOperatorFunctionDef(Sinh);
+	DragonianLibMonoOperatorFunctionDef(Cos);
+	DragonianLibMonoOperatorFunctionDef(Cosh);
+	DragonianLibMonoOperatorFunctionDef(Tan);
+	DragonianLibMonoOperatorFunctionDef(Tanh);
+	DragonianLibMonoOperatorFunctionDef(ASin);
+	DragonianLibMonoOperatorFunctionDef(ACos);
+	DragonianLibMonoOperatorFunctionDef(ATan);
+	DragonianLibMonoOperatorFunctionDef(ASinh);
+	DragonianLibMonoOperatorFunctionDef(ACosh);
+	DragonianLibMonoOperatorFunctionDef(ATanh);
+	DragonianLibMonoOperatorFunctionDef(Exp);
+	DragonianLibMonoOperatorFunctionDef(Exp2);
+	DragonianLibMonoOperatorFunctionDef(Exp10);
+	DragonianLibMonoOperatorFunctionDef(Log);
+	DragonianLibMonoOperatorFunctionDef(Log2);
+	DragonianLibMonoOperatorFunctionDef(Log10);
 
 	Tensor Less(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
 	Tensor Greater(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool);
@@ -76,4 +76,4 @@ namespace Int32
 	void CumSumImpl(const Tensor& _Dst, SizeType CurDims);
 	void CumProdImpl(const Tensor& _Dst, SizeType CurDims);
 }
-LibSvcEnd
+DragonianLibSpaceEnd

@@ -1,28 +1,18 @@
 #pragma once
-#define LIBSVCSTLBEGIN namespace libsvcstd {
-#define LIBSVCSTLEND }
+#define DRAGONIANLIBSTLBEGIN namespace DragonianLibSTL {
+#define DRAGONIANLIBSTLEND }
 
-#ifndef LIBSVC_EMPTY_CAPACITY
-#define LIBSVC_EMPTY_CAPACITY 16
-#endif
-#ifndef LIBSVC_ALLOC_ALIG
-#define LIBSVC_ALLOC_ALIG 16
-#ifndef LIBSVC_DEBUG
-#define LIBSVC_DEBUG
-#endif
-#endif
-
-LIBSVCSTLBEGIN
+DRAGONIANLIBSTLBEGIN
 
 class BaseAllocator;
 using Allocator = BaseAllocator*;
 
-LIBSVCSTLEND
+DRAGONIANLIBSTLEND
 
-namespace libsvc
+namespace DragonianLib
 {
 	static inline size_t NopID = size_t(-1);
-	using libsvcstd::Allocator;
+	using DragonianLibSTL::Allocator;
 
 	enum class Device
 	{
@@ -55,11 +45,11 @@ namespace libsvc
 	Allocator GetMemoryProvider(Device _Device);
 }
 
-LIBSVCSTLBEGIN
-using libsvc::Device;
-using libsvc::MemoryProvider;
-using libsvc::GetMemoryProvider;
-using libsvc::NopID;
+DRAGONIANLIBSTLBEGIN
+using DragonianLib::Device;
+using DragonianLib::MemoryProvider;
+using DragonianLib::GetMemoryProvider;
+using DragonianLib::NopID;
 
 class BaseAllocator
 {
@@ -94,4 +84,4 @@ protected:
 	CPUAllocator& operator=(CPUAllocator&&) = delete;
 };
 
-LIBSVCSTLEND
+DRAGONIANLIBSTLEND

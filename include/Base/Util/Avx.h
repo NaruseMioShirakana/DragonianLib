@@ -31,7 +31,7 @@
 #endif
 #endif
 
-static INLINE void LibSvcMemcpy256(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+static INLINE void DragonianLibMemcpy256(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 	const __m256i m0 = _mm256_load_si256(_Src + 0);
 	const __m256i m1 = _mm256_load_si256(_Src + 1);
 	const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -50,7 +50,7 @@ static INLINE void LibSvcMemcpy256(__m256i* __restrict _Dst, const __m256i* __re
 	_mm256_store_si256(_Dst + 7, m7);
 }
 
-static INLINE void LibSvcMemcpy128(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+static INLINE void DragonianLibMemcpy128(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 	const __m256i m0 = _mm256_load_si256(_Src + 0);
 	const __m256i m1 = _mm256_load_si256(_Src + 1);
 	const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -61,19 +61,19 @@ static INLINE void LibSvcMemcpy128(__m256i* __restrict _Dst, const __m256i* __re
 	_mm256_store_si256(_Dst + 3, m3);
 }
 
-static INLINE void LibSvcMemcpy64(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+static INLINE void DragonianLibMemcpy64(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 	const __m256i m0 = _mm256_load_si256(_Src + 0);
 	const __m256i m1 = _mm256_load_si256(_Src + 1);
 	_mm256_store_si256(_Dst + 0, m0);
 	_mm256_store_si256(_Dst + 1, m1);
 }
 
-static INLINE void LibSvcMemcpy32(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+static INLINE void DragonianLibMemcpy32(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 	const __m256i m0 = _mm256_load_si256(_Src + 0);
 	_mm256_store_si256(_Dst + 0, m0);
 }
 
-static INLINE void LibSvcMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
+static INLINE void DragonianLibMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
 {
 	unsigned char* __restrict _Dst_Ptr = (unsigned char*)_Dst;
 	const unsigned char* __restrict _Src_Ptr = (const unsigned char*)_Src;
@@ -81,28 +81,28 @@ static INLINE void LibSvcMemCpy(void* const __restrict _Dst, const void* const _
 	{
 		if (!(_Size >> 8))
 			break;
-		LibSvcMemcpy256((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
+		DragonianLibMemcpy256((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
 		_Dst_Ptr += 256;
 		_Src_Ptr += 256;
 		_Size -= 256;
 	}
 	if (_Size >> 7)
 	{
-		LibSvcMemcpy128((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
+		DragonianLibMemcpy128((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
 		_Dst_Ptr += 128;
 		_Src_Ptr += 128;
 		_Size -= 128;
 	}
 	if (_Size >> 6)
 	{
-		LibSvcMemcpy64((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
+		DragonianLibMemcpy64((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
 		_Dst_Ptr += 64;
 		_Src_Ptr += 64;
 		_Size -= 64;
 	}
 	if (_Size >> 5)
 	{
-		LibSvcMemcpy32((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
+		DragonianLibMemcpy32((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Ptr);
 		_Dst_Ptr += 32;
 		_Src_Ptr += 32;
 		_Size -= 32;
@@ -111,7 +111,7 @@ static INLINE void LibSvcMemCpy(void* const __restrict _Dst, const void* const _
 		memcpy(_Dst_Ptr, _Src_Ptr, _Size);
 }
 
-static INLINE void LibSvcMemSet(void* const __restrict _Dst, const void* const __restrict _Src, size_t _BufferSize, size_t _AlignSize)
+static INLINE void DragonianLibMemSet(void* const __restrict _Dst, const void* const __restrict _Src, size_t _BufferSize, size_t _AlignSize)
 {
 	unsigned char* __restrict _Dst_Ptr = (unsigned char*)_Dst;
 
@@ -130,25 +130,25 @@ static INLINE void LibSvcMemSet(void* const __restrict _Dst, const void* const _
 	{
 		if (!(_BufferSize >> 8))
 			break;
-		LibSvcMemcpy256((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
+		DragonianLibMemcpy256((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
 		_Dst_Ptr += 256;
 		_BufferSize -= 256;
 	}
 	if (_BufferSize >> 7)
 	{
-		LibSvcMemcpy128((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
+		DragonianLibMemcpy128((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
 		_Dst_Ptr += 128;
 		_BufferSize -= 128;
 	}
 	if (_BufferSize >> 6)
 	{
-		LibSvcMemcpy64((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
+		DragonianLibMemcpy64((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
 		_Dst_Ptr += 64;
 		_BufferSize -= 64;
 	}
 	if (_BufferSize >> 5)
 	{
-		LibSvcMemcpy32((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
+		DragonianLibMemcpy32((__m256i*)_Dst_Ptr, (const __m256i*)_Src_Base);
 		_Dst_Ptr += 32;
 		_BufferSize -= 32;
 	}
@@ -158,43 +158,43 @@ static INLINE void LibSvcMemSet(void* const __restrict _Dst, const void* const _
 }
 
 template <typename _Ty>
-_Ty LibSvcAddFn(_Ty a, _Ty b)
+_Ty DragonianLibAddFn(_Ty a, _Ty b)
 {
 	return a + b;
 }
 
 template <typename _Ty>
-_Ty LibSvcSubFn(_Ty a, _Ty b)
+_Ty DragonianLibSubFn(_Ty a, _Ty b)
 {
 	return a - b;
 }
 
 template <typename _Ty>
-_Ty LibSvcMulFn(_Ty a, _Ty b)
+_Ty DragonianLibMulFn(_Ty a, _Ty b)
 {
 	return a * b;
 }
 
 template <typename _Ty>
-_Ty LibSvcDivFn(_Ty a, _Ty b)
+_Ty DragonianLibDivFn(_Ty a, _Ty b)
 {
 	return a / b;
 }
 
 template <typename _Ty>
-_Ty LibSvcModFn(_Ty a, _Ty b)
+_Ty DragonianLibModFn(_Ty a, _Ty b)
 {
 	return a % b;
 }
 
 template <typename _Ty>
-_Ty LibSvcExp10(_Ty inp)
+_Ty DragonianLibExp10(_Ty inp)
 {
 	return (_Ty)pow((_Ty)10, inp);
 }
 
 template <typename _Ty>
-void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
+void DragonianLibVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
@@ -252,7 +252,7 @@ void LibSvcVectorAdd(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
+void DragonianLibVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
@@ -310,7 +310,7 @@ void LibSvcVectorSub(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
+void DragonianLibVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
@@ -367,7 +367,7 @@ void LibSvcVectorMul(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
+void DragonianLibVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
@@ -425,7 +425,7 @@ void LibSvcVectorDiv(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorAddScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void DragonianLibVectorAddScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -474,7 +474,7 @@ void LibSvcVectorAddScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t 
 }
 
 template <typename _Ty>
-void LibSvcVectorSubScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void DragonianLibVectorSubScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -523,7 +523,7 @@ void LibSvcVectorSubScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t 
 }
 
 template <typename _Ty>
-void LibSvcVectorMulScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void DragonianLibVectorMulScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -572,7 +572,7 @@ void LibSvcVectorMulScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t 
 }
 
 template <typename _Ty>
-void LibSvcVectorDivScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void DragonianLibVectorDivScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -621,7 +621,7 @@ void LibSvcVectorDivScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t 
 }
 
 template <typename _Ty>
-void LibSvcVectorAbs(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorAbs(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -653,7 +653,7 @@ void LibSvcVectorAbs(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorSin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorSin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -691,7 +691,7 @@ void LibSvcVectorSin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorSinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorSinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -729,7 +729,7 @@ void LibSvcVectorSinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorCos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorCos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -767,7 +767,7 @@ void LibSvcVectorCos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorCosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorCosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -805,7 +805,7 @@ void LibSvcVectorCosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorTan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorTan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -843,7 +843,7 @@ void LibSvcVectorTan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorTanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorTanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -881,7 +881,7 @@ void LibSvcVectorTanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorASin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorASin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -919,7 +919,7 @@ void LibSvcVectorASin(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorACos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorACos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -957,7 +957,7 @@ void LibSvcVectorACos(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorATan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorATan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -995,7 +995,7 @@ void LibSvcVectorATan(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorASinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorASinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1033,7 +1033,7 @@ void LibSvcVectorASinh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorACosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorACosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1071,7 +1071,7 @@ void LibSvcVectorACosh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorATanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorATanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1109,7 +1109,7 @@ void LibSvcVectorATanh(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorExp(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorExp(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1147,7 +1147,7 @@ void LibSvcVectorExp(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorExp10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorExp10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1181,11 +1181,11 @@ void LibSvcVectorExp10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 		_DataSize -= Stride;
 	}
 	for (size_t i = 0; i < _DataSize; ++i)
-		*(_Dst++) = (_Ty)LibSvcExp10((double)*(_Src++));
+		*(_Dst++) = (_Ty)DragonianLibExp10((double)*(_Src++));
 }
 
 template <typename _Ty>
-void LibSvcVectorExp2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorExp2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1223,7 +1223,7 @@ void LibSvcVectorExp2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorLog(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorLog(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1261,7 +1261,7 @@ void LibSvcVectorLog(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorLog10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorLog10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1299,7 +1299,7 @@ void LibSvcVectorLog10(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorLog2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorLog2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1337,7 +1337,7 @@ void LibSvcVectorLog2(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorPow(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
+void DragonianLibVectorPow(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty) * 2;
 	while (true)
@@ -1391,7 +1391,7 @@ void LibSvcVectorPow(_Ty* _Dst, const _Ty* _SrcA, const _Ty* _SrcB, size_t _Data
 }
 
 template <typename _Ty>
-void LibSvcVectorPowScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
+void DragonianLibVectorPowScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1440,7 +1440,7 @@ void LibSvcVectorPowScalar(_Ty* _Dst, const _Ty* _SrcA, const _Ty _SrcB, size_t 
 }
 
 template <typename _Ty>
-void LibSvcVectorCeil(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorCeil(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1478,7 +1478,7 @@ void LibSvcVectorCeil(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorFloor(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorFloor(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 
@@ -1516,7 +1516,7 @@ void LibSvcVectorFloor(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 }
 
 template <typename _Ty>
-void LibSvcVectorRound(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
+void DragonianLibVectorRound(_Ty* _Dst, const _Ty* _Src, size_t _DataSize)
 {
 	constexpr size_t Stride = alignof(__m256) / sizeof(_Ty);
 

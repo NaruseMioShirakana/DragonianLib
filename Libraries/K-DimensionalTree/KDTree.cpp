@@ -17,7 +17,6 @@
 #include <iterator>
 #include <memory>
 #include <vector>
-
 #include "KDTree.hpp"
 
 KDNode::KDNode() = default;

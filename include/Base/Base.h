@@ -6,34 +6,34 @@
 #define UNUSED(x) (void)(x)
 #endif
 
-#define LibSvcBegin namespace libsvc {
-#define LibSvcEnd }
-#define LIBSVCND [[nodiscard]]
+#define DragonianLibSpaceBegin namespace DragonianLib {
+#define DragonianLibSpaceEnd }
+#define DragonianLibNDIS [[nodiscard]]
 
-#define LibSvcThrowImpl(message, exception_type) do {\
-	const std::string __LibSvc__Message__ = message;\
-	const std::string __LibSvc__Message__Prefix__ =\
+#define DragonianLibThrowImpl(message, exception_type) do {\
+	const std::string __DragonianLib__Message__ = message;\
+	const std::string __DragonianLib__Message__Prefix__ =\
 	std::string("[In File: \"") + std::filesystem::path(__FILE__).filename().string() + "\", " +\
 	"Function: \"" + __FUNCSIG__ + "\", " +\
 	"Line: " + std::to_string(__LINE__) + " ] ";\
-	if (__LibSvc__Message__.substr(0, __LibSvc__Message__Prefix__.length()) != __LibSvc__Message__Prefix__)\
-		throw exception_type((__LibSvc__Message__Prefix__ + __LibSvc__Message__).c_str());\
-	throw exception_type(__LibSvc__Message__.c_str());\
+	if (__DragonianLib__Message__.substr(0, __DragonianLib__Message__Prefix__.length()) != __DragonianLib__Message__Prefix__)\
+		throw exception_type((__DragonianLib__Message__Prefix__ + __DragonianLib__Message__).c_str());\
+	throw exception_type(__DragonianLib__Message__.c_str());\
 } while(0)
 
-#define LibSvcThrow(message) LibSvcThrowImpl(message, std::exception)
+#define DragonianLibThrow(message) DragonianLibThrowImpl(message, std::exception)
 
-#define LibSvcNotImplementedError LibSvcThrow("NotImplementedError!")
+#define DragonianLibNotImplementedError DragonianLibThrow("NotImplementedError!")
 
-#define RegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
+#define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
 
-#define LogMessage(message) libsvc::GetLogger().log(message)
+#define DragonianLibLogMessage(message) DragonianLib::GetLogger().log(message)
 
-#define ErrorMessage(message) libsvc::GetLogger().error(message)
+#define DragonianLibErrorMessage(message) DragonianLib::GetLogger().error(message)
 
 #define GetGGMLUnusedMemorySize(ctx) (ggml_get_mem_size(ctx) - ggml_used_mem(ctx)) 
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 using int8 = int8_t;
 using int16 = int16_t;
@@ -53,7 +53,7 @@ static constexpr NoneType None;
 
 using DictType = int;
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #pragma pack(push, 1)
 #else
 #pragma pack(1)
@@ -61,10 +61,10 @@ using DictType = int;
 struct WeightHeader
 {
 	int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
-	char LayerName[LIBSVC_NAME_MAX_SIZE] = { 0 };
-	char Type[16] = { 0 };
+	char LayerName[DRAGONIANLIB_NAME_MAX_SIZE];
+	char Type[16];
 };
-#ifdef _WIN32
+#ifdef _MSC_VER
 #pragma pack(pop)
 #else
 #pragma pack()
@@ -78,6 +78,10 @@ struct WeightData
 	std::string Type_, LayerName_;
 };
 
+std::wstring GetCurrentFolder();
+
+void SetGlobalEnvDir(const std::wstring& _Folder);
+
 class FileGuard
 {
 public:
@@ -90,9 +94,9 @@ public:
 	void Open(const std::wstring& _Path, const std::wstring& _Mode);
 	void Close();
 	operator FILE* () const;
-	LIBSVCND bool Enabled() const;
+	DragonianLibNDIS bool Enabled() const;
 private:
 	FILE* file_ = nullptr;
 };
 
-LibSvcEnd
+DragonianLibSpaceEnd

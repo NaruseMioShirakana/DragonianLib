@@ -1,104 +1,21 @@
-﻿#include "../../header/Models/ModelBase.hpp"
-#include <commdlg.h>
-MoeVoiceStudioCoreHeader
+﻿#include "Models/ModelBase.hpp"
 
-MoeVoiceStudioModule::MoeVoiceStudioModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_)
+LibSvcHeader
+
+LibSvcModule::LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_) :
+	OrtApiEnv(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_)
 {
-	if (moevsenv::SingleOrtApiEnvEnabled())
-	{
-		OrtApiEnv.Load(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_);
-		_cur_execution_provider = ExecutionProvider_;
-		env = OrtApiEnv.GetEnv();
-		memory_info = OrtApiEnv.GetMemoryInfo();
-		session_options = OrtApiEnv.GetSessionOptions();
-	}
-	else
-	{
-		moevsenv::GetGlobalMoeVSEnv().Load(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_);
-		_cur_execution_provider = ExecutionProvider_;
-		env = moevsenv::GetGlobalMoeVSEnv().GetEnv();
-		memory_info = moevsenv::GetGlobalMoeVSEnv().GetMemoryInfo();
-		session_options = moevsenv::GetGlobalMoeVSEnv().GetSessionOptions();
-	}
+	_cur_execution_provider = ExecutionProvider_;
+	env = OrtApiEnv.GetEnv();
+	memory_info = OrtApiEnv.GetMemoryInfo();
+	session_options = OrtApiEnv.GetSessionOptions();
 }
 
-MoeVoiceStudioModule::~MoeVoiceStudioModule()
+LibSvcModule::~LibSvcModule()
 {
 	env = nullptr;
 	memory_info = nullptr;
 	session_options = nullptr;
-}
-
-std::vector<std::wstring> MoeVoiceStudioModule::CutLens(const std::wstring& input)
-{
-	std::vector<std::wstring> _Lens;
-	std::wstring _tmpLen;
-	for (const auto& chari : input)
-	{
-		if ((chari == L'\n') || (chari == L'\r')) {
-			if (!_tmpLen.empty())
-			{
-				_Lens.push_back(_tmpLen);
-				_tmpLen = L"";
-			}
-		}
-		else {
-			_tmpLen += chari;
-		}
-	}
-	return _Lens;
-}
-
-std::vector<std::wstring> MoeVoiceStudioModule::GetOpenFileNameMoeVS()
-{
-	constexpr long MaxPath = 8000;
-	std::vector<std::wstring> OFNLIST;
-#ifdef WIN32
-	std::vector<TCHAR> szFileName(MaxPath);
-	std::vector<TCHAR> szTitleName(MaxPath);
-	OPENFILENAME ofn;
-	ZeroMemory(&ofn, sizeof(ofn));
-	ofn.lpstrFile = szFileName.data();
-	ofn.nMaxFile = MaxPath;
-	ofn.lpstrFileTitle = szTitleName.data();
-	ofn.nMaxFileTitle = MaxPath;
-	ofn.lStructSize = sizeof(OPENFILENAME);
-	ofn.hwndOwner = nullptr;
-	constexpr TCHAR szFilter[] = TEXT("Audio (*.wav;*.mp3;*.ogg;*.flac;*.aac)\0*.wav;*.mp3;*.ogg;*.flac;*.aac\0");
-	ofn.lpstrFilter = szFilter;
-	ofn.lpstrTitle = nullptr;
-	ofn.lpstrDefExt = TEXT("wav");
-	ofn.Flags = OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER;
-	if (GetOpenFileName(&ofn))
-	{
-		auto filePtr = szFileName.data();
-		std::wstring preFix = filePtr;
-		filePtr += preFix.length() + 1;
-		if (!*filePtr)
-			OFNLIST.emplace_back(preFix);
-		else
-		{
-			preFix += L'\\';
-			while (*filePtr != 0)
-			{
-				std::wstring thisPath(filePtr);
-				OFNLIST.emplace_back(preFix + thisPath);
-				filePtr += thisPath.length() + 1;
-			}
-		}
-	}
-	if(OFNLIST.empty())
-		LibDLVoiceCodecThrow("Please Select Files");
-	return OFNLIST;
-#else
-#endif
-}
-
-std::vector<std::wstring> MoeVoiceStudioModule::Inference(std::wstring& _Datas,
-	const MoeVSProjectSpace::MoeVSParams& _InferParams,
-	const InferTools::SlicerSettings& _SlicerSettings) const
-{
-	MoeVSNotImplementedError;
 }
 
 /*
@@ -220,4 +137,4 @@ void OnnxModule::ChangeDevice(Device _dev)
 }
  */
 
-MoeVoiceStudioCoreEnd
+LibSvcEnd

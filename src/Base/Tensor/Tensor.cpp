@@ -10,7 +10,7 @@
 #include "Tensor/Float64Tensor.h"
 #include "Tensor/Complex32Tensor.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 template<typename _T>
 size_t GetObjectSize(const std::vector<_T>& _Input, ShapeType& _Shape)
@@ -58,7 +58,7 @@ Tensor::Tensor(const ShapeType& _Shape, TensorType _DType, Device _Device) : Ten
 {
 	for (const auto i : _Shape)
 		if (i <= 0)
-			LibSvcThrow("Shape Must > 0");
+			DragonianLibThrow("Shape Must > 0");
 	AlignSize_ = DType2Size(DType_);
 	ShapeBack_ = _Shape;
 	StepFront_.clear();
@@ -236,11 +236,11 @@ Tensor Tensor::RandnLike(const Tensor& _Shape, int64_t _Seed, double _Mean, doub
 Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool, Device _Device)
 {
 	if (_Dtype != TensorType::Float64 && _Dtype != TensorType::Float32)
-		LibSvcThrow("Type Error!");
+		DragonianLibThrow("Type Error!");
 	ShapeType _Shape(1, 0);
 	_Shape[0] = SizeType((_End - _Begin) / _Step);
 	if (_Shape[0] <= 0)
-		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
+		DragonianLibThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
 	Tensor Ret(_Shape, _Dtype, _Device);
 	Ret.Assign(_Step, _ThreadPool);
 
@@ -261,11 +261,11 @@ Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _D
 Tensor Tensor::Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype, ThreadPool* _ThreadPool, Device _Device)
 {
 	if (_Dtype < TensorType::Int8)
-		LibSvcThrow("Type Error!");
+		DragonianLibThrow("Type Error!");
 	ShapeType _Shape(1, 0);
 	_Shape[0] = SizeType((_End - _Begin) / _Step);
 	if (_Shape[0] <= 0)
-		LibSvcThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
+		DragonianLibThrow("((_End - _Begin) / _Step) Must Larger Than Zero!");
 	Tensor Ret(_Shape, _Dtype, _Device);
 	Ret.Assign(_Step, _ThreadPool);
 
@@ -309,13 +309,13 @@ void Tensor::Free()
 		if (ViewParent_)
 		{
 			if (ViewParent_->ViewParent_)
-				LibSvcThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
+				DragonianLibThrow("View Parent Can Not Have View Parent, Please Report This Bug!");
 			auto& Views = ViewParent_->ViewChild_;
 			const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
 			if (Iter != Views.end())
 				Views.erase(Iter);
 			else
-				LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+				DragonianLibThrow("View Not In Parent's Child List, Please Report This Bug!");
 		}
 	}
 	DataPtr_ = nullptr;
@@ -337,23 +337,23 @@ void Tensor::ClearViewChilds()
 
 void Tensor::ThrowOnNotEnabled() const
 {
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 	if (AlignSize_ != DType2Size(DType_))
-		LibSvcThrow("AlignSize MisMatch!");
+		DragonianLibThrow("AlignSize MisMatch!");
 	if (ShapeBack_.empty() || StepBack_.empty())
-		LibSvcThrow("Axis Out Of Range!");
+		DragonianLibThrow("Axis Out Of Range!");
 	if (!DataPtr_)
-		LibSvcThrow("NullPointer Error!");
+		DragonianLibThrow("NullPointer Error!");
 
 	if ((CurIndices_.size() != StepFront_.size()) ||
 		(DimStride_.size() != ShapeBack_.size()) ||
 		(DimStride_.size() != StepBack_.size()))
 	{
-		LibSvcThrow("Indices Error!");
+		DragonianLibThrow("Indices Error!");
 	}
 
 	if (!IsView() && HasViewedFeature())
-		LibSvcThrow("Src Tensor Should Not Has Viewed Feature, Please Report This Bug!");
+		DragonianLibThrow("Src Tensor Should Not Has Viewed Feature, Please Report This Bug!");
 
 	if (IsView())
 	{
@@ -361,7 +361,7 @@ void Tensor::ThrowOnNotEnabled() const
 		auto& Views = ViewParent_->ViewChild_;
 		const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
 		if (Iter == Views.end())
-			LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+			DragonianLibThrow("View Not In Parent's Child List, Please Report This Bug!");
 	}
 #endif
 }
@@ -457,7 +457,7 @@ Tensor& Tensor::operator=(const Tensor& _Left)
 	if (&_Left == this)
 		return *this;
 	if (_Left.ViewParent_ && _Left.ViewParent_ == this)
-		LibSvcThrow("Assign To Parent Is Not Allowed!");
+		DragonianLibThrow("Assign To Parent Is Not Allowed!");
 	_Left.ThrowOnNotEnabled();
 	Free();
 	return *this = _Left.CreateView();
@@ -468,7 +468,7 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 	if (&_Right == this)
 		return *this;
 	if (_Right.ViewParent_ && _Right.ViewParent_ == this)
-		LibSvcThrow("Assign To Parent Is Not Allowed!");
+		DragonianLibThrow("Assign To Parent Is Not Allowed!");
 	std::lock_guard LockRel(_Right.RelMx_);
 	Free();
 	DType_ = _Right.DType_;
@@ -531,10 +531,10 @@ Tensor Tensor::operator+(const Tensor& _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Add, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Add, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Add, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Add, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -543,10 +543,10 @@ Tensor Tensor::operator-(const Tensor& _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Sub, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Sub, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Sub, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Sub, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -555,10 +555,10 @@ Tensor Tensor::operator*(const Tensor& _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Mul, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Mul, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Mul, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Mul, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -567,10 +567,10 @@ Tensor Tensor::operator/(const Tensor& _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Div, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Div, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Div, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Div, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -579,10 +579,10 @@ Tensor Tensor::operator+(int64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Add, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -591,10 +591,10 @@ Tensor Tensor::operator-(int64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -603,10 +603,10 @@ Tensor Tensor::operator*(int64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -615,10 +615,10 @@ Tensor Tensor::operator/(int64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Div, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -627,10 +627,10 @@ Tensor Tensor::operator+(float64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Add, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -639,10 +639,10 @@ Tensor Tensor::operator-(float64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Sub, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -651,10 +651,10 @@ Tensor Tensor::operator*(float64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Mul, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -663,10 +663,10 @@ Tensor Tensor::operator/(float64 _Right) const
 	Tensor Ret(DType_, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Div, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -675,10 +675,10 @@ Tensor& Tensor::operator+=(const Tensor& _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(AddInplace, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(AddInplace, *this, _Right, nullptr);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -687,10 +687,10 @@ Tensor& Tensor::operator-=(const Tensor& _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(SubInplace, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(SubInplace, *this, _Right, nullptr);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -699,10 +699,10 @@ Tensor& Tensor::operator*=(const Tensor& _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(MulInplace, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(MulInplace, *this, _Right, nullptr);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -711,10 +711,10 @@ Tensor& Tensor::operator/=(const Tensor& _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(DivInplace, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(DivInplace, *this, _Right, nullptr);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -723,10 +723,10 @@ Tensor& Tensor::operator+=(int64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -735,10 +735,10 @@ Tensor& Tensor::operator-=(int64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -747,10 +747,10 @@ Tensor& Tensor::operator*=(int64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -759,10 +759,10 @@ Tensor& Tensor::operator/=(int64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -771,10 +771,10 @@ Tensor& Tensor::operator+=(float64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperatorNoRetrun(AddInplace, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -783,10 +783,10 @@ Tensor& Tensor::operator-=(float64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperatorNoRetrun(SubInplace, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -795,10 +795,10 @@ Tensor& Tensor::operator*=(float64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperatorNoRetrun(MulInplace, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -807,10 +807,10 @@ Tensor& Tensor::operator/=(float64 _Right)
 	Tensor& Ret = *this;
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperatorNoRetrun(DivInplace, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -819,10 +819,10 @@ Tensor Tensor::operator<(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Less, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Less, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Less, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Less, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -831,10 +831,10 @@ Tensor Tensor::operator<(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Less, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Less, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -843,10 +843,10 @@ Tensor Tensor::operator<(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Less, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Less, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Less, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -855,10 +855,10 @@ Tensor Tensor::operator>(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Greater, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Greater, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Greater, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Greater, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -867,10 +867,10 @@ Tensor Tensor::operator>(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -879,10 +879,10 @@ Tensor Tensor::operator>(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_&& GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -891,10 +891,10 @@ Tensor Tensor::operator==(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Equal, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Equal, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Equal, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, Equal, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -903,10 +903,10 @@ Tensor Tensor::operator==(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -915,10 +915,10 @@ Tensor Tensor::operator==(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, Equal, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -927,10 +927,10 @@ Tensor Tensor::operator>=(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -939,10 +939,10 @@ Tensor Tensor::operator>=(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -951,10 +951,10 @@ Tensor Tensor::operator>=(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, GreaterEqual, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -963,10 +963,10 @@ Tensor Tensor::operator<=(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, LessEqual, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, LessEqual, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -975,10 +975,10 @@ Tensor Tensor::operator<=(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -987,10 +987,10 @@ Tensor Tensor::operator<=(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, LessEqual, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -999,10 +999,10 @@ Tensor Tensor::operator!=(const Tensor& _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && _Right.UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, NotEqual, *this, _Right, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, _Right, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, NotEqual, *this, _Right, nullptr);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, _Right, nullptr);
 	return Ret;
 }
 
@@ -1011,10 +1011,10 @@ Tensor Tensor::operator!=(float64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Float64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Float64, nullptr);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Float64, nullptr);
 	return Ret;
 }
 
@@ -1023,10 +1023,10 @@ Tensor Tensor::operator!=(int64 _Right) const
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
 	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
-		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
 	else
-		LibSvcOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Int64, nullptr);
+		DragonianLibOperator(DType_, Ret, NotEqual, *this, &_Right, TensorType::Int64, nullptr);
 	return Ret;
 }
 
@@ -1052,13 +1052,13 @@ Tensor Tensor::operator[](const ShapeType& _Indice) const
 void Tensor::Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	LibSvcOperatorNoRetrun(AssignBuffer, *this, _Buffer, (const byte*)_Buffer + _BufferSize, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignBuffer, *this, _Buffer, (const byte*)_Buffer + _BufferSize, _ThreadPool);
 }
 
 void Tensor::Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool) const
 {
 	ThrowOnNotEnabled();
-	LibSvcOperatorNoRetrun(AssignValue, *this, _Val, _Type, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignValue, *this, _Val, _Type, _ThreadPool);
 }
 
 void Tensor::Assign(float64 _Val, ThreadPool* _ThreadPool) const
@@ -1073,7 +1073,7 @@ void Tensor::Assign(int64 _Val, ThreadPool* _ThreadPool) const
 
 void Tensor::Assign(const Tensor& _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignTensor, *this, _Val, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignTensor, *this, _Val, _ThreadPool);
 }
 
 //Public
@@ -1123,7 +1123,7 @@ SizeType Tensor::CalcIndex(SizeType _Index, SizeType _Max)
 	if (_Index < 0)
 		_Index += _Max;
 	if (_Index >= _Max || _Index < 0)
-		LibSvcThrow("Index Out Of Range!");
+		DragonianLibThrow("Index Out Of Range!");
 	return _Index;
 }
 
@@ -1132,7 +1132,7 @@ SizeType Tensor::CalcRange(SizeType _Index, SizeType _Max)
 	if (_Index < 0)
 		_Index += _Max + 1;
 	if (_Index > _Max || _Index < 0)
-		LibSvcThrow("Index Out Of Range!");
+		DragonianLibThrow("Index Out Of Range!");
 	return _Index;
 }
 
@@ -1168,7 +1168,7 @@ bool Tensor::IsEnabled() const
 		auto& Views = ViewParent_->ViewChild_;
 		const auto& Iter = std::ranges::find(Views.begin(), Views.end(), this);
 		if (Iter == Views.end())
-			LibSvcThrow("View Not In Parent's Child List, Please Report This Bug!");
+			DragonianLibThrow("View Not In Parent's Child List, Please Report This Bug!");
 	}
 	return true;
 }
@@ -1277,9 +1277,9 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 {
 	ThrowOnNotEnabled();
 	if (IsBroadCasted())
-		LibSvcThrow("Broad Casted Could Not Be Sliced!");
+		DragonianLibThrow("Broad Casted Could Not Be Sliced!");
 	if (ShapeBack_.empty() || _SliceOptions.size() > ShapeBack_.size())
-		LibSvcThrow("Axis Out Of Range!");
+		DragonianLibThrow("Axis Out Of Range!");
 	Tensor Ret = CreateView();
 	for (size_t i = 0; i < _SliceOptions.size(); ++i)
 	{
@@ -1288,7 +1288,7 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 		const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, ShapeBack_[i]);
 		auto SliceEndPos = _SliceOptions[i].End;
 		if (SliceEndPos > ShapeBack_[i] || SliceEndPos < -(ShapeBack_[i] + 1))
-			LibSvcThrow("Index Out Of Range!");
+			DragonianLibThrow("Index Out Of Range!");
 		if (SliceEndPos == -(ShapeBack_[i] + 1))
 			SliceEndPos = -1;
 		else if (SliceEndPos < 0)
@@ -1296,10 +1296,10 @@ Tensor Tensor::Slice(const SliceOptions& _SliceOptions) const
 
 		const auto SliceLength = SliceEndPos - SliceBeginPos;
 		if (SliceLength == 0)
-			LibSvcThrow("Slice Length Must > 0");
+			DragonianLibThrow("Slice Length Must > 0");
 		if (SliceLength > 0 && _SliceOptions[i].Step < 0 ||
 			SliceLength < 0 && _SliceOptions[i].Step > 0)
-			LibSvcThrow("Step & (SliceEnd - SliceBegin) Should Have The Same Sign!");
+			DragonianLibThrow("Step & (SliceEnd - SliceBegin) Should Have The Same Sign!");
 		Ret.SliceBegin_[i] += SliceBeginPos * Ret.DimStride_[i];
 		Ret.ShapeBack_[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i].Step));
 		Ret.DimStride_[i] *= _SliceOptions[i].Step;
@@ -1325,15 +1325,15 @@ Tensor Tensor::Permute(const ShapeType& _DPremute) const
 {
 	ThrowOnNotEnabled();
 	if (ShapeBack_.empty() || _DPremute.size() != ShapeBack_.size())
-		LibSvcThrow("N_DIMS MisMatch!");
+		DragonianLibThrow("N_DIMS MisMatch!");
 	Tensor Ret = CreateView();
 	auto TransposedDims = _DPremute;
 	std::ranges::sort(TransposedDims);
 	if (TransposedDims[0] != 0)
-		LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+		DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 	for (size_t i = 1; i < TransposedDims.size(); ++i)
 		if (TransposedDims[i] != TransposedDims[i - 1] + 1)
-			LibSvcThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+			DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 
 	for (size_t i = 0; i < _DPremute.size(); ++i)
 	{
@@ -1431,7 +1431,7 @@ byte* Tensor::Data(const ShapeType& _Indices) const
 {
 	ThrowOnNotEnabled();
 	if (_Indices.size() != ShapeBack_.size())
-		LibSvcThrow("Axis Out Of Range!");
+		DragonianLibThrow("Axis Out Of Range!");
 	SizeType Index = 0;
 	for (size_t i = 0; i < CurIndices_.size(); ++i)
 		Index += CurIndices_[i] * StepFront_[i];
@@ -1451,49 +1451,49 @@ byte* Tensor::Buffer() const
 void Tensor::FixOnes(ThreadPool* _ThreadPool) const
 {
 	constexpr float _Val = 1.f;
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
 }
 
 void Tensor::FixZeros(ThreadPool* _ThreadPool) const
 {
 	constexpr float _Val = 0.f;
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float32, _ThreadPool);
 }
 
 void Tensor::Fix(double _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Float64, _ThreadPool);
 }
 
 void Tensor::Fix(int64 _Val, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64, _ThreadPool);
+	DragonianLibOperatorNoRetrun(AssignValue, *this, &_Val, TensorType::Int64, _ThreadPool);
 }
 
 void Tensor::RandFix(uint64 _Seed, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, 0., 11451.41919810, _ThreadPool);
+	DragonianLibOperatorNoRetrun(FixWithRandom, *this, _Seed, 0., 11451.41919810, _ThreadPool);
 }
 
 void Tensor::RandnFix(uint64 _Seed, double _Mean, double _Sigma, ThreadPool* _ThreadPool) const
 {
-	LibSvcOperatorNoRetrun(FixWithRandom, *this, _Seed, _Mean, _Sigma, _ThreadPool);
+	DragonianLibOperatorNoRetrun(FixWithRandom, *this, _Seed, _Mean, _Sigma, _ThreadPool);
 }
 
 Tensor Tensor::View(const ShapeType& _ViewShape) const
 {
 	if (!IsContinuous())
-		LibSvcThrow("View Should Be Continuous!");
+		DragonianLibThrow("View Should Be Continuous!");
 	if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
-		LibSvcThrow("Count Of Dynamic Axis Should <= 1!");
+		DragonianLibThrow("Count Of Dynamic Axis Should <= 1!");
 	for (const auto i : _ViewShape)
 		if (i <= 0 && i != -1)
-			LibSvcThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
+			DragonianLibThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
 	Tensor Ret = CreateView();
 	const auto SrcSize = VectorMul(Ret.ShapeBack_);
 	const auto DstSize = VectorMul(_ViewShape);
 	if ((DstSize < 0 && (SrcSize % abs(DstSize)) != 0) || (DstSize > 0 && (SrcSize != DstSize)))
-		LibSvcThrow("Size MisMatch!");
+		DragonianLibThrow("Size MisMatch!");
 	const auto DynamicAxes = SrcSize / DstSize;
 	Ret.ShapeBack_ = _ViewShape;
 	for (auto& i : Ret.ShapeBack_)
@@ -1510,7 +1510,7 @@ Tensor& Tensor::Continuous(ThreadPool* _ThreadPool)
 {
 	ThrowOnNotEnabled();
 	if (!IsView() && !IsContinuous())
-		LibSvcThrow("Src Should Be Continuous, Please Report This Bug!");
+		DragonianLibThrow("Src Should Be Continuous, Please Report This Bug!");
 	if (!IsView() || IsContinuous())
 		return *this;
 	return *this = Clone(_ThreadPool);
@@ -1638,7 +1638,7 @@ std::pair<Tensor, Tensor> Tensor::BroadCast(const Tensor& _A, const Tensor& _B)
 			Second.IsBroadCasted_ = true;
 		}
 		else
-			LibSvcThrow("TensorA & TensorB Can Not Be BroadCast!");
+			DragonianLibThrow("TensorA & TensorB Can Not Be BroadCast!");
 	}
 	std::ranges::reverse(First.ShapeBack_);
 	std::ranges::reverse(Second.ShapeBack_);
@@ -1655,7 +1655,7 @@ Tensor Tensor::BroadCast(const Tensor& _Other) const
 {
 	auto Bd = BroadCast(*this, _Other);
 	if (Bd.first.IsBroadCasted())
-		LibSvcThrow("TensorA & TensorB Can Not Be BroadCast In This Operator!");
+		DragonianLibThrow("TensorA & TensorB Can Not Be BroadCast In This Operator!");
 	return std::move(Bd.second);
 }
 
@@ -1710,7 +1710,7 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 	_Input.ThrowOnNotEnabled();
 
 	if (_Pad.size() > _Input.Shape().size())
-		LibSvcThrow("Dim Out Of Range");
+		DragonianLibThrow("Dim Out Of Range");
 	auto Shape = _Input.Shape();
 	const auto InputShapePtr = _Input.Shape().data();
 	Vector<Range> SliceSrc, SliceDst;
@@ -1718,7 +1718,7 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 	for (size_t i = 0; i < _Pad.size(); ++i)
 	{
 		if (_Pad[i].Begin < 0 || _Pad[i].End < 0)
-			LibSvcThrow("Use Slice Instead");
+			DragonianLibThrow("Use Slice Instead");
 
 		if (_Pad[i].IsNone || (_Pad[i].Begin == 0 && _Pad[i].End == 0))
 		{
@@ -1729,7 +1729,7 @@ Tensor Tensor::Padding(const Tensor& _Input, const Vector<Range>& _Pad, PaddingT
 
 		Shape[i] += (_Pad[i].Begin + _Pad[i].End);
 		if (Shape[i] <= 0)
-			LibSvcThrow("Incorrect Pad Size!");
+			DragonianLibThrow("Incorrect Pad Size!");
 
 		SliceSrc.emplace_back(None);
 		SliceDst.emplace_back(_Pad[i].Begin, InputShapePtr[i] + _Pad[i].Begin);
@@ -1926,7 +1926,7 @@ Tensor Tensor::Repeat(const Tensor& _Input, const Vector<std::pair<SizeType, Siz
 	for (const auto i : _Dims | std::views::keys)
 	{
 		if (_Set.contains(i))
-			LibSvcThrow("Axis Repeat!");
+			DragonianLibThrow("Axis Repeat!");
 		_Set.insert(i);
 	}
 
@@ -1946,7 +1946,7 @@ Tensor Tensor::Repeat(const Tensor& _Input, const Vector<std::pair<SizeType, Siz
 			SliceTotal[_Dims[i].first] = { 0,_Dims[i].second,-1 };
 		}
 		else
-			LibSvcThrow("Axis Out Of Range!");
+			DragonianLibThrow("Axis Out Of Range!");
 	}
 
 	Tensor Rtn(Shape, _Input.DType(), _Input.GetDevice());
@@ -1969,18 +1969,18 @@ Tensor Tensor::Repeat(const Tensor& _Input, const Vector<std::pair<SizeType, Siz
 
 Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _ThreadPool)
 {
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 	for (const auto& i : _Inputs)
 		i.ThrowOnNotEnabled();
 #endif
 	if (_Inputs.empty())
-		LibSvcThrow("Inputs Can Not Be Empty!");
+		DragonianLibThrow("Inputs Can Not Be Empty!");
 	if (_Inputs.size() == 1)
 		return _Inputs[0].Clone(_ThreadPool);
 	auto _Dev = _Inputs[0].GetDevice();
 	for (const auto& it : _Inputs)
 		if (it.GetDevice() != _Dev)
-			LibSvcThrow("Device Of Input Must Be Equal!");
+			DragonianLibThrow("Device Of Input Must Be Equal!");
 
 	const auto& FShape = _Inputs[0].Shape();
 	const auto NDims = _Inputs[0].DimCount();
@@ -1989,10 +1989,10 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 	{
 		const auto& CurShape = _Inputs[i].Shape();
 		if (CurShape.size() != NDims)
-			LibSvcThrow("Shape MisMatch!");
+			DragonianLibThrow("Shape MisMatch!");
 		for (SizeType j = 0; j < NDims; ++j)
 			if (FShape[j] != CurShape[j])
-				LibSvcThrow("Shape MisMatch!");
+				DragonianLibThrow("Shape MisMatch!");
 	}
 
 	ShapeType Shape = FShape;
@@ -2022,18 +2022,18 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 
 Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _ThreadPool)
 {
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 	for (const auto& i : _Inputs)
 		i.ThrowOnNotEnabled();
 #endif
 	if (_Inputs.empty())
-		LibSvcThrow("Inputs Can Not Be Empty!");
+		DragonianLibThrow("Inputs Can Not Be Empty!");
 	if (_Inputs.size() == 1)
 		return _Inputs[0].Clone(_ThreadPool);
 	auto _Dev = _Inputs[0].GetDevice();
 	for (const auto& it : _Inputs)
 		if (it.GetDevice() != _Dev)
-			LibSvcThrow("Device Of Input Must Be Equal!");
+			DragonianLibThrow("Device Of Input Must Be Equal!");
 
 	const auto& FShape = _Inputs[0].Shape();
 	const auto NDims = _Inputs[0].DimCount();
@@ -2043,13 +2043,13 @@ Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _Th
 	{
 		const auto& CurShape = _Inputs[i].Shape();
 		if (CurShape.size() != NDims)
-			LibSvcThrow("Shape MisMatch!");
+			DragonianLibThrow("Shape MisMatch!");
 		for (SizeType j = 0; j < NDims; ++j)
 		{
 			if (j == _Dim)
 				Shape[j] += CurShape[j];
 			else if (FShape[j] != CurShape[j])
-				LibSvcThrow("Shape MisMatch!");
+				DragonianLibThrow("Shape MisMatch!");
 		}
 	}
 
@@ -2072,7 +2072,7 @@ Tensor Tensor::Gather(const Tensor& _Input, const Tensor& _Indices, SizeType _Ax
 	_Indices.ThrowOnNotEnabled();
 	_Axis = CalcIndex(_Axis, _Input.DimCount());
 	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice());
-	LibSvcOperator(_Input.DType_, Ret, Gather, _Input, _Indices, _Axis, _ThreadPool);
+	DragonianLibOperator(_Input.DType_, Ret, Gather, _Input, _Indices, _Axis, _ThreadPool);
 	return Ret;
 }
 
@@ -2087,7 +2087,7 @@ Tensor Tensor::Cast(const Tensor& _Input, TensorType _Dtype, ThreadPool* _Thread
 	if (_Input.DType_ == _Dtype)
 		return _Input.CreateView();
 	Tensor Ret(_Input.Shape(), _Dtype, _Input.Device_->GetDevice());
-	LibSvcOperatorDTypeNoRetrun(_Dtype, Cast, Ret, _Input, _ThreadPool);
+	DragonianLibOperatorDTypeNoRetrun(_Dtype, Cast, Ret, _Input, _ThreadPool);
 	return Ret;
 }
 
@@ -2101,7 +2101,7 @@ Tensor Tensor::Sum(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadPool
 	_Input.ThrowOnNotEnabled();
 	
 	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
-	LibSvcOperator(_Input.DType(), Ret, Sum, _Input, _Axis, _ThreadPool);
+	DragonianLibOperator(_Input.DType(), Ret, Sum, _Input, _Axis, _ThreadPool);
 
 	return Ret;
 }
@@ -2116,7 +2116,7 @@ Tensor Tensor::Diff(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadPoo
 	SliceInfo2[_Axis] = { 1,-1 };
 
 	Tensor Ret(_Input.DType_, _Input.Device_->GetDevice());
-	LibSvcOperator(_Input.DType_, Ret, Sub, _Input.Slice(SliceInfo2), _Input.Slice(SliceInfo1), _ThreadPool);
+	DragonianLibOperator(_Input.DType_, Ret, Sub, _Input.Slice(SliceInfo2), _Input.Slice(SliceInfo1), _ThreadPool);
 
 	return Ret;
 }
@@ -2126,7 +2126,7 @@ Tensor Tensor::CumSum(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadP
 	_Input.ThrowOnNotEnabled();
 
 	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
-	LibSvcOperator(_Input.DType(), Ret, CumSum, _Input, _Axis, _ThreadPool);
+	DragonianLibOperator(_Input.DType(), Ret, CumSum, _Input, _Axis, _ThreadPool);
 
 	return Ret;
 }
@@ -2136,7 +2136,7 @@ Tensor Tensor::CumProd(const Tensor& _Input, SizeType _Axis, ThreadPool* _Thread
 	_Input.ThrowOnNotEnabled();
 
 	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
-	LibSvcOperator(_Input.DType(), Ret, CumProd, _Input, _Axis, _ThreadPool);
+	DragonianLibOperator(_Input.DType(), Ret, CumProd, _Input, _Axis, _ThreadPool);
 
 	return Ret;
 }
@@ -2148,9 +2148,9 @@ Tensor Tensor::Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _Th
 	_InputA.ThrowOnNotEnabled();
 	_InputB.ThrowOnNotEnabled();
 	if (_InputA.DType_ != _InputB.DType_)
-		LibSvcThrow("Type MisMatch!");
+		DragonianLibThrow("Type MisMatch!");
 	Tensor Ret(_InputA.DType_, _InputA.Device_->GetDevice());
-	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, _InputB, _ThreadPool);
+	DragonianLibOperator(_InputA.DType_, Ret, Pow, _InputA, _InputB, _ThreadPool);
 	return Ret;
 }
 
@@ -2158,7 +2158,7 @@ Tensor Tensor::Pow(const Tensor& _InputA, float64 _Val, ThreadPool* _ThreadPool)
 {
 	_InputA.ThrowOnNotEnabled();
 	Tensor Ret(_InputA.DType_, _InputA.Device_->GetDevice());
-	LibSvcOperator(_InputA.DType_, Ret, Pow, _InputA, &_Val, TensorType::Float64, _ThreadPool);
+	DragonianLibOperator(_InputA.DType_, Ret, Pow, _InputA, &_Val, TensorType::Float64, _ThreadPool);
 	return Ret;
 }
 
@@ -2177,39 +2177,39 @@ Tensor& Tensor::Pow_(const Tensor& _InputB, ThreadPool* _ThreadPool)
 	ThrowOnNotEnabled();
 	_InputB.ThrowOnNotEnabled();
 	if (DType_ != _InputB.DType_)
-		LibSvcThrow("Type MisMatch!");
-	LibSvcOperatorNoRetrun(PowInplace, *this, _InputB, _ThreadPool);
+		DragonianLibThrow("Type MisMatch!");
+	DragonianLibOperatorNoRetrun(PowInplace, *this, _InputB, _ThreadPool);
 	return *this;
 }
 
 Tensor& Tensor::Pow_(float64 _Val, ThreadPool* _ThreadPool)
 {
 	ThrowOnNotEnabled();
-	LibSvcOperatorNoRetrun(PowInplace, *this, &_Val, TensorType::Float64, _ThreadPool);
+	DragonianLibOperatorNoRetrun(PowInplace, *this, &_Val, TensorType::Float64, _ThreadPool);
 	return *this;
 }
 
-LibSvcTensorFnImpl(Abs);
-LibSvcTensorFnImpl(Sin);
-LibSvcTensorFnImpl(Sinh);
-LibSvcTensorFnImpl(Cos);
-LibSvcTensorFnImpl(Cosh);
-LibSvcTensorFnImpl(Tan);
-LibSvcTensorFnImpl(Tanh);
-LibSvcTensorFnImpl(ASin);
-LibSvcTensorFnImpl(ACos);
-LibSvcTensorFnImpl(ATan);
-LibSvcTensorFnImpl(ASinh);
-LibSvcTensorFnImpl(ACosh);
-LibSvcTensorFnImpl(ATanh);
-LibSvcTensorFnImpl(Exp);
-LibSvcTensorFnImpl(Exp2);
-LibSvcTensorFnImpl(Exp10);
-LibSvcTensorFnImpl(Log);
-LibSvcTensorFnImpl(Log2);
-LibSvcTensorFnImpl(Log10);
-LibSvcFloatTensorFnImpl(Floor);
-LibSvcFloatTensorFnImpl(Ceil);
-LibSvcFloatTensorFnImpl(Round);
+DragonianLibTensorFnImpl(Abs);
+DragonianLibTensorFnImpl(Sin);
+DragonianLibTensorFnImpl(Sinh);
+DragonianLibTensorFnImpl(Cos);
+DragonianLibTensorFnImpl(Cosh);
+DragonianLibTensorFnImpl(Tan);
+DragonianLibTensorFnImpl(Tanh);
+DragonianLibTensorFnImpl(ASin);
+DragonianLibTensorFnImpl(ACos);
+DragonianLibTensorFnImpl(ATan);
+DragonianLibTensorFnImpl(ASinh);
+DragonianLibTensorFnImpl(ACosh);
+DragonianLibTensorFnImpl(ATanh);
+DragonianLibTensorFnImpl(Exp);
+DragonianLibTensorFnImpl(Exp2);
+DragonianLibTensorFnImpl(Exp10);
+DragonianLibTensorFnImpl(Log);
+DragonianLibTensorFnImpl(Log2);
+DragonianLibTensorFnImpl(Log10);
+DragonianLibFloatTensorFnImpl(Floor);
+DragonianLibFloatTensorFnImpl(Ceil);
+DragonianLibFloatTensorFnImpl(Round);
 
-LibSvcEnd
+DragonianLibSpaceEnd

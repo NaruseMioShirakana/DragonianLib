@@ -1,21 +1,23 @@
-﻿#include "../../../header/InferTools/TensorExtractor/TensorExtractorManager.hpp"
+﻿#include "InferTools/TensorExtractor/TensorExtractorManager.hpp"
 #include <map>
-#include "../../../header/Logger/MoeSSLogger.hpp"
+#include "Base.h"
+#include "Util/Logger.h"
 
-MoeVoiceStudioTensorExtractorHeader
-	inline std::map<std::wstring, GetTensorExtractorFn> RegisteredTensorExtractors;
+LibSvcHeader
+
+std::map<std::wstring, GetTensorExtractorFn> RegisteredTensorExtractors;
 
 void RegisterTensorExtractor(const std::wstring& _name, const GetTensorExtractorFn& _constructor_fn)
 {
-	if (RegisteredTensorExtractors.find(_name) != RegisteredTensorExtractors.end())
+	if (RegisteredTensorExtractors.contains(_name))
 	{
-		logger.log(L"[Warn] TensorExtractorNameConflict");
+		DragonianLibLogMessage(L"[Warn] TensorExtractorNameConflict");
 		return;
 	}
 	RegisteredTensorExtractors[_name] = _constructor_fn;
 }
 
-TensorExtractor GetTensorExtractor(const std::wstring& _name, uint64_t _srcsr, uint64_t _sr, uint64_t _hop, bool _smix, bool _volume, uint64_t _hidden_size, uint64_t _nspeaker, const MoeVoiceStudioTensorExtractor::Others& _other)
+TensorExtractor GetTensorExtractor(const std::wstring& _name, uint64_t _srcsr, uint64_t _sr, uint64_t _hop, bool _smix, bool _volume, uint64_t _hidden_size, uint64_t _nspeaker, const LibSvcTensorExtractor::Others& _other)
 {
 	const auto f_TensorExtractor = RegisteredTensorExtractors.find(_name);
 	if (f_TensorExtractor != RegisteredTensorExtractors.end())
@@ -23,4 +25,4 @@ TensorExtractor GetTensorExtractor(const std::wstring& _name, uint64_t _srcsr, u
 	throw std::runtime_error("Unable To Find An Available TensorExtractor");
 }
 
-MoeVoiceStudioTensorExtractorEnd
+LibSvcEnd

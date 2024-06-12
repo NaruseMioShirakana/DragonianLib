@@ -23,176 +23,74 @@
 #include "Models/VitsSvc.hpp"
 #include "Models/DiffSvc.hpp"
 #include "Models/ReflowSvc.hpp"
-#include "../framework.h"
-#include "InferTools/Stft/stft.hpp"
+#include "Stft/stft.hpp"
 
-namespace MoeVSModuleManager
+namespace libsvc
 {
 	class UnionSvcModel
 	{
 	public:
 		UnionSvcModel() = delete;
-		LibSvcApi ~UnionSvcModel();
-		LibSvcApi UnionSvcModel(const MJson& Config,
-			const MoeVoiceStudioCore::MoeVoiceStudioModule::ProgressCallback& Callback,
+		~UnionSvcModel();
+
+		UnionSvcModel(const libsvc::Hparams& Config,
+			const libsvc::LibSvcModule::ProgressCallback& Callback,
 			int ProviderID, int NumThread, int DeviceID);
 
-		LibSvcApi UnionSvcModel(const MoeVoiceStudioCore::Hparams& Config,
-			const MoeVoiceStudioCore::MoeVoiceStudioModule::ProgressCallback& Callback,
-			int ProviderID, int NumThread, int DeviceID);
+		[[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(const libsvc::SingleSlice& _Slice, const libsvc::InferenceParams& _Params, size_t& _Process) const;
 
-		LibSvcApi [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcData& _Slice,
-			const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const;
+		[[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(const DragonianLibSTL::Vector<int16_t>& _PCMData, long _SrcSamplingRate, const libsvc::InferenceParams& _Params) const;
 
-		LibSvcApi [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcSlice& _Slice, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, size_t& _Process) const;
-
-		LibSvcApi [[nodiscard]] std::vector<std::wstring> Inference(std::wstring& _Paths, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-			const InferTools::SlicerSettings& _SlicerSettings) const;
-
-		LibSvcApi [[nodiscard]] std::vector<int16_t> InferPCMData(const std::vector<int16_t>& PCMData, long srcSr, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const;
-
-		LibSvcApi [[nodiscard]] std::vector<int16_t> ShallowDiffusionInference(
-			std::vector<float>& _16KAudioHubert,
-			const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-			std::pair<std::vector<float>, int64_t>& _Mel,
-			const std::vector<float>& _SrcF0,
-			const std::vector<float>& _SrcVolume,
-			const std::vector<std::vector<float>>& _SrcSpeakerMap,
+		[[nodiscard]] DragonianLibSTL::Vector<int16_t> ShallowDiffusionInference(
+			DragonianLibSTL::Vector<float>& _16KAudioHubert,
+			const libsvc::InferenceParams& _Params,
+			std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
+			const DragonianLibSTL::Vector<float>& _SrcF0,
+			const DragonianLibSTL::Vector<float>& _SrcVolume,
+			const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
 			size_t& Process,
 			int64_t SrcSize
 		) const;
 
-		LibSvcApi MoeVoiceStudioCore::SingingVoiceConversion* GetPtr() const;
+		libsvc::SingingVoiceConversion* GetPtr() const;
 
-		LibSvcApi [[nodiscard]] int64_t GetMaxStep() const;
+		[[nodiscard]] int64_t GetMaxStep() const;
 
-		LibSvcApi [[nodiscard]] bool OldVersion() const;
+		[[nodiscard]] bool OldVersion() const;
 
-		LibSvcApi [[nodiscard]] const std::wstring& GetDiffSvcVer() const;
+		[[nodiscard]] const std::wstring& GetDiffSvcVer() const;
 
-		LibSvcApi [[nodiscard]] int64_t GetMelBins() const;
+		[[nodiscard]] int64_t GetMelBins() const;
 
-		LibSvcApi [[nodiscard]] int GetHopSize() const;
+		[[nodiscard]] int GetHopSize() const;
 
-		LibSvcApi [[nodiscard]] int64_t GetHiddenUnitKDims() const;
+		[[nodiscard]] int64_t GetHiddenUnitKDims() const;
 
-		LibSvcApi [[nodiscard]] int64_t GetSpeakerCount() const;
+		[[nodiscard]] int64_t GetSpeakerCount() const;
 
-		LibSvcApi [[nodiscard]] bool CharaMixEnabled() const;
+		[[nodiscard]] bool CharaMixEnabled() const;
 
-		LibSvcApi [[nodiscard]] long GetSamplingRate() const;
+		[[nodiscard]] long GetSamplingRate() const;
 
-		LibSvcApi void NormMel(std::vector<float>& MelSpec) const;
+		void NormMel(DragonianLibSTL::Vector<float>& MelSpec) const;
 
 		[[nodiscard]] bool IsDiffusion() const;
 	private:
-		MoeVoiceStudioCore::DiffusionSvc* Diffusion_ = nullptr;
-		MoeVoiceStudioCore::ReflowSvc* Reflow_ = nullptr;
+		libsvc::DiffusionSvc* Diffusion_ = nullptr;
+		libsvc::ReflowSvc* Reflow_ = nullptr;
 	};
 
+	void SetupKernel();
 
-	LibSvcApi int64_t& GetSpeakerCount();
-	LibSvcApi int64_t& GetSamplingRate();
-	LibSvcApi int32_t& GetVocoderHopSize();
-	LibSvcApi int32_t& GetVocoderMelBins();
-	/**
-	 * \brief 初始化所有组件
-	 */
-	LibSvcApi void MoeVoiceStudioCoreInitSetup();
-
-	/**
-	 * \brief 获取当前VitsSvc模型
-	 * \return 当前模型的指针
-	 */
-	LibSvcApi MoeVoiceStudioCore::VitsSvc* GetVitsSvcModel();
-
-	/**
-	 * \brief 获取当前UnionSvc模型
-	 * \return 当前模型的指针
-	 */
-	LibSvcApi UnionSvcModel* GetUnionSvcModel();
-
-	/**
-	 * \brief 卸载模型
-	 */
-	LibSvcApi void UnloadVitsSvcModel();
-
-	/**
-	 * \brief 卸载模型
-	 */
-	LibSvcApi void UnloadUnionSvcModel();
-
-	/**
-	 * \brief 载入VitsSvc模型
-	 * \param Config 一个MJson类的实例（配置文件的JSON）
-	 * \param Callback 进度条回调函数
-	 * \param ProviderID Provider在所有Provider中的ID（遵循Enum Class的定义）
-	 * \param NumThread CPU推理时的线程数（最好设置高一点，GPU不支持的算子可能也会Fallback到CPU）
-	 * \param DeviceID GPU设备ID
-	 */
-	LibSvcApi void LoadVitsSvcModel(const MJson& Config,
-		const MoeVoiceStudioCore::MoeVoiceStudioModule::ProgressCallback& Callback,
-		int ProviderID, int NumThread, int DeviceID);
-
-	/**
-	 * \brief 载入DiffusionSvc模型
-	 * \param Config 一个MJson类的实例（配置文件的JSON）
-	 * \param Callback 进度条回调函数
-	 * \param ProviderID Provider在所有Provider中的ID（遵循Enum Class的定义）
-	 * \param NumThread CPU推理时的线程数（最好设置高一点，GPU不支持的算子可能也会Fallback到CPU）
-	 * \param DeviceID GPU设备ID
-	 */
-	LibSvcApi void LoadUnionSvcModel(const MJson& Config,
-		const MoeVoiceStudioCore::MoeVoiceStudioModule::ProgressCallback& Callback,
-		int ProviderID, int NumThread, int DeviceID);
-
-	/**
-	 * \brief 载入Vocoder模型
-	 * \param VocoderPath Vocoder路径
-	 */
-	LibSvcApi void LoadVocoderModel(const std::wstring& VocoderPath);
-
-	/**
-	 * \brief 卸载Vocoder模型
-	 */
-	LibSvcApi void UnloadVocoderModel();
-
-	/**
-	 * \brief 检查Vocoder是否可用
-	 * \return Vocoder状态
-	 */
-	LibSvcApi bool VocoderEnabled();
-
-	/**
-	 * \brief 推理多组数据
-	 * \param _Slice 数据包
-	 * \param _InferParams 参数
-	 * \return 音频
-	 */
-	LibSvcApi std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcData& _Slice,
-	                                    const MoeVSProjectSpace::MoeVSSvcParams& _InferParams);
-
-	/**
-	 * \brief 推理切片数据
-	 * \param _Slice 切片数据
-	 * \param _InferParams 参数
-	 * \param _Process 进度条
-	 * \return 音频
-	 */
-	LibSvcApi std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcSlice& _Slice, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, size_t& _Process);
-
-	LibSvcApi std::vector<int16_t> Enhancer(std::vector<float>& Mel, const std::vector<float>& F0, size_t MelSize);
-
-	LibSvcApi void ReloadMelOps(int SamplingRate_I64, int Hopsize_I64, int MelBins_I64);
-
-	LibSvcApi DlCodecStft::Mel& GetMelOperator();
-
-	LibSvcApi bool ShallowDiffusionEnabled();
+	DlCodecStft::Mel& GetMelOperator(
+		int32_t _SamplingRate,
+		int32_t _Hopsize,
+		int32_t _MelBins
+	);
 }
 
 namespace MoeVSRename
 {
-	using MoeVSVitsBasedSvc = MoeVoiceStudioCore::VitsSvc;
-	using MoeVSDiffBasedSvc = MoeVoiceStudioCore::DiffusionSvc;
+	
 }
 

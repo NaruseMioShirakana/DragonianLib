@@ -21,15 +21,15 @@
 
 #pragma once
 #include <functional>
-#include "MoeVoiceStudioTensorExtractor.hpp"
+#include "BaseTensorExtractor.hpp"
 
-MoeVoiceStudioTensorExtractorHeader
+LibSvcHeader
 
 class TensorExtractor
 {
 public:
 	TensorExtractor() = default;
-	TensorExtractor(MoeVoiceStudioTensorExtractor* _ext) : _f0_ext(_ext) {}
+	TensorExtractor(LibSvcTensorExtractor* _ext) : _f0_ext(_ext) {}
 	TensorExtractor(const TensorExtractor&) = delete;
 	TensorExtractor(TensorExtractor&& _ext) noexcept
 	{
@@ -52,15 +52,15 @@ public:
 		delete _f0_ext;
 		_f0_ext = nullptr;
 	}
-	MoeVoiceStudioTensorExtractor* operator->() const { return _f0_ext; }
+	LibSvcTensorExtractor* operator->() const { return _f0_ext; }
 
 private:
-	MoeVoiceStudioTensorExtractor* _f0_ext = nullptr;
+	LibSvcTensorExtractor* _f0_ext = nullptr;
 };
 
-using GetTensorExtractorFn = std::function<TensorExtractor(uint64_t, uint64_t, uint64_t, bool, bool, uint64_t, uint64_t, const MoeVoiceStudioTensorExtractor::Others&)>;
+using GetTensorExtractorFn = std::function<TensorExtractor(uint64_t, uint64_t, uint64_t, bool, bool, uint64_t, uint64_t, const LibSvcTensorExtractor::Others&)>;
 
-LibSvcApi void RegisterTensorExtractor(const std::wstring& _name, const GetTensorExtractorFn& _constructor_fn);
+void RegisterTensorExtractor(const std::wstring& _name, const GetTensorExtractorFn& _constructor_fn);
 
 /**
  * \brief 获取张量预处理器
@@ -75,12 +75,12 @@ LibSvcApi void RegisterTensorExtractor(const std::wstring& _name, const GetTenso
  * \param _other 其他参数，其中的memoryInfo必须为你当前模型的memoryInfo
  * \return 张量预处理器
  */
-LibSvcApi TensorExtractor GetTensorExtractor(
+TensorExtractor GetTensorExtractor(
 	const std::wstring& _name,
 	uint64_t _srcsr, uint64_t _sr, uint64_t _hop,
 	bool _smix, bool _volume, uint64_t _hidden_size,
 	uint64_t _nspeaker,
-	const MoeVoiceStudioTensorExtractor::Others& _other
+	const LibSvcTensorExtractor::Others& _other
 );
 
-MoeVoiceStudioTensorExtractorEnd
+LibSvcEnd

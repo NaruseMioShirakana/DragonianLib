@@ -23,48 +23,31 @@
 #include "SVC.hpp"
 #include "DiffSvc.hpp"
 
-MoeVoiceStudioCoreHeader
+LibSvcHeader
 
 class VitsSvc : public SingingVoiceConversion
 {
 public:
-    VitsSvc(const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
-    VitsSvc(const std::map<std::string, std::wstring>& _PathDict, const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
 
     VitsSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
         unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
 
-    void load(
-        const std::map<std::string, std::wstring>& _PathDict,
-        const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        ExecutionProviders ExecutionProvider_,
-        unsigned DeviceID_, unsigned ThreadCount_,
-        bool MoeVoiceStudioFrontEnd = false
-    );
-
 	~VitsSvc() override;
 
     void Destory();
 
-    [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcData& _Slice,
-        const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const override;
+    [[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(
+        const SingleSlice& _Slice,
+        const InferenceParams& _Params,
+        size_t& _Process
+    ) const override;
 
-    [[nodiscard]] std::vector<int16_t> SliceInference(const MoeVSProjectSpace::MoeVoiceStudioSvcSlice& _Slice, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, size_t& _Process) const override;
-
-	[[nodiscard]] std::vector<std::wstring> Inference(std::wstring& _Paths, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams,
-        const InferTools::SlicerSettings& _SlicerSettings) const override;
-
-    //[[nodiscard]] std::vector<Ort::Value> InferSliceTensor(const MoeVSProjectSpace::MoeVSAudioSlice& _Slice, size_t SliceIdx,
-    //    const MoeVSProjectSpace::MoeVSSvcParams& _InferParams, std::vector<Ort::Value>& _Tensors,
-    //    std::vector<const char*>& SoVitsInput) const;
-
-    [[nodiscard]] std::vector<int16_t> InferPCMData(const std::vector<int16_t>& PCMData, long srcSr, const MoeVSProjectSpace::MoeVSSvcParams& _InferParams) const override;
+    [[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(
+        const DragonianLibSTL::Vector<int16_t>& _PCMData,
+        long _SrcSamplingRate,
+        const InferenceParams& _Params
+    ) const override;
 
     [[nodiscard]] std::vector<Ort::Value> MelExtractor(const float* PCMAudioBegin, const float* PCMAudioEnd) const = delete;
 
@@ -82,17 +65,6 @@ private:
     const std::vector<const char*> RVCInput = { "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd" };
     const std::vector<const char*> StftOutput = { "mel" };
     const std::vector<const char*> StftInput = { "waveform", "aligment"};
-
-#ifdef WIN32
-#ifdef MoeVSMui
-    bool RTSTAT = false;
-    std::deque<std::vector<int16_t>> inputBuffer, outputBuffer, rawInputBuffer, rawOutputBuffer;
-    MRecorder* recoder = nullptr;
-    Mui::Render::MDS_AudioPlayer* audio_player = nullptr;
-    Mui::Render::MAudioStream* audio_stream = nullptr;
-    size_t emptyLen = 30000;
-#endif
-#endif
 };
 
-MoeVoiceStudioCoreEnd
+LibSvcEnd

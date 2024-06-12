@@ -1,7 +1,7 @@
 #include <ranges>
 #include "Module/Module.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 
 Module::Module(Module* _Parent, const std::wstring& _Name)
 {
@@ -30,4 +30,4 @@ Parameter::Parameter(Module* _Parent, const std::wstring& _Name, const std::vect
 {
 	
 }
-LibSvcEnd
+DragonianLibSpaceEnd

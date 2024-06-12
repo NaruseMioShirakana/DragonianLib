@@ -6,7 +6,7 @@
 #include "Util/ThreadPool.h"
 #include "Tensor/Macro.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 using ShapeType = Vector<SizeType>;
 using ShapeIterator = ShapeType::iterator;
 static inline double DoubleZero = 0.;
@@ -136,7 +136,7 @@ public:
 	Ref& Item(const ShapeType& _Indices)
 	{
 		if (sizeof(Ref) != AlignSize_)
-			LibSvcThrow("TypeError!");
+			DragonianLibThrow("TypeError!");
 		return *(Ref*)(Data(_Indices));
 	}
 
@@ -145,7 +145,7 @@ public:
 	Ref& Item()
 	{
 		if (sizeof(Ref) != AlignSize_)
-			LibSvcThrow("TypeError!");
+			DragonianLibThrow("TypeError!");
 		return *(Ref*)(GetPtr());
 	}
 
@@ -154,7 +154,7 @@ public:
 	const Ref& Item(const ShapeType& _Indices) const
 	{
 		if (sizeof(Ref) != AlignSize_)
-			LibSvcThrow("TypeError!");
+			DragonianLibThrow("TypeError!");
 		return *(Ref*)(Data(_Indices));
 	}
 
@@ -163,7 +163,7 @@ public:
 	const Ref& Item() const
 	{
 		if (sizeof(Ref) != AlignSize_)
-			LibSvcThrow("TypeError!");
+			DragonianLibThrow("TypeError!");
 		return *(Ref*)(GetPtr());
 	}
 
@@ -557,32 +557,32 @@ public:
 	Tensor& Pow_(const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr);
 	Tensor& Pow_(float64 _Val, ThreadPool* _ThreadPool = nullptr);
 
-	LibSvcTensorFnDef(Abs);
-	LibSvcTensorFnDef(Sin);
-	LibSvcTensorFnDef(Sinh);
-	LibSvcTensorFnDef(Cos);
-	LibSvcTensorFnDef(Cosh);
-	LibSvcTensorFnDef(Tan);
-	LibSvcTensorFnDef(Tanh);
-	LibSvcTensorFnDef(ASin);
-	LibSvcTensorFnDef(ACos);
-	LibSvcTensorFnDef(ATan);
-	LibSvcTensorFnDef(ASinh);
-	LibSvcTensorFnDef(ACosh);
-	LibSvcTensorFnDef(ATanh);
-	LibSvcTensorFnDef(Exp);
-	LibSvcTensorFnDef(Exp2);
-	LibSvcTensorFnDef(Exp10);
-	LibSvcTensorFnDef(Log);
-	LibSvcTensorFnDef(Log2);
-	LibSvcTensorFnDef(Log10);
-	LibSvcTensorFnDef(Floor);
-	LibSvcTensorFnDef(Ceil);
-	LibSvcTensorFnDef(Round);
+	DragonianLibTensorFnDef(Abs);
+	DragonianLibTensorFnDef(Sin);
+	DragonianLibTensorFnDef(Sinh);
+	DragonianLibTensorFnDef(Cos);
+	DragonianLibTensorFnDef(Cosh);
+	DragonianLibTensorFnDef(Tan);
+	DragonianLibTensorFnDef(Tanh);
+	DragonianLibTensorFnDef(ASin);
+	DragonianLibTensorFnDef(ACos);
+	DragonianLibTensorFnDef(ATan);
+	DragonianLibTensorFnDef(ASinh);
+	DragonianLibTensorFnDef(ACosh);
+	DragonianLibTensorFnDef(ATanh);
+	DragonianLibTensorFnDef(Exp);
+	DragonianLibTensorFnDef(Exp2);
+	DragonianLibTensorFnDef(Exp10);
+	DragonianLibTensorFnDef(Log);
+	DragonianLibTensorFnDef(Log2);
+	DragonianLibTensorFnDef(Log10);
+	DragonianLibTensorFnDef(Floor);
+	DragonianLibTensorFnDef(Ceil);
+	DragonianLibTensorFnDef(Round);
 
 private:
 	bool UseThreadPool_ = true;
 	Allocator Device_;
 };
 
-LibSvcEnd
+DragonianLibSpaceEnd

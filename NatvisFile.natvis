@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-	<Type Name="libsvcstd::Vector&lt;*&gt;">
+	<Type Name="DragonianLibSTL::Vector&lt;*&gt;">
 		<DisplayString>{{ size={_MyLast - _MyFirst}, capacity={_MyEnd - _MyFirst}, _MyFirst={_MyFirst} }}</DisplayString>
 		<Expand>
 			<Item Name="[size]" ExcludeView="simple">_MyLast - _MyFirst</Item>
@@ -25,7 +25,7 @@
 			</Synthetic>
 		</Expand>
 	</Type>
-	<Type Name="libsvc::Tensor">
+	<Type Name="DragonianLib::Tensor">
 		<DisplayString>{{ Shape = { ShapeBack_ }, Type = { DType_ }, Device = { Device_->Type_ }, Buffer = { DataPtr_ } }}</DisplayString>
 		<Expand>
 			<Synthetic Name="[AxisAttribute]">

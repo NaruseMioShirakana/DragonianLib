@@ -1,6 +1,33 @@
 #include "Base.h"
+#ifdef _WIN32
+#include "Windows.h"
+#endif
 
-LibSvcBegin
+DragonianLibSpaceBegin
+
+std::wstring GlobalEnvDir;
+
+std::wstring GetCurrentFolder()
+{
+	if (!GlobalEnvDir.empty())
+		return GlobalEnvDir;
+
+	wchar_t path[1024];
+#ifdef _WIN32
+	GetModuleFileName(nullptr, path, 1024);
+	std::wstring _curPath = path;
+	_curPath = _curPath.substr(0, _curPath.rfind(L'\\'));
+	return _curPath;
+#else
+	if (GlobalEnvDir.empty())
+		DragonianLibThrow("GlobalEnvDir Is Empty!");
+#endif
+}
+
+void SetGlobalEnvDir(const std::wstring& _Folder)
+{
+	GlobalEnvDir = _Folder;
+}
 
 FileGuard::~FileGuard()
 {
@@ -46,4 +73,4 @@ void FileGuard::Close()
 	file_ = nullptr;
 }
 
-LibSvcEnd
+DragonianLibSpaceEnd

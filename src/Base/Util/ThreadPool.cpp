@@ -5,7 +5,7 @@
 #include <Windows.h>
 #endif
 
-LibSvcBegin
+DragonianLibSpaceBegin
 ThreadPool::~ThreadPool() {
     Stoped_ = true;
 	Condition_.release((ptrdiff_t)Threads_.size());
@@ -24,20 +24,15 @@ void ThreadPool::Init(int64 _ThreadCount) {
         _ThreadCount = std::thread::hardware_concurrency();
 
     if (!Stoped_)
-        LibSvcThrow("Thread Pool Already Start!");
+        DragonianLibThrow("Thread Pool Already Start!");
 
     std::unique_lock lock(Mx_);
     if (!Stoped_)
-        LibSvcThrow("Thread Pool Already Start!");
+        DragonianLibThrow("Thread Pool Already Start!");
     Stoped_ = false;
     Threads_.clear();
     for (int64 i = 0; i < _ThreadCount; i++)
-    {
 	    Threads_.emplace_back(&ThreadPool::Run, this);
-#ifdef _WIN32
-        Threads_.back().get_id()._Get_underlying_id();
-#endif
-    }
 
     ThreadCount_ = _ThreadCount;
 }
@@ -67,7 +62,7 @@ void ThreadPool::Run() {
         if (LogTime_)
         {
 	        QueryPerformanceCounter(&Time2);
-            LogMessage(("[Thread] Task Cost Time:" + std::to_string(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + "ms").c_str());
+            DragonianLibLogMessage(("[Thread] Task Cost Time:" + std::to_string(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + "ms").c_str());
         }
 #endif
         --TaskProcessing_;
@@ -84,7 +79,7 @@ void ThreadPool::Join()
     JoinCondition_.acquire();
     Joinable = false;
     if (LogTime_)
-        LogMessage("[Thread] All Task Finished!");
+        DragonianLibLogMessage("[Thread] All Task Finished!");
 }
 
-LibSvcEnd
+DragonianLibSpaceEnd

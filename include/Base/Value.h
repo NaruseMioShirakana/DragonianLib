@@ -1,7 +1,7 @@
 #pragma once
 #include "Base.h"
 
-LibSvcBegin
+DragonianLibSpaceBegin
 class Value
 {
 public:
@@ -21,4 +21,4 @@ public:
 	virtual void loadData(const DictType& _WeightDict, bool _Strict = false);
 	virtual void saveData(FileGuard& _File);
 };
-LibSvcEnd
+DragonianLibSpaceEnd

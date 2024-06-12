@@ -2,9 +2,7 @@
 #include <filesystem>
 #include <mutex>
 
-namespace libsvc{
-
-	std::wstring GetCurrentFolder(const std::wstring& defualt = L"");
+namespace DragonianLib{
 
 	class Logger
 	{

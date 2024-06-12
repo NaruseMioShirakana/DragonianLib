@@ -1,6 +1,6 @@
 #pragma once
 #include "Tensor/TensorOperator.h"
-LibSvcBegin
+DragonianLibSpaceBegin
 namespace Complex32
 {
 	using ThisType = std::complex<float>;
@@ -10,4 +10,4 @@ namespace Complex32
 	void AssignValue(const Tensor& _Input, void* _Val, TensorType _ValType);
 
 }
-LibSvcEnd
+DragonianLibSpaceEnd

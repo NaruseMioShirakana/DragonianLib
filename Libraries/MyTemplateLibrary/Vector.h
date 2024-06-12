@@ -3,8 +3,9 @@
 #include <exception>
 #include <initializer_list>
 #include <algorithm>
+#include "matlabfunctions.h"
 
-LIBSVCSTLBEGIN
+DRAGONIANLIBSTLBEGIN
 
 //using Type_ = float;
 template <typename Type_>
@@ -33,9 +34,9 @@ public:
 
 		if(_Size == 0)
 		{
-			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * LIBSVC_EMPTY_CAPACITY);
+			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
 			_MyLast = _MyFirst;
-			_MyEnd = _MyFirst + LIBSVC_EMPTY_CAPACITY;
+			_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
 			return;
 		}
 
@@ -59,9 +60,9 @@ public:
 
 		if (_Size == 0)
 		{
-			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * LIBSVC_EMPTY_CAPACITY);
+			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
 			_MyLast = _MyFirst;
-			_MyEnd = _MyFirst + LIBSVC_EMPTY_CAPACITY;
+			_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
 			return;
 		}
 
@@ -84,7 +85,7 @@ public:
 		}
 	}
 
-	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc)
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -139,6 +140,9 @@ public:
 
 	Vector& operator=(Vector&& _Right) noexcept
 	{
+		if (&_Right != this)
+			Destory();
+
 		_MyFirst = _Right._MyFirst;
 		_MyLast = _Right._MyLast;
 		_MyEnd = _Right._MyEnd;
@@ -151,9 +155,9 @@ public:
 		return *this;
 	}
 
-	Reference operator[](IndexType _Index) const
+	Reference operator[](SizeType _Index) const
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
 			throw std::exception("Out Of Range!");
 #endif
@@ -165,12 +169,42 @@ protected:
 	Allocator Allocator_;
 
 public:
-	Iterator Begin() const
+	Iterator Begin()
 	{
 		return _MyFirst;
 	}
 
-	Iterator End() const
+	Iterator End()
+	{
+		return _MyLast;
+	}
+
+	ConstIterator Begin() const
+	{
+		return _MyFirst;
+	}
+
+	ConstIterator End() const
+	{
+		return _MyLast;
+	}
+
+	Iterator begin()
+	{
+		return _MyFirst;
+	}
+
+	Iterator end()
+	{
+		return _MyLast;
+	}
+
+	ConstIterator begin() const
+	{
+		return _MyFirst;
+	}
+
+	ConstIterator end() const
 	{
 		return _MyLast;
 	}
@@ -185,24 +219,25 @@ public:
 		return _MyEnd - _MyFirst;
 	}
 
-	Pointer Release()
+	std::pair<Pointer, SizeType> Release()
 	{
 		auto Ptr = _MyFirst;
+		auto _Size = Size();
 		_MyFirst = nullptr;
 		_MyLast = nullptr;
 		_MyEnd = nullptr;
 		Allocator_ = nullptr;
-		return Ptr;
+		return { Ptr, _Size };
 	}
 
-	Pointer Data()
+	ValueType* Data()
 	{
-		return _MyFirst;
+		return std::_Unfancy_maybe_null(_MyFirst);
 	}
 
 	const ValueType* Data() const
 	{
-		return _MyFirst;
+		return std::_Unfancy_maybe_null(_MyFirst);
 	}
 
 	Allocator GetAllocator() const
@@ -256,9 +291,9 @@ private:
 
 		if (_Size <= 0)
 		{
-			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * LIBSVC_EMPTY_CAPACITY);
+			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
 			_MyLast = _MyFirst;
-			_MyEnd = _MyFirst + LIBSVC_EMPTY_CAPACITY;
+			_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
 			return;
 		}
 
@@ -342,9 +377,9 @@ public:
 		if (_NewCapacity == 0)
 		{
 			DestoryData();
-			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * LIBSVC_EMPTY_CAPACITY);
+			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
 			_MyLast = _MyFirst;
-			_MyEnd = _MyFirst + LIBSVC_EMPTY_CAPACITY;
+			_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
 			return;
 		}
 
@@ -384,7 +419,7 @@ public:
 	template<typename... _ArgsTy>
 	void Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
 			throw std::exception("Out Of Range!");
 #endif
@@ -404,7 +439,7 @@ public:
 
 	void Insert(ConstIterator _Where, const ValueType& _Value)
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
 			throw std::exception("Out Of Range!");
 #endif
@@ -422,7 +457,7 @@ public:
 
 	void Insert(ConstIterator _Where, ValueType&& _Value)
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
 			throw std::exception("Out Of Range!");
 #endif
@@ -440,7 +475,7 @@ public:
 
 	void Insert(ConstIterator _Where, SizeType _Count = 1, const ValueType& _Value = ValueType(0))
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
 			throw std::exception("Out Of Range!");
 #endif
@@ -460,7 +495,7 @@ public:
 
 	void Insert(ConstIterator _Where, ConstIterator _First, ConstIterator _Last)
 	{
-#ifdef LIBSVC_DEBUG
+#ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
 			throw std::exception("Out Of Range!");
 #endif
@@ -484,10 +519,12 @@ public:
 
 	void Clear()
 	{
-		auto Iter = _MyFirst;
 		if constexpr (!std::is_arithmetic_v<ValueType>)
+		{
+			auto Iter = _MyFirst;
 			while (Iter != _MyLast)
-				Iter->~ValueType();
+				(Iter++)->~ValueType();
+		}
 		_MyLast = _MyFirst;
 	}
 
@@ -499,4 +536,144 @@ public:
 	}
 };
 
-LIBSVCSTLEND
+template <typename _Type>
+Vector<_Type> Arange(_Type _Start, _Type _End, _Type _Step = _Type(1.), _Type _NDiv = _Type(1.))
+{
+	Vector<_Type> OutPut(size_t((_End - _Start) / _Step));
+	auto OutPutPtr = OutPut.Begin();
+	const auto OutPutPtrEnd = OutPut.End();
+	while (OutPutPtr != OutPutPtrEnd)
+	{
+		*(OutPutPtr++) = _Start / _NDiv;
+		_Start += _Step;
+	}
+	return OutPut;
+}
+
+template <typename _Type>
+Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
+{
+	Vector<_Type> Result(_Signal.Size());
+
+	if (_WindowSize > _Signal.Size() || _WindowSize < 2)
+		return _Signal;
+
+	auto WndSz = (_Type)(_WindowSize % 2 ? _WindowSize : _WindowSize + 1);
+
+	const size_t half = _WindowSize / 2; // 窗口半径，向下取整
+	auto Ptr = Result.Data();
+
+	for (size_t i = 0; i < half; ++i)
+		*(Ptr++) = _Signal[i];
+
+	for (size_t i = half; i < _Signal.Size() - half; i++) {
+		_Type sum = 0.0f;
+		for (size_t j = i - half; j <= i + half; j++)
+			sum += _Signal[j];
+		*(Ptr++) = (sum / WndSz);
+	}
+
+	for (size_t i = _Signal.Size() - half; i < _Signal.Size(); ++i)
+		*(Ptr++) = _Signal[i];
+
+	return Result;
+}
+
+template<typename T>
+double Average(const T* start, const T* end)
+{
+	const auto size = end - start + 1;
+	auto avg = (double)(*start);
+	for (auto i = 1; i < size; i++)
+		avg = avg + (abs((double)start[i]) - avg) / (double)(i + 1ull);
+	return avg;
+}
+
+/**
+ * \brief 重采样（插值）
+ * \tparam TOut 输出类型
+ * \tparam TIn 输入类型
+ * \param _Data 输入数据
+ * \param _SrcSamplingRate 输入采样率
+ * \param _DstSamplingRate 输出采样率
+ * \param n_Div 给输出的数据统一除以这个数
+ * \return 输出数据
+ */
+template<typename TOut, typename TIn>
+static Vector<TOut> InterpResample(
+	const Vector<TIn>& _Data,
+	long _SrcSamplingRate,
+	long _DstSamplingRate,
+	TOut n_Div = TOut(1)
+)
+{
+	if (_SrcSamplingRate != _DstSamplingRate)
+	{
+		const double intstep = double(_SrcSamplingRate) / double(_DstSamplingRate);
+		const auto xi = Arange(0., double(_Data.Size()), intstep);
+		auto x0 = Arange(0., double(_Data.Size()));
+		while (x0.Size() < _Data.Size())
+			x0.EmplaceBack(x0[x0.Size() - 1] + 1.0);
+		while (x0.Size() > _Data.Size())
+			x0.PopBack();
+
+		Vector<double> y0(_Data.Size());
+		for (size_t i = 0; i < _Data.Size(); ++i)
+			y0[i] = double(_Data[i]) / double(n_Div);
+
+		Vector<double> yi(xi.Size());
+		interp1(x0.Data(), y0.Data(), long(x0.Size()), xi.Data(), long(xi.Size()), yi.Data());
+
+		Vector<TOut> out(xi.Size());
+		for (size_t i = 0; i < yi.Size(); ++i)
+			out[i] = TOut(yi[i]);
+		return out;
+	}
+	Vector<TOut> out(_Data.Size());
+	for (size_t i = 0; i < _Data.Size(); ++i)
+		out[i] = TOut(_Data[i]) / n_Div;
+	return out;
+}
+
+/**
+ * \brief 重采样（插值）
+ * \tparam T 数据类型
+ * \param _Data 输入数据
+ * \param _SrcSamplingRate 输入采样率
+ * \param _DstSamplingRate 输出采样率
+ * \return 输出数据
+ */
+template<typename T>
+static Vector<T> InterpFunc(
+	const Vector<T>& _Data,
+	long _SrcSamplingRate,
+	long _DstSamplingRate
+)
+{
+	if (_SrcSamplingRate != _DstSamplingRate)
+	{
+		const double intstep = double(_SrcSamplingRate) / double(_DstSamplingRate);
+		auto xi = Arange(0., double(_Data.Size()), intstep);
+		while (xi.Size() < size_t(_DstSamplingRate))
+			xi.EmplaceBack(xi[xi.Size() - 1] + 1.0);
+		while (xi.Size() > size_t(_DstSamplingRate))
+			xi.PopBack();
+		auto x0 = Arange(0., double(_Data.Size()));
+		while (x0.Size() < _Data.Size())
+			x0.EmplaceBack(x0[x0.Size() - 1] + 1.0);
+		while (x0.Size() > _Data.Size())
+			x0.PopBack();
+		Vector<double> y0(_Data.Size());
+		for (size_t i = 0; i < _Data.Size(); ++i)
+			y0[i] = _Data[i] <= T(0.0001) ? NAN : double(_Data[i]);
+		Vector<double> yi(xi.Size());
+		interp1(x0.Data(), y0.Data(), long(x0.Size()), xi.Data(), long(xi.Size()), yi.Data());
+		Vector<T> out(xi.Size());
+		for (size_t i = 0; i < yi.Size(); ++i)
+			out[i] = isnan(yi[i]) ? T(0.0) : T(yi[i]);
+		return out;
+	}
+	return _Data;
+}
+
+DRAGONIANLIBSTLEND

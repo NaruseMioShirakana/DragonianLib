@@ -6,23 +6,9 @@
 #error
 #endif
 
-namespace libsvc
+namespace DragonianLib
 {
-	Logger LibSvcLogger;
-
-	std::wstring GetCurrentFolder(const std::wstring& defualt)
-	{
-		wchar_t path[1024];
-#ifdef _WIN32
-		GetModuleFileName(nullptr, path, 1024);
-		std::wstring _curPath = path;
-		_curPath = _curPath.substr(0, _curPath.rfind(L'\\'));
-		return _curPath;
-#else
-		//TODO Other System
-#error Other System TODO
-#endif
-	}
+	Logger GlobalLogger;
 
 	Logger::~Logger()
 	{
@@ -94,6 +80,6 @@ namespace libsvc
 
 	Logger& GetLogger()
 	{
-		return LibSvcLogger;
+		return GlobalLogger;
 	}
 }
