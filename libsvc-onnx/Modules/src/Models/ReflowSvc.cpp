@@ -111,12 +111,14 @@ DragonianLibSTL::Vector<int16_t> ReflowSvc::SliceInference(
 		auto RawWav = InterpResample(_Slice.Audio, (int)(_Params.SrcSamplingRate), 16000, 32768.0f);
 		const auto src_audio_length = RawWav.Size();
 		bool NeedPadding = false;
+#ifdef LIBSVC_CUDA_ONLY_PADDING
 		if (_cur_execution_provider == ExecutionProviders::CUDA)
+#endif
 		{
-			NeedPadding = RawWav.Size() % 16000;
-			const size_t WavPaddedSize = RawWav.Size() / 16000 + 1;
+			NeedPadding = RawWav.Size() % DRAGONIANLIB_PADDING_COUNT;
+			const size_t WavPaddedSize = RawWav.Size() / DRAGONIANLIB_PADDING_COUNT + 1;
 			if (NeedPadding)
-				RawWav.Resize(WavPaddedSize * 16000, 0.f);
+				RawWav.Resize(WavPaddedSize * DRAGONIANLIB_PADDING_COUNT, 0.f);
 		}
 
 		const int64_t HubertInputShape[3] = { 1i64,1i64,(int64_t)RawWav.Size() };
@@ -168,15 +170,16 @@ DragonianLibSTL::Vector<int16_t> ReflowSvc::SliceInference(
 
 		LibSvcTensorExtractor::Inputs InputTensors;
 
-		if (_cur_execution_provider == ExecutionProviders::CUDA && NeedPadding)
+		if (NeedPadding)
 		{
 			auto CUDAF0 = _Slice.F0;
 			auto CUDAVolume = _Slice.Volume;
 			auto CUDASpeaker = _Slice.Speaker;
-			const auto src_src_audio_length = _Slice.Audio.Size();
-			const size_t WavPaddedSize = ((src_src_audio_length / (int)(_Params.SrcSamplingRate)) + 1) * (int)(_Params.SrcSamplingRate);
-			const size_t AudioPadSize = WavPaddedSize - src_src_audio_length;
-			const size_t PaddedF0Size = CUDAF0.Size() + (CUDAF0.Size() * AudioPadSize / src_src_audio_length);
+			const auto ScaleSamplingConut = _Params.SrcSamplingRate * DRAGONIANLIB_PADDING_COUNT / 16000;
+			const auto SrcAudioLength = _Slice.Audio.Size();
+			const size_t WavPaddedSize = (SrcAudioLength / ScaleSamplingConut + 1) * ScaleSamplingConut;
+			const size_t AudioPadSize = WavPaddedSize - SrcAudioLength;
+			const size_t PaddedF0Size = CUDAF0.Size() + (CUDAF0.Size() * AudioPadSize / SrcAudioLength);
 
 			if (!CUDAF0.Empty()) CUDAF0.Resize(PaddedF0Size, 0.f);
 			if (!CUDAVolume.Empty()) CUDAVolume.Resize(PaddedF0Size, 0.f);
@@ -272,7 +275,7 @@ DragonianLibSTL::Vector<int16_t> ReflowSvc::SliceInference(
 				*(OutputAudioData++) = (int16_t)(Clamp(*(DiffOutputAudioData++)) * 32766.f);
 		}
 		const auto dstWavLen = (_Slice.OrgLen * int64_t(_samplingRate)) / (int)(_Params.SrcSamplingRate);
-		DiffPCMOutput.Resize(dstWavLen);
+		DiffPCMOutput.Resize(dstWavLen, 0);
 		return DiffPCMOutput;
 	}
 	const auto len = size_t(_Slice.OrgLen * int64_t(_samplingRate) / (int)(_Params.SrcSamplingRate));

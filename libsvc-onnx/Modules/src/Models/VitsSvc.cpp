@@ -103,12 +103,14 @@ DragonianLibSTL::Vector<int16_t> VitsSvc::SliceInference(
 		_16KAudio = InterpResample(_Slice.Audio, (int)(_Params.SrcSamplingRate), 16000, 32768.0f);
 		const auto src_audio_length = _16KAudio.Size();
 		bool NeedPadding = false;
+#ifdef LIBSVC_CUDA_ONLY_PADDING
 		if (_cur_execution_provider == ExecutionProviders::CUDA)
+#endif
 		{
-			NeedPadding = _16KAudio.Size() % 16000;
-			const size_t WavPaddedSize = _16KAudio.Size() / 16000 + 1;
+			NeedPadding = _16KAudio.Size() % DRAGONIANLIB_PADDING_COUNT;
+			const size_t WavPaddedSize = _16KAudio.Size() / DRAGONIANLIB_PADDING_COUNT + 1;
 			if (NeedPadding)
-				_16KAudio.Resize(WavPaddedSize * 16000, 0.f);
+				_16KAudio.Resize(WavPaddedSize * DRAGONIANLIB_PADDING_COUNT, 0.f);
 		}
 
 		const int64_t HubertInputShape[3] = { 1i64,1i64,(int64_t)_16KAudio.Size() };
@@ -163,10 +165,11 @@ DragonianLibSTL::Vector<int16_t> VitsSvc::SliceInference(
 			CUDAF0 = _Slice.F0;
 			CUDAVolume = _Slice.Volume;
 			CUDASpeaker = _Slice.Speaker;
-			const auto src_src_audio_length = _Slice.Audio.Size();
-			const size_t WavPaddedSize = ((src_src_audio_length / (int)(_Params.SrcSamplingRate)) + 1) * (int)(_Params.SrcSamplingRate);
-			const size_t AudioPadSize = WavPaddedSize - src_src_audio_length;
-			const size_t PaddedF0Size = CUDAF0.Size() + (CUDAF0.Size() * AudioPadSize / src_src_audio_length);
+			const auto ScaleSamplingConut = _Params.SrcSamplingRate * DRAGONIANLIB_PADDING_COUNT / 16000;
+			const auto SrcAudioLength = _Slice.Audio.Size();
+			const size_t WavPaddedSize = (SrcAudioLength / ScaleSamplingConut + 1) * ScaleSamplingConut;
+			const size_t AudioPadSize = WavPaddedSize - SrcAudioLength;
+			const size_t PaddedF0Size = CUDAF0.Size() + (CUDAF0.Size() * AudioPadSize / SrcAudioLength);
 
 			if (!CUDAF0.Empty()) CUDAF0.Resize(PaddedF0Size, 0.f);
 			if (!CUDAVolume.Empty()) CUDAVolume.Resize(PaddedF0Size, 0.f);

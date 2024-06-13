@@ -30,4 +30,15 @@ Parameter::Parameter(Module* _Parent, const std::wstring& _Name, const std::vect
 {
 	
 }
+
+void Parameter::loadData(const DictType& _WeightDict, bool _Strict)
+{
+	
+}
+
+void Parameter::saveData(FileGuard& _File)
+{
+	
+}
+
 DragonianLibSpaceEnd
