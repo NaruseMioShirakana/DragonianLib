@@ -60,6 +60,7 @@ public:
 		int64_t Chara = 0;
 		float upKeys = 0.f;
 		void* Other = nullptr;
+		size_t Padding = size_t(-1);
 	};
 
 	struct Others
@@ -127,7 +128,7 @@ public:
 	static DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float>&);
 
 	//
-	static DragonianLibSTL::Vector<float> InterpUVF0(const DragonianLibSTL::Vector<float>&);
+	static DragonianLibSTL::Vector<float> InterpUVF0(const DragonianLibSTL::Vector<float>&, size_t PaddedIndex = size_t(-1));
 
 	//获取UnVoiceMask
 	static DragonianLibSTL::Vector<float> GetUV(const DragonianLibSTL::Vector<float>&);

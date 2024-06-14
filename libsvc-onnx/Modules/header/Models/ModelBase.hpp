@@ -153,6 +153,10 @@ public:
 	{
 		return _samplingRate;
 	}
+
+	[[nodiscard]] DragonianLib::DragonianLibOrtEnv& GetDlEnv() { return OrtApiEnv; }
+
+	[[nodiscard]] const DragonianLib::DragonianLibOrtEnv& GetDlEnv() const { return OrtApiEnv; }
 protected:
 	//采样率
 	long _samplingRate = 22050;

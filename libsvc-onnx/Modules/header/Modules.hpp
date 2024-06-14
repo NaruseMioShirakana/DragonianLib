@@ -75,6 +75,10 @@ namespace libsvc
 		void NormMel(DragonianLibSTL::Vector<float>& MelSpec) const;
 
 		[[nodiscard]] bool IsDiffusion() const;
+
+		[[nodiscard]] DragonianLib::DragonianLibOrtEnv& GetDlEnv();
+
+		[[nodiscard]] const DragonianLib::DragonianLibOrtEnv& GetDlEnv() const;
 	private:
 		libsvc::DiffusionSvc* Diffusion_ = nullptr;
 		libsvc::ReflowSvc* Reflow_ = nullptr;

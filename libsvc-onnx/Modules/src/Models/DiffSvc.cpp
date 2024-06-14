@@ -129,7 +129,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 	if (step > MaxStep) step = MaxStep;
 	if (speedup >= step) speedup = step / 5;
 	if (speedup == 0) speedup = 1;
-
+	const auto SingleStepSkip = step / speedup;
 	if (_Slice.IsNotMute)
 	{
 		Ort::Session* Vocoder = nullptr;
@@ -277,6 +277,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 						iSpeaker.Resize(PaddedF0Size, 0.f);
 				}
 				_Inference_Params.AudioSize = WavPaddedSize;
+				_Inference_Params.Padding = _Slice.F0.Size();
 				InputTensors = _TensorExtractor->Extract(srcHiddenUnits, CUDAF0, CUDAVolume, CUDASpeaker, _Inference_Params);
 			}
 			else
@@ -375,6 +376,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 		DiffPCMOutput.Resize(dstWavLen, 0);
 		return DiffPCMOutput;
 	}
+	_callback(_Process += SingleStepSkip, 1);
 	const auto len = size_t(_Slice.OrgLen * int64_t(_samplingRate) / (int)(_Params.SrcSamplingRate));
 	return { len, 0i16, GetMemoryProvider(DragonianLib::Device::CPU) };
 }

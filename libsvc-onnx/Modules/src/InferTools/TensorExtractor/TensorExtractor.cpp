@@ -507,9 +507,12 @@ LibSvcTensorExtractor::Inputs DiffusionSvcTensorExtractor::Extract(const Dragoni
 	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	SvcTensors.Data.SpkShape = { SvcTensors.Data.FrameShape[1], int64_t(_NSpeaker) };
+	auto Padding = params.Padding * SvcTensors.Data.FrameShape[1] / F0.Size();
+	if (params.Padding == size_t(-1))
+		Padding = size_t(-1);
 
 	SvcTensors.Data.HiddenUnit = HiddenUnit;
-	SvcTensors.Data.F0 = InterpUVF0(InterpFunc(F0, long(F0.Size()), long(SvcTensors.Data.FrameShape[1])));
+	SvcTensors.Data.F0 = InterpUVF0(InterpFunc(F0, long(F0.Size()), long(SvcTensors.Data.FrameShape[1])), Padding);
 	for (auto& it : SvcTensors.Data.F0)
 		it *= (float)pow(2.0, static_cast<double>(params.upKeys) / 12.0);
 	SvcTensors.Data.Alignment = GetAligments(SvcTensors.Data.FrameShape[1], HubertLen);

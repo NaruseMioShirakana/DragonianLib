@@ -175,6 +175,19 @@ namespace libsvc
 	{
 		return Diffusion_;
 	}
+
+	DragonianLib::DragonianLibOrtEnv& UnionSvcModel::GetDlEnv()
+	{
+		if (Diffusion_) return Diffusion_->GetDlEnv();
+		return Reflow_->GetDlEnv();
+	}
+
+	const DragonianLib::DragonianLibOrtEnv& UnionSvcModel::GetDlEnv() const
+	{
+		if (Diffusion_) return Diffusion_->GetDlEnv();
+		return Reflow_->GetDlEnv();
+	}
+
 }
 
 namespace libsvc

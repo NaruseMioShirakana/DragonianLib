@@ -17,7 +17,7 @@
 #endif
 #endif
 #ifdef _WIN32
-#include "Windows.h"
+#include "wtypes.h"
 #endif
 #ifdef __cplusplus
 extern "C" {
@@ -353,10 +353,6 @@ extern "C" {
 		LPWSTR _AudioPath, 
 		INT32 _SamplingRate, 
 		Int16Vector _Output
-	);
-
-	LibSvcApi void LibSvcEnableFileLogger(
-		bool _Cond
 	);
 
 	LibSvcApi void LibSvcWriteAudioFile(

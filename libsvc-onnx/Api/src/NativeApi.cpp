@@ -372,7 +372,7 @@ INT32 LibSvcSetGlobalEnv(UINT32 ThreadCount, UINT32 DeviceID, UINT32 Provider)
 	try
 	{
 		delete GlobalEnv;
-		GlobalEnv = new DragonianLib::DragonianLibOrtEnv(ThreadCount, DeviceID, Provider);
+		GlobalEnv = new DragonianLib::DragonianLibOrtEnv(ThreadCount,DeviceID,Provider);
 	}
 	catch (std::exception& e)
 	{

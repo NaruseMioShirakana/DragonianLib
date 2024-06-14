@@ -105,7 +105,7 @@ DragonianLibSTL::Vector<int16_t> ReflowSvc::SliceInference(
 	std::normal_distribution<float> normal(0, 1);
 	auto step = (int64_t)_Params.Step;
 	if (step > MaxStep) step = MaxStep;
-
+	const auto SingleStepSkip = step;
 	if (_Slice.IsNotMute)
 	{
 		auto RawWav = InterpResample(_Slice.Audio, (int)(_Params.SrcSamplingRate), 16000, 32768.0f);
@@ -278,6 +278,7 @@ DragonianLibSTL::Vector<int16_t> ReflowSvc::SliceInference(
 		DiffPCMOutput.Resize(dstWavLen, 0);
 		return DiffPCMOutput;
 	}
+	_callback(_Process += SingleStepSkip, 1);
 	const auto len = size_t(_Slice.OrgLen * int64_t(_samplingRate) / (int)(_Params.SrcSamplingRate));
 	return { len, 0i16, GetMemoryProvider(DragonianLib::Device::CPU) };
 }

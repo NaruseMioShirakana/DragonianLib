@@ -171,19 +171,21 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0(const Dragon
 	return Of0;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const DragonianLibSTL::Vector<float>& F0, size_t PaddedIndex)
 {
+	if (PaddedIndex == size_t(-1))
+		PaddedIndex = F0.Size();
 	DragonianLibSTL::Vector<double> NUVF0;
 	DragonianLibSTL::Vector<double> UVF0Indices, NUVF0Indices;
-	UVF0Indices.Resize(F0.Size());
-	NUVF0.Resize(F0.Size());
-	NUVF0Indices.Resize(F0.Size());
+	UVF0Indices.Reserve(F0.Size());
+	NUVF0.Reserve(F0.Size());
+	NUVF0Indices.Reserve(F0.Size());
 	if(F0[0] < 0.0001f)
 	{
 		NUVF0.EmplaceBack(0);
 		NUVF0Indices.EmplaceBack(0);
 	}
-	for (size_t i = 1; i < F0.Size(); ++i)
+	for (size_t i = 1; i < PaddedIndex; ++i)
 	{
 		if (F0[i] < 0.0001f)
 			UVF0Indices.EmplaceBack((double)i);
@@ -195,6 +197,9 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const Dragonian
 	}
 	if (UVF0Indices.Empty() || NUVF0Indices.Empty())
 		return F0;
+
+	NUVF0Indices.EmplaceBack(F0.Size());
+	NUVF0.EmplaceBack(0.);
 	DragonianLibSTL::Vector<double> UVF0(F0.Size());
 	DragonianLibSTL::Vector<float> Of0 = F0;
 	interp1(NUVF0Indices.Data(), NUVF0.Data(), (int)NUVF0.Size(),

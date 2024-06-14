@@ -5,6 +5,8 @@
 #include <algorithm>
 #include "matlabfunctions.h"
 
+#define DRAGONIANLIBCONSTEXPR inline
+
 DRAGONIANLIBSTLBEGIN
 
 //using Type_ = float;
@@ -12,6 +14,8 @@ template <typename Type_>
 class Vector
 {
 public:
+	friend std::_Tidy_guard<Vector>;
+
 	using ValueType = Type_;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
@@ -22,12 +26,21 @@ public:
 	using SizeType = size_t;
 	using IndexType = long long;
 
-	~Vector()
+	DRAGONIANLIBCONSTEXPR ~Vector() noexcept
 	{
 		Destory();
 	}
 
-	Vector(SizeType _Size = 0, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	DRAGONIANLIBCONSTEXPR Vector()
+	{
+		Allocator_ = GetMemoryProvider(Device::CPU);
+		_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
+		_MyLast = _MyFirst;
+		_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
+		return;
+	}
+
+	DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -53,7 +66,7 @@ public:
 		}
 	}
 
-	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -85,7 +98,7 @@ public:
 		}
 	}
 
-	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc)
+	DRAGONIANLIBCONSTEXPR Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc)
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -96,27 +109,27 @@ public:
 		*_Block = nullptr;
 	}
 
-	Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	DRAGONIANLIBCONSTEXPR Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_Begin, _End, _Alloc);
 	}
 
-	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	DRAGONIANLIBCONSTEXPR Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_Buffer, _Buffer + _Size, _Alloc);
 	}
 
-	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	DRAGONIANLIBCONSTEXPR Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
 		ConstuctWithIteratorImpl(_List.begin(), _List.end(), _Alloc);
 	}
 
-	Vector(const Vector& _Left)
+	DRAGONIANLIBCONSTEXPR Vector(const Vector& _Left)
 	{
 		ConstuctWithIteratorImpl(_Left._MyFirst, _Left._MyLast, _Left.Allocator_);
 	}
 
-	Vector(Vector&& _Right) noexcept
+	DRAGONIANLIBCONSTEXPR Vector(Vector&& _Right) noexcept
 	{
 		_MyFirst = _Right._MyFirst;
 		_MyLast = _Right._MyLast;
@@ -129,7 +142,7 @@ public:
 		_Right._MyEnd = nullptr;
 	}
 
-	Vector& operator=(const Vector& _Left)
+	DRAGONIANLIBCONSTEXPR Vector& operator=(const Vector& _Left)
 	{
 		if (&_Left == this)
 			return *this;
@@ -138,7 +151,7 @@ public:
 		return *this;
 	}
 
-	Vector& operator=(Vector&& _Right) noexcept
+	DRAGONIANLIBCONSTEXPR Vector& operator=(Vector&& _Right) noexcept
 	{
 		if (&_Right != this)
 			Destory();
@@ -155,7 +168,7 @@ public:
 		return *this;
 	}
 
-	Reference operator[](SizeType _Index) const
+	DRAGONIANLIBCONSTEXPR Reference operator[](SizeType _Index) const
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
@@ -169,57 +182,57 @@ protected:
 	Allocator Allocator_;
 
 public:
-	Iterator Begin()
+	DRAGONIANLIBCONSTEXPR Iterator Begin()
 	{
 		return _MyFirst;
 	}
 
-	Iterator End()
+	DRAGONIANLIBCONSTEXPR Iterator End()
 	{
 		return _MyLast;
 	}
 
-	ConstIterator Begin() const
+	DRAGONIANLIBCONSTEXPR ConstIterator Begin() const
 	{
 		return _MyFirst;
 	}
 
-	ConstIterator End() const
+	DRAGONIANLIBCONSTEXPR ConstIterator End() const
 	{
 		return _MyLast;
 	}
 
-	Iterator begin()
+	DRAGONIANLIBCONSTEXPR Iterator begin()
 	{
 		return _MyFirst;
 	}
 
-	Iterator end()
+	DRAGONIANLIBCONSTEXPR Iterator end()
 	{
 		return _MyLast;
 	}
 
-	ConstIterator begin() const
+	DRAGONIANLIBCONSTEXPR ConstIterator begin() const
 	{
 		return _MyFirst;
 	}
 
-	ConstIterator end() const
+	DRAGONIANLIBCONSTEXPR ConstIterator end() const
 	{
 		return _MyLast;
 	}
 
-	SizeType Size() const
+	DRAGONIANLIBCONSTEXPR SizeType Size() const
 	{
 		return _MyLast - _MyFirst;
 	}
 
-	SizeType Capacity() const
+	DRAGONIANLIBCONSTEXPR SizeType Capacity() const
 	{
 		return _MyEnd - _MyFirst;
 	}
 
-	std::pair<Pointer, SizeType> Release()
+	DRAGONIANLIBCONSTEXPR std::pair<Pointer, SizeType> Release()
 	{
 		auto Ptr = _MyFirst;
 		auto _Size = Size();
@@ -230,38 +243,38 @@ public:
 		return { Ptr, _Size };
 	}
 
-	ValueType* Data()
+	DRAGONIANLIBCONSTEXPR ValueType* Data()
 	{
 		return std::_Unfancy_maybe_null(_MyFirst);
 	}
 
-	const ValueType* Data() const
+	DRAGONIANLIBCONSTEXPR const ValueType* Data() const
 	{
 		return std::_Unfancy_maybe_null(_MyFirst);
 	}
 
-	Allocator GetAllocator() const
+	DRAGONIANLIBCONSTEXPR Allocator GetAllocator() const
 	{
 		return Allocator_;
 	}
 
-	Reference Back() const
+	DRAGONIANLIBCONSTEXPR Reference Back() const
 	{
 		return *(_MyLast - 1);
 	}
 
-	Reference Front() const
+	DRAGONIANLIBCONSTEXPR Reference Front() const
 	{
 		return *(_MyFirst);
 	}
 
-	bool Empty() const
+	DRAGONIANLIBCONSTEXPR bool Empty() const
 	{
 		return _MyFirst == _MyLast;
 	}
 
 private:
-	void DestoryData()
+	DRAGONIANLIBCONSTEXPR void _Tidy()
 	{
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 		{
@@ -276,13 +289,13 @@ private:
 		_MyEnd = nullptr;
 	}
 
-	void Destory()
+	DRAGONIANLIBCONSTEXPR void Destory()
 	{
-		DestoryData();
+		_Tidy();
 		Allocator_ = nullptr;
 	}
 
-	void ConstuctWithIteratorImpl(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
+	DRAGONIANLIBCONSTEXPR void ConstuctWithIteratorImpl(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
 	{
 		if (!_Alloc) throw std::bad_alloc();
 		Allocator_ = _Alloc;
@@ -317,12 +330,12 @@ private:
 	}
 
 	template<typename... _ArgsTy>
-	void EmplaceImpl(Iterator _Where, _ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR void EmplaceImpl(Iterator _Where, _ArgsTy &&... _Args)
 	{
 		new (_Where) ValueType(std::forward<_ArgsTy>(_Args)...);
 	}
 
-	void ReserveImpl(SizeType _NewCapacity, IndexType _Front, IndexType _Tail)
+	DRAGONIANLIBCONSTEXPR void ReserveImpl(SizeType _NewCapacity, IndexType _Front, IndexType _Tail)
 	{
 		auto _Size = Size() + _Tail - _Front;
 		auto _TailSize = (_MyLast - _MyFirst) - _Front;
@@ -345,13 +358,13 @@ private:
 			memcpy(_Data + _Tail, _MyFirst + _Front, sizeof(ValueType) * _TailSize);
 		}
 
-		DestoryData();
+		_Tidy();
 		_MyFirst = _Data;
 		_MyLast = _Data + _Size;
 		_MyEnd = _Data + _NewCapacity;
 	}
 
-	void CopyImpl(IndexType _Front, IndexType _Tail)
+	DRAGONIANLIBCONSTEXPR void CopyImpl(IndexType _Front, IndexType _Tail)
 	{
 		auto _Size = Size() + _Tail - _Front;
 		auto _TailSize = (_MyLast - _MyFirst) - _Front;
@@ -369,14 +382,14 @@ private:
 		_MyLast = _MyFirst + _Size;
 	}
 public:
-	void Reserve(SizeType _NewCapacity)
+	DRAGONIANLIBCONSTEXPR void Reserve(SizeType _NewCapacity)
 	{
 		if (_NewCapacity == Capacity())
 			return;
 
 		if (_NewCapacity == 0)
 		{
-			DestoryData();
+			_Tidy();
 			_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
 			_MyLast = _MyFirst;
 			_MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
@@ -392,16 +405,19 @@ public:
 		else
 			memcpy(_Data, _MyFirst, sizeof(ValueType) * _Size);
 
-		DestoryData();
+		_Tidy();
 		_MyFirst = _Data;
 		_MyLast = _Data + _Size;
 		_MyEnd = _Data + _NewCapacity;
 	}
 
-	void Resize(SizeType _NewSize, ConstReference _Val = ValueType(0))
+	DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize, ConstReference _Val = ValueType(0))
 	{
 		if (_NewSize == Size())
 			return;
+
+		if (_NewSize >= Capacity())
+			Reserve(_NewSize * 2);
 
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 		{
@@ -417,7 +433,7 @@ public:
 	}
 
 	template<typename... _ArgsTy>
-	void Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR void Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -432,12 +448,12 @@ public:
 	}
 
 	template<typename... _ArgsTy>
-	void EmplaceBack(_ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR void EmplaceBack(_ArgsTy &&... _Args)
 	{
 		Emplace(_MyLast, std::forward<_ArgsTy>(_Args)...);
 	}
 
-	void Insert(ConstIterator _Where, const ValueType& _Value)
+	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, const ValueType& _Value)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -455,7 +471,7 @@ public:
 			*(_MyFirst + Idx) = _Value;
 	}
 
-	void Insert(ConstIterator _Where, ValueType&& _Value)
+	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, ValueType&& _Value)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -473,7 +489,7 @@ public:
 			*(_MyFirst + Idx) = std::move(_Value);
 	}
 
-	void Insert(ConstIterator _Where, SizeType _Count = 1, const ValueType& _Value = ValueType(0))
+	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, SizeType _Count = 1, const ValueType& _Value = ValueType(0))
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -493,7 +509,7 @@ public:
 				*(_MyFirst + Idx + i) = _Value;
 	}
 
-	void Insert(ConstIterator _Where, ConstIterator _First, ConstIterator _Last)
+	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, ConstIterator _First, ConstIterator _Last)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -517,7 +533,7 @@ public:
 				*(_MyFirst + Idx + i) = *(_First++);
 	}
 
-	void Clear()
+	DRAGONIANLIBCONSTEXPR void Clear()
 	{
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 		{
@@ -528,7 +544,7 @@ public:
 		_MyLast = _MyFirst;
 	}
 
-	void PopBack()
+	DRAGONIANLIBCONSTEXPR void PopBack()
 	{
 		--_MyLast;
 		if constexpr (!std::is_arithmetic_v<ValueType>)
@@ -537,7 +553,7 @@ public:
 };
 
 template <typename _Type>
-Vector<_Type> Arange(_Type _Start, _Type _End, _Type _Step = _Type(1.), _Type _NDiv = _Type(1.))
+DRAGONIANLIBCONSTEXPR Vector<_Type> Arange(_Type _Start, _Type _End, _Type _Step = _Type(1.), _Type _NDiv = _Type(1.))
 {
 	Vector<_Type> OutPut(size_t((_End - _Start) / _Step));
 	auto OutPutPtr = OutPut.Begin();
@@ -551,7 +567,7 @@ Vector<_Type> Arange(_Type _Start, _Type _End, _Type _Step = _Type(1.), _Type _N
 }
 
 template <typename _Type>
-Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
+DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
 {
 	Vector<_Type> Result(_Signal.Size());
 
@@ -580,7 +596,7 @@ Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
 }
 
 template<typename T>
-double Average(const T* start, const T* end)
+DRAGONIANLIBCONSTEXPR double Average(const T* start, const T* end)
 {
 	const auto size = end - start + 1;
 	auto avg = (double)(*start);
@@ -600,7 +616,7 @@ double Average(const T* start, const T* end)
  * \return 输出数据
  */
 template<typename TOut, typename TIn>
-static Vector<TOut> InterpResample(
+DRAGONIANLIBCONSTEXPR Vector<TOut> InterpResample(
 	const Vector<TIn>& _Data,
 	long _SrcSamplingRate,
 	long _DstSamplingRate,
@@ -644,7 +660,7 @@ static Vector<TOut> InterpResample(
  * \return 输出数据
  */
 template<typename T>
-static Vector<T> InterpFunc(
+DRAGONIANLIBCONSTEXPR Vector<T> InterpFunc(
 	const Vector<T>& _Data,
 	long _SrcSamplingRate,
 	long _DstSamplingRate
