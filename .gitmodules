@@ -16,3 +16,6 @@
 [submodule "Third-Party-Libraries/fftw"]
 	path = Third-Party-Libraries/fftw
 	url = https://github.com/FFTW/fftw3
+[submodule "libsvc-onnx/Third-Party-Libraries/ortmain"]
+	path = libsvc-onnx/Third-Party-Libraries/ortmain
+	url = https://github.com/Microsoft/onnxruntime
