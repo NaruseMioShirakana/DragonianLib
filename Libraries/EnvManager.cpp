@@ -1,14 +1,14 @@
 ﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
 
 #include "EnvManager.hpp"
-#include <dml_provider_factory.h>
+#include <providers/dml/dml_provider_factory.h>
 #include <thread>
 #include "Util/Logger.h"
 #include "Util/StringPreprocess.h"
 
 namespace DragonianLib {
 
-	const char* logger_id = "libdlvoicecodec";
+	const char* logger_id = "DragonianLib";
 
 	void DragonianLibOrtLoggingFn(void* param, OrtLoggingLevel severity, const char* category, const char* logid, const char* code_location,
 		const char* message)
@@ -26,7 +26,9 @@ namespace DragonianLib {
 
 	void DragonianLibOrtEnv::Destory()
 	{
-		GetLogger().log(L"[Info] Removing Env & Release Memory");
+		const bool log = GlobalOrtSessionOptions;
+		if (log)
+			GetLogger().log(L"[Info] Removing Env & Release Memory");
 		delete GlobalOrtSessionOptions;
 		delete GlobalOrtEnv;
 		delete GlobalOrtMemoryInfo;
@@ -37,7 +39,9 @@ namespace DragonianLib {
 		if (cuda_option_v2)
 			Ort::GetApi().ReleaseCUDAProviderOptions(cuda_option_v2);
 		cuda_option_v2 = nullptr;
-		GetLogger().log(L"[Info] Complete!");
+
+		if (log)
+			GetLogger().log(L"[Info] Complete!");
 	}
 
 	void DragonianLibOrtEnv::Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)

@@ -22,7 +22,7 @@
 #pragma once
 
 #ifdef DRAGONIANLIB_ONNXRT_LIB
-#include <onnxruntime_cxx_api.h>
+#include "onnxruntime_cxx_api.h"
 
 namespace DragonianLib {
 

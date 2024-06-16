@@ -1,4 +1,6 @@
 #include <iostream>
+#include <tchar.h>
+
 #include "AvCodec.h"
 #include "Modules.hpp"
 #include "NativeApi.h"
@@ -40,7 +42,17 @@ int main()
 #else
 	libsvc::SetupKernel();
 #endif
-	LibSvcSetGlobalEnv(8, 0, 2);
+	constexpr auto EProvider = 1;
+	constexpr auto NumThread = 8;
+	constexpr auto DeviceId = 0;
+
+	if(LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
+	{
+		auto ErrorMessage = LibSvcGetError(0);
+		std::cout << WideStringToUTF8(ErrorMessage);
+		LibSvcFreeString(ErrorMessage);
+		return 0;
+	}
 	libsvc::Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
 	Config.SamplingRate = 44100;
@@ -58,7 +70,7 @@ int main()
 	Config.DiffusionSvc.Pred = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_pred.onnx)";
 	Config.DiffusionSvc.After = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_after.onnx)";
 	long SrcSr = Config.SamplingRate;
-
+#include <corecrt.h>
 #ifdef DRAGONIANLIB_IMPORT
 	LibSvcHparams DynConfig{
 		Config.TensorExtractor.data(),
@@ -106,9 +118,9 @@ int main()
 		1,
 		&DynConfig,
 		ProgressCb,
-		2,
-		0,
-		8
+		EProvider,
+		DeviceId,
+		NumThread
 	);
 	if(!Model)
 	{
@@ -133,7 +145,7 @@ int main()
 		return 0;
 	}
 #else
-	auto Model = libsvc::UnionSvcModel(Config, ProgressCb, 2, 8, 0);
+	auto Model = libsvc::UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
 	auto Audio = DragonianLib::AvCodec().DecodeSigned16(
 		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
 		SrcSr
