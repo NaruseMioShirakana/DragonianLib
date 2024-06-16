@@ -135,6 +135,7 @@ void InitLibSvcParams(LibSvcParams* _Input)
 	_Input->VocoderMelBins = 128;
 	_Input->VocoderSamplingRate = 44100;
 	_Input->ShallowDiffuisonSpeaker = 0;
+	_Input->__DEBUG__MODE__ = 0;
 }
 
 void InitLibSvcSlicerSettings(LibSvcSlicerSettings* _Input)
@@ -605,6 +606,119 @@ INT32 LibSvcInferSlice(
 			*(AudioContainer*)(_Output) = ((VitsSvc*)(_Model))->SliceInference(*(const SingleSlice*)(_Slice), Param, *_Process);
 		else if (_T == 1)
 			*(AudioContainer*)(_Output) = ((UnionSvc*)(_Model))->SliceInference(*(const SingleSlice*)(_Slice), Param, *_Process);
+		else
+		{
+			RaiseError(L"UnSupported Model Type!");
+			return 1;
+		}
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
+}
+
+INT32 LibSvcInferAudio(
+	SvcModel _Model,
+	UINT32 _T,
+	SlicesType _Audio,
+	const void* _InferParams,
+	UINT64 _SrcLength,
+	size_t* _Process,
+	Int16Vector _Output
+)
+{
+	if (!_Model)
+	{
+		RaiseError(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Audio)
+	{
+		RaiseError(L"_Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_InferParams)
+	{
+		RaiseError(L"_InferParams Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Process)
+	{
+		RaiseError(L"_Process Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		RaiseError(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	const auto& InpParam = *(const LibSvcParams*)(_InferParams);
+
+	if (!InpParam._VocoderModel && _T == 1)
+	{
+		RaiseError(L"_VocoderModel Could Not Be Null!");
+		return 1;
+	}
+
+	const Params Param
+	{
+		InpParam.NoiseScale,
+		InpParam.Seed,
+		InpParam.SpeakerId,
+		InpParam.SrcSamplingRate,
+		InpParam.SpkCount,
+		InpParam.IndexRate,
+		InpParam.ClusterRate,
+		InpParam.DDSPNoiseScale,
+		InpParam.Keys,
+		InpParam.MeanWindowLength,
+		InpParam.Pndm,
+		InpParam.Step,
+		InpParam.TBegin,
+		InpParam.TEnd,
+		LibSvcNullStrCheck(InpParam.Sampler),
+		LibSvcNullStrCheck(InpParam.ReflowSampler),
+		LibSvcNullStrCheck(InpParam.F0Method),
+		(bool)InpParam.UseShallowDiffusionOrEnhancer,
+		InpParam._VocoderModel,
+		InpParam._ShallowDiffusionModel,
+		(bool)InpParam.ShallowDiffusionUseSrcAudio,
+		InpParam.VocoderHopSize,
+		InpParam.VocoderMelBins,
+		InpParam.VocoderSamplingRate,
+		InpParam.ShallowDiffuisonSpeaker
+	};
+	auto __Slices = *(const Slices*)(_Audio);
+
+	auto& OutPutAudio = *(AudioContainer*)(_Output);
+	OutPutAudio.Reserve(_SrcLength);
+	try
+	{
+		if (_T == 0)
+		{
+			for (const auto& Single : __Slices.Slices)
+			{
+				auto Out = ((VitsSvc*)(_Model))->SliceInference(Single, Param, *_Process);
+				OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
+			}
+		}
+		else if (_T == 1)
+		{
+			for (const auto& Single : __Slices.Slices)
+			{
+				auto Out = ((UnionSvc*)(_Model))->SliceInference(Single, Param, *_Process);
+				OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
+			}
+		}
 		else
 		{
 			RaiseError(L"UnSupported Model Type!");

@@ -1,8 +1,8 @@
 #pragma once
-#ifdef DRAGONIANLIB_EXPORT
+#ifdef DRAGONIANLIB_IMPORT
 #define LibSvcApi __declspec(dllexport)
 #else
-#ifdef DRAGONIANLIB_IMPORT
+#ifdef DRAGONIANLIB_EXPORT
 #define LibSvcApi __declspec(dllimport)
 #else
 #define LibSvcApi
@@ -96,6 +96,7 @@ extern "C" {
 		INT32 VocoderMelBins;							//声码器MelBins				[    Bins    ]
 		INT32 VocoderSamplingRate;						//声码器采样率				[     SR     ]
 		INT64 ShallowDiffuisonSpeaker;					//浅扩散中Vits模型输入的角色ID	[   0 ~ NS   ]
+		INT32 __DEBUG__MODE__;
 	};
 
 	struct DiffusionSvcPaths
@@ -295,6 +296,16 @@ extern "C" {
 		CSliceType _Slice,							//Slices By "LibSvcAllocateSliceData()"
 		const void* _InferParams,					//Ptr Of LibSvcParams
 		size_t* _Process, 
+		Int16Vector _Output							//std::vector<int16_t> By "LibSvcAllocateAudio()"
+	);
+
+	LibSvcApi INT32 LibSvcInferAudio(
+		SvcModel _Model,							//SingingVoiceConversion Model
+		UINT32 _T,
+		SlicesType _Audio,							//Slices By "LibSvcAllocateSliceData()"
+		const void* _InferParams,					//Ptr Of LibSvcParams
+		UINT64 _SrcLength,
+		size_t* _Process,
 		Int16Vector _Output							//std::vector<int16_t> By "LibSvcAllocateAudio()"
 	);
 
