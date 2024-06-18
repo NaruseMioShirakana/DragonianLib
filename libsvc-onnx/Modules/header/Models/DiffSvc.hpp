@@ -33,8 +33,11 @@ public:
     DiffusionSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
         unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
 	~DiffusionSvc() override;
+    DiffusionSvc(const DiffusionSvc&) = delete;
+    DiffusionSvc(DiffusionSvc&&) = delete;
+    DiffusionSvc& operator=(const DiffusionSvc&) = delete;
+    DiffusionSvc& operator=(DiffusionSvc&&) = delete;
 
     void Destory();
 

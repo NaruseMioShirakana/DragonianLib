@@ -29,6 +29,11 @@ void SetGlobalEnvDir(const std::wstring& _Folder)
 	GlobalEnvDir = _Folder;
 }
 
+FileGuard::FileGuard(const std::wstring& _Path, const std::wstring& _Mode)
+{
+	Open(_Path, _Mode);
+}
+
 FileGuard::~FileGuard()
 {
 	Close();
@@ -49,6 +54,7 @@ FileGuard& FileGuard::operator=(FileGuard&& _Right) noexcept
 
 void FileGuard::Open(const std::wstring& _Path, const std::wstring& _Mode)
 {
+	Close();
 #ifdef _WIN32
 	_wfopen_s(&file_, _Path.c_str(), _Mode.c_str());
 #else

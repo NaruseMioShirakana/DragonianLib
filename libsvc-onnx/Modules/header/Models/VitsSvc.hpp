@@ -32,8 +32,11 @@ public:
     VitsSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
         unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
 	~VitsSvc() override;
+    VitsSvc(const VitsSvc&) = delete;
+    VitsSvc(VitsSvc&&) = delete;
+    VitsSvc& operator=(const VitsSvc&) = delete;
+    VitsSvc& operator=(VitsSvc&&) = delete;
 
     void Destory();
 

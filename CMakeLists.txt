@@ -184,6 +184,10 @@ if(DRAGONIANLIB_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.h
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.cpp
         ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.c
+        ${PROJECT_SOURCE_DIR}/Other/*.c
+        ${PROJECT_SOURCE_DIR}/Other/*.cpp
+        ${PROJECT_SOURCE_DIR}/Other/*.h
+        ${PROJECT_SOURCE_DIR}/Other/*.hpp
     )
 endif()
 
@@ -237,6 +241,14 @@ add_subdirectory(Third-Party-Libraries/Faiss)
 target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC faiss)
 include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/Faiss/faiss)
 
+add_subdirectory(Third-Party-Libraries/yyjson)
+target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC yyjson)
+include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/src)
+
+add_subdirectory(Third-Party-Libraries/libmidi)
+target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC libremidi)
+include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/libmidi/include)
+
 #if(NOT ONNXRT_LIBRARIES)
 #    set(ONNXRT_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/onnxruntime/runtimes/win-x64/native/onnxruntime.lib)
 #endif()
@@ -271,6 +283,7 @@ include_directories(${PROJECT_SOURCE_DIR}/Libraries/MyTemplateLibrary)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries/AvCodec)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries/K-DimensionalTree)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries)
+include_directories(${PROJECT_SOURCE_DIR}/Other)
 
 #standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)

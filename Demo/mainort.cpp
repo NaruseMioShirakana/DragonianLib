@@ -1,14 +1,20 @@
 #include <iostream>
 #include <tchar.h>
-
 #include "AvCodec.h"
 #include "Modules.hpp"
 #include "NativeApi.h"
+#include "MusicTranscription/PianoTranscription.hpp"
+#include "SuperResolution/SuperResolution.hpp"
 
 size_t TotalStep = 0;
 void ProgressCb(size_t a, size_t)
 {
 	printf("%lf%c\n", double(a) / double(TotalStep) * 100., '%');
+}
+
+void ProgressCbS(size_t a, size_t b)
+{
+	printf("%lf%c\n", double(a) / double(b) * 100., '%');
 }
 
 std::string WideStringToUTF8(const std::wstring& input)
@@ -31,12 +37,74 @@ std::string WideStringToUTF8(const std::wstring& input)
 #endif
 }
 
+void LibSvcTest();
+
+void LibSrTest()
+{
+	libsr::RealESRGan Model(
+		{
+			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model.onnx)",
+			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model_alpha.onnx)",
+			64,
+			64
+		},
+		ProgressCbS,
+		8,
+		0,
+		2
+	);
+
+	DragonianLib::GdiInit();
+
+	DragonianLib::ImageSlicer Image(
+		LR"(D:\VSGIT\CG000002.BMP)",
+		64,
+		64, 
+		16, 
+		0.f, 
+		false
+	);
+
+	Model.Infer(Image, 50);
+
+	Image.MergeWrite(LR"(D:\VSGIT\CG000002-N.png)", 4, 100);
+}
+
+void LibMtsTest()
+{
+	libmts::PianoTranScription Model(
+		{
+			LR"(D:\VSGIT\ShirakanaUI\build\x64\Release\Models\PianoScription\model.onnx)"
+		},
+		ProgressCbS,
+		8,
+		0,
+		0
+	);
+
+	libmts::PianoTranScription::Hparams _Config;
+	auto Audio = DragonianLib::AvCodec().DecodeFloat(
+		R"(C:\DataSpace\MediaProj\Fl Proj\Childish White.mp3)",
+		16000
+	);
+
+	auto Midi = Model.Infer(Audio, _Config, 1);
+	WriteMidiFile(LR"(C:\DataSpace\MediaProj\Fl Proj\Childish White Mts.mid)", Midi, 0, 384 * 2);
+}
+
 int main()
 {
 #ifdef _WIN32
 	if (GetPriorityClass(GetCurrentProcess()) != REALTIME_PRIORITY_CLASS)
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
+	LibMtsTest();
+	system("pause");
+	return 0;
+}
+
+void LibSvcTest()
+{
 #ifdef DRAGONIANLIB_IMPORT
 	LibSvcInit();
 #else
@@ -46,12 +114,12 @@ int main()
 	constexpr auto NumThread = 8;
 	constexpr auto DeviceId = 0;
 
-	if(LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
+	if (LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
 	{
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
 		LibSvcFreeString(ErrorMessage);
-		return 0;
+		return;
 	}
 	libsvc::Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
@@ -122,7 +190,7 @@ int main()
 		DeviceId,
 		NumThread
 	);
-	if(!Model)
+	if (!Model)
 	{
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
@@ -182,7 +250,7 @@ int main()
 		auto Str = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(Str);
 		LibSvcFreeString(Str);
-		return 0;
+		return;
 	}
 
 #ifdef DRAGONIANLIB_IMPORT
@@ -235,7 +303,7 @@ int main()
 	OutAudio.Reserve(Audio.Size() * 2);
 	TotalStep = Slices.Slices.Size() * 10;
 #endif
-	
+
 #ifdef DRAGONIANLIB_IMPORT
 	LibSvcParams DynParams{
 		Params.NoiseScale,
@@ -270,10 +338,7 @@ int main()
 	auto __InferenceTime = double(clock() - __BeginTime) / 1000.;
 	std::cout << "RTF: " << __InferenceTime / ((double)LibSvcGetAudioSize(Audio) / (double)SrcSr) << '\n';
 #endif
-	
 
-	
-	//std::vector<>;
 #ifdef DRAGONIANLIB_IMPORT
 	for (size_t i = 0; i < LibSvcGetSliceCount(Slices); ++i)
 	{
@@ -325,7 +390,11 @@ int main()
 #else
 		OutAudio.Insert(OutAudio.end(), Out.begin(), Out.end());
 #endif
+#ifdef DRAGONIANLIB_IMPORT
 	}
+#else
+	}
+#endif
 
 #ifdef DRAGONIANLIB_IMPORT
 	WCHAR OutPutPath[] = LR"(D:/VSGIT/MoeSS - Release/Testdata/Output-PCM-SignedInt-16.wav)";
@@ -345,5 +414,4 @@ int main()
 		Config.SamplingRate
 	);
 #endif
-	return 0;
 }

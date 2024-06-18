@@ -12,6 +12,7 @@
 #include <string>
 
 #include "AvCodec.h"
+#include "Base.h"
 #include "Modules.hpp"
 
 
@@ -329,6 +330,13 @@ void LibSvcSetSpeakerMixDataSize(void* _Obj, size_t _NSpeaker)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
 	Obj.Speaker.Resize(_NSpeaker, DragonianLibSTL::Vector(Obj.F0.Size(), 0.f));
+}
+
+void LibSvcSetGlobalEnvDir(
+	LPWSTR _Dir
+)
+{
+	DragonianLib::SetGlobalEnvDir(_Dir);
 }
 
 void LibSvcInit()

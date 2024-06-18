@@ -87,6 +87,7 @@ class FileGuard
 public:
 	FileGuard() = default;
 	~FileGuard();
+	FileGuard(const std::wstring& _Path, const std::wstring& _Mode);
 	FileGuard(const FileGuard& _Left) = delete;
 	FileGuard& operator=(const FileGuard& _Left) = delete;
 	FileGuard(FileGuard&& _Right) noexcept;

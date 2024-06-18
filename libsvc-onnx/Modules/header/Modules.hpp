@@ -32,6 +32,10 @@ namespace libsvc
 	public:
 		UnionSvcModel() = delete;
 		~UnionSvcModel();
+		UnionSvcModel(const UnionSvcModel&) = delete;
+		UnionSvcModel(UnionSvcModel&&) = delete;
+		UnionSvcModel& operator=(const UnionSvcModel&) = delete;
+		UnionSvcModel& operator=(UnionSvcModel&&) = delete;
 
 		UnionSvcModel(const libsvc::Hparams& Config,
 			const libsvc::LibSvcModule::ProgressCallback& Callback,

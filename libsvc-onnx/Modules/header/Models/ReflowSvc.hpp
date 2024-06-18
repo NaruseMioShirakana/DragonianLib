@@ -34,8 +34,11 @@ public:
     ReflowSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
         unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
-
 	~ReflowSvc() override;
+    ReflowSvc(const ReflowSvc&) = delete;
+    ReflowSvc(ReflowSvc&&) = delete;
+    ReflowSvc& operator=(const ReflowSvc&) = delete;
+    ReflowSvc& operator=(ReflowSvc&&) = delete;
 
     void Destory();
 

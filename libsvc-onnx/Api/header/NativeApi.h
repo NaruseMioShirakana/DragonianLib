@@ -1,13 +1,5 @@
 #pragma once
-#ifdef DRAGONIANLIB_IMPORT
-#define LibSvcApi __declspec(dllexport)
-#else
-#ifdef DRAGONIANLIB_EXPORT
-#define LibSvcApi __declspec(dllimport)
-#else
-#define LibSvcApi
-#endif
-#endif
+#include "DynLibExport.h"
 
 #ifdef __GNUC__
 #define LibSvcDeprecated __attribute__((deprecated))
@@ -245,6 +237,10 @@ extern "C" {
 	LibSvcApi size_t LibSvcGetSliceCount(SlicesType _Obj);
 
 	/******************************************Fun**********************************************/
+
+	LibSvcApi void LibSvcSetGlobalEnvDir(
+		LPWSTR _Dir
+	);
 
 	LibSvcApi void LibSvcInit();
 
