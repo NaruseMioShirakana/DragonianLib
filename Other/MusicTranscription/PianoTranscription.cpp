@@ -37,6 +37,7 @@ namespace libmts
 	// Infer Function
 	midi_events PianoTranScription::Infer(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize) const
 	{
+		const auto segment_samples = size_t(_Config.segment_seconds * float(_Config.sample_rate));
 		const size_t audio_len = _Audio.Size();
 		const size_t pad_len = size_t(ceil(double(audio_len) / double(segment_samples))) * segment_samples;
 		if (audio_len < pad_len)

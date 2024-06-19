@@ -52,6 +52,16 @@ public:
 	*/
 	bool MergeWrite(const wchar_t* path, int scale, unsigned int quality = 100) const;
 
+	int GetWidth() const
+	{
+		return width_;
+	}
+
+	int GetHeight() const
+	{
+		return height_;
+	}
+
 private:
 	//原切片尺寸信息
 	struct ClipData
@@ -60,6 +70,8 @@ private:
 		std::pair<int, int> blockSize;//切片尺寸
 		int clipLength = 0;			  //切片offset长度
 	} m_clip;
+	int width_;
+	int height_;
 };
 
 void GdiInit();

@@ -71,7 +71,7 @@ void DrawRectangle(HDC hdc, int x, int y, int width, int height)
 }
 
 ImageSlicer::ImageSlicer(const wchar_t* input, const int width, const int height,
-	const int len, const float pad, bool line)
+	const int len, const float pad, bool line) : width_(width), height_(height)
 {
 	//加载图像
 	Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(input);

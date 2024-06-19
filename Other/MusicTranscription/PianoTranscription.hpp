@@ -104,7 +104,7 @@ namespace libmts
 		PianoTranScription& operator=(PianoTranScription&&) = delete;
 
 		Ort::Session* PianoTranScriptionModel = nullptr;
-		size_t segment_samples = 160000;
+		//size_t segment_samples = 160000;
 		long sample_rate = 16000;
 		long classes_num = 88;
 

@@ -46,7 +46,8 @@ void LibSrTest()
 			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model.onnx)",
 			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model_alpha.onnx)",
 			64,
-			64
+			64,
+			4
 		},
 		ProgressCbS,
 		8,
@@ -74,7 +75,7 @@ void LibMtsTest()
 {
 	libmts::PianoTranScription Model(
 		{
-			LR"(D:\VSGIT\ShirakanaUI\build\x64\Release\Models\PianoScription\model.onnx)"
+			LR"(D:\VSGIT\libsvc\model.onnx)"
 		},
 		ProgressCbS,
 		8,
@@ -98,7 +99,8 @@ int main()
 	if (GetPriorityClass(GetCurrentProcess()) != REALTIME_PRIORITY_CLASS)
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
-	LibMtsTest();
+	//LibMtsTest();
+	LibSrTest();
 	system("pause");
 	return 0;
 }
