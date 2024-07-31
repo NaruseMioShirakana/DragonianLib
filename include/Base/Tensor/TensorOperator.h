@@ -1156,7 +1156,7 @@ void PtrOperatorSingle(
 		return;
 	}
 
-	using _OperatorFn = _Type(*)(
+	using _OperatorFn = void(*)(
 		_Type*,
 		const SizeType* __restrict,
 		bool,
@@ -1178,8 +1178,6 @@ void PtrOperatorSingle(
 
 	_Type* DataPtrDst = (_Type*)_Dst.Data();
 	_Type* DataPtrSrc = (_Type*)_Src.Data();
-
-	
 
 	if (_TotalDim > 6)
 	{
@@ -1330,6 +1328,24 @@ void PtrOperatorSingle(
 			}
 		}
 	}
+}
+
+//using _Type = float;
+template<typename _Type>
+void LinearInterpolate(
+	_Type* _DstPtr,
+	const SizeType* __restrict _DstShape,
+	bool _DstT,
+	_Type* _SrcPtr,
+	const SizeType* __restrict _SrcShape,
+	bool _SrcT
+)
+{
+	if (_DstT || _SrcT)
+		DragonianLibThrow("Input Must Be Continuous!");
+	SizeType SrcCount = _SrcShape[0], DstCount = _DstShape[0];
+	double ScaleFactor = double(DstCount) / double(SrcCount);
+
 }
 
 void PtrOperatorMono();

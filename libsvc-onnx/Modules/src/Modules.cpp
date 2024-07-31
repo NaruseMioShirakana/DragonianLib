@@ -62,8 +62,11 @@ namespace libsvc
 
 	DragonianLibSTL::Vector<int16_t> UnionSvcModel::InferPCMData(const DragonianLibSTL::Vector<int16_t>& _PCMData, long _SrcSamplingRate, const libsvc::InferenceParams& _Params) const
 	{
-		if (Diffusion_) return Diffusion_->InferPCMData(_PCMData, _SrcSamplingRate, _Params);
-		return Reflow_->InferPCMData(_PCMData, _SrcSamplingRate, _Params);
+		DragonianLibSTL::Vector<int16_t> Audio;
+		if (Diffusion_) Audio = Diffusion_->InferPCMData(_PCMData, _SrcSamplingRate, _Params);
+		else Audio = Reflow_->InferPCMData(_PCMData, _SrcSamplingRate, _Params);
+		Audio.Resize(_PCMData.Size(), 0i16);
+		return Audio;
 	}
 
 	DragonianLibSTL::Vector<int16_t> UnionSvcModel::ShallowDiffusionInference(
