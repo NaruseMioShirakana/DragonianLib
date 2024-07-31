@@ -16,12 +16,12 @@
 [submodule "Third-Party-Libraries/fftw"]
 	path = Third-Party-Libraries/fftw
 	url = https://github.com/FFTW/fftw3
-[submodule "libsvc-onnx/Third-Party-Libraries/ortmain"]
-	path = libsvc-onnx/Third-Party-Libraries/ortmain
-	url = https://github.com/Microsoft/onnxruntime
 [submodule "Third-Party-Libraries/yyjson"]
 	path = Third-Party-Libraries/yyjson
 	url = https://github.com/ibireme/yyjson
 [submodule "Third-Party-Libraries/libmidi"]
 	path = Third-Party-Libraries/libmidi
 	url = https://github.com/celtera/libremidi
+[submodule "Third-Party-Libraries/ortmain"]
+	path = Third-Party-Libraries/ortmain
+	url = https://github.com/Microsoft/onnxruntime
