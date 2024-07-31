@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /Third-Party-Libraries/onnxruntime
 /Third-Party-Libraries/fftw-3.3.10
 /OutPuts
+/OutPuts/*
