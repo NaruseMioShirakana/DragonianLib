@@ -1126,7 +1126,6 @@ void* LibSvcLoadVocoder(LPWSTR VocoderPath)
 		return nullptr;
 	}
 
-
 	try
 	{
 		auto VocoderL = new Ort::Session(*GlobalEnv->GetEnv(), VocoderPath, *GlobalEnv->GetSessionOptions());

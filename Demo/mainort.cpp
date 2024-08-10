@@ -42,6 +42,7 @@ std::string WideStringToUTF8(const std::wstring& input)
 #endif
 }
 
+#ifndef DRAGONIANLIB_IMPORT
 template<typename _T = float>
 void PrintTensor(DragonianLib::Tensor& _Tensor)
 {
@@ -67,10 +68,13 @@ void PrintTensor<bool>(DragonianLib::Tensor& _Tensor)
 	}
 	std::cout << "\n";
 }
+#endif
 
 using AudioContainer = DragonianLibSTL::Vector<int16_t>;
 
 void LibSvcTest();
+
+#ifndef DRAGONIANLIB_IMPORT
 void LibSrTest();
 void LibMtsTest();
 void TensorLibDemo();
@@ -79,6 +83,7 @@ void RecordTaskEnd(bool* ptask);
 void OutPutTask(AudioContainer& Audio);
 void CrossFadeTask();
 void InferTask(const libsvc::UnionSvcModel* Model, long _SrcSr, const libsvc::InferenceParams& Params);
+#endif
 
 int main()
 {
@@ -101,7 +106,7 @@ void LibSvcTest()
 	libsvc::SetupKernel();
 #endif
 	constexpr auto EProvider = 1;
-	constexpr auto NumThread = 8;
+	constexpr auto NumThread = 16;
 	constexpr auto DeviceId = 0;
 
 	if (LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
@@ -185,7 +190,7 @@ void LibSvcTest()
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
 		LibSvcFreeString(ErrorMessage);
-		return 0;
+		return;
 	}
 
 	wchar_t AudioInputPath[] = LR"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)";
@@ -200,7 +205,7 @@ void LibSvcTest()
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
 		LibSvcFreeString(ErrorMessage);
-		return 0;
+		return;
 	}
 #else
 	auto Model = libsvc::UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
@@ -228,7 +233,7 @@ void LibSvcTest()
 	};
 #endif
 
-	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf_hifigan.onnx)";
+	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
 	libsvc::InferenceParams Params;
 	Params.SrcSamplingRate = SrcSr;
 	Params.VocoderSamplingRate = Config.SamplingRate;
@@ -255,7 +260,7 @@ void LibSvcTest()
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
 		LibSvcFreeString(ErrorMessage);
-		return 0;
+		return;
 	}
 
 	wchar_t F0MethodS[] = L"Dio";
@@ -274,7 +279,7 @@ void LibSvcTest()
 		auto ErrorMessage = LibSvcGetError(0);
 		std::cout << WideStringToUTF8(ErrorMessage);
 		LibSvcFreeString(ErrorMessage);
-		return 0;
+		return;
 	}
 #else
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
@@ -360,7 +365,7 @@ void LibSvcTest()
 			auto ErrorMessage = LibSvcGetError(0);
 			std::cout << WideStringToUTF8(ErrorMessage);
 			LibSvcFreeString(ErrorMessage);
-			return 0;
+			return;
 		}
 #else
 		auto Out = Model.SliceInference(Single, Params, Proc);
@@ -405,6 +410,8 @@ void LibSvcTest()
 	);
 #endif
 }
+
+#ifndef DRAGONIANLIB_IMPORT
 
 void TensorLibDemo()
 {
@@ -788,3 +795,5 @@ void RealTime()
 	waveInClose(hWaveIn);
 	Thp.Join();
 }
+
+#endif

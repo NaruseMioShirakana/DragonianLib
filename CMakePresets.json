@@ -1,5 +1,5 @@
-﻿{
-    "version": 3,
+{
+  "version": 3,
   "configurePresets": [
     {
       "name": "windows-base",
