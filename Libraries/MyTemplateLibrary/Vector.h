@@ -6,8 +6,11 @@
 #include "matlabfunctions.h"
 
 #define DRAGONIANLIBCONSTEXPR inline
+#define DragonianLibStlThrow(message) ThrowException(message, __FILE__, __FUNCSIG__, __LINE__)
 
 DRAGONIANLIBSTLBEGIN
+
+[[noreturn]] void ThrowException(const char* Message, const char* FILE, const char* FUN, int LINE);
 
 //using Type_ = float;
 template <typename Type_>
@@ -42,7 +45,7 @@ public:
 
 	DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
-		if (!_Alloc) throw std::bad_alloc();
+		if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
 		Allocator_ = _Alloc;
 
 		if(_Size == 0)
@@ -54,7 +57,7 @@ public:
 		}
 
 		_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-		if (!_MyFirst) throw std::bad_alloc();
+		if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
 		_MyLast = _MyFirst + _Size;
 		_MyEnd = _MyFirst + _Size * 2;
 
@@ -68,7 +71,7 @@ public:
 
 	DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
 	{
-		if (!_Alloc) throw std::bad_alloc();
+		if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
 		Allocator_ = _Alloc;
 
 		if (_Size == 0)
@@ -80,7 +83,7 @@ public:
 		}
 
 		_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-		if (!_MyFirst) throw std::bad_alloc();
+		if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
 		_MyLast = _MyFirst + _Size;
 		_MyEnd = _MyFirst + _Size * 2;
 
@@ -98,11 +101,11 @@ public:
 		}
 	}
 
-	DRAGONIANLIBCONSTEXPR Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc)
+	DRAGONIANLIBCONSTEXPR Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
 	{
-		if (!_Alloc) throw std::bad_alloc();
+		if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
 		Allocator_ = _Alloc;
-
+		_MyOwner = _Owner;
 		_MyFirst = *_Block;
 		_MyLast = _MyFirst + _Size;
 		_MyEnd = _MyLast;
@@ -172,7 +175,7 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		return _MyFirst[_Index];
 	}
@@ -180,6 +183,7 @@ public:
 protected:
 	Pointer _MyFirst, _MyLast, _MyEnd;
 	Allocator Allocator_;
+	bool _MyOwner = true;
 
 public:
 	DRAGONIANLIBCONSTEXPR Iterator Begin()
@@ -282,7 +286,7 @@ private:
 			while (Iter != _MyLast)
 				(Iter++)->~ValueType();
 		}
-		if (_MyFirst)
+		if (_MyFirst && _MyOwner)
 			Allocator_->Free(_MyFirst);
 		_MyFirst = nullptr;
 		_MyLast = nullptr;
@@ -297,7 +301,7 @@ private:
 
 	DRAGONIANLIBCONSTEXPR void ConstuctWithIteratorImpl(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
 	{
-		if (!_Alloc) throw std::bad_alloc();
+		if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
 		Allocator_ = _Alloc;
 
 		const auto _Size = _End - _Begin;
@@ -311,7 +315,7 @@ private:
 		}
 
 		_MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-		if (!_MyFirst) throw std::bad_alloc();
+		if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
 		_MyLast = _MyFirst + _Size;
 		_MyEnd = _MyFirst + _Size * 2;
 
@@ -341,7 +345,7 @@ private:
 		auto _TailSize = (_MyLast - _MyFirst) - _Front;
 
 		if (_NewCapacity <= _Size || _Front > _Tail)
-			throw std::bad_alloc();
+			DragonianLibStlThrow("Bad Alloc!");
 
 		auto _Data = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _NewCapacity);
 
@@ -370,7 +374,7 @@ private:
 		auto _TailSize = (_MyLast - _MyFirst) - _Front;
 
 		if (_Front > _Tail || Capacity() < _Size)
-			throw std::exception("Index Out Of Range!");
+			DragonianLibStlThrow("Index Out Of Range!");
 
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 			for (IndexType i = _TailSize - 1; i >= 0; --i)
@@ -437,7 +441,7 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		if (_MyLast + 1 > _MyEnd)
@@ -457,7 +461,7 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		if (_MyLast + 1 > _MyEnd)
@@ -475,7 +479,7 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		if (_MyLast + 1 > _MyEnd)
@@ -493,7 +497,7 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		if (_MyLast + _Count > _MyEnd)
@@ -513,12 +517,12 @@ public:
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
-			throw std::exception("Out Of Range!");
+			DragonianLibStlThrow("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		SizeType _Count = _Last - _First;
 		if (_Count < 0)
-			throw std::exception("Range Error!");
+			DragonianLibStlThrow("Range Error!");
 
 		if (_MyLast + _Count > _MyEnd)
 			ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + _Count);
@@ -550,7 +554,224 @@ public:
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 			_MyLast->~ValueType();
 	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector operator+(const _T& _Val) const
+	{
+		auto Temp = *this;
+		auto Iter = Temp._MyFirst;
+		while (Iter != Temp._MyLast)
+			*(Iter++) += ValueType(_Val);
+		return Temp;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector operator-(const _T& _Val) const
+	{
+		auto Temp = *this;
+		auto Iter = Temp._MyFirst;
+		while (Iter != Temp._MyLast)
+			*(Iter++) -= ValueType(_Val);
+		return Temp;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector operator*(const _T& _Val) const
+	{
+		auto Temp = *this;
+		auto Iter = Temp._MyFirst;
+		while (Iter != Temp._MyLast)
+			*(Iter++) *= ValueType(_Val);
+		return Temp;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector operator/(const _T& _Val) const
+	{
+		auto Temp = *this;
+		auto Iter = Temp._MyFirst;
+		while (Iter != Temp._MyLast)
+			*(Iter++) /= ValueType(_Val);
+		return Temp;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector operator^(const _T& _Val) const
+	{
+		auto Temp = *this;
+		auto Iter = Temp._MyFirst;
+		while (Iter != Temp._MyLast)
+			*(Iter++) = (ValueType)pow(*(Iter++), _Val);
+		return Temp;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector& operator+=(const _T& _Val)
+	{
+		auto Iter = _MyFirst;
+		while (Iter != _MyLast)
+			*(Iter++) += ValueType(_Val);
+		return *this;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector& operator-=(const _T& _Val)
+	{
+		auto Iter = _MyFirst;
+		while (Iter != _MyLast)
+			*(Iter++) -= ValueType(_Val);
+		return *this;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector& operator*=(const _T& _Val)
+	{
+		auto Iter = _MyFirst;
+		while (Iter != _MyLast)
+			*(Iter++) *= ValueType(_Val);
+		return *this;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector& operator/=(const _T& _Val)
+	{
+		auto Iter = _MyFirst;
+		while (Iter != _MyLast)
+			*(Iter++) /= ValueType(_Val);
+		return *this;
+	}
+
+	template<typename _T>
+	DRAGONIANLIBCONSTEXPR Vector& operator^=(const _T& _Val)
+	{
+		auto Iter = _MyFirst;
+		while (Iter != _MyLast)
+			*(Iter++) = (ValueType)pow(*(Iter++), _Val);
+		return *this;
+	}
 };
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+{
+	if (_ValA.Size() != _ValB.Size())
+		DragonianLibStlThrow("Size MisMatch!");
+	auto Temp = _ValA;
+	auto Iter = Temp.Data();
+	auto ValIter = _ValB.Data();
+	while (Iter != Temp.End())
+		*(Iter++) += _TypeA(*(ValIter++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+{
+	if (_ValA.Size() != _ValB.Size())
+		DragonianLibStlThrow("Size MisMatch!");
+	auto Temp = _ValA;
+	auto Iter = Temp.Data();
+	auto ValIter = _ValB.Data();
+	while (Iter != Temp.End())
+		*(Iter++) -= _TypeA(*(ValIter++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+{
+	if (_ValA.Size() != _ValB.Size())
+		DragonianLibStlThrow("Size MisMatch!");
+	auto Temp = _ValA;
+	auto Iter = Temp.Data();
+	auto ValIter = _ValB.Data();
+	while (Iter != Temp.End())
+		*(Iter++) *= _TypeA(*(ValIter++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+{
+	if (_ValA.Size() != _ValB.Size())
+		DragonianLibStlThrow("Size MisMatch!");
+	auto Temp = _ValA;
+	auto Iter = Temp.Data();
+	auto ValIter = _ValB.Data();
+	while (Iter != Temp.End())
+		*(Iter++) /= _TypeA(*(ValIter++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+{
+	if (_ValA.Size() != _ValB.Size())
+		DragonianLibStlThrow("Size MisMatch!");
+	auto Temp = _ValA;
+	auto Iter = Temp.Data();
+	auto ValIter = _ValB.Data();
+	while (Iter != Temp.End())
+		*(Iter++) = (_TypeA)pow(*(Iter++), *(ValIter++));
+	return Temp;
+}
+
+//using _TypeA = float;
+//using _TypeB = double;
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+{
+	Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
+	auto IterA = Temp.Data();
+	auto IterB = _ValB.Data();
+	while (IterA != Temp.End())
+		*(IterA++) = _ValA + (_TypeA)(*(IterB++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+{
+	Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
+	auto IterA = Temp.Data();
+	auto IterB = _ValB.Data();
+	while (IterA != Temp.End())
+		*(IterA++) = _ValA + (_TypeA)(*(IterB++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+{
+	Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
+	auto IterA = Temp.Data();
+	auto IterB = _ValB.Data();
+	while (IterA != Temp.End())
+		*(IterA++) = _ValA + (_TypeA)(*(IterB++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+{
+	Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
+	auto IterA = Temp.Data();
+	auto IterB = _ValB.Data();
+	while (IterA != Temp.End())
+		*(IterA++) = _ValA + (_TypeA)(*(IterB++));
+	return Temp;
+}
+
+template <typename _TypeA, typename _TypeB>
+DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+{
+	Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
+	auto IterA = Temp.Data();
+	auto IterB = _ValB.Data();
+	while (IterA != Temp.End())
+		*(IterA++) = (_TypeA)pow(_ValA, *(IterB++));
+	return Temp;
+}
 
 template <typename _Type>
 DRAGONIANLIBCONSTEXPR Vector<_Type> Arange(_Type _Start, _Type _End, _Type _Step = _Type(1.), _Type _NDiv = _Type(1.))

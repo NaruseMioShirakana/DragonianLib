@@ -141,7 +141,7 @@ namespace DragonianLib {
 			const OrtDmlApi* ortDmlApi = nullptr;
 			ortApi.GetExecutionProviderApi("DML", ORT_API_VERSION, reinterpret_cast<const void**>(&ortDmlApi));
 			Ort::ThreadingOptions threading_options;
-			threading_options.SetGlobalInterOpNumThreads((int)std::thread::hardware_concurrency());
+			threading_options.SetGlobalInterOpNumThreads(static_cast<int>(ThreadCount_));
 			GlobalOrtEnv = new Ort::Env(threading_options, DragonianLibOrtLoggingFn, nullptr, ORT_LOGGING_LEVEL_WARNING, logger_id);
 			GlobalOrtEnv->DisableTelemetryEvents();
 			GlobalOrtSessionOptions = new Ort::SessionOptions;

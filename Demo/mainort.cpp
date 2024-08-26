@@ -3,8 +3,8 @@
 #include "AvCodec.h"
 #include "Modules.hpp"
 #include "NativeApi.h"
-#include "MusicTranscription/PianoTranscription.hpp"
-#include "SuperResolution/SuperResolution.hpp"
+#include "MusicTranscription/MoePianoTranScription.hpp"
+#include "SuperResolution/MoeSuperResolution.hpp"
 #include "Tensor/Tensor.h"
 #ifdef _WIN32
 #include <mmeapi.h>
@@ -92,8 +92,8 @@ int main()
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
 	//LibMtsTest();
-	//LibSrTest();
-	LibSvcTest();
+	LibSrTest();
+	//LibSvcTest();
 	system("pause");
 	return 0;
 }
@@ -567,39 +567,49 @@ void TensorLibDemo()
 
 void LibSrTest()
 {
-	libsr::RealESRGan Model(
+	DragonianLib::LibSuperResolution::MoeSR Model(
 		{
-			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model.onnx)",
-			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model_alpha.onnx)",
-			64,
-			64,
-			4
+			LR"(D:\VSGIT\白叶的AI工具箱\Models\real-hatgan\x2\x2_universal-fix1.onnx)",
+			LR"(None)",
+			0,
+			0,
+			2
 		},
 		ProgressCbS,
 		8,
 		0,
-		2
+		1
 	);
 
 	DragonianLib::GdiInit();
 
-	DragonianLib::ImageSlicer Image(
+	DragonianLib::Image Image(
 		LR"(D:\VSGIT\CG000002.BMP)",
-		64,
-		64,
+		192,
+		192,
 		16,
 		0.f,
-		false
+		false/*,
+		LR"(D:\VSGIT\CG000002-DEB.png)"*/
 	);
+	/*Image.Transpose();
+	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TN.png)", 1, 100))
+		std::cout << "1-Complete!\n";
+	Image.Transpose();
+	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TNN.png)", 1, 100))
+		std::cout << "2-Complete!\n";*/
 
 	Model.Infer(Image, 50);
 
-	Image.MergeWrite(LR"(D:\VSGIT\CG000002-N.png)", 4, 100);
+	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-NN.png)", 2, 100))
+		std::cout << "Complete!\n";
+
+	DragonianLib::GdiClose();
 }
 
 void LibMtsTest()
 {
-	libmts::PianoTranScription Model(
+	DragonianLib::LibMusicTranscription::MoePianoTranScription Model(
 		{
 			LR"(D:\VSGIT\libsvc\model.onnx)"
 		},
@@ -609,13 +619,13 @@ void LibMtsTest()
 		0
 	);
 
-	libmts::PianoTranScription::Hparams _Config;
+	DragonianLib::LibMusicTranscription::Hparams _Config;
 	auto Audio = DragonianLib::AvCodec().DecodeFloat(
 		R"(C:\DataSpace\MediaProj\Fl Proj\Childish White.mp3)",
 		16000
 	);
 
-	auto Midi = Model.Infer(Audio, _Config, 1);
+	auto Midi = Model.Inference(Audio, _Config, 1);
 	WriteMidiFile(LR"(C:\DataSpace\MediaProj\Fl Proj\Childish White Mts.mid)", Midi, 0, 384 * 2);
 }
 

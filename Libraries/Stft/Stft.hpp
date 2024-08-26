@@ -32,4 +32,40 @@ namespace DlCodecStft
         int sr = 22050;
         DragonianLibSTL::Vector<float> MelBasis;
     };
+
+    DragonianLibSTL::Vector<float> CQT(
+        const DragonianLibSTL::Vector<float>& AudioData,
+        int SamplingRate = 22050,
+        int HopSize = 512,
+        float FreqMin = 32.70f,
+        int CQTBins = 84,
+        int BinsPerOctave = 12,
+        float Tuning = 0.f,
+        float FilterScale = 1.f,
+        float Norm = 1.f,
+        float Sparsity = 0.01f,
+        const char* Window = "Hann",
+        bool Scale = true,
+        const char* PaddingMode = "Constant",
+        const char* ResourceType = "SOXR_HQ"
+    );
+
+    DragonianLibSTL::Vector<float> VQT(
+        const DragonianLibSTL::Vector<float>& AudioData,
+        int SamplingRate = 22050,
+        int HopSize = 512,
+        float FreqMin = 32.70f,
+        int CQTBins = 84,
+        const char* Intervals = "Equal",
+        float Gamma = 0.f,
+        int BinsPerOctave = 12,
+        float Tuning = 0.f,
+        float FilterScale = 1.f,
+        float Norm = 1.f,
+        float Sparsity = 0.01f,
+        const char* Window = "Hann",
+        bool Scale = true,
+        const char* PaddingMode = "Constant",
+        const char* ResourceType = "SOXR_HQ"
+    );
 }
