@@ -25,7 +25,10 @@ enum class TensorType
 	Int8,
 	Int16,
 	Int32,
-	Int64
+	Int64,
+	Float8,
+	BFloat16,
+	Complex64
 };
 
 int64 DType2Size(TensorType _Type);
@@ -36,8 +39,8 @@ TensorType Type2DType(const std::string& _Type);
 class TensorBase : public Value
 {
 public:
-	TensorBase() = delete;
-	TensorBase(TensorType _DType);
+	TensorBase() = default;
+	TensorBase(TensorType _DType = TensorType::Float32);
 	TensorBase(const TensorBase& _Left) = delete;
 	TensorBase& operator=(const TensorBase& _Left) = delete;
 	TensorBase(TensorBase&& _Right) noexcept = delete;

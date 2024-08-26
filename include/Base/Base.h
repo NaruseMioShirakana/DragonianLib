@@ -35,10 +35,102 @@
 
 DragonianLibSpaceBegin
 
+struct float16_t
+{
+	unsigned char Val[2];
+	float16_t(float _Val)
+	{
+		auto Ptr = (unsigned short*)Val;
+		uint32_t inu = *((uint32_t*)&_Val);
+
+		uint32_t t1 = inu & 0x7fffffffu;                 // Non-sign bits
+		uint32_t t2 = inu & 0x80000000u;                 // Sign bit
+		uint32_t t3 = inu & 0x7f800000u;                 // Exponent
+
+		t1 >>= 13u;                             // Align mantissa on MSB
+		t2 >>= 16u;                             // Shift sign bit into position
+
+		t1 -= 0x1c000;                         // Adjust bias
+
+		t1 = (t3 < 0x38800000u) ? 0 : t1;       // Flush-to-zero
+		t1 = (t3 > 0x8e000000u) ? 0x7bff : t1;  // Clamp-to-max
+		t1 = (t3 == 0 ? 0 : t1);               // Denormals-as-zero
+
+		t1 |= t2;                              // Re-insert sign bit
+
+		*(Ptr) = t1;
+	}
+	float16_t& operator=(float _Val)
+	{
+		auto Ptr = (unsigned short*)Val;
+		uint32_t inu = *((uint32_t*)&_Val);
+
+		uint32_t t1 = inu & 0x7fffffffu;                 // Non-sign bits
+		uint32_t t2 = inu & 0x80000000u;                 // Sign bit
+		uint32_t t3 = inu & 0x7f800000u;                 // Exponent
+
+		t1 >>= 13u;                             // Align mantissa on MSB
+		t2 >>= 16u;                             // Shift sign bit into position
+
+		t1 -= 0x1c000;                         // Adjust bias
+
+		t1 = (t3 < 0x38800000u) ? 0 : t1;       // Flush-to-zero
+		t1 = (t3 > 0x8e000000u) ? 0x7bff : t1;  // Clamp-to-max
+		t1 = (t3 == 0 ? 0 : t1);               // Denormals-as-zero
+
+		t1 |= t2;                              // Re-insert sign bit
+
+		*(Ptr) = t1;
+		return *this;
+	}
+	operator float() const
+	{
+		float out;
+		auto in = *(const uint16_t*)Val;
+
+		uint32_t t1 = in & 0x7fffu;                       // Non-sign bits
+		uint32_t t2 = in & 0x8000u;                       // Sign bit
+		uint32_t t3 = in & 0x7c00u;                       // Exponent
+
+		t1 <<= 13u;                              // Align mantissa on MSB
+		t2 <<= 16u;                              // Shift sign bit into position
+
+		t1 += 0x38000000;                       // Adjust bias
+
+		t1 = (t3 == 0 ? 0 : t1);                // Denormals-as-zero
+
+		t1 |= t2;                               // Re-insert sign bit
+
+		*((uint32_t*)&out) = t1;
+		return out;
+	}
+};
+
+struct float8_t
+{
+	unsigned char Val;
+	float8_t(float _Val)
+	{
+		Val = 0ui8;
+		DragonianLibNotImplementedError;
+	}
+	float8_t& operator=(float _Val)
+	{
+		Val = 0ui8;
+		DragonianLibNotImplementedError;
+	}
+	operator float() const
+	{
+		DragonianLibNotImplementedError;
+	}
+};
+
 using int8 = int8_t;
 using int16 = int16_t;
 using int32 = int32_t;
 using int64 = int64_t;
+using float8 = float8_t;
+using float16 = float16_t;
 using float32 = float;
 using float64 = double;
 using byte = unsigned char;
