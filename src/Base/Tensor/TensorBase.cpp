@@ -10,7 +10,10 @@ const std::unordered_map<std::string, TensorType> __Ty2DTy{
 	{ "float32", TensorType::Float32 },
 	{ "float64", TensorType::Float64 },
 	{ "complex32", TensorType::Complex32 },
-	{ "bool", TensorType::Boolean }
+	{ "bool", TensorType::Boolean },
+	{ "float8", TensorType::Float8 },
+	{ "bfloat16", TensorType::BFloat16 },
+	{ "complex64", TensorType::Complex64 },
 };
 
 const std::unordered_map<TensorType, std::string> __DTy2Ty{
@@ -22,7 +25,10 @@ const std::unordered_map<TensorType, std::string> __DTy2Ty{
 	{ TensorType::Float32, "float32" },
 	{ TensorType::Float64, "float64" },
 	{ TensorType::Complex32, "complex32" },
-	{ TensorType::Boolean, "bool" }
+	{ TensorType::Boolean, "bool" },
+	{ TensorType::Float8, "float8" },
+	{ TensorType::BFloat16, "bfloat16" },
+	{ TensorType::Complex64, "complex64" },
 };
 
 const std::unordered_map<std::string, int64> __Ty2Size{
@@ -34,7 +40,10 @@ const std::unordered_map<std::string, int64> __Ty2Size{
 	{ "float32", sizeof(float32) },
 	{ "float64", sizeof(float64) },
 	{ "complex32", sizeof(std::complex<float32>) },
-	{ "bool", sizeof(bool) }
+	{ "bool", sizeof(bool) },
+	{ "float8", sizeof(float8) },
+	{ "bfloat16", sizeof(bfloat16) },
+	{ "complex64", sizeof(std::complex<float64>) },
 };
 
 const std::unordered_map<TensorType, int64> __DTy2Size{
@@ -42,11 +51,14 @@ const std::unordered_map<TensorType, int64> __DTy2Size{
 	{ TensorType::Int16, sizeof(int16) },
 	{ TensorType::Int32, sizeof(int32) },
 	{ TensorType::Int64, sizeof(int64) },
-	{ TensorType::Float16, 2 },
+	{ TensorType::Float16, sizeof(float16)},
 	{ TensorType::Float32, sizeof(float32) },
 	{ TensorType::Float64, sizeof(float64) },
 	{ TensorType::Complex32, sizeof(std::complex<float32>) },
-	{ TensorType::Boolean, sizeof(bool) }
+	{ TensorType::Boolean, sizeof(bool) },
+	{ TensorType::Float8, sizeof(float8) },
+	{ TensorType::BFloat16, sizeof(bfloat16) },
+	{ TensorType::Complex64, sizeof(std::complex<float64>) },
 };
 
 TensorType Type2DType(const std::string& _Type)

@@ -83,29 +83,31 @@ public:
 	static Tensor RandnLike(const Tensor& _Shape, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
 	static Tensor Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
 	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
+	//using _ValueType = float;
 	template<typename _ValueType>
-	Tensor(DragonianLibSTL::Vector<_ValueType>& _Vector)
+	Tensor(DragonianLibSTL::Vector<_ValueType>& _Vector, const ShapeType& _Shape)
 	{
-		ShapeType _Shape = { (int64)_Vector.Size() };
+		if ((size_t)VectorMul(_Shape) != _Vector.Size())
+			DragonianLibThrow("Size MisMatch!");
 
-		if (std::is_same_v<_ValueType, int8>)
+		if constexpr (std::is_same_v<_ValueType, int8>)
 			DType_ = TensorType::Int8;
-		else if (std::is_same_v<_ValueType, int16>)
+		else if constexpr (std::is_same_v<_ValueType, int16>)
 			DType_ = TensorType::Int16;
-		else if (std::is_same_v<_ValueType, int32>)
+		else if constexpr (std::is_same_v<_ValueType, int32>)
 			DType_ = TensorType::Int32;
-		else if (std::is_same_v<_ValueType, int64>)
+		else if constexpr (std::is_same_v<_ValueType, int64>)
 			DType_ = TensorType::Int64;
-		else if (std::is_same_v<_ValueType, float8>)
+		else if constexpr (std::is_same_v<_ValueType, float8>)
 			DType_ = TensorType::Float8;
-		else if (std::is_same_v<_ValueType, float16>)
+		else if constexpr (std::is_same_v<_ValueType, float16>)
 			DType_ = TensorType::Float16;
-		else if (std::is_same_v<_ValueType, float32>)
+		else if constexpr (std::is_same_v<_ValueType, float32>)
 			DType_ = TensorType::Float32;
-		else if (std::is_same_v<_ValueType, float64>)
+		else if constexpr (std::is_same_v<_ValueType, float64>)
 			DType_ = TensorType::Float64;
 		else
-			DragonianLibUnSupportedTypeException;
+			DragonianLibNotImplementedError;
 
 		Device_ = _Vector.GetAllocator();
 		AlignSize_ = DType2Size(DType_);
@@ -126,19 +128,17 @@ public:
 		ViewChild_.clear();
 	}
 	template<typename _ValueType>
-	DragonianLibSTL::Vector<_ValueType> ToVector()
+	DragonianLibSTL::Vector<_ValueType> VectorView()
 	{
-		if (!IsVector() || IsView() || StepBack_[0] != AlignSize_)
-			DragonianLibThrow("Tensor Is Not A Vector");
 		if (sizeof(_ValueType) != AlignSize_)
 			DragonianLibThrow("Type MisMatch!");
+		if (IsView())
+			DragonianLibThrow("Tensor View Could Not Have Vector View!");
 		std::lock_guard LockRel(RelMx_);
 		if (!DataPtr_)
 			return {};
 		auto Ptr = (_ValueType*)DataPtr_;
-		DataPtr_ = nullptr;
-		ClearViewChilds();
-		return { &Ptr, (size_t)ShapeBack_[0], Device_ };
+		return { &Ptr, (size_t)VectorMul(ShapeBack_), Device_, false };
 	}
 
 	static void SetThreadCount(SizeType _Count);

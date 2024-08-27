@@ -112,11 +112,28 @@ struct float8_t
 	float8_t(float _Val)
 	{
 		Val = 0ui8;
-		DragonianLibNotImplementedError;
 	}
 	float8_t& operator=(float _Val)
 	{
 		Val = 0ui8;
+		DragonianLibNotImplementedError;
+	}
+	operator float() const
+	{
+		DragonianLibNotImplementedError;
+	}
+};
+
+struct bfloat16_t
+{
+	unsigned char Val[2];
+	bfloat16_t(float _Val)
+	{
+		*((uint16_t*)Val) = 0;
+	}
+	bfloat16_t& operator=(float _Val)
+	{
+		Val[0] = 0ui8;
 		DragonianLibNotImplementedError;
 	}
 	operator float() const
@@ -130,6 +147,7 @@ using int16 = int16_t;
 using int32 = int32_t;
 using int64 = int64_t;
 using float8 = float8_t;
+using bfloat16 = bfloat16_t;
 using float16 = float16_t;
 using float32 = float;
 using float64 = double;
