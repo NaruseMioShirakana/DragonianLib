@@ -6,6 +6,7 @@ option(DRAGONIANLIB_CUDA                    "cuda backend"        OFF)
 option(DRAGONIANLIB_ROCM                    "rocm backend"        OFF)
 option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   OFF)
 option(DRAGONIANLIB_ONNXRUNTIME             "build ort libs"      ON)
+option(DRAGONIANLIB_TENSORRT                "build trt libs"      OFF)
 option(DRAGONIANLIB_STATIC_FFMPEG           "use static ffmpeg"   ON)
 option(DRAGONIANLIB_BUILD_DEMO              "build demo"          ON)
 add_definitions(-DDRAGONIANLIB_ALLOC_ALIG=32)
@@ -157,6 +158,7 @@ endif()
 set(DRAGONIANLIB_LIBRARIES_SRC)
 set(DRAGONIANLIB_TENSORLIB_SRC)
 set(DRAGONIANLIB_ORTLIB_SRC)
+set(DRAGONIANLIB_TRTLIB_SRC)
 
 file(GLOB_RECURSE DRAGONIANLIB_LIBRARIES_SRC 
     ${PROJECT_SOURCE_DIR}/Libraries/*.cpp
@@ -188,18 +190,26 @@ if(DRAGONIANLIB_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/Other/*.h
         ${PROJECT_SOURCE_DIR}/Other/*.hpp
     )
+    if(DRAGONIANLIB_TENSORRT)
+    file(GLOB_RECURSE DRAGONIANLIB_TRTLIB_SRC
+        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.hpp
+        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.h
+        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.cpp
+        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.c
+    )
+    endif()
 endif()
 
 set(BUILD_SHARED_LIBS OFF)
 set(BUILD_STATIC_LIBS ON)
 #build shared lib?
 if(DRAGONIANLIB_SHARED_LIBS)
-    add_library(${DRAGONIANLIB_LIB} SHARED ${DRAGONIANLIB_LIBRARIES_SRC} ${DRAGONIANLIB_TENSORLIB_SRC} ${DRAGONIANLIB_ORTLIB_SRC})
+    add_library(${DRAGONIANLIB_LIB} SHARED ${DRAGONIANLIB_LIBRARIES_SRC} ${DRAGONIANLIB_TENSORLIB_SRC} ${DRAGONIANLIB_ORTLIB_SRC} ${DRAGONIANLIB_TRTLIB_SRC})
     add_definitions(-DDRAGONIANLIB_EXPORT)
     target_compile_definitions(${DRAGONIANLIB_LIB} PRIVATE -DDRAGONIANLIB_EXPORT)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
-    add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC} ${DRAGONIANLIB_TENSORLIB_SRC} ${DRAGONIANLIB_ORTLIB_SRC})
+    add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC} ${DRAGONIANLIB_TENSORLIB_SRC} ${DRAGONIANLIB_ORTLIB_SRC} ${DRAGONIANLIB_TRTLIB_SRC})
 endif()
 
 #link
@@ -284,6 +294,19 @@ include_directories(${PROJECT_SOURCE_DIR}/Libraries/AvCodec)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries/K-DimensionalTree)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries)
 include_directories(${PROJECT_SOURCE_DIR}/Other)
+
+if(DRAGONIANLIB_TENSORRT AND DRAGONIANLIB_ONNXRUNTIME)
+    include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/include)
+    target_link_libraries(
+        ${DRAGONIANLIB_LIB} PUBLIC 
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_10.lib
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_dispatch_10.lib
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_lean_10.lib
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_plugin_10.lib
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_vc_plugin_10.lib
+        ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvonnxparser_10.lib
+    )
+endif()
 
 #standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)

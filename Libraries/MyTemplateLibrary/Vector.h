@@ -288,6 +288,7 @@ private:
 		}
 		if (_MyFirst && _MyOwner)
 			Allocator_->Free(_MyFirst);
+		_MyOwner = true;
 		_MyFirst = nullptr;
 		_MyLast = nullptr;
 		_MyEnd = nullptr;
