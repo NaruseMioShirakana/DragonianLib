@@ -210,92 +210,117 @@ namespace TensorRTLib
 		nvinfer1::ILogger::Severity VerboseLevel
 	)
 	{
-		VerboseLevel = nvinfer1::ILogger::Severity::kVERBOSE;
-		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(::TensorRTLib::logger));
-		if (!builder)
-			DragonianLibFatalError;
-
-		mNetwork = std::shared_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
-		if (!mNetwork)
-			DragonianLibFatalError;
-
-		auto config = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
-		if (!config)
-			DragonianLibFatalError;
-
-
-		//Parse Onnx Model
+		if(_CacheFile.empty() || !exists(std::filesystem::path(_CacheFile)))
 		{
-			auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, ::TensorRTLib::logger));
-			if (!parser)
+			auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(::TensorRTLib::logger));
+			if (!builder)
 				DragonianLibFatalError;
-			if (!parser->parseFromFile(DragonianLib::WideStringToUTF8(_OrtPath).c_str(), static_cast<int>(VerboseLevel)))
+
+			mNetwork = std::shared_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
+			if (!mNetwork)
+				DragonianLibFatalError;
+
+			auto config = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+			if (!config)
+				DragonianLibFatalError;
+
+
+			//Parse Onnx Model
 			{
-				std::string Errors;
-				for (int i = 0; i < parser->getNbErrors(); ++i)
-					(Errors += '\n') += parser->getError(i)->desc();
-				DragonianLibThrow(Errors);
-			}
-		}
-
-
-		//Config
-		{
-			auto timingCache = std::unique_ptr<nvinfer1::ITimingCache>();
-
-			if (EnableFp16 && builder->platformHasFastFp16())
-				config->setFlag(nvinfer1::BuilderFlag::kFP16);
-			if (EnableBf16 && builder->platformHasFastFp16())
-				config->setFlag(nvinfer1::BuilderFlag::kBF16);
-			if (EnableInt8 && builder->platformHasFastInt8())
-			{
-				config->setFlag(nvinfer1::BuilderFlag::kINT8);
-				setAllDynamicRanges(mNetwork.get(), 127.0F, 127.0F);
-			}
-
-			if (_CacheFile.size() && exists(std::filesystem::path(_CacheFile)))
-			{
-				DragonianLibLogMessage("Not Impl Yet!");
+				auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, ::TensorRTLib::logger));
+				if (!parser)
+					DragonianLibFatalError;
+				if (!parser->parseFromFile(DragonianLib::WideStringToUTF8(_OrtPath).c_str(), static_cast<int>(VerboseLevel)))
+				{
+					std::string Errors;
+					for (int i = 0; i < parser->getNbErrors(); ++i)
+						(Errors += '\n') += parser->getError(i)->desc();
+					DragonianLibThrow(Errors);
+				}
 			}
 
-			if (DLACore >= 0)
+
+			//Config
 			{
-				if (builder->getNbDLACores() == 0)
-					DragonianLibThrow("Error: use DLA core on a platfrom that doesn't have any DLA cores");
-				if (Fallback)
-					config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
-				if (!config->getFlag(nvinfer1::BuilderFlag::kINT8))
+				auto timingCache = std::unique_ptr<nvinfer1::ITimingCache>();
+
+				if (EnableFp16 && builder->platformHasFastFp16())
 					config->setFlag(nvinfer1::BuilderFlag::kFP16);
-				config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-				config->setDLACore(DLACore);
+				if (EnableBf16 && builder->platformHasFastFp16())
+					config->setFlag(nvinfer1::BuilderFlag::kBF16);
+				if (EnableInt8 && builder->platformHasFastInt8())
+				{
+					config->setFlag(nvinfer1::BuilderFlag::kINT8);
+					setAllDynamicRanges(mNetwork.get(), 127.0F, 127.0F);
+				}
+
+				if (_CacheFile.size() && exists(std::filesystem::path(_CacheFile)))
+				{
+					DragonianLibLogMessage("Not Impl Yet!");
+				}
+
+				if (DLACore >= 0)
+				{
+					if (builder->getNbDLACores() == 0)
+						DragonianLibThrow("Error: use DLA core on a platfrom that doesn't have any DLA cores");
+					if (Fallback)
+						config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+					if (!config->getFlag(nvinfer1::BuilderFlag::kINT8))
+						config->setFlag(nvinfer1::BuilderFlag::kFP16);
+					config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+					config->setDLACore(DLACore);
+				}
+
+				for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
+				{
+					auto inp = mNetwork->getInput(i);
+					auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
+					if(iter == DynaShapeConfig.end())
+						continue;
+					auto opt = builder->createOptimizationProfile();
+					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
+					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
+					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
+					config->addOptimizationProfile(opt);
+				}
 			}
 
-			for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
+			std::unique_ptr<nvinfer1::IHostMemory> plan{ builder->buildSerializedNetwork(*mNetwork, *config) };
+			if (!plan)
+				DragonianLibFatalError;
+
+			if(!_CacheFile.empty() && !exists(std::filesystem::path(_CacheFile)))
 			{
-				auto inp = mNetwork->getInput(i);
-				auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
-				if(iter == DynaShapeConfig.end())
-					continue;
-				auto opt = builder->createOptimizationProfile();
-				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
-				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
-				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
-				config->addOptimizationProfile(opt);
+				DragonianLib::FileGuard file(_CacheFile, L"wb");
+				fwrite(plan->data(), 1, plan->size(), file);
 			}
+
+			mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
+			if (!mRuntime)
+				DragonianLibFatalError;
+
+			mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+				mRuntime->deserializeCudaEngine(plan->data(), plan->size()), InferDeleter());
+			if (!mEngine)
+				DragonianLibFatalError;
 		}
+		else if(exists(std::filesystem::path(_CacheFile)))
+		{
+			DragonianLib::FileGuard file(_CacheFile, L"rb");
+			struct stat file_stat;
+			stat(DragonianLib::WideStringToUTF8(_CacheFile).c_str(), &file_stat);
+			DragonianLibSTL::Vector<unsigned char> Buffer(file_stat.st_size);
+			fread(Buffer.Data(), 1, file_stat.st_size, file);
 
-		std::unique_ptr<nvinfer1::IHostMemory> plan{ builder->buildSerializedNetwork(*mNetwork, *config) };
-		if (!plan)
-			DragonianLibFatalError;
+			mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
+			if (!mRuntime)
+				DragonianLibFatalError;
 
-		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
-		if (!mRuntime)
-			DragonianLibFatalError;
-
-		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-			mRuntime->deserializeCudaEngine(plan->data(), plan->size()), InferDeleter());
-		if (!mEngine)
-			DragonianLibFatalError;
+			mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+				mRuntime->deserializeCudaEngine(Buffer.Data(), Buffer.Size()), InferDeleter());
+			if (!mEngine)
+				DragonianLibFatalError;
+		}
 
 		mInputCount = mNetwork->getNbInputs();
 		mOutputCount = mNetwork->getNbOutputs();
