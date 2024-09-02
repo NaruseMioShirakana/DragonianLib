@@ -17,9 +17,25 @@ namespace TensorRTLib
 		void log(Severity severity, nvinfer1::AsciiChar const* msg) noexcept override;
 	};
 
+	struct DynaShapeSlice
+	{
+		std::string Name;
+		nvinfer1::Dims Min, Opt, Max;
+		bool operator==(const char* _in) const
+		{
+			return Name == _in;
+		}
+	};
+
 	struct Tensor
 	{
-		Tensor(void* data, const nvinfer1::Dims& shape, std::string name, int64_t size, nvinfer1::DataType type) :
+		Tensor(
+			void* data = nullptr,
+			const nvinfer1::Dims& shape = nvinfer1::Dims2(0, 0),
+			std::string name = "None",
+			int64_t size = 0,
+			nvinfer1::DataType type = nvinfer1::DataType::kFLOAT
+		) :
 			Data(data), Shape(shape), Name(std::move(name)), Size(size), Type(type) {}
 		~Tensor()
 		{
@@ -59,6 +75,7 @@ namespace TensorRTLib
 
 		GPUBuffer& operator=(const Tensor& HostTensor);
 		GPUBuffer& Resize(size_t NewSize);
+		GPUBuffer(GPUBuffer&& _Val) noexcept;
 
 		operator void* () const
 		{
@@ -70,7 +87,7 @@ namespace TensorRTLib
 		int64_t Size = 0;
 
 		GPUBuffer(const GPUBuffer& _Val) = delete;
-		GPUBuffer(GPUBuffer&& _Val) noexcept = delete;
+		
 		GPUBuffer& operator=(const GPUBuffer& _Val) = delete;
 		GPUBuffer& operator=(GPUBuffer&& _Val) noexcept = delete;
 	};
@@ -85,6 +102,7 @@ namespace TensorRTLib
 		TrtModel(
 			const std::wstring& _OrtPath,
 			const std::wstring& _CacheFile,
+			const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
 			int DLACore = -1,
 			bool Fallback = true,
 			bool EnableFp16 = false,
@@ -96,6 +114,7 @@ namespace TensorRTLib
 			LoadModel(
 				_OrtPath,
 				_CacheFile,
+				DynaShapeConfig,
 				DLACore,
 				Fallback,
 				EnableFp16,
@@ -108,6 +127,7 @@ namespace TensorRTLib
 		void LoadModel(
 			const std::wstring& _OrtPath,
 			const std::wstring& _CacheFile,
+			const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
 			int DLACore = -1,
 			bool Fallback = true,
 			bool EnableFp16 = false,

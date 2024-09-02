@@ -4,7 +4,7 @@
 #include "NvInferPlugin.h"
 #include <cuda_runtime_api.h>
 
-namespace tlibsvc
+namespace TensorRTLib
 {
 	DLogger logger;
 
@@ -154,6 +154,14 @@ namespace tlibsvc
 		Destory();
 	}
 
+	GPUBuffer::GPUBuffer(GPUBuffer&& _Val) noexcept
+	{
+		Size = _Val.Size;
+		Data = _Val.Data;
+		_Val.Size = 0;
+		_Val.Data = nullptr;
+	}
+
 	GPUBuffer& GPUBuffer::operator=(const Tensor& HostTensor)
 	{
 		if (HostTensor.Size > Size)
@@ -193,6 +201,7 @@ namespace tlibsvc
 	void TrtModel::LoadModel(
 		const std::wstring& _OrtPath,
 		const std::wstring& _CacheFile,
+		const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
 		int DLACore,
 		bool Fallback,
 		bool EnableFp16,
@@ -201,11 +210,12 @@ namespace tlibsvc
 		nvinfer1::ILogger::Severity VerboseLevel
 	)
 	{
-		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(::tlibsvc::logger));
+		VerboseLevel = nvinfer1::ILogger::Severity::kVERBOSE;
+		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(::TensorRTLib::logger));
 		if (!builder)
 			DragonianLibFatalError;
 
-		mNetwork = std::shared_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(0));
+		mNetwork = std::shared_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
 		if (!mNetwork)
 			DragonianLibFatalError;
 
@@ -216,7 +226,7 @@ namespace tlibsvc
 
 		//Parse Onnx Model
 		{
-			auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, ::tlibsvc::logger));
+			auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, ::TensorRTLib::logger));
 			if (!parser)
 				DragonianLibFatalError;
 			if (!parser->parseFromFile(DragonianLib::WideStringToUTF8(_OrtPath).c_str(), static_cast<int>(VerboseLevel)))
@@ -259,20 +269,26 @@ namespace tlibsvc
 				config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
 				config->setDLACore(DLACore);
 			}
-		}
 
-		std::unique_ptr<cudaStream_t, decltype(StreamDeleter)*> pStream(new cudaStream_t, StreamDeleter);
-		if (cudaStreamCreateWithFlags(pStream.get(), cudaStreamNonBlocking) != cudaSuccess)
-			pStream.reset(nullptr);
-		if (!pStream)
-			DragonianLibFatalError;
-		config->setProfileStream(*pStream);
+			for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
+			{
+				auto inp = mNetwork->getInput(i);
+				auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
+				if(iter == DynaShapeConfig.end())
+					continue;
+				auto opt = builder->createOptimizationProfile();
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
+				config->addOptimizationProfile(opt);
+			}
+		}
 
 		std::unique_ptr<nvinfer1::IHostMemory> plan{ builder->buildSerializedNetwork(*mNetwork, *config) };
 		if (!plan)
 			DragonianLibFatalError;
 
-		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::tlibsvc::logger));
+		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
 		if (!mRuntime)
 			DragonianLibFatalError;
 

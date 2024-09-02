@@ -295,12 +295,15 @@ if(DRAGONIANLIB_TENSORRT AND DRAGONIANLIB_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_vc_plugin_10.lib
         ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvonnxparser_10.lib
     )
+    enable_language(CUDA)
     find_package(libcudacxx REQUIRED)
     include_directories(${_libcudacxx_INCLUDE_DIR})
     target_link_libraries(
         ${DRAGONIANLIB_LIB} PUBLIC 
         libcudacxx::libcudacxx
+        ${_libcudacxx_INCLUDE_DIR}/../lib/x64/cudart_static.lib
     )
+    include_directories(${PROJECT_SOURCE_DIR}/TensorRT)
 endif()
 
 #standard

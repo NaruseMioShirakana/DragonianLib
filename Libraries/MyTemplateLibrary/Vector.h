@@ -417,7 +417,28 @@ public:
 		_MyEnd = _Data + _NewCapacity;
 	}
 
-	DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize, ConstReference _Val = ValueType(0))
+	DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize)
+	{
+		if (_NewSize == Size())
+			return;
+
+		if (_NewSize >= Capacity())
+			Reserve(_NewSize * 2);
+
+		if constexpr (!std::is_arithmetic_v<ValueType>)
+		{
+			for (auto i = _NewSize; i < Size(); ++i)
+				(_MyFirst + i)->~ValueType();
+			for (auto i = Size(); i < _NewSize; ++i)
+				new (_MyFirst + i) ValueType();
+		}
+		else
+			for (auto i = Size(); i < _NewSize; ++i)
+				_MyFirst[i] = ValueType(0);
+		_MyLast = _MyFirst + _NewSize;
+	}
+
+	DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize, ConstReference _Val)
 	{
 		if (_NewSize == Size())
 			return;
@@ -497,7 +518,7 @@ public:
 		return *(_MyFirst + Idx);
 	}
 
-	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, SizeType _Count = 1, const ValueType& _Value = ValueType(0))
+	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, SizeType _Count, const ValueType& _Value)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)

@@ -91,7 +91,7 @@ SingleAudio SingingVoiceConversion::GetAudioSlice(const DragonianLibSTL::Vector<
 	return audio_slice;
 }
 
-void SingingVoiceConversion::PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method)
+void SingingVoiceConversion::PreProcessAudio(const SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method)
 {
 	const auto F0Extractor = DragonianLib::GetF0Extractor(_F0Method, _SamplingRate, _HopSize);
 	const auto num_slice = _Input.Slices.Size();

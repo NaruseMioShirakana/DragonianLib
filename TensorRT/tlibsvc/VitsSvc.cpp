@@ -5,6 +5,8 @@
 
 namespace tlibsvc {
 
+	//"c", "f0", "mel2ph", "uv", "noise", "sid", "vol"	  "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd", "vol"
+
 	VitsSvc::~VitsSvc() { DragonianLibLogMessage(L"[Info] unloading VitsSvc Models"); }
 
 	VitsSvc::VitsSvc(
@@ -43,8 +45,40 @@ namespace tlibsvc {
 			if (_Hps.HubertModel)
 				HubertModel = _Hps.HubertModel;
 			else
-				HubertModel = std::make_shared<TrtModel>(_Hps.HubertPath, _Hps.TrtSettings.CacheFile, _Hps.TrtSettings.DLACore, _Hps.TrtSettings.Fallback, _Hps.TrtSettings.EnableFp16, _Hps.TrtSettings.EnableBf16, _Hps.TrtSettings.EnableInt8, _Hps.TrtSettings.VerboseLevel);
-			VitsSvcModel = std::make_unique<TrtModel>(_Hps.ModelPath, _Hps.TrtSettings.CacheFile, _Hps.TrtSettings.DLACore, _Hps.TrtSettings.Fallback, _Hps.TrtSettings.EnableFp16, _Hps.TrtSettings.EnableBf16, _Hps.TrtSettings.EnableInt8, _Hps.TrtSettings.VerboseLevel);
+				HubertModel = std::make_shared<TrtModel>(
+					_Hps.HubertPath,
+					_Hps.TrtSettings.CacheFile,
+					HubertDynaSetting,
+					_Hps.TrtSettings.DLACore,
+					_Hps.TrtSettings.Fallback,
+					_Hps.TrtSettings.EnableFp16,
+					_Hps.TrtSettings.EnableBf16,
+					_Hps.TrtSettings.EnableInt8,
+					_Hps.TrtSettings.VerboseLevel
+				);
+			auto DynConf = VitsSvcDynaSetting;
+			DynConf[0].Min.d[2] = HiddenUnitKDims; DynConf[0].Opt.d[2] = HiddenUnitKDims; DynConf[0].Max.d[2] = HiddenUnitKDims;
+			DynConf[7].Min.d[2] = HiddenUnitKDims; DynConf[7].Opt.d[2] = HiddenUnitKDims; DynConf[7].Max.d[2] = HiddenUnitKDims;
+			if (EnableCharaMix)
+			{
+				DynConf[5].Min.d[1] = SpeakerCount;
+				DynConf[5].Opt.d[1] = SpeakerCount;
+				DynConf[5].Max.d[1] = SpeakerCount;
+			}
+			else
+				DynConf[5].Name = "None";
+
+			VitsSvcModel = std::make_unique<TrtModel>(
+				_Hps.ModelPath,
+				_Hps.TrtSettings.CacheFile,
+				DynConf,
+				_Hps.TrtSettings.DLACore,
+				_Hps.TrtSettings.Fallback,
+				_Hps.TrtSettings.EnableFp16,
+				_Hps.TrtSettings.EnableBf16,
+				_Hps.TrtSettings.EnableInt8,
+				_Hps.TrtSettings.VerboseLevel
+			);
 			DragonianLibLogMessage(L"[Info] VitsSvcModel Models loaded");
 		}
 		catch (std::exception& _exception)

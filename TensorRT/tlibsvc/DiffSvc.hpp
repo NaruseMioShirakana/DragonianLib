@@ -1,11 +1,8 @@
 ﻿#pragma once
 #include "SvcBase.hpp"
 
-namespace tlibsvc {
+/*namespace tlibsvc {
 
-    /**
-     * \brief DiffSvc模型
-     */
     class DiffusionSvc
     {
     public:
@@ -100,4 +97,4 @@ namespace tlibsvc {
         void* _VocoderModel = nullptr
     );
 
-}
+}*/

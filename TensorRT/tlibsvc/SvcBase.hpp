@@ -1,9 +1,14 @@
 #pragma once
 #include "../TRTBase.hpp"
+#include "F0Extractor/F0ExtractorManager.hpp"
 
 namespace tlibsvc
 {
 	using namespace TensorRTLib;
+
+	static inline DragonianLibSTL::Vector<DynaShapeSlice> HubertDynaSetting{
+		{"source", nvinfer1::Dims3(1, 1, 3200)	, nvinfer1::Dims3(1, 1, 32000), nvinfer1::Dims3(1, 1, 320000)}
+	};
 
 	struct DiffusionSvcPaths
 	{
@@ -83,7 +88,7 @@ namespace tlibsvc
 		std::wstring ModelPath;
 		std::wstring HubertPath;
 		std::wstring TensorExtractor = L"SoVits4.0";
-		std::shared_ptr<TrtModel> HubertModel;
+		std::shared_ptr<TrtModel> HubertModel = nullptr;
 		ClusterConfig Cluster;
 		TrtConfig TrtSettings;
 
@@ -164,7 +169,7 @@ namespace tlibsvc
 	};
 
 	//获取换算为0-255的f0
-	[[nodiscard]] DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>&);
+	DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>&);
 
 	//将F0中0值单独插值
 	DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float>&);
@@ -206,11 +211,17 @@ namespace tlibsvc
 	}
 
 	//将F0中0值单独插值（可设置是否取log）
-	[[nodiscard]] DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<float>&, bool);
+	DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<float>&, bool);
 
 	//获取正确的角色混合数据
-	[[nodiscard]] DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk, int64_t _NSpeaker);
+	DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk, int64_t _NSpeaker);
 
 	//获取正确的角色混合数据
-	[[nodiscard]] DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count);
+	DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count);
+
+	DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<int16_t>& _Audio, int _HopSize);
+
+	SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<int16_t>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold);
+
+	void PreProcessAudio(const SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method);
 }

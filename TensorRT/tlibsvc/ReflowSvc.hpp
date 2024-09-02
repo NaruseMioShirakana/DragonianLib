@@ -1,12 +1,7 @@
 ﻿#pragma once
 #include <map>
 #include "SvcBase.hpp"
-
-namespace tlibsvc {
-
-    /**
-     * \brief Reflow模型
-     */
+/*namespace tlibsvc {
     class ReflowSvc
     {
     public:
@@ -72,4 +67,5 @@ namespace tlibsvc {
         const std::vector<const char*> OutputNamesEncoder = { "x", "cond", "f0_pred" };
     };
 
-}
+}*/
+

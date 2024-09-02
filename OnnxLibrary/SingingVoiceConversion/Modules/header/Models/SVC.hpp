@@ -179,7 +179,7 @@ public:
 	 * \param _F0Method F0算法
 	 */
 	static void PreProcessAudio(
-		SingleAudio& _Input,
+		const SingleAudio& _Input,
 		int _SamplingRate = 48000, 
 		int _HopSize = 512, 
 		const std::wstring& _F0Method = L"Dio"

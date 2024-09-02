@@ -6,6 +6,7 @@
 #include "MusicTranscription/MoePianoTranScription.hpp"
 #include "SuperResolution/MoeSuperResolution.hpp"
 #include "Tensor/Tensor.h"
+#include "tlibsvc/VitsSvc.hpp"
 #ifdef _WIN32
 #include <mmeapi.h>
 #pragma comment(lib, "winmm.lib") 
@@ -430,8 +431,35 @@ void LibSvcTest()
 
 void OperatorTest()
 {
-	
-
+	tlibsvc::VitsSvcConfig Config{
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\SoVits4\SoVits4_SoVits.onnx)",
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
+		L"SoVits4.0",
+		nullptr,
+		{},
+		{},
+		40000,
+		320,
+		768,
+	};
+	tlibsvc::VitsSvc Model(
+		Config,
+		[](size_t, size_t) {}
+	);
+	auto Audio = DragonianLib::AvCodec().DecodeSigned16(
+		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
+		44100
+	);
+	libsvc::SlicerSettings SlicerConfig{
+		44100,
+		40.,
+		5.,
+		2048,
+		512
+	};
+	const auto SliPos = SliceAudio(Audio, SlicerConfig);
+	auto Slices = tlibsvc::GetAudioSlice(Audio, SliPos, SlicerConfig.Threshold);
+	tlibsvc::PreProcessAudio(Slices, 44100, 512, L"Dio");
 
 	/*
 	auto ddddd = adddd(1, 2.f, 3, 4.f, 5);
