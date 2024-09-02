@@ -1,11 +1,10 @@
 #pragma once
 #include <deque>
 #include <ranges>
-#include "Alloc.h"
 #include "Tensor/TensorBase.h"
 #include "Util/ThreadPool.h"
 #include "Tensor/Macro.h"
-#include "Vector.h"
+#include "MyTemplateLibrary/Vector.h"
 
 DragonianLibSpaceBegin
 using ShapeType = Vector<SizeType>;
@@ -42,7 +41,9 @@ enum class PaddingType
 
 enum class InterpolateType
 {
-	Nearest,
+	Nearest1D,
+	Nearest2D,
+	Nearest2P,
 	Linear,
 	Bilinear,
 	Bicubic,
@@ -53,6 +54,10 @@ enum class InterpolateType
 using SliceOptions = Vector<Range>;
 
 SizeType VectorMul(const ShapeType& _Input);
+
+SizeType VectorMul(const SliceOptions& _Input);
+
+ShapeType GetBeginIndices(const SliceOptions& _Input);
 
 bool RangeIsAllNone(const Vector<Range>& _Input);
 
@@ -159,6 +164,11 @@ public:
 	{
 		return Device_;
 	}
+	template<typename _Ty>
+	_Ty& Get(SizeType Index)
+	{
+		return *((_Ty*)DataPtr_ + Index);
+	}
 
 protected:
 	byte* DataPtr_ = nullptr;
@@ -173,6 +183,7 @@ protected:
 	bool IsBroadCasted_ = false;
 	std::deque<Tensor*> ViewChild_;
 	mutable std::mutex ViewMx_, RelMx_;
+	SliceOptions OpSlice;
 	
 public:
 	//提醒运算符不要使用线程池
@@ -337,6 +348,7 @@ public:
 
 	//当前Tensor的索引顺序是否严格内存连续
 	bool IsContinuous(SizeType _Dim = 0) const;
+	bool IsContinuous(const SliceOptions& _SlicePos, SizeType _Dim = 0) const;
 
 	//当前Tensor是否可以通过Permute变得索引顺序内存连续
 	bool IsTranSposedContinuous() const;
@@ -361,6 +373,8 @@ public:
 
 	//创建一个当前Tensor的View，将其_Dim轴与Last轴互换排列顺序，返回该View
 	Tensor SwapLastDim(SizeType _Dim) const;
+
+	SliceOptions GetDefaultSliceVector() const;
 
 	//在一个Tensor的指定轴调用函数
 	static void Invoke(Tensor& _Tensor, SizeType InvokedDim, InvokeFnType _Fn);

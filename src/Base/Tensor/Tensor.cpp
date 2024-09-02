@@ -40,6 +40,23 @@ SizeType VectorMul(const ShapeType& _Input)
 	return All;
 }
 
+SizeType VectorMul(const SliceOptions& _Input)
+{
+	SizeType All = 1;
+	for (const auto i : _Input)
+		All *= (i.End - i.Begin);
+	return All;
+}
+
+ShapeType GetBeginIndices(const SliceOptions& _Input)
+{
+	ShapeType Ret;
+	Ret.reserve(_Input.size());
+	for (const auto& i : _Input)
+		Ret.emplace_back(i.Begin);
+	return Ret;
+}
+
 bool RangeIsAllNone(const Vector<Range>& _Input)
 {
 	for (const auto& i : _Input)
@@ -1213,6 +1230,14 @@ bool Tensor::IsContinuous(SizeType _Dim) const
 	return true;
 }
 
+bool Tensor::IsContinuous(const SliceOptions& _SlicePos, SizeType _Dim) const
+{
+	for (size_t i = 1 + _Dim; i < StepBack_.size(); ++i)
+		if (ShapeBack_[i] != _SlicePos[i].End || _SlicePos[i].Begin != 0)
+			return false;
+	return IsContinuous(_Dim);
+}
+
 bool Tensor::IsTranSposedContinuous() const
 {
 	//const auto Dims = DimCount();
@@ -1362,6 +1387,15 @@ Tensor Tensor::SwapLastDim(SizeType _Dim) const
 	Ret.StepBack_[_Dim] = StepBack_.back();
 	Ret.SliceBegin_[_Dim] = SliceBegin_.back();
 	Ret.DimStride_[_Dim] = DimStride_.back();
+	return Ret;
+}
+
+SliceOptions Tensor::GetDefaultSliceVector() const
+{
+	SliceOptions Ret;
+	Ret.reserve(ShapeBack_.size());
+	for (auto i : ShapeBack_)
+		Ret.emplace_back(0, i);
 	return Ret;
 }
 

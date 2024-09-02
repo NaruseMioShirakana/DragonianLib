@@ -79,4 +79,68 @@ void FileGuard::Close()
 	file_ = nullptr;
 }
 
+DObject::~DObject()
+{
+	if (MyRefCountPtr_ && RemoveRef() <= 0)
+		_Tidy();
+}
+
+DObject::DObject(std::atomic_int64_t* RefCountPtr_)
+	: MyRefCountPtr_(RefCountPtr_)
+{
+	if (!RefCountPtr_)
+		DragonianLibThrow("Ref Count Pointr Can Not Be Nullptr!");
+	AddRef();
+}
+
+void DObject::_Tidy()
+{
+	Destory();
+	delete MyRefCountPtr_;
+	MyRefCountPtr_ = nullptr;
+}
+
+void DObject::AddRef(int64_t Count) const
+{
+	std::atomic_int64_t& MyRefCount = *MyRefCountPtr_;
+	MyRefCount += Count;
+}
+
+int64_t DObject::RemoveRef(int64_t Count) const
+{
+	std::atomic_int64_t& MyRefCount = *MyRefCountPtr_;
+	MyRefCount -= Count;
+	return MyRefCount;
+}
+
+DObject::DObject(const DObject& _Left)
+{
+	MyRefCountPtr_ = _Left.MyRefCountPtr_;
+	if (MyRefCountPtr_)
+		AddRef();
+}
+
+DObject::DObject(DObject&& _Right) noexcept
+{
+	MyRefCountPtr_ = _Right.MyRefCountPtr_;
+	_Right.MyRefCountPtr_ = nullptr;
+}
+
+DObject& DObject::operator=(const DObject& _Left)
+{
+	if (&_Left == this)
+		return *this;
+	MyRefCountPtr_ = _Left.MyRefCountPtr_;
+	if (MyRefCountPtr_)
+		AddRef();
+	return *this;
+}
+
+DObject& DObject::operator=(DObject&& _Right) noexcept
+{
+	MyRefCountPtr_ = _Right.MyRefCountPtr_;
+	_Right.MyRefCountPtr_ = nullptr;
+	return *this;
+}
+
 DragonianLibSpaceEnd

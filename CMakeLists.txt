@@ -28,6 +28,7 @@ set(FAISS_ENABLE_C_API ON)
 set(DRAGONIANLIB_LANGUAGES CXX)
 # set BLAS_LIBRARIES BLAS_INCLUDE_DIRS FFMPEG_LIBRARIES FFMPEG_INCLUDE_DIRS ONNXRT_LIBRARIES ONNXRT_INCLUDE
 # set ONNXRT_DYNLIBS
+enable_language(ASM_MASM)
 
 #project name
 set(DRAGONIANLIB_LIB DragonianLib)
@@ -165,6 +166,7 @@ file(GLOB_RECURSE DRAGONIANLIB_LIBRARIES_SRC
     ${PROJECT_SOURCE_DIR}/Libraries/*.h
     ${PROJECT_SOURCE_DIR}/Libraries/*.c
     ${PROJECT_SOURCE_DIR}/Libraries/*.hpp
+    #${PROJECT_SOURCE_DIR}/Libraries/*.asm
 )
 
 file(GLOB_RECURSE DRAGONIANLIB_TENSORLIB_SRC
@@ -177,25 +179,17 @@ file(GLOB_RECURSE DRAGONIANLIB_TENSORLIB_SRC
 #src
 if(DRAGONIANLIB_ONNXRUNTIME)
     file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_SRC
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/*.hpp
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/*.h
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/*.cpp
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/*.c
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.hpp
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.h
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.cpp
-        ${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/*.c
-        ${PROJECT_SOURCE_DIR}/Other/*.c
-        ${PROJECT_SOURCE_DIR}/Other/*.cpp
-        ${PROJECT_SOURCE_DIR}/Other/*.h
-        ${PROJECT_SOURCE_DIR}/Other/*.hpp
+        ${PROJECT_SOURCE_DIR}/OnnxLibrary/*.c
+        ${PROJECT_SOURCE_DIR}/OnnxLibrary/*.cpp
+        ${PROJECT_SOURCE_DIR}/OnnxLibrary/*.h
+        ${PROJECT_SOURCE_DIR}/OnnxLibrary/*.hpp
     )
     if(DRAGONIANLIB_TENSORRT)
     file(GLOB_RECURSE DRAGONIANLIB_TRTLIB_SRC
-        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.hpp
-        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.h
-        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.cpp
-        ${PROJECT_SOURCE_DIR}/libsvc-tensorrt/*.c
+        ${PROJECT_SOURCE_DIR}/TensorRT/*.hpp
+        ${PROJECT_SOURCE_DIR}/TensorRT/*.h
+        ${PROJECT_SOURCE_DIR}/TensorRT/*.cpp
+        ${PROJECT_SOURCE_DIR}/TensorRT/*.c
     )
     endif()
 endif()
@@ -285,15 +279,10 @@ endif()
 #project include
 include_directories(${PROJECT_SOURCE_DIR}/include/Base)
 if(DRAGONIANLIB_ONNXRUNTIME)
-    include_directories(${PROJECT_SOURCE_DIR}/libsvc-onnx/Modules/header)
-    include_directories(${PROJECT_SOURCE_DIR}/libsvc-onnx)
-    include_directories(${PROJECT_SOURCE_DIR}/libsvc-onnx/Api/header)
+    include_directories(${PROJECT_SOURCE_DIR}/OnnxLibrary)
 endif()
-include_directories(${PROJECT_SOURCE_DIR}/Libraries/MyTemplateLibrary)
-include_directories(${PROJECT_SOURCE_DIR}/Libraries/AvCodec)
-include_directories(${PROJECT_SOURCE_DIR}/Libraries/K-DimensionalTree)
 include_directories(${PROJECT_SOURCE_DIR}/Libraries)
-include_directories(${PROJECT_SOURCE_DIR}/Other)
+
 
 if(DRAGONIANLIB_TENSORRT AND DRAGONIANLIB_ONNXRUNTIME)
     include_directories(${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/include)
@@ -305,6 +294,12 @@ if(DRAGONIANLIB_TENSORRT AND DRAGONIANLIB_ONNXRUNTIME)
         ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_plugin_10.lib
         ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvinfer_vc_plugin_10.lib
         ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/TensorRT/lib/nvonnxparser_10.lib
+    )
+    find_package(libcudacxx REQUIRED)
+    include_directories(${_libcudacxx_INCLUDE_DIR})
+    target_link_libraries(
+        ${DRAGONIANLIB_LIB} PUBLIC 
+        libcudacxx::libcudacxx
     )
 endif()
 

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Vector.h"
+#include "MyTemplateLibrary/Vector.h"
 namespace DlCodecStft
 {
     class STFT

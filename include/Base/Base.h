@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
 
 #ifndef UNUSED
 #define UNUSED(x) (void)(x)
@@ -24,6 +25,8 @@
 #define DragonianLibThrow(message) DragonianLibThrowImpl(message, std::exception)
 
 #define DragonianLibNotImplementedError DragonianLibThrow("NotImplementedError!")
+
+#define DragonianLibFatalError DragonianLibThrow("FatalError!")
 
 #define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
 
@@ -208,6 +211,27 @@ public:
 	DragonianLibNDIS bool Enabled() const;
 private:
 	FILE* file_ = nullptr;
+};
+
+class DObject
+{
+public:
+	DObject() = delete;
+	virtual ~DObject();
+	DObject(std::atomic_int64_t* RefCountPtr_);
+	DObject(const DObject& _Left);
+	DObject(DObject&& _Right) noexcept;
+
+	DObject& operator=(const DObject& _Left);
+	DObject& operator=(DObject&& _Right) noexcept;
+private:
+	void _Tidy();
+	virtual void Destory() = 0;
+
+	void AddRef(int64_t Count = 1) const;
+	int64_t RemoveRef(int64_t Count = 1) const;
+
+	std::atomic_int64_t* MyRefCountPtr_ = nullptr;
 };
 
 DragonianLibSpaceEnd

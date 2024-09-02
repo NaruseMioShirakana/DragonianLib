@@ -3,7 +3,6 @@
 #include "cblas.h"
 #include "Util/Logger.h"
 #include "fftw3.h"
-#include "Vector.h"
 #include "Tensor/TensorBase.h"
 #ifdef max
 #undef max

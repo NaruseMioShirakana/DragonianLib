@@ -1,6 +1,5 @@
 #pragma once
 #include "Alloc.h"
-#include <exception>
 #include <initializer_list>
 #include <algorithm>
 #include "matlabfunctions.h"
@@ -19,6 +18,7 @@ class Vector
 public:
 	friend std::_Tidy_guard<Vector>;
 
+	using TidyGuard = std::_Tidy_guard<Vector>;
 	using ValueType = Type_;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
@@ -335,9 +335,10 @@ private:
 	}
 
 	template<typename... _ArgsTy>
-	DRAGONIANLIBCONSTEXPR void EmplaceImpl(Iterator _Where, _ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR decltype(auto) EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
 	{
-		new (_Where) ValueType(std::forward<_ArgsTy>(_Args)...);
+		::new (static_cast<void*>(std::addressof(_Obj))) ValueType(std::forward<_ArgsTy>(_Args)...);
+		return _Obj;
 	}
 
 	DRAGONIANLIBCONSTEXPR void ReserveImpl(SizeType _NewCapacity, IndexType _Front, IndexType _Tail)
@@ -438,7 +439,7 @@ public:
 	}
 
 	template<typename... _ArgsTy>
-	DRAGONIANLIBCONSTEXPR void Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR decltype(auto) Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -449,16 +450,16 @@ public:
 			ReserveImpl(Capacity() * 2, _Where - _MyFirst, _Where - _MyFirst + 1);
 		else
 			CopyImpl(_Where - _MyFirst, _Where - _MyFirst + 1);
-		EmplaceImpl(_MyFirst + Idx, std::forward<_ArgsTy>(_Args)...);
+		return EmplaceImpl(*(_MyFirst + Idx), std::forward<_ArgsTy>(_Args)...);
 	}
 
 	template<typename... _ArgsTy>
-	DRAGONIANLIBCONSTEXPR void EmplaceBack(_ArgsTy &&... _Args)
+	DRAGONIANLIBCONSTEXPR decltype(auto) EmplaceBack(_ArgsTy &&... _Args)
 	{
-		Emplace(_MyLast, std::forward<_ArgsTy>(_Args)...);
+		return Emplace(_MyLast, std::forward<_ArgsTy>(_Args)...);
 	}
 
-	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, const ValueType& _Value)
+	DRAGONIANLIBCONSTEXPR Reference Insert(ConstIterator _Where, const ValueType& _Value)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -474,9 +475,10 @@ public:
 			new (_MyFirst + Idx) ValueType(_Value);
 		else
 			*(_MyFirst + Idx) = _Value;
+		return *(_MyFirst + Idx);
 	}
 
-	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, ValueType&& _Value)
+	DRAGONIANLIBCONSTEXPR Reference Insert(ConstIterator _Where, ValueType&& _Value)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where > _MyLast || _Where < _MyFirst)
@@ -491,7 +493,8 @@ public:
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 			new (_MyFirst + Idx) ValueType(std::move(_Value));
 		else
-			*(_MyFirst + Idx) = std::move(_Value);
+			*(_MyFirst + Idx) = _Value;
+		return *(_MyFirst + Idx);
 	}
 
 	DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, SizeType _Count = 1, const ValueType& _Value = ValueType(0))
@@ -502,9 +505,9 @@ public:
 #endif
 		auto Idx = _Where - _MyFirst;
 		if (_MyLast + _Count > _MyEnd)
-			ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + _Count);
+			ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + IndexType(_Count));
 		else
-			CopyImpl(_Where - _MyFirst, _Where - _MyFirst + _Count);
+			CopyImpl(_Where - _MyFirst, _Where - _MyFirst + IndexType(_Count));
 
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 			for (SizeType i = 0; i < _Count; ++i)
@@ -522,13 +525,13 @@ public:
 #endif
 		auto Idx = _Where - _MyFirst;
 		SizeType _Count = _Last - _First;
-		if (_Count < 0)
+		if (_Last < _First)
 			DragonianLibStlThrow("Range Error!");
 
 		if (_MyLast + _Count > _MyEnd)
-			ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + _Count);
+			ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + IndexType(_Count));
 		else
-			CopyImpl(_Where - _MyFirst, _Where - _MyFirst + _Count);
+			CopyImpl(_Where - _MyFirst, _Where - _MyFirst + IndexType(_Count));
 
 		if constexpr (!std::is_arithmetic_v<ValueType>)
 			for (SizeType i = 0; i < _Count; ++i)

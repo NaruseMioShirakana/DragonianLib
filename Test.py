@@ -1,8 +1,8 @@
 import torch
 import time
 for i in range(10):
+    a = torch.randn(1,768,10000)
+    b = torch.randn(1,768,10000)
     beg = time.time()
-    a = torch.ones(114,514,1919)
-    b = torch.ones_like(a)
-    c = a * b
-    print (time.time() - beg)
+    c = (a + a)
+    print(time.time() - beg)

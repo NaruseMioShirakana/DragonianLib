@@ -64,16 +64,15 @@ Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputSqueeze.Shape().size(); \
 	const auto& InputShape = InputSqueeze.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputSqueeze.GetDefaultSliceVector(); \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
-		Vector<Range> Slices; \
+ \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -84,13 +83,14 @@ Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 						_ThreadPool->Join(); \
 						return Ret; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputSqueeze.Slice(ThreadSlices), \
-						CurDims \
+						Result, \
+						InputSqueeze, \
+						CurDims, \
+						ThreadSlices \
 					); \
 					if (End == InputShape[i]) \
 					{ \
@@ -100,10 +100,10 @@ Tensor _Name(const Tensor& _Input, ThreadPool* _ThreadPool) \
 				} \
 			} \
 		} \
-		_OpFn(Result, InputSqueeze, CurDims); \
+		_OpFn(Result, InputSqueeze, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputSqueeze, CurDims); \
+		_OpFn(Result, InputSqueeze, CurDims, OSlice); \
 	return Ret; \
 }
 
@@ -115,16 +115,15 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputSqueeze.Shape().size(); \
 	const auto& InputShape = InputSqueeze.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputSqueeze.GetDefaultSliceVector(); \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
-		Vector<Range> Slices; \
+ \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -135,13 +134,14 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 						_ThreadPool->Join(); \
 						return; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputSqueeze.Slice(ThreadSlices), \
-						CurDims \
+						Result, \
+						InputSqueeze, \
+						CurDims, \
+						ThreadSlices \
 					); \
 					if (End == InputShape[i]) \
 					{ \
@@ -151,10 +151,10 @@ void _Name##Inplace(const Tensor& _Input, ThreadPool* _ThreadPool) \
 				} \
 			} \
 		} \
-		_OpFn(Result, InputSqueeze, CurDims); \
+		_OpFn(Result, InputSqueeze, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputSqueeze, CurDims); \
+		_OpFn(Result, InputSqueeze, CurDims, OSlice); \
 }
 
 #define DragonianLibMultiOperatorFunctionImpl(_Name, _OpFn) \
@@ -174,18 +174,16 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -196,15 +194,17 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 						_ThreadPool->Join(); \
 						return Ret; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
-						InputB.Slice(ThreadSlices), \
-						CurDims \
+						Result, \
+						InputA, \
+						InputB, \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -215,10 +215,10 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
  \
 	return Ret; \
 }
@@ -235,18 +235,16 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -257,15 +255,17 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 						_ThreadPool->Join(); \
 						return Ret; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
+						Result, \
+						InputA, \
 						_Value, \
-						CurDims \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -276,10 +276,10 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
  \
 	return Ret; \
 }
@@ -297,18 +297,16 @@ void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -319,15 +317,17 @@ void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 						_ThreadPool->Join(); \
 						return; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
-						InputB.Slice(ThreadSlices), \
-						CurDims \
+						Result, \
+						InputA, \
+						InputB, \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -338,10 +338,10 @@ void _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
 }
 
 #define DragonianLibMultiOperatorScalarInplaceFunctionImpl(_Name, _OpFn) \
@@ -355,18 +355,16 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -377,15 +375,17 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 						_ThreadPool->Join(); \
 						return; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
+						Result, \
+						InputA, \
 						_Value, \
-						CurDims \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -396,10 +396,10 @@ void _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Thre
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
 }
 
 #define DragonianLibCompareOperatorFunctionImpl(_Name, _OpFn) \
@@ -419,18 +419,16 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -441,15 +439,17 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 						_ThreadPool->Join(); \
 						return Ret; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
-						InputB.Slice(ThreadSlices), \
-						CurDims \
+						Result, \
+						InputA, \
+						InputB, \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -460,10 +460,10 @@ Tensor _Name(const Tensor& _A, const Tensor& _B, ThreadPool* _ThreadPool) \
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, InputB, CurDims); \
+		_OpFn(Result, InputA, InputB, CurDims, OSlice); \
  \
 	return Ret; \
 }
@@ -480,18 +480,16 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 	const auto CurDims = (SizeType)InputA.Shape().size(); \
 	const auto& InputShape = InputA.Shape(); \
 	const auto TotalSize = VectorMul(InputShape); \
+	const auto OSlice = InputA.GetDefaultSliceVector(); \
  \
 	if (_ThreadPool && TotalSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE) \
 	{ \
 		const auto NWorkers = _ThreadPool->GetThreadCount(); \
 		const auto SqueezedDims = (SizeType)InputShape.size(); \
  \
-		Vector<Range> Slices; \
 		for (SizeType i = 0; i < SqueezedDims; ++i) \
 		{ \
-			if (InputShape[i] < NWorkers) \
-				Slices.emplace_back(None); \
-			else \
+			if (InputShape[i] >= NWorkers) \
 			{ \
 				const auto Step = Tensor::Ceil(InputShape[i], NWorkers); \
 				for (SizeType j = 0; ; j += Step) \
@@ -502,15 +500,17 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 						_ThreadPool->Join(); \
 						return Ret; \
 					} \
-					auto ThreadSlices = Slices; \
-					ThreadSlices.emplace_back(j, End); \
+ \
+					auto ThreadSlices = OSlice; \
+					ThreadSlices[i] = { j, End }; \
  \
 					_ThreadPool->Commit( \
 						_OpFn, \
-						Result.Slice(ThreadSlices), \
-						InputA.Slice(ThreadSlices), \
+						Result, \
+						InputA, \
 						_Value, \
-						CurDims \
+						CurDims, \
+						ThreadSlices \
 					); \
  \
 					if (End == InputShape[i]) \
@@ -521,10 +521,10 @@ Tensor _Name(const Tensor& _A, cpvoid _Val, TensorType _ValType, ThreadPool* _Th
 				} \
 			} \
 		} \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
 	} \
 	else \
-		_OpFn(Result, InputA, _Value, CurDims); \
+		_OpFn(Result, InputA, _Value, CurDims, OSlice); \
  \
 	return Ret; \
 }

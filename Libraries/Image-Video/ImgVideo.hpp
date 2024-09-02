@@ -9,7 +9,7 @@
 #pragma once
 #define IMAGEVIDEOCLASSHEADER namespace DragonianLib {
 #define IMAGEVIDEOCLASSEND }
-#include "Vector.h"
+#include "MyTemplateLibrary/Vector.h"
 
 IMAGEVIDEOCLASSHEADER
 

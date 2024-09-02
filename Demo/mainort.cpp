@@ -1,8 +1,8 @@
 #include <iostream>
 #include <tchar.h>
-#include "AvCodec.h"
-#include "Modules.hpp"
-#include "NativeApi.h"
+#include "AvCodec/AvCodec.h"
+#include "SingingVoiceConversion/Modules/header/Modules.hpp"
+#include "SingingVoiceConversion/Api/header/NativeApi.h"
 #include "MusicTranscription/MoePianoTranScription.hpp"
 #include "SuperResolution/MoeSuperResolution.hpp"
 #include "Tensor/Tensor.h"
@@ -10,6 +10,19 @@
 #include <mmeapi.h>
 #pragma comment(lib, "winmm.lib") 
 #endif
+class WithTimer
+{
+public:
+	WithTimer(const std::function<void()>& _Fn)
+	{
+		LARGE_INTEGER Time1, Time2, Freq;
+		QueryPerformanceFrequency(&Freq);
+		QueryPerformanceCounter(&Time1);
+		_Fn();
+		QueryPerformanceCounter(&Time2);
+		std::cout << " CostTime:" << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << "ms\n";
+	}
+};
 
 size_t TotalStep = 0;
 void ProgressCb(size_t a, size_t)
@@ -83,6 +96,7 @@ void RecordTaskEnd(bool* ptask);
 void OutPutTask(AudioContainer& Audio);
 void CrossFadeTask();
 void InferTask(const libsvc::UnionSvcModel* Model, long _SrcSr, const libsvc::InferenceParams& Params);
+void OperatorTest();
 #endif
 
 int main()
@@ -92,8 +106,9 @@ int main()
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
 	//LibMtsTest();
-	LibSrTest();
+	//LibSrTest();
 	//LibSvcTest();
+	OperatorTest();
 	system("pause");
 	return 0;
 }
@@ -412,6 +427,33 @@ void LibSvcTest()
 }
 
 #ifndef DRAGONIANLIB_IMPORT
+
+void OperatorTest()
+{
+	
+
+
+	/*
+	auto ddddd = adddd(1, 2.f, 3, 4.f, 5);
+	std::cout << ddddd << '\n';
+	DragonianLib::Tensor::SetThreadCount(8);
+	DragonianLib::Tensor::EnableTimeLogger(false);
+	DragonianLib::ThreadPool Thp;
+	Thp.EnableTimeLogger(false);
+	Thp.Init(8);
+	DragonianLib::Tensor Ten1919810({ 1,768,10000 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
+	for (int64_t i = 0; i < 20; ++i)
+	{
+		Ten1919810.RandFix(&Thp);
+		WithTimer(
+			[&]()
+			{
+				auto Res = Ten1919810 + Ten1919810 * 2.;
+			}
+		);
+	}
+	*/
+}
 
 void TensorLibDemo()
 {
