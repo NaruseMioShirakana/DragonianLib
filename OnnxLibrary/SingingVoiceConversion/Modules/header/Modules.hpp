@@ -25,77 +25,78 @@
 #include "Models/ReflowSvc.hpp"
 #include "Stft/stft.hpp"
 
-namespace libsvc
+LibSvcHeader
+
+class UnionSvcModel
 {
-	class UnionSvcModel
-	{
-	public:
-		UnionSvcModel() = delete;
-		~UnionSvcModel();
-		UnionSvcModel(const UnionSvcModel&) = delete;
-		UnionSvcModel(UnionSvcModel&&) = delete;
-		UnionSvcModel& operator=(const UnionSvcModel&) = delete;
-		UnionSvcModel& operator=(UnionSvcModel&&) = delete;
+public:
+	UnionSvcModel() = delete;
+	~UnionSvcModel();
+	UnionSvcModel(const UnionSvcModel&) = delete;
+	UnionSvcModel(UnionSvcModel&&) = delete;
+	UnionSvcModel& operator=(const UnionSvcModel&) = delete;
+	UnionSvcModel& operator=(UnionSvcModel&&) = delete;
 
-		UnionSvcModel(const libsvc::Hparams& Config,
-			const libsvc::LibSvcModule::ProgressCallback& Callback,
-			int ProviderID, int NumThread, int DeviceID);
+	UnionSvcModel(const LibSvcSpace Hparams& Config,
+		const LibSvcSpace LibSvcModule::ProgressCallback& Callback,
+		int ProviderID, int NumThread, int DeviceID);
 
-		[[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(const libsvc::SingleSlice& _Slice, const libsvc::InferenceParams& _Params, size_t& _Process) const;
+	[[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(const LibSvcSpace SingleSlice& _Slice, const LibSvcSpace InferenceParams& _Params, size_t& _Process) const;
 
-		[[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(const DragonianLibSTL::Vector<int16_t>& _PCMData, long _SrcSamplingRate, const libsvc::InferenceParams& _Params) const;
+	[[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(const DragonianLibSTL::Vector<int16_t>& _PCMData, long _SrcSamplingRate, const LibSvcSpace InferenceParams& _Params) const;
 
-		[[nodiscard]] DragonianLibSTL::Vector<int16_t> ShallowDiffusionInference(
-			DragonianLibSTL::Vector<float>& _16KAudioHubert,
-			const libsvc::InferenceParams& _Params,
-			std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
-			const DragonianLibSTL::Vector<float>& _SrcF0,
-			const DragonianLibSTL::Vector<float>& _SrcVolume,
-			const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
-			size_t& Process,
-			int64_t SrcSize
-		) const;
+	[[nodiscard]] DragonianLibSTL::Vector<int16_t> ShallowDiffusionInference(
+		DragonianLibSTL::Vector<float>& _16KAudioHubert,
+		const LibSvcSpace InferenceParams& _Params,
+		std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
+		const DragonianLibSTL::Vector<float>& _SrcF0,
+		const DragonianLibSTL::Vector<float>& _SrcVolume,
+		const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
+		size_t& Process,
+		int64_t SrcSize
+	) const;
 
-		libsvc::SingingVoiceConversion* GetPtr() const;
+	LibSvcSpace SingingVoiceConversion* GetPtr() const;
 
-		[[nodiscard]] int64_t GetMaxStep() const;
+	[[nodiscard]] int64_t GetMaxStep() const;
 
-		[[nodiscard]] bool OldVersion() const;
+	[[nodiscard]] bool OldVersion() const;
 
-		[[nodiscard]] const std::wstring& GetDiffSvcVer() const;
+	[[nodiscard]] const std::wstring& GetDiffSvcVer() const;
 
-		[[nodiscard]] int64_t GetMelBins() const;
+	[[nodiscard]] int64_t GetMelBins() const;
 
-		[[nodiscard]] int GetHopSize() const;
+	[[nodiscard]] int GetHopSize() const;
 
-		[[nodiscard]] int64_t GetHiddenUnitKDims() const;
+	[[nodiscard]] int64_t GetHiddenUnitKDims() const;
 
-		[[nodiscard]] int64_t GetSpeakerCount() const;
+	[[nodiscard]] int64_t GetSpeakerCount() const;
 
-		[[nodiscard]] bool CharaMixEnabled() const;
+	[[nodiscard]] bool CharaMixEnabled() const;
 
-		[[nodiscard]] long GetSamplingRate() const;
+	[[nodiscard]] long GetSamplingRate() const;
 
-		void NormMel(DragonianLibSTL::Vector<float>& MelSpec) const;
+	void NormMel(DragonianLibSTL::Vector<float>& MelSpec) const;
 
-		[[nodiscard]] bool IsDiffusion() const;
+	[[nodiscard]] bool IsDiffusion() const;
 
-		[[nodiscard]] DragonianLib::DragonianLibOrtEnv& GetDlEnv();
+	[[nodiscard]] DragonianLib::DragonianLibOrtEnv& GetDlEnv();
 
-		[[nodiscard]] const DragonianLib::DragonianLibOrtEnv& GetDlEnv() const;
-	private:
-		libsvc::DiffusionSvc* Diffusion_ = nullptr;
-		libsvc::ReflowSvc* Reflow_ = nullptr;
-	};
+	[[nodiscard]] const DragonianLib::DragonianLibOrtEnv& GetDlEnv() const;
+private:
+	LibSvcSpace DiffusionSvc* Diffusion_ = nullptr;
+	LibSvcSpace ReflowSvc* Reflow_ = nullptr;
+};
 
-	void SetupKernel();
+void SetupKernel();
 
-	DlCodecStft::Mel& GetMelOperator(
-		int32_t _SamplingRate,
-		int32_t _Hopsize,
-		int32_t _MelBins
-	);
-}
+DlCodecStft::Mel& GetMelOperator(
+	int32_t _SamplingRate,
+	int32_t _Hopsize,
+	int32_t _MelBins
+);
+
+LibSvcEnd
 
 namespace MoeVSRename
 {

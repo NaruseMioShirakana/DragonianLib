@@ -54,7 +54,8 @@ namespace tlibsvc {
 					_Hps.TrtSettings.EnableFp16,
 					_Hps.TrtSettings.EnableBf16,
 					_Hps.TrtSettings.EnableInt8,
-					_Hps.TrtSettings.VerboseLevel
+					_Hps.TrtSettings.VerboseLevel,
+					_Hps.TrtSettings.OptimizationLevel
 				);
 			auto DynConf = VitsSvcDynaSetting;
 			DynConf[0].Min.d[2] = HiddenUnitKDims; DynConf[0].Opt.d[2] = HiddenUnitKDims; DynConf[0].Max.d[2] = HiddenUnitKDims;
@@ -77,7 +78,8 @@ namespace tlibsvc {
 				_Hps.TrtSettings.EnableFp16,
 				_Hps.TrtSettings.EnableBf16,
 				_Hps.TrtSettings.EnableInt8,
-				_Hps.TrtSettings.VerboseLevel
+				_Hps.TrtSettings.VerboseLevel,
+				_Hps.TrtSettings.OptimizationLevel
 			);
 			DragonianLibLogMessage(L"[Info] VitsSvcModel Models loaded");
 		}

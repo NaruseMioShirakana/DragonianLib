@@ -8,7 +8,7 @@
 #define DragonianLibStlThrow(message) ThrowException(message, __FILE__, __FUNCSIG__, __LINE__)
 
 DRAGONIANLIBSTLBEGIN
-
+ 
 [[noreturn]] void ThrowException(const char* Message, const char* FILE, const char* FUN, int LINE);
 
 //using Type_ = float;

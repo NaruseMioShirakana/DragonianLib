@@ -310,6 +310,7 @@ namespace DlCodecStft
 
         DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> freqs_top{ BinsPerOctave < (int)freqs.Size() ? freqs.end() - BinsPerOctave : freqs.begin(), freqs.end() };
 
+        DragonianLibNotImplementedError;
     }
 
 }

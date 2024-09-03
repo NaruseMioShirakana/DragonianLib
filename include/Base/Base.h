@@ -16,7 +16,7 @@
 	const std::string __DragonianLib__Message__Prefix__ =\
 	std::string("[In File: \"") + std::filesystem::path(__FILE__).filename().string() + "\", " +\
 	"Function: \"" + __FUNCSIG__ + "\", " +\
-	"Line: " + std::to_string(__LINE__) + " ] ";\
+	"Line: " + std::to_string(__LINE__) + " ]; \n";\
 	if (__DragonianLib__Message__.substr(0, __DragonianLib__Message__Prefix__.length()) != __DragonianLib__Message__Prefix__)\
 		throw exception_type((__DragonianLib__Message__Prefix__ + __DragonianLib__Message__).c_str());\
 	throw exception_type(__DragonianLib__Message__.c_str());\

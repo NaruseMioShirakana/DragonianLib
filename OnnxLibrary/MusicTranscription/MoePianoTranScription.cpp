@@ -65,6 +65,7 @@ namespace DragonianLib
 
 				_callback(++Progress, ProgressMax);
 			}
+			return {};
 		}
 
 	}

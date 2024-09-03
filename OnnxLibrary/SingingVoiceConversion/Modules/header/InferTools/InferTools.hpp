@@ -22,8 +22,9 @@
 #pragma once
 #include "MyTemplateLibrary/Vector.h"
 
-#define LibSvcHeader namespace libsvc {
-#define LibSvcEnd }
+#define LibSvcHeader namespace DragonianLib { namespace SingingVoiceConversion { 
+#define LibSvcEnd } }
+#define LibSvcSpace ::DragonianLib::SingingVoiceConversion::
 
 LibSvcHeader
 struct SlicerSettings

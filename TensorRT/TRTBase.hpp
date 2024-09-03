@@ -25,6 +25,10 @@ namespace TensorRTLib
 		{
 			return Name == _in;
 		}
+		bool operator==(const std::string& _in) const
+		{
+			return Name == _in;
+		}
 	};
 
 	struct Tensor
@@ -108,7 +112,8 @@ namespace TensorRTLib
 			bool EnableFp16 = false,
 			bool EnableBf16 = false,
 			bool EnableInt8 = false,
-			nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING
+			nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING,
+			int32_t OptimizationLevel = 3
 		)
 		{
 			LoadModel(
@@ -120,7 +125,8 @@ namespace TensorRTLib
 				EnableFp16,
 				EnableBf16,
 				EnableInt8,
-				VerboseLevel
+				VerboseLevel,
+				OptimizationLevel
 			);
 		}
 
@@ -133,7 +139,8 @@ namespace TensorRTLib
 			bool EnableFp16 = false,
 			bool EnableBf16 = false,
 			bool EnableInt8 = false,
-			nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING
+			nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING,
+			int32_t OptimizationLevel = 3
 		);
 
 		DragonianLibSTL::Vector<Tensor> Infer(
@@ -145,13 +152,16 @@ namespace TensorRTLib
 		int64_t GetInputCount() const { return mInputCount; }
 		int64_t GetOutputCount() const { return mOutputCount; }
 		int64_t GetIOCount() const { return mEngine->getNbIOTensors(); }
+		const std::vector<std::string>& GetInputNames() const { return MyInputNames; }
+		const std::vector<std::string>& GetOutputNames() const { return MyOutputNames; }
 
 	private:
-		std::shared_ptr<nvinfer1::IRuntime> mRuntime = nullptr;
+		std::unique_ptr<nvinfer1::IRuntime> mRuntime = nullptr;
 		std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr;
-		std::shared_ptr<nvinfer1::INetworkDefinition> mNetwork = nullptr;
 
 		int64_t mInputCount = 0, mOutputCount = 0, mIONodeCount = 0;
+
+		std::vector<std::string> MyInputNames, MyOutputNames;
 
 		TrtModel(const TrtModel& _Val) = delete;
 		TrtModel(TrtModel&& _Val) = delete;
@@ -187,5 +197,6 @@ namespace TensorRTLib
 		bool EnableBf16 = false;
 		bool EnableInt8 = false;
 		nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING;
+		int32_t OptimizationLevel = 3;
 	};
 }

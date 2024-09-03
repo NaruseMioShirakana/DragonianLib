@@ -43,17 +43,17 @@ void SysFreeString(BSTR _String)
 std::deque<std::wstring> ErrorQueue;
 size_t MaxErrorCount = 20;
 
-using Config = libsvc::Hparams;
-using VitsSvc = libsvc::VitsSvc;
-using UnionSvc = libsvc::UnionSvcModel;
-using ReflowSvc = libsvc::ReflowSvc;
+using Config = LibSvcSpace Hparams;
+using VitsSvc = LibSvcSpace VitsSvc;
+using UnionSvc = LibSvcSpace UnionSvcModel;
+using ReflowSvc = LibSvcSpace ReflowSvc;
 using ClusterBase = DragonianLib::BaseCluster;
-using TensorExtractorBase = libsvc::LibSvcTensorExtractor;
-using ProgressCallback = libsvc::LibSvcModule::ProgressCallback;
-using ExecutionProvider = libsvc::LibSvcModule::ExecutionProviders;
-using Slices = libsvc::SingleAudio;
-using SingleSlice = libsvc::SingleSlice;
-using Params = libsvc::InferenceParams;
+using TensorExtractorBase = LibSvcSpace LibSvcTensorExtractor;
+using ProgressCallback = LibSvcSpace LibSvcModule::ProgressCallback;
+using ExecutionProvider = LibSvcSpace LibSvcModule::ExecutionProviders;
+using Slices = LibSvcSpace SingleAudio;
+using SingleSlice = LibSvcSpace SingleSlice;
+using Params = LibSvcSpace InferenceParams;
 
 using AudioContainer = DragonianLibSTL::Vector<int16_t>;
 using OffsetContainer = DragonianLibSTL::Vector<size_t>;
@@ -341,7 +341,7 @@ void LibSvcSetGlobalEnvDir(
 
 void LibSvcInit()
 {
-	libsvc::SetupKernel();
+	LibSvcSpace SetupKernel();
 }
 
 std::mutex ErrorMx;
@@ -411,7 +411,7 @@ int32_t LibSvcSliceAudio(
 
 	const LibSvcSlicerSettings* _SettingInp = (const LibSvcSlicerSettings*)_Setting;
 	auto& Ret = *(DragonianLibSTL::Vector<size_t>*)(_Output);
-	libsvc::SlicerSettings SliSetting{
+	LibSvcSpace SlicerSettings SliSetting{
 		_SettingInp->SamplingRate,
 		_SettingInp->Threshold,
 		_SettingInp->MinLength,
@@ -421,7 +421,7 @@ int32_t LibSvcSliceAudio(
 	
 	try
 	{
-		Ret = libsvc::SliceAudio(*(const AudioContainer*)(_Audio), SliSetting);
+		Ret = LibSvcSpace SliceAudio(*(const AudioContainer*)(_Audio), SliSetting);
 	}
 	catch (std::exception& e)
 	{
@@ -441,7 +441,7 @@ int32_t LibSvcPreprocess(
 	void* _Output // Slices By "LibSvcAllocateSliceData()"
 )
 {
-	libsvc::SlicerSettings _Setting{
+	LibSvcSpace SlicerSettings _Setting{
 		.Threshold = _Threshold
 	};
 
@@ -466,12 +466,12 @@ int32_t LibSvcPreprocess(
 	Slices& Ret = *static_cast<Slices*>(_Output);
 	try
 	{
-		Ret = libsvc::SingingVoiceConversion::GetAudioSlice(
+		Ret = LibSvcSpace SingingVoiceConversion::GetAudioSlice(
 			*(const AudioContainer*)(_Audio),
 			*(const OffsetContainer*)(_SlicePos),
 			_Setting
 		);
-		libsvc::SingingVoiceConversion::PreProcessAudio(Ret, _SamplingRate, _HopSize, _F0Method);
+		LibSvcSpace SingingVoiceConversion::PreProcessAudio(Ret, _SamplingRate, _HopSize, _F0Method);
 	}
 	catch (std::exception& e)
 	{
@@ -1005,7 +1005,7 @@ INT32 LibSvcVocoderEnhance(
 		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
 	try
 	{
-		*(AudioContainer*)(_Output) = libsvc::VocoderInfer(
+		*(AudioContainer*)(_Output) = LibSvcSpace VocoderInfer(
 		   MelTemp.first,
 		   Rf0,
 		   _VocoderMelBins,
@@ -1042,7 +1042,7 @@ void* LibSvcLoadModel(
 
 	//printf("%lld", (long long)(Config.DiffusionSvc.Encoder));
 
-	libsvc::Hparams ModelConfig{
+	LibSvcSpace Hparams ModelConfig{
 		LibSvcNullStrCheck(Config.TensorExtractor),
 		LibSvcNullStrCheck(Config.HubertPath),
 		{
@@ -1086,7 +1086,7 @@ void* LibSvcLoadModel(
 	{
 		if(_T == 0)
 		{
-			return new VitsSvc(ModelConfig, _ProgressCallback, static_cast<libsvc::LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount);
+			return new VitsSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount);
 		}
 		return new UnionSvc(ModelConfig, _ProgressCallback, int(_ExecutionProvider), int(_DeviceID), int(_ThreadCount));
 	}

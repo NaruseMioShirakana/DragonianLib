@@ -96,7 +96,7 @@ void RealTime();
 void RecordTaskEnd(bool* ptask);
 void OutPutTask(AudioContainer& Audio);
 void CrossFadeTask();
-void InferTask(const libsvc::UnionSvcModel* Model, long _SrcSr, const libsvc::InferenceParams& Params);
+void InferTask(const LibSvcSpace UnionSvcModel* Model, long _SrcSr, const LibSvcSpace InferenceParams& Params);
 void OperatorTest();
 #endif
 
@@ -119,7 +119,7 @@ void LibSvcTest()
 #ifdef DRAGONIANLIB_IMPORT
 	LibSvcInit();
 #else
-	libsvc::SetupKernel();
+	LibSvcSpace SetupKernel();
 #endif
 	constexpr auto EProvider = 1;
 	constexpr auto NumThread = 16;
@@ -132,7 +132,7 @@ void LibSvcTest()
 		LibSvcFreeString(ErrorMessage);
 		return;
 	}
-	libsvc::Hparams Config;
+	LibSvcSpace Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
 	Config.SamplingRate = 44100;
 	Config.HopSize = 512;
@@ -224,14 +224,14 @@ void LibSvcTest()
 		return;
 	}
 #else
-	auto Model = libsvc::UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
+	auto Model = LibSvcSpace UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
 	auto Audio = DragonianLib::AvCodec().DecodeSigned16(
 		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
 		SrcSr
 	);
 #endif
 
-	libsvc::SlicerSettings SlicerConfig{
+	LibSvcSpace SlicerSettings SlicerConfig{
 		SrcSr,
 		40.,
 		5.,
@@ -250,7 +250,7 @@ void LibSvcTest()
 #endif
 
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
-	libsvc::InferenceParams Params;
+	LibSvcSpace InferenceParams Params;
 	Params.SrcSamplingRate = SrcSr;
 	Params.VocoderSamplingRate = Config.SamplingRate;
 	Params.VocoderHopSize = Config.HopSize;
@@ -299,8 +299,8 @@ void LibSvcTest()
 	}
 #else
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
-	auto Slices = libsvc::SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
-	libsvc::SingingVoiceConversion::PreProcessAudio(Slices, SrcSr, 512, L"Dio");
+	auto Slices = LibSvcSpace SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
+	LibSvcSpace SingingVoiceConversion::PreProcessAudio(Slices, SrcSr, 512, L"Dio");
 #endif
 
 	size_t Proc = 0;
@@ -428,10 +428,46 @@ void LibSvcTest()
 }
 
 #ifndef DRAGONIANLIB_IMPORT
-
+#include "tlibsr/MoeSuperResolution.hpp"
 void OperatorTest()
 {
-	tlibsvc::VitsSvcConfig Config{
+	std::unique_ptr<tlibsr::MoeSR> Model;
+
+	try
+	{
+		Model = std::make_unique<tlibsr::MoeSR>(
+			LR"(D:\VSGIT\x2_universal-fix1.onnx)",
+			2,
+			TensorRTLib::TrtConfig{ .OptimizationLevel = 0 },
+			ProgressCbS
+		);
+	}
+	catch (std::exception& e)
+	{
+		std::cout << e.what();
+	}
+
+	DragonianLib::GdiInit();
+
+	DragonianLib::Image Image(
+		LR"(D:\VSGIT\CG000002.BMP)",
+		192,
+		192,
+		16,
+		0.f,
+		false,
+		LR"(D:\VSGIT\CG000002-DEB.png)"
+	);
+
+	TensorRTLib::InferenceDeviceBuffer GPUBuffer;
+	Model->Infer(Image, GPUBuffer, 50);
+
+	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-NN.png)", 2, 100))
+		std::cout << "Complete!\n";
+
+	DragonianLib::GdiClose();
+
+	/*tlibsvc::VitsSvcConfig Config{
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\SoVits4\SoVits4_SoVits.onnx)",
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
 		L"SoVits4.0",
@@ -450,7 +486,7 @@ void OperatorTest()
 		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
 		44100
 	);
-	libsvc::SlicerSettings SlicerConfig{
+	LibSvcSpace SlicerSettings SlicerConfig{
 		44100,
 		40.,
 		5.,
@@ -458,10 +494,10 @@ void OperatorTest()
 		512
 	};
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
-	auto Slices = tlibsvc::GetAudioSlice(Audio, SliPos, SlicerConfig.Threshold);
-	tlibsvc::PreProcessAudio(Slices, 44100, 512, L"Dio");
-
+	auto Slices = tlibsvc:: GetAudioSlice(Audio, SliPos, SlicerConfig.Threshold);
+	tlibsvc::PreProcessAudio(Slices, 44100, 512, L"Dio");*/
 	/*
+	
 	auto ddddd = adddd(1, 2.f, 3, 4.f, 5);
 	std::cout << ddddd << '\n';
 	DragonianLib::Tensor::SetThreadCount(8);
@@ -751,7 +787,7 @@ void CrossFadeTask()
 	PWaveInQueue.pop_front();
 }
 
-void InferTask(const libsvc::UnionSvcModel* Model, long _SrcSr, const libsvc::InferenceParams& Params)
+void InferTask(const LibSvcSpace UnionSvcModel* Model, long _SrcSr, const LibSvcSpace InferenceParams& Params)
 {
 	AudioContainer Audio;
 	auto Size = WaveInQueue.begin()->Size();
@@ -784,7 +820,7 @@ void InferTask(const libsvc::UnionSvcModel* Model, long _SrcSr, const libsvc::In
 
 void RealTime()
 {
-	libsvc::SetupKernel();
+	LibSvcSpace SetupKernel();
 	constexpr auto EProvider = 2;
 	constexpr auto NumThread = 8;
 	constexpr auto DeviceId = 0;
@@ -795,7 +831,7 @@ void RealTime()
 		LibSvcFreeString(ErrorMessage);
 		return;
 	}
-	libsvc::Hparams Config;
+	LibSvcSpace Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
 	Config.SamplingRate = 44100;
 	Config.HopSize = 512;
@@ -812,9 +848,9 @@ void RealTime()
 	Config.DiffusionSvc.Pred = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_pred.onnx)";
 	Config.DiffusionSvc.After = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_after.onnx)";
 	long SrcSr = Config.SamplingRate;
-	auto Model = libsvc::UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
+	auto Model = LibSvcSpace UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf_hifigan.onnx)";
-	libsvc::InferenceParams Params;
+	LibSvcSpace InferenceParams Params;
 	Params.SrcSamplingRate = SrcSr;
 	Params.VocoderSamplingRate = Config.SamplingRate;
 	Params.VocoderHopSize = Config.HopSize;

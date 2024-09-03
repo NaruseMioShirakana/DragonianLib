@@ -207,7 +207,8 @@ namespace TensorRTLib
 		bool EnableFp16,
 		bool EnableBf16,
 		bool EnableInt8,
-		nvinfer1::ILogger::Severity VerboseLevel
+		nvinfer1::ILogger::Severity VerboseLevel,
+		int32_t OptimizationLevel
 	)
 	{
 		if(_CacheFile.empty() || !exists(std::filesystem::path(_CacheFile)))
@@ -216,14 +217,11 @@ namespace TensorRTLib
 			if (!builder)
 				DragonianLibFatalError;
 
-			mNetwork = std::shared_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
+			auto mNetwork = std::unique_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(
+				1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)
+			));
 			if (!mNetwork)
 				DragonianLibFatalError;
-
-			auto config = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
-			if (!config)
-				DragonianLibFatalError;
-
 
 			//Parse Onnx Model
 			{
@@ -239,6 +237,9 @@ namespace TensorRTLib
 				}
 			}
 
+			auto config = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+			if (!config)
+				DragonianLibFatalError;
 
 			//Config
 			{
@@ -259,6 +260,10 @@ namespace TensorRTLib
 					DragonianLibLogMessage("Not Impl Yet!");
 				}
 
+				size_t VRAMFREE, VRAMTOTAL;
+				cudaMemGetInfo(&VRAMFREE, &VRAMTOTAL);
+				config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, VRAMFREE * 8 / 10);
+
 				if (DLACore >= 0)
 				{
 					if (builder->getNbDLACores() == 0)
@@ -271,31 +276,37 @@ namespace TensorRTLib
 					config->setDLACore(DLACore);
 				}
 
-				for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
-				{
-					auto inp = mNetwork->getInput(i);
-					auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
-					if(iter == DynaShapeConfig.end())
-						continue;
-					auto opt = builder->createOptimizationProfile();
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
-					config->addOptimizationProfile(opt);
-				}
+				if(OptimizationLevel)
+					for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
+					{
+						auto inp = mNetwork->getInput(i);
+						auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
+						if (iter == DynaShapeConfig.end())
+							iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));
+						if (iter == DynaShapeConfig.end())
+							continue;
+						auto opt = builder->createOptimizationProfile();
+						opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
+						opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
+						opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
+						if (!opt->isValid())
+							DragonianLibFatalError;
+						config->addOptimizationProfile(opt);
+					}
+
+				config->setBuilderOptimizationLevel(OptimizationLevel);
 			}
 
-			std::unique_ptr<nvinfer1::IHostMemory> plan{ builder->buildSerializedNetwork(*mNetwork, *config) };
+			std::unique_ptr<nvinfer1::IHostMemory> plan(builder->buildSerializedNetwork(*mNetwork, *config));
 			if (!plan)
 				DragonianLibFatalError;
-
 			if(!_CacheFile.empty() && !exists(std::filesystem::path(_CacheFile)))
 			{
 				DragonianLib::FileGuard file(_CacheFile, L"wb");
 				fwrite(plan->data(), 1, plan->size(), file);
 			}
 
-			mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
+			mRuntime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
 			if (!mRuntime)
 				DragonianLibFatalError;
 
@@ -312,19 +323,34 @@ namespace TensorRTLib
 			DragonianLibSTL::Vector<unsigned char> Buffer(file_stat.st_size);
 			fread(Buffer.Data(), 1, file_stat.st_size, file);
 
-			mRuntime = std::shared_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
+			mRuntime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::TensorRTLib::logger));
 			if (!mRuntime)
 				DragonianLibFatalError;
 
 			mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-				mRuntime->deserializeCudaEngine(Buffer.Data(), Buffer.Size()), InferDeleter());
+				mRuntime->deserializeCudaEngine(Buffer.Data(), Buffer.Size()), InferDeleter()
+			);
 			if (!mEngine)
 				DragonianLibFatalError;
 		}
 
-		mInputCount = mNetwork->getNbInputs();
-		mOutputCount = mNetwork->getNbOutputs();
 		mIONodeCount = mEngine->getNbIOTensors();
+		mInputCount = 0;
+		mOutputCount = 0;
+		for (int32_t i = 0; i < mIONodeCount; i++)
+		{
+			auto const name = mEngine->getIOTensorName(i);
+			if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
+			{
+				++mInputCount;
+				MyInputNames.emplace_back(name);
+			}
+			if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
+			{
+				++mOutputCount;
+				MyOutputNames.emplace_back(name);
+			}
+		}
 	}
 
 	DragonianLibSTL::Vector<Tensor> TrtModel::Infer(
@@ -338,7 +364,7 @@ namespace TensorRTLib
 		if (_OutputNames.size() != mOutputCount)
 			DragonianLibThrow("Output Count Mismatch!");
 
-		auto mContext = std::shared_ptr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
+		auto mContext = std::unique_ptr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
 		if (!mContext)
 			DragonianLibFatalError;
 

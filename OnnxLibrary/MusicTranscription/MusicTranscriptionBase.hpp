@@ -42,7 +42,7 @@ namespace DragonianLib
 
 		struct Hparams
 		{
-			std::wstring ModelPath, OnSetPath, FramePath;
+			std::wstring ModelPath{}, OnSetPath{}, FramePath{};
 			long SamplingRate = 16000;
 			long ClassesCount = 88;
 			long LowestPitch = 21;
