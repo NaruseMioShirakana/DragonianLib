@@ -113,7 +113,7 @@ namespace DragonianLib
 			NetOutPuts netOutputs(routput);
 			MidiTrack midiEvents;
 			if (!_Config.UseByteDanceMethod)
-				midiEvents = frame_to_note_info(netOutputs.frame_output, netOutputs.reg_offset_output, netOutputs.velocity_output, _Config);
+				midiEvents = frame_to_note_info(netOutputs, _Config);
 			else
 				midiEvents = toMidiEvents(netOutputs, _Config);
 
@@ -121,18 +121,32 @@ namespace DragonianLib
 			return midiEvents;
 		}
 
-		// detect note info with output dict (MyMethod, and It works better in my software)
-		MidiTrack ByteDancePianoTranScription::frame_to_note_info(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& frame_output, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& reg_offset_output, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& velocity_output, const Hparams& _Config)
+		// detect note info with output dict (MyMethod)
+		MidiTrack ByteDancePianoTranScription::frame_to_note_info(NetOutPuts& netOutputs, const Hparams& _Config)
 		{
-			const auto Temp = get_binarized_output_from_regression(reg_offset_output, float(_Config.OffsetThreshold), _Config.OffsetAligSize);
-			const auto offset = std::get<0>(Temp);
+			for (long i = 0; i < _Config.FliterCount; ++i)
+			{
+				MeanFliter(netOutputs.frame_output, _Config.FliterSize);
+				MeanFliter(netOutputs.reg_onset_output, _Config.FliterSize);
+				MeanFliter(netOutputs.reg_offset_output, _Config.FliterSize);
+			}
+
+			const auto& frame_output = netOutputs.frame_output;
+			const auto& velocity_output = netOutputs.velocity_output;
+
+			const auto onset_tmp = get_binarized_output_from_regression(netOutputs.reg_onset_output, float(_Config.OnsetThreshold), _Config.OnsetAligSize);
+			const auto onset_output = std::get<0>(onset_tmp);
+
+			const auto offset_tmp = get_binarized_output_from_regression(netOutputs.reg_offset_output, float(_Config.OffsetThreshold), _Config.OffsetAligSize);
+			const auto offset_output = std::get<0>(offset_tmp);
+
 			DragonianLibSTL::Vector<EstNoteEvents> outputs;
 			double onset = 0.0;
 			const long class_size = long(frame_output[0].Size()), duration_size = long(frame_output.Size());
 			for (long pitch = 0; pitch < class_size; ++pitch)
 			{
 				bool begin = false;
-				for (long duration = 0; duration < duration_size; ++duration)
+				for (long duration = 0; duration < duration_size - 1; ++duration)
 				{
 					if (!begin && frame_output[duration][pitch] >= float(_Config.FrameThreshold))
 					{
@@ -142,10 +156,12 @@ namespace DragonianLib
 					}
 					if (begin)
 					{
-						if ((frame_output[duration][pitch] < float(_Config.FrameThreshold)) ||
-							(double(duration) - onset > 600.0) ||
-							(duration == duration_size - 1) ||
-							(offset[duration][pitch] == 1.0f))
+						if ((frame_output[duration][pitch] < float(_Config.FrameThreshold) &&
+							double(duration) - onset > _Config.MinFrameSize) ||
+							double(duration) - onset > 600.0 ||
+							duration == duration_size - 2 ||
+							fabs(offset_output[duration][pitch] - 1.f) < 1e-4f ||
+							fabs(onset_output[duration + 1][pitch] - 1.f) < 1e-4f)
 						{
 							begin = false;
 							outputs.EmplaceBack(onset / double(_Config.FrameTime), double(duration) / double(_Config.FrameTime), pitch + _Config.LowestPitch, long(velocity_output[long(onset)][pitch] * float(_Config.VelocityScale) + 1));

@@ -1,7 +1,27 @@
+/**
+ * FileName: Base.h
+ *
+ * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *
+ * This file is part of DragonianLib.
+ * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or any later version.
+ *
+ * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Foobar.
+ * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ *
+*/
+
 #pragma once
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <unordered_map>
 
 #ifndef UNUSED
 #define UNUSED(x) (void)(x)
@@ -164,8 +184,6 @@ using uint64 = uint64_t;
 struct NoneType {};
 static constexpr NoneType None;
 
-using DictType = int;
-
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #else
@@ -190,6 +208,8 @@ struct WeightData
 	std::vector<int64> Shape_;
 	std::string Type_, LayerName_;
 };
+
+using DictType = std::unordered_map<std::string, WeightData>;
 
 std::wstring GetCurrentFolder();
 

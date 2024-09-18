@@ -1,3 +1,22 @@
+/**
+ * FileName: MusicTranscriptionBase.hpp
+ *
+ * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *
+ * This file is part of DragonianLib.
+ * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or any later version.
+ *
+ * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Foobar.
+ * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ *
+*/
+
 #pragma once
 #include "MyTemplateLibrary/Vector.h"
 #include "EnvManager.hpp"
@@ -8,6 +27,8 @@ namespace DragonianLib
 	{
 		using ProgressCallback = std::function<void(size_t, size_t)>;
 		using OrtTensors = std::vector<Ort::Value>;
+
+		void MeanFliter(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _Signal, size_t WindowLength);
 
 		struct MidiEvent
 		{
@@ -56,6 +77,9 @@ namespace DragonianLib
 			double PedalOffsetThreshold = 0.2;
 			long OnsetAligSize = 2;
 			long OffsetAligSize = 4;
+			double MinFrameSize = 4.f;
+			long FliterSize = 6;
+			long FliterCount = 3;
 			bool UseByteDanceMethod = false;
 		};
 
@@ -69,7 +93,7 @@ namespace DragonianLib
 			EstNoteTp(long a, long b, double c, double d, double e) :Begin(a), End(b), OnsetShift(c), OffsetShift(d), NormalizedVelocity(e) {}
 		};
 
-		void WriteMidiFile(const std::wstring& _Path, const MidiTrack& _Events, long _Begin, long _TPS);
+		void WriteMidiFile(const std::wstring& _Path, const MidiTrack& _Events, long _Begin, long _TPS, long tempo = 500000);
 		// operators used to sort
 		bool operator<(const EstNoteTp& a, const EstNoteTp& b);
 		bool operator<(const MidiEvent& a, const MidiEvent& b);

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <tchar.h>
 #include "AvCodec/AvCodec.h"
+#include "MusicTranscription/ByteDancePianoTranScription.hpp"
 #include "SingingVoiceConversion/Modules/header/Modules.hpp"
 #include "SingingVoiceConversion/Api/header/NativeApi.h"
 #include "MusicTranscription/MoePianoTranScription.hpp"
@@ -428,45 +429,12 @@ void LibSvcTest()
 }
 
 #ifndef DRAGONIANLIB_IMPORT
-#include "tlibsr/MoeSuperResolution.hpp"
+//#include "tlibsr/MoeSuperResolution.hpp"
 void OperatorTest()
 {
-	std::unique_ptr<tlibsr::MoeSR> Model;
-
-	try
-	{
-		Model = std::make_unique<tlibsr::MoeSR>(
-			LR"(D:\VSGIT\x2_universal-fix1.onnx)",
-			2,
-			TensorRTLib::TrtConfig{ .OptimizationLevel = 0 },
-			ProgressCbS
-		);
-	}
-	catch (std::exception& e)
-	{
-		std::cout << e.what();
-	}
-
-	DragonianLib::GdiInit();
-
-	DragonianLib::Image Image(
-		LR"(D:\VSGIT\CG000002.BMP)",
-		192,
-		192,
-		16,
-		0.f,
-		false,
-		LR"(D:\VSGIT\CG000002-DEB.png)"
-	);
-
-	TensorRTLib::InferenceDeviceBuffer GPUBuffer;
-	Model->Infer(Image, GPUBuffer, 50);
-
-	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-NN.png)", 2, 100))
-		std::cout << "Complete!\n";
-
-	DragonianLib::GdiClose();
-
+	using namespace DragonianLib;
+	Tensor Test{ {114,514,1919}, TensorType::Float32, Device::CPU };
+	std::cout << Test.Item<float>();
 	/*tlibsvc::VitsSvcConfig Config{
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\SoVits4\SoVits4_SoVits.onnx)",
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
@@ -690,7 +658,7 @@ void LibSrTest()
 	DragonianLib::GdiInit();
 
 	DragonianLib::Image Image(
-		LR"(D:\VSGIT\CG000002.BMP)",
+		LR"(C:\DataSpace\MediaProj\PlayList\a.jpg)",
 		192,
 		192,
 		16,
@@ -707,7 +675,7 @@ void LibSrTest()
 
 	Model.Infer(Image, 50);
 
-	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-NN.png)", 2, 100))
+	if (Image.MergeWrite(LR"(C:\DataSpace\MediaProj\PlayList\CG.png)", 2, 100))
 		std::cout << "Complete!\n";
 
 	DragonianLib::GdiClose();
@@ -715,9 +683,10 @@ void LibSrTest()
 
 void LibMtsTest()
 {
-	DragonianLib::LibMusicTranscription::MoePianoTranScription Model(
+	DragonianLib::LibMusicTranscription::ByteDancePianoTranScription Model(
 		{
-			LR"(D:\VSGIT\libsvc\model.onnx)"
+			LR"(D:\VSGIT\°×Ò¶µÄAI¹¤¾ßÏä\Models\PianoTranscription\modeln.onnx)",
+			L"null",
 		},
 		ProgressCbS,
 		8,
@@ -727,12 +696,18 @@ void LibMtsTest()
 
 	DragonianLib::LibMusicTranscription::Hparams _Config;
 	auto Audio = DragonianLib::AvCodec().DecodeFloat(
-		R"(C:\DataSpace\MediaProj\Fl Proj\Childish White.mp3)",
+		R"(C:\DataSpace\MediaProj\PlayList\list.ogg)",
 		16000
 	);
+	_Config.FrameThreshold = 0.5;
+	_Config.OnsetThreshold = 0.8;
+	_Config.OffsetThreshold = 0.2;
+	_Config.OnsetAligSize = 3;
+	_Config.FliterSize = 8;
+	_Config.FliterCount = 5;
 
-	auto Midi = Model.Inference(Audio, _Config, 1);
-	WriteMidiFile(LR"(C:\DataSpace\MediaProj\Fl Proj\Childish White Mts.mid)", Midi, 0, 384 * 2);
+	auto Midi = Model.Inference(Audio, _Config, 5);
+	WriteMidiFile(LR"(C:\DataSpace\MediaProj\PlayList\list.mid)", Midi, 0, 384 / 2);
 }
 
 DragonianLib::ThreadPool Thp;

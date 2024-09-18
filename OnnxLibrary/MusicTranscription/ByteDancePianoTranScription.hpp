@@ -1,3 +1,22 @@
+/**
+ * FileName: ByteDancePianoTranScription.hpp
+ *
+ * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *
+ * This file is part of DragonianLib.
+ * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or any later version.
+ *
+ * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Foobar.
+ * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ *
+*/
+
 #pragma once
 #include "MusicTranscriptionBase.hpp"
 
@@ -25,7 +44,7 @@ namespace DragonianLib
 			MidiTrack Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize = 1) const override;
 			//DragonianLibSTL::Vector<est_pedal_events> output_dict_to_detected_pedals(const NetOutPuts& output_dict) const;
 		private:
-			static MidiTrack frame_to_note_info(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& frame_output, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& offset_output, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& velocity_output, const Hparams& _Config);
+			static MidiTrack frame_to_note_info(NetOutPuts& netOutputs, const Hparams& _Config);
 
 			static MidiTrack toMidiEvents(NetOutPuts& output_dict, const Hparams& _Config);
 

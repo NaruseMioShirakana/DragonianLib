@@ -1,3 +1,22 @@
+/**
+ * FileName: TensorOperator.h
+ *
+ * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *
+ * This file is part of DragonianLib.
+ * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ * of the License, or any later version.
+ *
+ * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Foobar.
+ * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ *
+*/
+
 #pragma once
 #include "Tensor/Tensor.h"
 #include <random>
@@ -417,6 +436,100 @@ void MonoOperators(
 			}
 		}
 	}
+}
+
+template<typename _Type>
+void TensorLoopIterator(
+	const Tensor& _Src,
+	const SliceOptions& _SlicePos,
+	void (*_Func)(_Type*, SizeType, SizeType, SizeType, SizeType, SizeType, SizeType)
+)
+{
+	if (!_Func)
+		DragonianLibFatalError;
+
+	const SizeType CurDims = _Src.DimCount();
+	_Type* DataPtr2 = (_Type*)_Src.Data();
+
+	if (CurDims > 6)
+		DragonianLibThrow("Dim > 6 Could Be Batch Dim, You Can Make A Loop Iterator By Yourself.");
+
+	SizeType __SHAPE[6], __STEP2[6], __BEGIN2[6], __STRIDE2[6], __BINDEX[6];
+
+	{
+		const Range* __restrict __ShapePtr = _SlicePos.data();
+		const SizeType* __restrict __StepPtr2 = _Src.StepsBack().data();
+		const SizeType* __restrict __BeginsPtr2 = _Src.SliceBegins().data();
+		const SizeType* __restrict __StridesPtr2 = _Src.Strides().data();
+		SizeType i = 0;
+		SizeType Count = 6 - CurDims;
+		while (i < Count)
+		{
+			__SHAPE[i] = 1;
+			__STEP2[i] = 1;
+			__BEGIN2[i] = 0;
+			__STRIDE2[i] = 1;
+			__BINDEX[i] = 0;
+			++i;
+		}
+		const auto Cont = _Src.CalcContinuous();
+		const SizeType* __restrict ContPtr = Cont.data();
+		for (; i < 6; ++i)
+		{
+			const auto CurIndex = i - Count;
+			__SHAPE[i] = __ShapePtr[ContPtr[CurIndex]].End;
+			__STEP2[i] = __StepPtr2[ContPtr[CurIndex]] / (SizeType)sizeof(_Type);
+			__BEGIN2[i] = __BeginsPtr2[ContPtr[CurIndex]];
+			__STRIDE2[i] = __StridesPtr2[ContPtr[CurIndex]];
+			__BINDEX[i] = __ShapePtr[ContPtr[CurIndex]].Begin;
+		}
+	}
+
+	const SizeType* __restrict ShapePtr = __SHAPE;
+	const SizeType* __restrict StepPtr2 = __STEP2;
+	const SizeType* __restrict BeginsPtr2 = __BEGIN2;
+	const SizeType* __restrict StridesPtr2 = __STRIDE2;
+	const SizeType* __restrict IndexBeginPtr = __BINDEX;
+
+	for (SizeType i = IndexBeginPtr[0]; i < ShapePtr[0]; ++i)
+	{
+		const auto IndexAxis0B = ((i * StridesPtr2[0]) + BeginsPtr2[0]) * StepPtr2[0];
+		for (SizeType j = IndexBeginPtr[1]; j < ShapePtr[1]; ++j)
+		{
+			const auto IndexAxis1B = IndexAxis0B +
+				((j * StridesPtr2[1]) + BeginsPtr2[1]) * StepPtr2[1];
+			for (SizeType k = IndexBeginPtr[2]; k < ShapePtr[2]; ++k)
+			{
+				const auto IndexAxis2B = IndexAxis1B +
+					((k * StridesPtr2[2]) + BeginsPtr2[2]) * StepPtr2[2];
+				for (SizeType l = IndexBeginPtr[3]; l < ShapePtr[3]; ++l)
+				{
+					const auto IndexAxis3B = IndexAxis2B +
+						((l * StridesPtr2[3]) + BeginsPtr2[3]) * StepPtr2[3];
+					for (SizeType m = IndexBeginPtr[4]; m < ShapePtr[4]; ++m)
+					{
+						const auto IndexAxis4B = IndexAxis3B +
+							((m * StridesPtr2[4]) + BeginsPtr2[4]) * StepPtr2[4];
+						for (SizeType n = IndexBeginPtr[5]; n < ShapePtr[5]; ++n)
+						{
+							const auto IndexAxis5B = IndexAxis4B +
+								((n * StridesPtr2[5]) + BeginsPtr2[5]) * StepPtr2[5];
+							_Func(DataPtr2 + IndexAxis5B, i, j, k, l, m, n);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+template<typename _Type>
+void TensorLoopIterator(
+	const Tensor& _Src,
+	void (*_Func)(_Type*, SizeType, SizeType, SizeType, SizeType, SizeType, SizeType)
+)
+{
+	TensorLoopIterator(_Src, _Src.GetDefaultSliceVector(), _Func);
 }
 
 template<typename _Type, typename _Fn, typename _AvxFn>

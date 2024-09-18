@@ -2,7 +2,7 @@
  * FileName: HarvestF0Extractor.hpp
  * Note: DragonianLib 官方F0提取算法 Harvest
  *
- * Copyright (C) 2022-2023 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
  * This file is part of DragonianLib library.
  * DragonianLib library is free software: you can redistribute it and/or modify it under the terms of the
