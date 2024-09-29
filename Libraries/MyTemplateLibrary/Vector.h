@@ -157,6 +157,7 @@ public:
 		_MyLast = _Right._MyLast;
 		_MyEnd = _Right._MyEnd;
 		Allocator_ = _Right.Allocator_;
+		_MyOwner = _Right._MyOwner;
 
 		_Right.Allocator_ = nullptr;
 		_Right._MyFirst = nullptr;
@@ -182,6 +183,7 @@ public:
 		_MyLast = _Right._MyLast;
 		_MyEnd = _Right._MyEnd;
 		Allocator_ = _Right.Allocator_;
+		_MyOwner = _Right._MyOwner;
 
 		_Right.Allocator_ = nullptr;
 		_Right._MyFirst = nullptr;
@@ -885,7 +887,7 @@ DRAGONIANLIBCONSTEXPR Vector<TOut> InterpResample(
 	const Vector<TIn>& _Data,
 	long _SrcSamplingRate,
 	long _DstSamplingRate,
-	TOut n_Div = TOut(1)
+	TOut n_Div
 )
 {
 	if (_SrcSamplingRate != _DstSamplingRate)
@@ -913,6 +915,41 @@ DRAGONIANLIBCONSTEXPR Vector<TOut> InterpResample(
 	Vector<TOut> out(_Data.Size());
 	for (size_t i = 0; i < _Data.Size(); ++i)
 		out[i] = TOut(_Data[i]) / n_Div;
+	return out;
+}
+
+template<typename TOut, typename TIn>
+DRAGONIANLIBCONSTEXPR Vector<TOut> InterpResample(
+	const Vector<TIn>& _Data,
+	long _SrcSamplingRate,
+	long _DstSamplingRate
+)
+{
+	if (_SrcSamplingRate != _DstSamplingRate)
+	{
+		const double intstep = double(_SrcSamplingRate) / double(_DstSamplingRate);
+		const auto xi = Arange(0., double(_Data.Size()), intstep);
+		auto x0 = Arange(0., double(_Data.Size()));
+		while (x0.Size() < _Data.Size())
+			x0.EmplaceBack(x0[x0.Size() - 1] + 1.0);
+		while (x0.Size() > _Data.Size())
+			x0.PopBack();
+
+		Vector<double> y0(_Data.Size());
+		for (size_t i = 0; i < _Data.Size(); ++i)
+			y0[i] = double(_Data[i]);
+
+		Vector<double> yi(xi.Size());
+		interp1(x0.Data(), y0.Data(), long(x0.Size()), xi.Data(), long(xi.Size()), yi.Data());
+
+		Vector<TOut> out(xi.Size());
+		for (size_t i = 0; i < yi.Size(); ++i)
+			out[i] = TOut(yi[i]);
+		return out;
+	}
+	Vector<TOut> out(_Data.Size());
+	for (size_t i = 0; i < _Data.Size(); ++i)
+		out[i] = TOut(_Data[i]);
 	return out;
 }
 

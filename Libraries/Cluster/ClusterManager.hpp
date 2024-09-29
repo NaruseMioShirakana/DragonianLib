@@ -22,40 +22,11 @@
 #pragma once
 #include "BaseCluster.hpp"
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace DragonianLib {
-	class ClusterWrp
-	{
-	public:
-		ClusterWrp() = default;
-		ClusterWrp(BaseCluster* _ext) : _cluster_ext(_ext) {}
-		ClusterWrp(const ClusterWrp&) = delete;
-		ClusterWrp(ClusterWrp&& _ext) noexcept
-		{
-			delete _cluster_ext;
-			_cluster_ext = _ext._cluster_ext;
-			_ext._cluster_ext = nullptr;
-		}
-		ClusterWrp& operator=(const ClusterWrp&) = delete;
-		ClusterWrp& operator=(ClusterWrp&& _ext) noexcept
-		{
-			if (this == &_ext)
-				return *this;
-			delete _cluster_ext;
-			_cluster_ext = _ext._cluster_ext;
-			_ext._cluster_ext = nullptr;
-			return *this;
-		}
-		~ClusterWrp()
-		{
-			delete _cluster_ext;
-			_cluster_ext = nullptr;
-		}
-		BaseCluster* operator->() const { return _cluster_ext; }
-	private:
-		BaseCluster* _cluster_ext = nullptr;
-	};
+	using ClusterWrp = std::shared_ptr<BaseCluster>;
 
 	using GetClusterFn = std::function<ClusterWrp(const std::wstring&, size_t, size_t)>;
 

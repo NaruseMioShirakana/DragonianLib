@@ -151,27 +151,26 @@ public:
 	 */
 	[[nodiscard]] long GetSamplingRate() const
 	{
-		return _samplingRate;
+		return ModelSamplingRate;
 	}
 
-	[[nodiscard]] DragonianLib::DragonianLibOrtEnv& GetDlEnv() { return OrtApiEnv; }
+	[[nodiscard]] DragonianLibOrtEnv& GetDlEnv() { return *OrtApiEnv; }
 
-	[[nodiscard]] const DragonianLib::DragonianLibOrtEnv& GetDlEnv() const { return OrtApiEnv; }
+	[[nodiscard]] const DragonianLibOrtEnv& GetDlEnv() const { return *OrtApiEnv; }
 protected:
 	//采样率
-	long _samplingRate = 22050;
-	Ort::Env* env = nullptr;
-	Ort::SessionOptions* session_options = nullptr;
-	Ort::MemoryInfo* memory_info = nullptr;
-	ExecutionProviders _cur_execution_provider = ExecutionProviders::CPU;
-	DragonianLib::DragonianLibOrtEnv OrtApiEnv;
-	ProgressCallback _callback;
+	long ModelSamplingRate = 22050;
+	Ort::Env* OnnxEnv = nullptr;
+	Ort::SessionOptions* SessionOptions = nullptr;
+	Ort::MemoryInfo* MemoryInfo = nullptr;
+	ExecutionProviders ModelExecutionProvider = ExecutionProviders::CPU;
+	std::shared_ptr<DragonianLibOrtEnv> OrtApiEnv;
+	ProgressCallback ProgressCallbackFunction;
 public:
-	//*******************删除的函数********************//
-	LibSvcModule& operator=(LibSvcModule&&) = delete;
-	LibSvcModule& operator=(const LibSvcModule&) = delete;
-	LibSvcModule(const LibSvcModule&) = delete;
-	LibSvcModule(LibSvcModule&&) = delete;
+	LibSvcModule& operator=(LibSvcModule&&) = default;
+	LibSvcModule& operator=(const LibSvcModule&) = default;
+	LibSvcModule(const LibSvcModule&) = default;
+	LibSvcModule(LibSvcModule&&) = default;
 };
 
 LibSvcEnd

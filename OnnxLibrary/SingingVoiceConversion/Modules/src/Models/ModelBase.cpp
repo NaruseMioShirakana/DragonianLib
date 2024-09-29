@@ -3,19 +3,19 @@
 LibSvcHeader
 
 LibSvcModule::LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_) :
-	OrtApiEnv(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_)
+	OrtApiEnv(std::make_shared<DragonianLibOrtEnv>(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_))
 {
-	_cur_execution_provider = ExecutionProvider_;
-	env = OrtApiEnv.GetEnv();
-	memory_info = OrtApiEnv.GetMemoryInfo();
-	session_options = OrtApiEnv.GetSessionOptions();
+	ModelExecutionProvider = ExecutionProvider_;
+	OnnxEnv = OrtApiEnv->GetEnv();
+	MemoryInfo = OrtApiEnv->GetMemoryInfo();
+	SessionOptions = OrtApiEnv->GetSessionOptions();
 }
 
 LibSvcModule::~LibSvcModule()
 {
-	env = nullptr;
-	memory_info = nullptr;
-	session_options = nullptr;
+	OnnxEnv = nullptr;
+	MemoryInfo = nullptr;
+	SessionOptions = nullptr;
 }
 
 /*

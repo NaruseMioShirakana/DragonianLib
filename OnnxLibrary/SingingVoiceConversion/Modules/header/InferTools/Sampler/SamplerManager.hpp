@@ -24,71 +24,9 @@
 
 LibSvcHeader
 
-class SamplerWrp
-{
-public:
-	SamplerWrp() = delete;
-	SamplerWrp(BaseSampler* _ext) : _f0_ext(_ext) {}
-	SamplerWrp(const SamplerWrp&) = delete;
-	SamplerWrp(SamplerWrp&& _ext) noexcept
-	{
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-	}
-	SamplerWrp& operator=(const SamplerWrp&) = delete;
-	SamplerWrp& operator=(SamplerWrp&& _ext) noexcept
-	{
-		if (this == &_ext)
-			return *this;
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-		return *this;
-	}
-	~SamplerWrp()
-	{
-		delete _f0_ext;
-		_f0_ext = nullptr;
-	}
-	BaseSampler* operator->() const { return _f0_ext; }
+using SamplerWrp = std::shared_ptr<BaseSampler>;
 
-private:
-	BaseSampler* _f0_ext = nullptr;
-};
-
-class ReflowSamplerWrp
-{
-public:
-	ReflowSamplerWrp() = delete;
-	ReflowSamplerWrp(ReflowBaseSampler* _ext) : _f0_ext(_ext) {}
-	ReflowSamplerWrp(const ReflowSamplerWrp&) = delete;
-	ReflowSamplerWrp(ReflowSamplerWrp&& _ext) noexcept
-	{
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-	}
-	ReflowSamplerWrp& operator=(const ReflowSamplerWrp&) = delete;
-	ReflowSamplerWrp& operator=(ReflowSamplerWrp&& _ext) noexcept
-	{
-		if (this == &_ext)
-			return *this;
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-		return *this;
-	}
-	~ReflowSamplerWrp()
-	{
-		delete _f0_ext;
-		_f0_ext = nullptr;
-	}
-	ReflowBaseSampler* operator->() const { return _f0_ext; }
-
-private:
-	ReflowBaseSampler* _f0_ext = nullptr;
-};
+using ReflowSamplerWrp = std::shared_ptr<ReflowBaseSampler>;
 
 using GetSamplerFn = std::function<SamplerWrp(Ort::Session*, Ort::Session*, Ort::Session*, int64_t, const BaseSampler::ProgressCallback&, Ort::MemoryInfo*)>;
 

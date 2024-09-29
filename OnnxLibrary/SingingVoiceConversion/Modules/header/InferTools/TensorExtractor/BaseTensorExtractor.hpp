@@ -60,6 +60,7 @@ public:
 		int64_t Chara = 0;
 		float upKeys = 0.f;
 		void* Other = nullptr;
+		size_t SrcSamplingRate = 32000;
 		size_t Padding = size_t(-1);
 	};
 
@@ -119,8 +120,6 @@ public:
 		Params params
 	);
 
-	void SetSrcSamplingRates(uint64_t sr) { _SrcSamplingRate = sr; }
-
 	//获取换算为0-255的f0
 	[[nodiscard]] DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>&) const;
 
@@ -172,8 +171,8 @@ public:
 	//获取正确的角色混合数据
 	[[nodiscard]] static DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count);
 protected:
+	//uint64_t _SrcSamplingRate;
 	uint64_t _NSpeaker = 1;
-	uint64_t _SrcSamplingRate = 32000;
 	uint64_t _SamplingRate = 32000;
 	uint64_t _HopSize = 512;
 	bool _SpeakerMix = false;

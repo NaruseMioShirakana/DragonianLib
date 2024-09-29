@@ -95,16 +95,21 @@ protected:
 class SingingVoiceConversion : public LibSvcModule
 {
 public:
-	SingingVoiceConversion(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_ = 0);
+	SingingVoiceConversion(
+		const std::wstring& HubertPath_,
+		const ExecutionProviders& ExecutionProvider_,
+		unsigned DeviceID_,
+		unsigned ThreadCount_ = 0
+	);
 
 	/**
 	 * \brief 推理一个切片
 	 * \param _Slice 切片数据
 	 * \param _Params 推理参数
 	 * \param _Process 推理进度指针
-	 * \return 推理结果（PCM signed-int16 单声道）
+	 * \return 推理结果（PCM Float32 单声道）
 	 */
-	[[nodiscard]] virtual DragonianLibSTL::Vector<int16_t> SliceInference(
+	[[nodiscard]] virtual DragonianLibSTL::Vector<float> SliceInference(
 		const SingleSlice& _Slice,
 		const InferenceParams& _Params,
 		size_t& _Process
@@ -112,61 +117,60 @@ public:
 
 	/**
 	 * \brief 推理一个音频（使用PCM）
-	 * \param _PCMData 输入的PCM数据（signed-int16 单声道）
+	 * \param _PCMData 输入的PCM数据（Float32 单声道）
 	 * \param _SrcSamplingRate 输入PCM的采样率
 	 * \param _Params 推理参数
-	 * \return 推理结果（PCM signed-int16 单声道）
+	 * \return 推理结果（PCM Float32 单声道）
 	 */
-	[[nodiscard]] virtual DragonianLibSTL::Vector<int16_t> InferPCMData(
-		const DragonianLibSTL::Vector<int16_t>& _PCMData,
+	[[nodiscard]] virtual DragonianLibSTL::Vector<float> InferPCMData(
+		const DragonianLibSTL::Vector<float>& _PCMData,
 		long _SrcSamplingRate, 
 		const InferenceParams& _Params
 	) const;
 
+	/**
+	 * \brief 浅扩散推理
+	 * \param _16KAudioHubert 16000采样率的音频（PCM Float32 单声道）
+	 * \param _Params 推理参数
+	 * \param _Mel Mel谱
+	 * \param _SrcF0 基频信息
+	 * \param _SrcVolume 音量信息
+	 * \param _SrcSpeakerMap 角色轨道信息
+	 * \param Process 进度
+	 * \param SrcSize 原始音频大小
+	 * \return 推理结果（PCM Float32 单声道）
+	 */
+	[[nodiscard]] virtual DragonianLibSTL::Vector<float> ShallowDiffusionInference(
+		DragonianLibSTL::Vector<float>& _16KAudioHubert,
+		const InferenceParams& _Params,
+		std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
+		const DragonianLibSTL::Vector<float>& _SrcF0,
+		const DragonianLibSTL::Vector<float>& _SrcVolume,
+		const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
+		size_t& Process,
+		int64_t SrcSize
+	) const;
+
 	//提取音量
 	[[nodiscard]] static DragonianLibSTL::Vector<float> ExtractVolume(
-		const DragonianLibSTL::Vector<int16_t>& _Audio,
+		const DragonianLibSTL::Vector<float>& _Audio,
 		int _HopSize
 	);
 
 	//提取音量
 	[[nodiscard]] DragonianLibSTL::Vector<float> ExtractVolume(
-		const DragonianLibSTL::Vector<double>& _Audio
+		const DragonianLibSTL::Vector<float>& _Audio
 	) const;
-
-	//获取HopSize
-	[[nodiscard]] int GetHopSize() const
-	{
-		return HopSize;
-	}
-
-	//获取HiddenUnitKDims
-	[[nodiscard]] int64_t GetHiddenUnitKDims() const
-	{
-		return HiddenUnitKDims;
-	}
-
-	//获取角色数量
-	[[nodiscard]] int64_t GetSpeakerCount() const
-	{
-		return SpeakerCount;
-	}
-
-	//获取角色混合启用状态
-	[[nodiscard]] bool SpeakerMixEnabled() const
-	{
-		return EnableCharaMix;
-	}
 
 	/**
 	 * \brief 切片一个音频
-	 * \param _InputPCM 输入的PCM数据（signed-int16 单声道）
+	 * \param _InputPCM 输入的PCM数据（Float32 单声道）
 	 * \param _SlicePos 切片位置（单位为采样）
 	 * \param _SlicerConfig 切片机设置
 	 * \return 音频数据
 	 */
 	[[nodiscard]] static SingleAudio GetAudioSlice(
-		const DragonianLibSTL::Vector<int16_t>& _InputPCM,
+		const DragonianLibSTL::Vector<float>& _InputPCM,
 		const DragonianLibSTL::Vector<size_t>& _SlicePos,
 		const SlicerSettings& _SlicerConfig
 	);
@@ -187,9 +191,46 @@ public:
 
 	~SingingVoiceConversion() override;
 
+	//获取HopSize
+	[[nodiscard]] int GetHopSize() const;
+
+	//获取HiddenUnitKDims
+	[[nodiscard]] int64_t GetHiddenUnitKDims() const;
+
+	//获取角色数量
+	[[nodiscard]] int64_t GetSpeakerCount() const;
+
+	//获取角色混合启用状态
+	[[nodiscard]] bool SpeakerMixEnabled() const;
+
+	//获取循环系模型的最大循环步数
+	[[nodiscard]] virtual int64_t GetMaxStep() const;
+
+	//获取UnionSvc的版本
+	[[nodiscard]] virtual const std::wstring& GetUnionSvcVer() const;
+
+	//获取MelBins
+	[[nodiscard]] virtual int64_t GetMelBins() const;
+
+	virtual void NormMel(
+		DragonianLibSTL::Vector<float>& MelSpec
+	) const;
+
+	static std::shared_ptr<Ort::Session>& RefOrtCachedModel(
+		const std::wstring& Path_,
+		const DragonianLibOrtEnv& Env_
+	);
+
+	static void UnRefOrtCachedModel(
+		const std::wstring& Path_,
+		const DragonianLibOrtEnv& Env_
+	);
+
+	static void ClearModelCache();
+
 protected:
-	TensorExtractor _TensorExtractor;
-	Ort::Session* hubert = nullptr;
+	TensorExtractor Preprocessor;
+	std::shared_ptr<Ort::Session> HubertModel = nullptr;
 
 	int HopSize = 320;
 	int64_t HiddenUnitKDims = 256;
@@ -197,19 +238,27 @@ protected:
 	bool EnableCharaMix = false;
 	bool EnableVolume = false;
 
-	DragonianLib::ClusterWrp Cluster;
-
+	ClusterWrp Cluster;
 	int64_t ClusterCenterSize = 10000;
 	bool EnableCluster = false;
-	bool EnableIndex = false;
 
-	const std::vector<const char*> hubertOutput = { "embed" };
-	const std::vector<const char*> hubertInput = { "source" };
-private:
-	SingingVoiceConversion& operator=(SingingVoiceConversion&&) = delete;
-	SingingVoiceConversion& operator=(const SingingVoiceConversion&) = delete;
-	SingingVoiceConversion(const SingingVoiceConversion&) = delete;
-	SingingVoiceConversion(SingingVoiceConversion&&) = delete;
+	static inline const std::vector<const char*> hubertOutput = { "embed" };
+	static inline const std::vector<const char*> hubertInput = { "source" };
+
+public:
+	SingingVoiceConversion& operator=(SingingVoiceConversion&&) = default;
+	SingingVoiceConversion& operator=(const SingingVoiceConversion&) = default;
+	SingingVoiceConversion(const SingingVoiceConversion&) = default;
+	SingingVoiceConversion(SingingVoiceConversion&&) = default;
 };
+
+DragonianLibSTL::Vector<float> VocoderInfer(
+	DragonianLibSTL::Vector<float>& Mel,
+	DragonianLibSTL::Vector<float>& F0,
+	int64_t MelBins,
+	int64_t MelSize,
+	const Ort::MemoryInfo* Mem,
+	const std::shared_ptr<Ort::Session>& _VocoderModel
+);
 
 LibSvcEnd

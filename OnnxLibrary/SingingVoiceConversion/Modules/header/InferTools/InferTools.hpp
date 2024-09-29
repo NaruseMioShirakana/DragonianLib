@@ -30,7 +30,7 @@ LibSvcHeader
 struct SlicerSettings
 {
 	int32_t SamplingRate = 48000;
-	double Threshold = 30.;
+	double Threshold = 30. / 32768.;
 	double MinLength = 3.;
 	int32_t WindowLength = 2048;
 	int32_t HopSize = 512;
@@ -43,7 +43,7 @@ struct SlicerSettings
  * \return 切片位置
  */
 DragonianLibSTL::Vector<size_t> SliceAudio(
-	const DragonianLibSTL::Vector<int16_t>& _PcmData,
+	const DragonianLibSTL::Vector<float>& _PcmData,
 	const SlicerSettings& _SlicerSettings
 );
 

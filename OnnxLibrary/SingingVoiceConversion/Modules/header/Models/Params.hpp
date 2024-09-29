@@ -27,12 +27,13 @@ LibSvcHeader
 
 struct SingleSlice
 {
-    DragonianLibSTL::Vector<int16_t> Audio;
+    DragonianLibSTL::Vector<float> Audio;
     DragonianLibSTL::Vector<float> F0;
     DragonianLibSTL::Vector<float> Volume;
     DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> Speaker;
-    int32_t OrgLen = 0;
+    size_t OrgLen = 0;
     bool IsNotMute = false;
+    size_t SamplingRate = 44100;
 };
 
 struct SingleAudio
@@ -46,7 +47,7 @@ struct InferenceParams
     float NoiseScale = 0.3f;                           //噪声修正因子          0-10
     int64_t Seed = 52468;                              //种子
     int64_t SpeakerId = 0;                             //角色ID
-    uint64_t SrcSamplingRate = 48000;                  //源采样率
+    //uint64_t SrcSamplingRate = 48000;                  //源采样率
     int64_t SpkCount = 2;                              //模型角色数
     float IndexRate = 0.f;                             //索引比               0-1
     float ClusterRate = 0.f;                           //聚类比               0-1
@@ -60,14 +61,24 @@ struct InferenceParams
     std::wstring Sampler = L"Pndm";                    //Diffusion采样器
     std::wstring ReflowSampler = L"Eular";             //Reflow采样器
     std::wstring F0Method = L"Dio";                    //F0提取算法
-    bool UseShallowDiffusion = false;                  //使用浅扩散
-    void* VocoderModel = nullptr;
-    void* ShallowDiffusionModel = nullptr;
-    bool ShallowDiffusionUseSrcAudio = true;
+    std::shared_ptr<Ort::Session> VocoderModel = nullptr;
     int VocoderHopSize = 512;
     int VocoderMelBins = 128;
     int VocoderSamplingRate = 44100;
-    int64_t ShallowDiffuisonSpeaker = 0;
+    mutable DragonianLibSTL::Vector<float> _16KAudio, _F0, _Volume;
+    mutable DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _Speaker;
+    void CacheData(
+        DragonianLibSTL::Vector<float>&& M16KAudio,
+        DragonianLibSTL::Vector<float>&& MF0,
+        DragonianLibSTL::Vector<float>&& MVolume,
+        DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>&& MSpeaker
+    ) const
+    {
+        _16KAudio = std::move(M16KAudio);
+        _F0 = std::move(MF0);
+        _Volume = std::move(MVolume);
+        _Speaker = std::move(MSpeaker);
+    }
 };
 
 LibSvcEnd

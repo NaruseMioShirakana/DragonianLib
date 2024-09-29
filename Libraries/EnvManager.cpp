@@ -41,7 +41,7 @@ namespace DragonianLib {
 		cuda_option_v2 = nullptr;
 
 		if (log)
-			GetLogger().log(L"[Info] Complete!");
+			GetLogger().log(L"[Info] Env Was Destroyed!");
 	}
 
 	void DragonianLibOrtEnv::Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
@@ -70,7 +70,13 @@ namespace DragonianLib {
 	void DragonianLibOrtEnv::Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_)
 	{
 		Destory();
-		GetLogger().log(L"[Info] Creating Env");
+		GetLogger().log(
+			L"[Info] Creating Env With Provider:[" +
+			std::to_wstring(ExecutionProvider_) +
+			L"] DeviceID:[" +
+			std::to_wstring(DeviceID_)
+			+ L']'
+		);
 
 		switch (ExecutionProvider_)
 		{

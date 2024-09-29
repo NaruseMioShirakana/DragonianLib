@@ -22,42 +22,12 @@
 #pragma once
 #include "BaseF0Extractor.hpp"
 #include <functional>
+#include <memory>
 #include <string>
 
 DragonianLibF0ExtractorHeader
 
-class F0Extractor
-{
-public:
-	F0Extractor() = delete;
-	F0Extractor(BaseF0Extractor* _ext) : _f0_ext(_ext) {}
-	F0Extractor(const F0Extractor&) = delete;
-	F0Extractor(F0Extractor&& _ext) noexcept
-	{
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-	}
-	F0Extractor& operator=(const F0Extractor&) = delete;
-	F0Extractor& operator=(F0Extractor&& _ext) noexcept
-	{
-		if (this == &_ext)
-			return *this;
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-		return *this;
-	}
-	~F0Extractor()
-	{
-		delete _f0_ext;
-		_f0_ext = nullptr;
-	}
-	BaseF0Extractor* operator->() const { return _f0_ext; }
-
-private:
-	BaseF0Extractor* _f0_ext = nullptr;
-};
+using F0Extractor = std::shared_ptr<BaseF0Extractor>;
 
 using GetF0ExtractorFn = std::function<F0Extractor(uint32_t, uint32_t, uint32_t, double, double)>;
 

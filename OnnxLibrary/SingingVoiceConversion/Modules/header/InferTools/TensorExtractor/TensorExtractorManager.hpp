@@ -25,38 +25,7 @@
 
 LibSvcHeader
 
-class TensorExtractor
-{
-public:
-	TensorExtractor() = default;
-	TensorExtractor(LibSvcTensorExtractor* _ext) : _f0_ext(_ext) {}
-	TensorExtractor(const TensorExtractor&) = delete;
-	TensorExtractor(TensorExtractor&& _ext) noexcept
-	{
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-	}
-	TensorExtractor& operator=(const TensorExtractor&) = delete;
-	TensorExtractor& operator=(TensorExtractor&& _ext) noexcept
-	{
-		if (this == &_ext)
-			return *this;
-		delete _f0_ext;
-		_f0_ext = _ext._f0_ext;
-		_ext._f0_ext = nullptr;
-		return *this;
-	}
-	~TensorExtractor()
-	{
-		delete _f0_ext;
-		_f0_ext = nullptr;
-	}
-	LibSvcTensorExtractor* operator->() const { return _f0_ext; }
-
-private:
-	LibSvcTensorExtractor* _f0_ext = nullptr;
-};
+using TensorExtractor = std::shared_ptr<LibSvcTensorExtractor>;
 
 using GetTensorExtractorFn = std::function<TensorExtractor(uint64_t, uint64_t, uint64_t, bool, bool, uint64_t, uint64_t, const LibSvcTensorExtractor::Others&)>;
 

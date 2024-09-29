@@ -5,7 +5,7 @@ LibSvcHeader
 
 LibSvcTensorExtractor::LibSvcTensorExtractor(uint64_t _srcsr, uint64_t _sr, uint64_t _hop, bool _smix, bool _volume, uint64_t _hidden_size, uint64_t _nspeaker, const Others& _other)
 {
-	_SrcSamplingRate = _srcsr;
+	//_SrcSamplingRate = _srcsr;
 	_SamplingRate = _sr;
 	_HopSize = _hop;
 	_SpeakerMix = _smix;

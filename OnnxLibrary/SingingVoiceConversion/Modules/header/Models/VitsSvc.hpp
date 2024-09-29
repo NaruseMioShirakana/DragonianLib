@@ -21,7 +21,6 @@
 
 #pragma once
 #include "SVC.hpp"
-#include "DiffSvc.hpp"
 
 LibSvcHeader
 
@@ -29,45 +28,53 @@ class VitsSvc : public SingingVoiceConversion
 {
 public:
 
-    VitsSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback,
+    VitsSvc(
+        const Hparams& _Hps,
+        const ProgressCallback& _ProgressCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
+        unsigned DeviceID_ = 0,
+        unsigned ThreadCount_ = 0
+    );
+
 	~VitsSvc() override;
-    VitsSvc(const VitsSvc&) = delete;
-    VitsSvc(VitsSvc&&) = delete;
-    VitsSvc& operator=(const VitsSvc&) = delete;
-    VitsSvc& operator=(VitsSvc&&) = delete;
 
-    void Destory();
-
-    [[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(
+    [[nodiscard]] DragonianLibSTL::Vector<float> SliceInference(
         const SingleSlice& _Slice,
         const InferenceParams& _Params,
         size_t& _Process
     ) const override;
 
-    [[nodiscard]] DragonianLibSTL::Vector<int16_t> InferPCMData(
-        const DragonianLibSTL::Vector<int16_t>& _PCMData,
+    [[nodiscard]] DragonianLibSTL::Vector<float> InferPCMData(
+        const DragonianLibSTL::Vector<float>& _PCMData,
         long _SrcSamplingRate,
         const InferenceParams& _Params
     ) const override;
 
-    [[nodiscard]] std::vector<Ort::Value> MelExtractor(const float* PCMAudioBegin, const float* PCMAudioEnd) const = delete;
+    [[nodiscard]] std::vector<Ort::Value> MelExtractor(
+        const float* PCMAudioBegin,
+        const float* PCMAudioEnd
+    ) const = delete;
 
     [[nodiscard]] Ort::MemoryInfo* GetMemoryInfo() const
     {
-        return memory_info;
+        return MemoryInfo;
     }
 
 private:
-    Ort::Session* VitsSvcModel = nullptr;
+    std::shared_ptr<Ort::Session> VitsSvcModel = nullptr;
     std::wstring VitsSvcVersion = L"SoVits4.0";
 
-    const std::vector<const char*> soVitsOutput = { "audio" };
-    const std::vector<const char*> soVitsInput = { "hidden_unit", "lengths", "pitch", "sid" };
-    const std::vector<const char*> RVCInput = { "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd" };
-    const std::vector<const char*> StftOutput = { "mel" };
-    const std::vector<const char*> StftInput = { "waveform", "aligment"};
+    static inline const std::vector<const char*> soVitsOutput = { "audio" };
+    static inline const std::vector<const char*> soVitsInput = { "hidden_unit", "lengths", "pitch", "sid" };
+    static inline const std::vector<const char*> RVCInput = { "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd" };
+    static inline const std::vector<const char*> StftOutput = { "mel" };
+    static inline const std::vector<const char*> StftInput = { "waveform", "aligment"};
+
+public:
+    VitsSvc(const VitsSvc&) = default;
+    VitsSvc(VitsSvc&&) = default;
+    VitsSvc& operator=(const VitsSvc&) = default;
+    VitsSvc& operator=(VitsSvc&&) = default;
 };
 
 LibSvcEnd

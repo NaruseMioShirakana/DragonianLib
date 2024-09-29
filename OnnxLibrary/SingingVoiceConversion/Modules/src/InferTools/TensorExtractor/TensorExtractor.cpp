@@ -64,7 +64,7 @@ LibSvcTensorExtractor::Inputs SoVits3TensorExtractor::Extract(const DragonianLib
 
 	auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	// SvcTensors.Data.SpkShape = { SvcTensors.Data.FrameShape[1], int64_t(_NSpeaker) };
 	const int64_t upSample = int64_t(_SamplingRate) / 16000;
@@ -126,7 +126,7 @@ LibSvcTensorExtractor::Inputs SoVits4TensorExtractor::Extract(const DragonianLib
 	std::normal_distribution<float> normal(0, 1);
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	SvcTensors.Data.SpkShape = { SvcTensors.Data.FrameShape[1], int64_t(_NSpeaker) };
 	SvcTensors.Data.NoiseShape = { 1, 192, SvcTensors.Data.FrameShape[1] };
@@ -230,7 +230,7 @@ LibSvcTensorExtractor::Inputs SoVits4DDSPTensorExtractor::Extract(const Dragonia
 	std::normal_distribution<float> normal(0, 1);
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	SvcTensors.Data.SpkShape = { SvcTensors.Data.FrameShape[1], int64_t(_NSpeaker) };
 	SvcTensors.Data.NoiseShape = { 1, 192, SvcTensors.Data.FrameShape[1] };
@@ -336,7 +336,7 @@ LibSvcTensorExtractor::Inputs RVCTensorExtractor::Extract(const DragonianLibSTL:
 	std::normal_distribution<float> normal(0, 1);
 	auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	constexpr int64_t upSample = 2;
 	const auto srcHubertSize = SvcTensors.Data.HiddenUnitShape[1];
@@ -447,7 +447,7 @@ LibSvcTensorExtractor::Inputs DiffSvcTensorExtractor::Extract(const DragonianLib
 	Inputs SvcTensors;
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 
 	SvcTensors.Data.HiddenUnit = HiddenUnit;
@@ -504,7 +504,7 @@ LibSvcTensorExtractor::Inputs DiffusionSvcTensorExtractor::Extract(const Dragoni
 	Inputs SvcTensors;
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(_HiddenSize);
-	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / _SrcSamplingRate / _HopSize) };
+	SvcTensors.Data.FrameShape = { 1, int64_t(params.AudioSize * _SamplingRate / params.SrcSamplingRate / _HopSize) };
 	SvcTensors.Data.HiddenUnitShape = { 1, HubertLen, int64_t(_HiddenSize) };
 	SvcTensors.Data.SpkShape = { SvcTensors.Data.FrameShape[1], int64_t(_NSpeaker) };
 	auto Padding = params.Padding * SvcTensors.Data.FrameShape[1] / F0.Size();

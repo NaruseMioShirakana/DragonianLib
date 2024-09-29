@@ -8,43 +8,22 @@
 
 LibSvcHeader
 
-void DiffusionSvc::Destory()
-{
-	//AudioEncoder
-	delete hubert;
-	hubert = nullptr;
-
-	//DiffusionModel
-	delete encoder;      //Encoder
-	encoder = nullptr;
-	delete denoise;      //WaveNet
-	denoise = nullptr;
-	delete pred;         //PndmNoisePredictor
-	pred = nullptr;
-	delete after;        //AfterProcess
-	after = nullptr;
-	delete alpha;        //AlphasCumpord
-	alpha = nullptr;
-	delete naive;        //NaiveShallowDiffusion
-	naive = nullptr;
-
-	//SingleDiffusionModel
-	delete diffSvc;
-	diffSvc = nullptr;
-}
-
 DiffusionSvc::~DiffusionSvc()
 {
-	DragonianLibLogMessage(L"[Info] unloading DiffSvc Models");
-	Destory();
-	DragonianLibLogMessage(L"[Info] DiffSvc Models unloaded");
+	DragonianLibLogMessage(L"[Info] Unloading DiffSvc Models");
 }
 
-DiffusionSvc::DiffusionSvc(const Hparams& _Hps, const ProgressCallback& _ProgressCallback, ExecutionProviders ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_) : 
-	SingingVoiceConversion(ExecutionProvider_, DeviceID_, ThreadCount_)
+DiffusionSvc::DiffusionSvc(
+	const Hparams& _Hps,
+	const ProgressCallback& _ProgressCallback,
+	ExecutionProviders ExecutionProvider_,
+	unsigned DeviceID_,
+	unsigned ThreadCount_
+) : 
+	SingingVoiceConversion(_Hps.HubertPath ,ExecutionProvider_, DeviceID_, ThreadCount_)
 {
-	_samplingRate = std::max(_Hps.SamplingRate, 2000l);
-	melBins = std::max(_Hps.MelBins, 1ll);
+	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
+	MelBins = std::max(_Hps.MelBins, 1ll);
 	HopSize = std::max(_Hps.HopSize, 1);
 	HiddenUnitKDims = std::max(_Hps.HiddenUnitKDims, 1ll);
 	SpeakerCount = std::max(_Hps.SpeakerCount, 1ll);
@@ -56,7 +35,7 @@ DiffusionSvc::DiffusionSvc(const Hparams& _Hps, const ProgressCallback& _Progres
 	SpecMin = _Hps.SpecMin;
 	MaxStep = std::max(_Hps.MaxStep, 1ll);
 
-	_callback = _ProgressCallback;
+	ProgressCallbackFunction = _ProgressCallback;
 
 	if (!_Hps.Cluster.Type.empty())
 	{
@@ -77,51 +56,50 @@ DiffusionSvc::DiffusionSvc(const Hparams& _Hps, const ProgressCallback& _Progres
 	try
 	{
 		DragonianLibLogMessage(L"[Info] loading DiffSvc Models");
-		hubert = new Ort::Session(*env, _Hps.HubertPath.c_str(), *session_options);
 		if (!_Hps.DiffusionSvc.Encoder.empty())
 		{
-			encoder = new Ort::Session(*env, _Hps.DiffusionSvc.Encoder.c_str(), *session_options);
-			denoise = new Ort::Session(*env, _Hps.DiffusionSvc.Denoise.c_str(), *session_options);
-			pred = new Ort::Session(*env, _Hps.DiffusionSvc.Pred.c_str(), *session_options);
-			after = new Ort::Session(*env, _Hps.DiffusionSvc.After.c_str(), *session_options);
+			PreEncoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Encoder.c_str(), *SessionOptions);
+			DiffusionDenoiser = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Denoise.c_str(), *SessionOptions);
+			NoisePredictor = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Pred.c_str(), *SessionOptions);
+			PostDecoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.After.c_str(), *SessionOptions);
 			if (!_Hps.DiffusionSvc.Alpha.empty())
-				alpha = new Ort::Session(*env, _Hps.DiffusionSvc.Alpha.c_str(), *session_options);
+				AlphaCumprod = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Alpha.c_str(), *SessionOptions);
 		}
 		else
-			diffSvc = new Ort::Session(*env, _Hps.DiffusionSvc.DiffSvc.c_str(), *session_options);
+			OldDiffSvc = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.DiffSvc.c_str(), *SessionOptions);
 
 		if (!_Hps.DiffusionSvc.Naive.empty())
-			naive = new Ort::Session(*env, _Hps.DiffusionSvc.Naive.c_str(), *session_options);
+			NaiveModel = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Naive.c_str(), *SessionOptions);
 
 		DragonianLibLogMessage(L"[Info] DiffSvc Models loaded");
 	}
 	catch (Ort::Exception& _exception)
 	{
-		Destory();
 		DragonianLibThrow(_exception.what());
 	}
 
 	LibSvcTensorExtractor::Others _others_param;
-	_others_param.Memory = *memory_info;
+	_others_param.Memory = *MemoryInfo;
 
 	try
 	{
-		_TensorExtractor = GetTensorExtractor(DiffSvcVersion, 48000, _samplingRate, HopSize, EnableCharaMix, EnableVolume, HiddenUnitKDims, SpeakerCount, _others_param);
+		Preprocessor = GetTensorExtractor(DiffSvcVersion, 48000, ModelSamplingRate, HopSize, EnableCharaMix, EnableVolume, HiddenUnitKDims, SpeakerCount, _others_param);
 	}
 	catch (std::exception& e)
 	{
-		Destory();
 		DragonianLibThrow(e.what());
 	}
 }
 
-DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
+DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 	const SingleSlice& _Slice, 
 	const InferenceParams& _Params, 
 	size_t& _Process
 ) const
 {
-	_TensorExtractor->SetSrcSamplingRates(_Params.SrcSamplingRate);
+	if (!_Params.VocoderModel)
+		DragonianLibThrow("Missing Vocoder Model!");
+	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
 	std::mt19937 gen(int(_Params.Seed));
 	std::normal_distribution<float> normal(0, 1);
 	auto speedup = (int64_t)_Params.Pndm;
@@ -132,12 +110,11 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 	const auto SingleStepSkip = step / speedup;
 	if (_Slice.IsNotMute)
 	{
-		Ort::Session* Vocoder = nullptr;
-		auto RawWav = InterpResample(_Slice.Audio, (int)(_Params.SrcSamplingRate), 16000, 32768.0f);
+		auto RawWav = InterpResample<float>(_Slice.Audio, (int)(_Slice.SamplingRate), 16000);
 		const auto src_audio_length = RawWav.Size();
 		bool NeedPadding = false;
 #ifdef LIBSVC_CUDA_ONLY_PADDING
-		if (_cur_execution_provider == ExecutionProviders::CUDA && !diffSvc)
+		if (ModelExecutionProvider == ExecutionProviders::CUDA && !diffSvc)
 #endif
 		{
 			NeedPadding = RawWav.Size() % DRAGONIANLIB_PADDING_COUNT;
@@ -148,9 +125,9 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 
 		const int64_t HubertInputShape[3] = { 1i64,1i64,(int64_t)RawWav.Size() };
 		OrtTensors HubertInputTensors, HubertOutPuts;
-		HubertInputTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, RawWav.Data(), RawWav.Size(), HubertInputShape, 3));
+		HubertInputTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, RawWav.Data(), RawWav.Size(), HubertInputShape, 3));
 		try {
-			HubertOutPuts = hubert->Run(Ort::RunOptions{ nullptr },
+			HubertOutPuts = HubertModel->Run(Ort::RunOptions{ nullptr },
 				hubertInput.data(),
 				HubertInputTensors.data(),
 				HubertInputTensors.size(),
@@ -184,10 +161,10 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 		}
 		OrtTensors finaOut;
 		OrtTensors DiffOut;
-		if (diffSvc)
+		if (OldDiffSvc)
 		{
 			const auto HubertLen = int64_t(HubertSize) / HiddenUnitKDims;
-			const int64_t F0Shape[] = { 1, int64_t(_Slice.Audio.Size() * _samplingRate / (int)(_Params.SrcSamplingRate) / HopSize) };
+			const int64_t F0Shape[] = { 1, int64_t(_Slice.Audio.Size() * ModelSamplingRate / (int)(_Slice.SamplingRate) / HopSize) };
 			const int64_t HiddenUnitShape[] = { 1, HubertLen, HiddenUnitKDims };
 			constexpr int64_t CharaEmbShape[] = { 1 };
 			int64_t speedData[] = { Pndms };
@@ -200,26 +177,26 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 
 			int64_t Chara[] = { SpeakerIdx };
 
-			TensorsInp.emplace_back(Ort::Value::CreateTensor(*memory_info, srcHiddenUnits.Data(), HubertSize, HiddenUnitShape, 3));
-			TensorsInp.emplace_back(Ort::Value::CreateTensor(*memory_info, alignment.Data(), F0Shape[1], F0Shape, 2));
-			TensorsInp.emplace_back(Ort::Value::CreateTensor<long long>(*memory_info, Chara, 1, CharaEmbShape, 1));
-			TensorsInp.emplace_back(Ort::Value::CreateTensor(*memory_info, InterpedF0.Data(), F0Shape[1], F0Shape, 2));
+			TensorsInp.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, srcHiddenUnits.Data(), HubertSize, HiddenUnitShape, 3));
+			TensorsInp.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, alignment.Data(), F0Shape[1], F0Shape, 2));
+			TensorsInp.emplace_back(Ort::Value::CreateTensor<long long>(*MemoryInfo, Chara, 1, CharaEmbShape, 1));
+			TensorsInp.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, InterpedF0.Data(), F0Shape[1], F0Shape, 2));
 
-			DragonianLibSTL::Vector<float> initial_noise(melBins * F0Shape[1], 0.0);
-			long long noise_shape[4] = { 1,1,melBins,F0Shape[1] };
-			if (!naive)
+			DragonianLibSTL::Vector<float> initial_noise(MelBins * F0Shape[1], 0.0);
+			long long noise_shape[4] = { 1,1,MelBins,F0Shape[1] };
+			if (!NaiveModel)
 			{
 				for (auto& it : initial_noise)
 					it = normal(gen) * _Params.NoiseScale;
-				TensorsInp.emplace_back(Ort::Value::CreateTensor(*memory_info, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
+				TensorsInp.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
 			}
 			else
 				DragonianLibNotImplementedError;
 
-			TensorsInp.emplace_back(Ort::Value::CreateTensor<long long>(*memory_info, speedData, 1, CharaEmbShape, 1));
+			TensorsInp.emplace_back(Ort::Value::CreateTensor<long long>(*MemoryInfo, speedData, 1, CharaEmbShape, 1));
 			try
 			{
-				DiffOut = diffSvc->Run(Ort::RunOptions{ nullptr },
+				DiffOut = OldDiffSvc->Run(Ort::RunOptions{ nullptr },
 					DiffInput.data(),
 					TensorsInp.data(),
 					TensorsInp.size(),
@@ -230,14 +207,12 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 			{
 				DragonianLibThrow((std::string("Locate: Diff\n") + e2.what()));
 			}
-			if (_Params.VocoderModel)
-				Vocoder = static_cast<Ort::Session*>(_Params.VocoderModel);
 			try
 			{
-				finaOut = Vocoder->Run(Ort::RunOptions{ nullptr },
+				finaOut = _Params.VocoderModel->Run(Ort::RunOptions{ nullptr },
 					nsfInput.data(),
 					DiffOut.data(),
-					Vocoder->GetInputCount(),
+					_Params.VocoderModel->GetInputCount(),
 					nsfOutput.data(),
 					nsfOutput.size());
 			}
@@ -255,6 +230,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 			_Inference_Params.DDSPNoiseScale = _Params.DDSPNoiseScale;
 			_Inference_Params.Seed = int(_Params.Seed);
 			_Inference_Params.upKeys = _Params.Keys;
+			_Inference_Params.SrcSamplingRate = _Slice.SamplingRate;
 
 			LibSvcTensorExtractor::Inputs InputTensors;
 
@@ -263,7 +239,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 				auto CUDAF0 = _Slice.F0;
 				auto CUDAVolume = _Slice.Volume;
 				auto CUDASpeaker = _Slice.Speaker;
-				const auto ScaleSamplingConut = _Params.SrcSamplingRate * DRAGONIANLIB_PADDING_COUNT / 16000;
+				const auto ScaleSamplingConut = _Slice.SamplingRate * DRAGONIANLIB_PADDING_COUNT / 16000;
 				const auto SrcAudioLength = _Slice.Audio.Size();
 				const size_t WavPaddedSize = (SrcAudioLength / ScaleSamplingConut + 1) * ScaleSamplingConut;
 				const size_t AudioPadSize = WavPaddedSize - SrcAudioLength;
@@ -278,48 +254,48 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 				}
 				_Inference_Params.AudioSize = WavPaddedSize;
 				_Inference_Params.Padding = _Slice.F0.Size();
-				InputTensors = _TensorExtractor->Extract(srcHiddenUnits, CUDAF0, CUDAVolume, CUDASpeaker, _Inference_Params);
+				InputTensors = Preprocessor->Extract(srcHiddenUnits, CUDAF0, CUDAVolume, CUDASpeaker, _Inference_Params);
 			}
 			else
-				InputTensors = _TensorExtractor->Extract(srcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Inference_Params);
+				InputTensors = Preprocessor->Extract(srcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Inference_Params);
 
 			OrtTensors EncoderOut;
 			try {
-				EncoderOut = encoder->Run(Ort::RunOptions{ nullptr },
+				EncoderOut = PreEncoder->Run(Ort::RunOptions{ nullptr },
 					InputTensors.InputNames,
 					InputTensors.Tensor.data(),
-					std::min(InputTensors.Tensor.size(), encoder->GetInputCount()),
+					std::min(InputTensors.Tensor.size(), PreEncoder->GetInputCount()),
 					InputTensors.OutputNames,
-					encoder->GetOutputCount());
+					PreEncoder->GetOutputCount());
 			}
 			catch (Ort::Exception& e1)
 			{
 				DragonianLibThrow((std::string("Locate: encoder\n") + e1.what()));
 			}
 			if (EncoderOut.size() == 1)
-				EncoderOut.emplace_back(Ort::Value::CreateTensor(*memory_info, InputTensors.Data.F0.Data(), InputTensors.Data.FrameShape[1], InputTensors.Data.FrameShape.Data(), 2));
+				EncoderOut.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, InputTensors.Data.F0.Data(), InputTensors.Data.FrameShape[1], InputTensors.Data.FrameShape.Data(), 2));
 
 			OrtTensors DenoiseInTensors;
 			DenoiseInTensors.emplace_back(std::move(EncoderOut[0]));
 
-			DragonianLibSTL::Vector<float> initial_noise(melBins * InputTensors.Data.FrameShape[1], 0.0);
-			long long noise_shape[4] = { 1,1,melBins,InputTensors.Data.FrameShape[1] };
+			DragonianLibSTL::Vector<float> initial_noise(MelBins * InputTensors.Data.FrameShape[1], 0.0);
+			long long noise_shape[4] = { 1,1,MelBins,InputTensors.Data.FrameShape[1] };
 			if (EncoderOut.size() == 3)
 				DenoiseInTensors.emplace_back(std::move(EncoderOut[2]));
-			else if (!naive)
+			else if (!NaiveModel)
 			{
 				for (auto& it : initial_noise)
 					it = normal(gen) * _Params.NoiseScale;
-				DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
+				DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
 			}
 			else
 			{
 				OrtTensors NaiveOut;
 				try {
-					NaiveOut = naive->Run(Ort::RunOptions{ nullptr },
+					NaiveOut = NaiveModel->Run(Ort::RunOptions{ nullptr },
 						InputTensors.InputNames,
 						InputTensors.Tensor.data(),
-						std::min(InputTensors.Tensor.size(), naive->GetInputCount()),
+						std::min(InputTensors.Tensor.size(), NaiveModel->GetInputCount()),
 						naiveOutput.data(),
 						1);
 				}
@@ -330,11 +306,11 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 				DenoiseInTensors.emplace_back(std::move(NaiveOut[0]));
 			}
 
-			auto PredOut = GetSampler((!alpha ? L"Pndm" : _Params.Sampler), alpha, denoise, pred, melBins, _callback, memory_info)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, _Process);
+			auto PredOut = GetSampler((!AlphaCumprod ? L"Pndm" : _Params.Sampler), AlphaCumprod.get(), DiffusionDenoiser.get(), NoisePredictor.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, _Process);
 
 			try
 			{
-				DiffOut = after->Run(Ort::RunOptions{ nullptr },
+				DiffOut = PostDecoder->Run(Ort::RunOptions{ nullptr },
 					afterInput.data(),
 					PredOut.data(),
 					PredOut.size(),
@@ -346,14 +322,12 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 				DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
 			}
 			DiffOut.emplace_back(std::move(EncoderOut[1]));
-			if (_Params.VocoderModel)
-				Vocoder = static_cast<Ort::Session*>(_Params.VocoderModel);
 			try
 			{
-				finaOut = Vocoder->Run(Ort::RunOptions{ nullptr },
+				finaOut = _Params.VocoderModel->Run(Ort::RunOptions{ nullptr },
 					nsfInput.data(),
 					DiffOut.data(),
-					Vocoder->GetInputCount(),
+					_Params.VocoderModel->GetInputCount(),
 					nsfOutput.data(),
 					nsfOutput.size());
 			}
@@ -364,31 +338,28 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::SliceInference(
 		}
 
 		auto DiffOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
-		DragonianLibSTL::Vector<int16_t> DiffPCMOutput(DiffOutputAudioSize);
-		{
-			auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
-			auto OutputAudioData = DiffPCMOutput.Data();
-			const auto OutputAudioEnd = OutputAudioData + DiffPCMOutput.Size();
-			while (OutputAudioData != OutputAudioEnd)
-				*(OutputAudioData++) = (int16_t)(Clamp(*(DiffOutputAudioData++)) * 32766.f);
-		}
-		const auto dstWavLen = (_Slice.OrgLen * int64_t(_samplingRate)) / (int)(_Params.SrcSamplingRate);
-		DiffPCMOutput.Resize(dstWavLen, 0);
+		auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
+		DragonianLibSTL::Vector DiffPCMOutput(DiffOutputAudioData, DiffOutputAudioData + DiffOutputAudioSize);
+
+		const auto dstWavLen = (_Slice.OrgLen * int64_t(ModelSamplingRate)) / (int)(_Slice.SamplingRate);
+		DiffPCMOutput.Resize(dstWavLen, 0.f);
 		return DiffPCMOutput;
 	}
-	_callback(_Process += SingleStepSkip, 1);
-	const auto len = size_t(_Slice.OrgLen * int64_t(_samplingRate) / (int)(_Params.SrcSamplingRate));
-	return { len, 0i16, GetMemoryProvider(DragonianLib::Device::CPU) };
+	ProgressCallbackFunction(_Process += SingleStepSkip, 1);
+	const auto len = size_t(_Slice.OrgLen * int64_t(ModelSamplingRate) / (int)(_Slice.SamplingRate));
+	return { len, 0.f, GetMemoryProvider(DragonianLib::Device::CPU) };
 }
 
-DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
-	const DragonianLibSTL::Vector<int16_t>& _PCMData,
+DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
+	const DragonianLibSTL::Vector<float>& _PCMData,
 	long _SrcSamplingRate,
 	const InferenceParams& _Params
 ) const
 {
-	_TensorExtractor->SetSrcSamplingRates(_Params.SrcSamplingRate);
-	if (diffSvc || DiffSvcVersion != L"DiffusionSvc")
+	if (!_Params.VocoderModel)
+		DragonianLibThrow("Missing Vocoder Model!");
+	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
+	if (OldDiffSvc || DiffSvcVersion != L"DiffusionSvc")
 		return _PCMData;
 
 	auto hubertin = DragonianLibSTL::InterpResample<float>(_PCMData, _SrcSamplingRate, 16000);
@@ -402,7 +373,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 
 	const int64_t inputShape[3] = { 1i64,1i64,(int64_t)hubertin.Size() };
 	OrtTensors inputTensorshu;
-	inputTensorshu.emplace_back(Ort::Value::CreateTensor(*memory_info, hubertin.Data(), hubertin.Size(), inputShape, 3));
+	inputTensorshu.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, hubertin.Data(), hubertin.Size(), inputShape, 3));
 	OrtTensors hubertOut;
 
 	auto speedup = (int64_t)_Params.Pndm;
@@ -412,10 +383,10 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	if (speedup == 0) speedup = 1;
 	const auto RealDiffSteps = step % speedup ? step / speedup + 1 : step / speedup;
 
-	_callback(0, RealDiffSteps);
+	ProgressCallbackFunction(0, RealDiffSteps);
 
 	try {
-		hubertOut = hubert->Run(Ort::RunOptions{ nullptr },
+		hubertOut = HubertModel->Run(Ort::RunOptions{ nullptr },
 			hubertInput.data(),
 			inputTensorshu.data(),
 			inputTensorshu.size(),
@@ -449,18 +420,18 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	constexpr int64_t CharaEmbShape[] = { 1 };
 	const int64_t CharaMixShape[] = { F0Shape[1], SpeakerCount };
 
-	const auto F0Extractor = DragonianLib::GetF0Extractor(_Params.F0Method, _samplingRate, HopSize);
+	const auto F0Extractor = DragonianLib::GetF0Extractor(_Params.F0Method, ModelSamplingRate, HopSize);
 	auto F0Data = F0Extractor->ExtractF0(_PCMData, _PCMData.Size() / HopSize);
 	for (auto& ifo : F0Data)
 		ifo *= (float)pow(2.0, static_cast<double>(_Params.Keys) / 12.0);
-	F0Data = _TensorExtractor->GetInterpedF0(InterpFunc(F0Data, long(F0Data.Size()), long(F0Shape[1])));
-	DragonianLibSTL::Vector<int64_t> Alignment = _TensorExtractor->GetAligments(F0Shape[1], HubertLen);
+	F0Data = Preprocessor->GetInterpedF0(InterpFunc(F0Data, long(F0Data.Size()), long(F0Shape[1])));
+	DragonianLibSTL::Vector<int64_t> Alignment = Preprocessor->GetAligments(F0Shape[1], HubertLen);
 	int64_t CharaEmb[] = { SpeakerIdx };
 
 	OrtTensors EncoderTensors;
 
 	EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-		*memory_info,
+		*MemoryInfo,
 		HiddenUnits.Data(),
 		HubertSize,
 		HiddenUnitShape,
@@ -468,7 +439,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	));
 
 	EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-		*memory_info,
+		*MemoryInfo,
 		Alignment.Data(),
 		F0Shape[1],
 		F0Shape,
@@ -476,7 +447,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	));
 
 	EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-		*memory_info,
+		*MemoryInfo,
 		F0Data.Data(),
 		F0Shape[1],
 		F0Shape,
@@ -495,7 +466,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 		else
 			Volume.Resize(F0Data.Size(), 0.f);
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			Volume.Data(),
 			F0Shape[1],
 			F0Shape,
@@ -507,9 +478,9 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 
 	if (EnableCharaMix)
 	{
-		SpkMap = _TensorExtractor->GetCurrectSpkMixData(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>(), F0Shape[1], SpeakerIdx);
+		SpkMap = Preprocessor->GetCurrectSpkMixData(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>(), F0Shape[1], SpeakerIdx);
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			SpkMap.Data(),
 			SpkMap.Size(),
 			CharaMixShape,
@@ -519,7 +490,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	else
 	{
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			CharaEmb,
 			1,
 			CharaEmbShape,
@@ -531,41 +502,41 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 
 	OrtTensors EncoderOut;
 	try {
-		EncoderOut = encoder->Run(Ort::RunOptions{ nullptr },
+		EncoderOut = PreEncoder->Run(Ort::RunOptions{ nullptr },
 			InputNamesEncoder.data(),
 			EncoderTensors.data(),
-			std::min(EncoderTensors.size(), encoder->GetInputCount()),
+			std::min(EncoderTensors.size(), PreEncoder->GetInputCount()),
 			OutputNamesEncoder.Data(),
-			encoder->GetOutputCount());
+			PreEncoder->GetOutputCount());
 	}
 	catch (Ort::Exception& e1)
 	{
 		DragonianLibThrow((std::string("Locate: encoder\n") + e1.what()));
 	}
 	if (EncoderOut.size() == 1)
-		EncoderOut.emplace_back(Ort::Value::CreateTensor(*memory_info, F0Data.Data(), F0Shape[1], F0Shape, 2));
+		EncoderOut.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, F0Data.Data(), F0Shape[1], F0Shape, 2));
 
 	OrtTensors DenoiseInTensors;
 	DenoiseInTensors.emplace_back(std::move(EncoderOut[0]));
 
-	DragonianLibSTL::Vector<float> initial_noise(melBins * F0Shape[1], 0.0);
-	long long noise_shape[4] = { 1,1,melBins,F0Shape[1] };
+	DragonianLibSTL::Vector<float> initial_noise(MelBins * F0Shape[1], 0.0);
+	long long noise_shape[4] = { 1,1,MelBins,F0Shape[1] };
 	if (EncoderOut.size() == 3)
 		DenoiseInTensors.emplace_back(std::move(EncoderOut[2]));
-	else if (!naive)
+	else if (!NaiveModel)
 	{
 		for (auto& it : initial_noise)
 			it = normal(gen) * _Params.NoiseScale;
-		DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
+		DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
 	}
 	else
 	{
 		OrtTensors NaiveOut;
 		try {
-			NaiveOut = naive->Run(Ort::RunOptions{ nullptr },
+			NaiveOut = NaiveModel->Run(Ort::RunOptions{ nullptr },
 				InputNamesEncoder.data(),
 				EncoderTensors.data(),
-				std::min(EncoderTensors.size(), naive->GetInputCount()),
+				std::min(EncoderTensors.size(), NaiveModel->GetInputCount()),
 				naiveOutput.data(),
 				1);
 		}
@@ -578,13 +549,13 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 
 	size_t process = 0;
 
-	auto PredOut = GetSampler((!alpha ? L"Pndm" : _Params.Sampler), alpha, denoise, pred, melBins, _callback, memory_info)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, process);
+	auto PredOut = GetSampler((!AlphaCumprod ? L"Pndm" : _Params.Sampler), AlphaCumprod.get(), DiffusionDenoiser.get(), NoisePredictor.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, process);
 
 	OrtTensors DiffOut, finaOut;
 
 	try
 	{
-		DiffOut = after->Run(Ort::RunOptions{ nullptr },
+		DiffOut = PostDecoder->Run(Ort::RunOptions{ nullptr },
 			afterInput.data(),
 			PredOut.data(),
 			PredOut.size(),
@@ -596,15 +567,13 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 		DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
 	}
 	DiffOut.emplace_back(std::move(EncoderOut[1]));
-	Ort::Session* Vocoder = nullptr;
-	if (_Params.VocoderModel)
-		Vocoder = static_cast<Ort::Session*>(_Params.VocoderModel);
+
 	try
 	{
-		finaOut = Vocoder->Run(Ort::RunOptions{ nullptr },
+		finaOut = _Params.VocoderModel->Run(Ort::RunOptions{ nullptr },
 			nsfInput.data(),
 			DiffOut.data(),
-			Vocoder->GetInputCount(),
+			_Params.VocoderModel->GetInputCount(),
 			nsfOutput.data(),
 			nsfOutput.size());
 	}
@@ -614,30 +583,41 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::InferPCMData(
 	}
 
 	auto DiffOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
-	DragonianLibSTL::Vector<int16_t> DiffPCMOutput(DiffOutputAudioSize);
-	{
-		auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
-		auto OutputAudioData = DiffPCMOutput.Data();
-		const auto OutputAudioEnd = OutputAudioData + DiffPCMOutput.Size();
-		while (OutputAudioData != OutputAudioEnd)
-			*(OutputAudioData++) = (int16_t)(Clamp(*(DiffOutputAudioData++)) * 32766.f);
-	}
+	auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
+	DragonianLibSTL::Vector DiffPCMOutput(DiffOutputAudioData, DiffOutputAudioData + DiffOutputAudioSize);
+
+	const auto dstWavLen = (_PCMData.Size() * int64_t(ModelSamplingRate)) / _SrcSamplingRate;
+	DiffPCMOutput.Resize(dstWavLen, 0.f);
+
 	UNUSED(Volume.Size());
 	UNUSED(SpkMap.Size());
 	return DiffPCMOutput;
 }
 
-void DiffusionSvc::NormMel(DragonianLibSTL::Vector<float>& MelSpec) const
+void DiffusionSvc::NormMel(
+	DragonianLibSTL::Vector<float>& MelSpec
+) const
 {
 	for (auto& it : MelSpec)
 		it = (it - SpecMin) / (SpecMax - SpecMin) * 2 - 1;
 }
 
-DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(DragonianLibSTL::Vector<float>& _16KAudioHubert, const InferenceParams& _Params, std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel, const DragonianLibSTL::Vector<float>& _SrcF0, const DragonianLibSTL::Vector<float>& _SrcVolume, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap, size_t& Process, int64_t SrcSize) const
+DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
+	DragonianLibSTL::Vector<float>& _16KAudioHubert,
+	const InferenceParams& _Params,
+	std::pair<DragonianLibSTL::Vector<float>, int64_t>& _Mel,
+	const DragonianLibSTL::Vector<float>& _SrcF0,
+	const DragonianLibSTL::Vector<float>& _SrcVolume,
+	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _SrcSpeakerMap,
+	size_t& Process,
+	int64_t SrcSize
+) const
 
 {
-	_TensorExtractor->SetSrcSamplingRates(_Params.SrcSamplingRate);
-	if (diffSvc || DiffSvcVersion != L"DiffusionSvc")
+	if (!_Params.VocoderModel)
+		DragonianLibThrow("Missing Vocoder Model!");
+	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
+	if (OldDiffSvc || DiffSvcVersion != L"DiffusionSvc")
 		DragonianLibThrow("ShallowDiffusion Only Support DiffusionSvc Model");
 
 		auto speedup = (int64_t)_Params.Pndm;
@@ -651,9 +631,9 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 
 	OrtTensors HubertInputTensors, HubertOutputTensors;
 	const int64_t HubertInputShape[3] = { 1i64,1i64,(int64_t)_16KAudioHubert.Size() };
-	HubertInputTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, _16KAudioHubert.Data(), _16KAudioHubert.Size(), HubertInputShape, 3));
+	HubertInputTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, _16KAudioHubert.Data(), _16KAudioHubert.Size(), HubertInputShape, 3));
 	try {
-		HubertOutputTensors = hubert->Run(Ort::RunOptions{ nullptr },
+		HubertOutputTensors = HubertModel->Run(Ort::RunOptions{ nullptr },
 			hubertInput.data(),
 			HubertInputTensors.data(),
 			HubertInputTensors.size(),
@@ -677,7 +657,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	constexpr int64_t OneShape[] = { 1 };
 	int64_t CharaEmb[] = { SpeakerIdx };
 
-	auto Alignment = _TensorExtractor->GetAligments(_Mel_Size, HubertLength);
+	auto Alignment = Preprocessor->GetAligments(_Mel_Size, HubertLength);
 	Alignment.Resize(FrameShape[1]);
 	auto F0Data = InterpFunc(_SrcF0, long(_SrcF0.Size()), long(FrameShape[1]));
 	DragonianLibSTL::Vector<float> Volume, SpkMap;
@@ -685,7 +665,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	OrtTensors EncoderTensors;
 	EncoderTensors.emplace_back(std::move(HubertOutputTensors[0]));
 	EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-		*memory_info,
+		*MemoryInfo,
 		Alignment.Data(),
 		FrameShape[1],
 		FrameShape,
@@ -693,7 +673,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	));
 
 	EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-		*memory_info,
+		*MemoryInfo,
 		F0Data.Data(),
 		FrameShape[1],
 		FrameShape,
@@ -705,7 +685,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 		InputNamesEncoder = { "hubert", "mel2ph", "f0", "volume", "spk_mix" };
 		Volume = InterpFunc(_SrcVolume, long(_SrcVolume.Size()), long(FrameShape[1]));
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			Volume.Data(),
 			FrameShape[1],
 			FrameShape,
@@ -717,9 +697,9 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 
 	if (EnableCharaMix)
 	{
-		SpkMap = _TensorExtractor->GetCurrectSpkMixData(_SrcSpeakerMap, FrameShape[1], CharaEmb[0]);
+		SpkMap = Preprocessor->GetCurrectSpkMixData(_SrcSpeakerMap, FrameShape[1], CharaEmb[0]);
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			SpkMap.Data(),
 			SpkMap.Size(),
 			CharaMixShape,
@@ -729,7 +709,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	else
 	{
 		EncoderTensors.emplace_back(Ort::Value::CreateTensor(
-			*memory_info,
+			*MemoryInfo,
 			CharaEmb,
 			1,
 			OneShape,
@@ -741,10 +721,10 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	
 	OrtTensors EncoderOut;
 	try {
-		EncoderOut = encoder->Run(Ort::RunOptions{ nullptr },
+		EncoderOut = PreEncoder->Run(Ort::RunOptions{ nullptr },
 			InputNamesEncoder.data(),
 			EncoderTensors.data(),
-			std::min(EncoderTensors.size(), encoder->GetInputCount()),
+			std::min(EncoderTensors.size(), PreEncoder->GetInputCount()),
 			OutputNamesEncoder.Data(),
 			1);
 	}
@@ -756,7 +736,7 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	OrtTensors DenoiseInTensors;
 	DenoiseInTensors.emplace_back(std::move(EncoderOut[0]));
 
-	long long noise_shape[4] = { 1,1,melBins,_Mel_Size };
+	long long noise_shape[4] = { 1,1,MelBins,_Mel_Size };
 
 	NormMel(_Mel.first);
 
@@ -767,14 +747,14 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 		it = normal(gen) * _Params.NoiseScale;
 	DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, initial_noise.data(), initial_noise.size(), noise_shape, 4));*/
 
-	DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*memory_info, _Mel.first.Data(), _Mel.first.Size(), noise_shape, 4));
+	DenoiseInTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, _Mel.first.Data(), _Mel.first.Size(), noise_shape, 4));
 
-	auto PredOut = GetSampler((!alpha ? L"Pndm" : _Params.Sampler), alpha, denoise, pred, melBins, _callback, memory_info)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, Process);
+	auto PredOut = GetSampler((!AlphaCumprod ? L"Pndm" : _Params.Sampler), AlphaCumprod.get(), DiffusionDenoiser.get(), NoisePredictor.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(DenoiseInTensors, step, speedup, _Params.NoiseScale, _Params.Seed, Process);
 
 	OrtTensors DiffOut, finaOut;
 	try
 	{
-		DiffOut = after->Run(Ort::RunOptions{ nullptr },
+		DiffOut = PostDecoder->Run(Ort::RunOptions{ nullptr },
 			afterInput.data(),
 			PredOut.data(),
 			PredOut.size(),
@@ -786,15 +766,12 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 		DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
 	}
 	DiffOut.emplace_back(std::move(EncoderTensors[2]));
-	Ort::Session* Vocoder = nullptr;
-	if (_Params.VocoderModel)
-		Vocoder = static_cast<Ort::Session*>(_Params.VocoderModel);
 	try
 	{
-		finaOut = Vocoder->Run(Ort::RunOptions{ nullptr },
+		finaOut = _Params.VocoderModel->Run(Ort::RunOptions{ nullptr },
 			nsfInput.data(),
 			DiffOut.data(),
-			Vocoder->GetInputCount(),
+			_Params.VocoderModel->GetInputCount(),
 			nsfOutput.data(),
 			nsfOutput.size());
 	}
@@ -804,62 +781,22 @@ DragonianLibSTL::Vector<int16_t> DiffusionSvc::ShallowDiffusionInference(Dragoni
 	}
 
 	auto DiffOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
-	DragonianLibSTL::Vector<int16_t> DiffPCMOutput(DiffOutputAudioSize);
-	{
-		auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
-		auto OutputAudioData = DiffPCMOutput.Data();
-		const auto OutputAudioEnd = OutputAudioData + DiffPCMOutput.Size();
-		while (OutputAudioData != OutputAudioEnd)
-			*(OutputAudioData++) = (int16_t)(Clamp(*(DiffOutputAudioData++)) * 32766.f);
-	}
-	const auto dstWavLen = (SrcSize * int64_t(_samplingRate)) / (int)(_Params.SrcSamplingRate);
-	DiffPCMOutput.Resize(dstWavLen);
+	auto DiffOutputAudioData = finaOut[0].GetTensorData<float>();
+	DragonianLibSTL::Vector DiffPCMOutput(DiffOutputAudioData, DiffOutputAudioData + DiffOutputAudioSize);
+
 	UNUSED(Volume.Size());
 	UNUSED(SpkMap.Size());
 	return DiffPCMOutput;
 }
 
-void StaticNormMel(DragonianLibSTL::Vector<float>& MelSpec, float SpecMin = -12, float SpecMax = 2)
+void StaticNormMel(
+	DragonianLibSTL::Vector<float>& MelSpec,
+	float SpecMin = -12,
+	float SpecMax = 2
+)
 {
 	for (auto& it : MelSpec)
 		it = (it - SpecMin) / (SpecMax - SpecMin) * 2 - 1;
-}
-
-DragonianLibSTL::Vector<int16_t> VocoderInfer(DragonianLibSTL::Vector<float>& Mel, DragonianLibSTL::Vector<float>& F0, int64_t MelBins, int64_t MelSize, const Ort::MemoryInfo* Mem, void* _VocoderModel)
-{
-	const int64_t MelShape[] = { 1i64,MelBins,MelSize };
-	const int64_t FrameShape[] = { 1,MelSize };
-	OrtTensors Tensors;
-	Tensors.emplace_back(Ort::Value::CreateTensor(
-		*Mem,
-		Mel.Data(),
-		Mel.Size(),
-		MelShape,
-		3)
-	);
-	Tensors.emplace_back(Ort::Value::CreateTensor(
-		*Mem,
-		F0.Data(),
-		FrameShape[1],
-		FrameShape,
-		2)
-	);
-	const DragonianLibSTL::Vector nsfInput = { "c", "f0" };
-	const DragonianLibSTL::Vector nsfOutput = { "audio" };
-	Ort::Session* Vocoder = nullptr;
-	if (_VocoderModel)
-		Vocoder = static_cast<Ort::Session*>(_VocoderModel);
-	Tensors = Vocoder->Run(Ort::RunOptions{ nullptr },
-		nsfInput.Data(),
-		Tensors.data(),
-		Vocoder->GetInputCount(),
-		nsfOutput.Data(),
-		nsfOutput.Size());
-	const auto AudioSize = Tensors[0].GetTensorTypeAndShapeInfo().GetShape()[2];
-	DragonianLibSTL::Vector Audio(AudioSize, 0i16);
-	for (int64_t it = 0; it < AudioSize; it++)
-		Audio[it] = static_cast<int16_t>(Clamp(Tensors[0].GetTensorData<float>()[it]) * 32766.0f);
-	return Audio;
 }
 
 LibSvcEnd

@@ -85,7 +85,7 @@ void PrintTensor<bool>(DragonianLib::Tensor& _Tensor)
 }
 #endif
 
-using AudioContainer = DragonianLibSTL::Vector<int16_t>;
+using DInt16Vector = DragonianLibSTL::Vector<int16_t>;
 
 void LibSvcTest();
 
@@ -93,11 +93,6 @@ void LibSvcTest();
 void LibSrTest();
 void LibMtsTest();
 void TensorLibDemo();
-void RealTime();
-void RecordTaskEnd(bool* ptask);
-void OutPutTask(AudioContainer& Audio);
-void CrossFadeTask();
-void InferTask(const LibSvcSpace UnionSvcModel* Model, long _SrcSr, const LibSvcSpace InferenceParams& Params);
 void OperatorTest();
 #endif
 
@@ -109,8 +104,8 @@ int main()
 #endif
 	//LibMtsTest();
 	//LibSrTest();
-	//LibSvcTest();
-	OperatorTest();
+	LibSvcTest();
+	//OperatorTest();
 	system("pause");
 	return 0;
 }
@@ -126,13 +121,9 @@ void LibSvcTest()
 	constexpr auto NumThread = 16;
 	constexpr auto DeviceId = 0;
 
-	if (LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
+	auto GlobalEnv = LibSvcCreateEnv(NumThread, DeviceId, EProvider);
+	if (!GlobalEnv)
 		return;
-	}
 	LibSvcSpace Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
 	Config.SamplingRate = 44100;
@@ -225,8 +216,14 @@ void LibSvcTest()
 		return;
 	}
 #else
-	auto Model = LibSvcSpace UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
-	auto Audio = DragonianLib::AvCodec().DecodeSigned16(
+	auto Model = LibSvcSpace DiffusionSvc(
+		Config,
+		ProgressCb,
+		DragonianLib::SingingVoiceConversion::LibSvcModule::ExecutionProviders(EProvider),
+		DeviceId,
+		NumThread
+	);
+	auto Audio = DragonianLib::AvCodec().DecodeFloat(
 		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
 		SrcSr
 	);
@@ -234,7 +231,7 @@ void LibSvcTest()
 
 	LibSvcSpace SlicerSettings SlicerConfig{
 		SrcSr,
-		40.,
+		40. / 32768.,
 		5.,
 		2048,
 		512
@@ -252,18 +249,13 @@ void LibSvcTest()
 
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
 	LibSvcSpace InferenceParams Params;
-	Params.SrcSamplingRate = SrcSr;
 	Params.VocoderSamplingRate = Config.SamplingRate;
 	Params.VocoderHopSize = Config.HopSize;
 	Params.VocoderMelBins = static_cast<int>(Config.MelBins);
-	Params.VocoderModel = LibSvcLoadVocoder(VocoderPath.data());
-	if (!Params.VocoderModel)
-	{
-		auto Str = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(Str);
-		LibSvcFreeString(Str);
-		return;
-	}
+	Params.VocoderModel = LibSvcSpace SingingVoiceConversion::RefOrtCachedModel(
+		VocoderPath,
+		*(DragonianLib::DragonianLibOrtEnv*)GlobalEnv
+	);
 
 #ifdef DRAGONIANLIB_IMPORT
 	const auto SliPos = LibSvcAllocateOffset();
@@ -306,14 +298,14 @@ void LibSvcTest()
 
 	size_t Proc = 0;
 	Params.Step = 100;
-	Params.Pndm = 10;
+	Params.Pndm = 5;
 #ifdef DRAGONIANLIB_IMPORT
 	auto OutAudio = LibSvcAllocateAudio();
-	TotalStep = LibSvcGetSliceCount(Slices) * 10;
+	TotalStep = LibSvcGetSliceCount(Slices) * Params.Step / Params.Pndm;
 #else
-	DragonianLibSTL::Vector<int16_t> OutAudio;
+	DragonianLibSTL::Vector<float> OutAudio;
 	OutAudio.Reserve(Audio.Size() * 2);
-	TotalStep = Slices.Slices.Size() * 10;
+	TotalStep = Slices.Slices.Size() * Params.Step / Params.Pndm;
 #endif
 
 #ifdef DRAGONIANLIB_IMPORT
@@ -708,183 +700,6 @@ void LibMtsTest()
 
 	auto Midi = Model.Inference(Audio, _Config, 5);
 	WriteMidiFile(LR"(C:\DataSpace\MediaProj\PlayList\list.mid)", Midi, 0, 384 / 2);
-}
-
-DragonianLib::ThreadPool Thp;
-std::mutex mx1, mx2;
-HWAVEOUT hWaveOut;
-std::deque<AudioContainer> WaveInQueue, PWaveInQueue;
-constexpr double Time = 1;
-
-void RecordTaskEnd(bool* ptask)
-{
-	getchar();
-	if (ptask)
-		*ptask = false;
-}
-
-void OutPutTask(AudioContainer& Audio)
-{
-	std::lock_guard lg(mx2);
-	WAVEHDR Header;
-	Header.lpData = (LPSTR)Audio.Data();
-	Header.dwBufferLength = (DWORD)(Audio.Size() * 2);
-	Header.dwBytesRecorded = 0;
-	Header.dwUser = 0;
-	Header.dwFlags = 0;
-	Header.dwLoops = 1;
-	waveOutPrepareHeader(hWaveOut, &Header, sizeof(WAVEHDR));
-	waveOutWrite(hWaveOut, &Header, sizeof(WAVEHDR));
-	Sleep(int((double)Time * 1000));
-	waveOutReset(hWaveOut);
-}
-
-void CrossFadeTask()
-{
-	const auto& FrontWave = PWaveInQueue[0];
-	const auto& MidWave = PWaveInQueue[1];
-	const auto& BackWave = PWaveInQueue[2];
-	const auto Size = (int64_t)FrontWave.Size() / 2;
-	const auto CrossFadeSize = Size / 4;
-	const auto AddnSize = Size / 2;
-	const auto FrontAudioPos = Size + AddnSize;
-	const auto FrontSize = Size - CrossFadeSize;
-	AudioContainer Audio(MidWave.Data() + AddnSize, MidWave.Data() + AddnSize + Size);
-	for (int64_t i = 0; i < CrossFadeSize; ++i)
-	{
-		Audio[i] = short(int64_t(FrontWave[FrontAudioPos + i]) * (CrossFadeSize - i) / CrossFadeSize +
-			int64_t(Audio[i]) * i / CrossFadeSize);
-		Audio[FrontSize + i] = short(int64_t(BackWave[AddnSize + i]) * i / CrossFadeSize +
-			int64_t(Audio[FrontSize + i]) * (CrossFadeSize - i) / CrossFadeSize);
-	}
-
-	Thp.Commit(OutPutTask, Audio);
-	PWaveInQueue.pop_front();
-}
-
-void InferTask(const LibSvcSpace UnionSvcModel* Model, long _SrcSr, const LibSvcSpace InferenceParams& Params)
-{
-	AudioContainer Audio;
-	auto Size = WaveInQueue.begin()->Size();
-	Audio.Reserve(Size * 2);
-	auto CrossSize = Size / 2;
-	auto FrontSize = Size - CrossSize;
-	Audio.Insert(Audio.End(), WaveInQueue[0].Data() + FrontSize, WaveInQueue[0].Data() + Size);
-	Audio.Insert(Audio.End(), WaveInQueue[1].Data(), WaveInQueue[1].Data() + Size);
-	Audio.Insert(Audio.End(), WaveInQueue[2].Data(), WaveInQueue[2].Data() + CrossSize);
-	bool Zero = true;
-	for (auto i : Audio)
-		if (i > 800)
-		{
-			Zero = false;
-			break;
-		}
-
-	{
-		std::lock_guard lg(mx1);
-		if (Zero)
-			PWaveInQueue.emplace_back(Audio.Size(), 0i16);
-		else
-			PWaveInQueue.emplace_back(std::move(Audio)/*Model->InferPCMData(Audio, _SrcSr, Params)*/);
-		WaveInQueue.pop_front();
-	}
-
-	if (PWaveInQueue.size() > 2)
-		Thp.Commit(CrossFadeTask);
-}
-
-void RealTime()
-{
-	LibSvcSpace SetupKernel();
-	constexpr auto EProvider = 2;
-	constexpr auto NumThread = 8;
-	constexpr auto DeviceId = 0;
-	if (LibSvcSetGlobalEnv(NumThread, DeviceId, EProvider))
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
-		return;
-	}
-	LibSvcSpace Hparams Config;
-	Config.TensorExtractor = L"DiffusionSvc";
-	Config.SamplingRate = 44100;
-	Config.HopSize = 512;
-	Config.HubertPath = LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)";
-	Config.SpeakerCount = 8;
-	Config.HiddenUnitKDims = 768;
-	Config.EnableCharaMix = true;
-	Config.EnableVolume = true;
-	Config.MaxStep = 100;
-	Config.MelBins = 128;
-	Config.DiffusionSvc.Encoder = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_encoder.onnx)";
-	Config.DiffusionSvc.Alpha = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_alpha.onnx)";
-	Config.DiffusionSvc.Denoise = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_denoise.onnx)";
-	Config.DiffusionSvc.Pred = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_pred.onnx)";
-	Config.DiffusionSvc.After = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ComboSummerPockets\ComboSummerPockets_after.onnx)";
-	long SrcSr = Config.SamplingRate;
-	auto Model = LibSvcSpace UnionSvcModel(Config, ProgressCb, EProvider, NumThread, DeviceId);
-	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf_hifigan.onnx)";
-	LibSvcSpace InferenceParams Params;
-	Params.SrcSamplingRate = SrcSr;
-	Params.VocoderSamplingRate = Config.SamplingRate;
-	Params.VocoderHopSize = Config.HopSize;
-	Params.VocoderMelBins = static_cast<int>(Config.MelBins);
-	Params.VocoderModel = LibSvcLoadVocoder(VocoderPath.data());
-	if (!Params.VocoderModel)
-	{
-		auto Str = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(Str);
-		LibSvcFreeString(Str);
-		return;
-	}
-	Params.Step = 100;
-	Params.Pndm = 10;
-	TotalStep = Params.Step / Params.Pndm;
-
-	Thp.Init(8);
-	bool Task = true;
-	Thp.Commit(RecordTaskEnd, &Task);
-
-	WAVEFORMATEX WaveFormat;
-	WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
-	WaveFormat.nSamplesPerSec = SrcSr;
-	WaveFormat.wBitsPerSample = 16;
-	WaveFormat.nChannels = 1;
-	WaveFormat.nBlockAlign = (WaveFormat.wBitsPerSample * WaveFormat.nChannels / 8);
-	WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
-	WaveFormat.cbSize = 0;
-	HWAVEIN hWaveIn;
-	waveInOpen(&hWaveIn, WAVE_MAPPER, &WaveFormat, 0L, 0L, CALLBACK_NULL);
-
-	WaveInQueue.emplace_back(size_t(double(SrcSr) * Time), 0i16);
-	WaveInQueue.emplace_back(size_t(double(SrcSr) * Time), 0i16);
-	WaveInQueue.emplace_back(size_t(double(SrcSr) * Time), 0i16);
-	WaveInQueue.emplace_back(size_t(double(SrcSr) * Time), 0i16);
-	WaveInQueue.emplace_back(size_t(double(SrcSr) * Time), 0i16);
-	waveOutOpen(&hWaveOut, WAVE_MAPPER, &WaveFormat, 0, 0, CALLBACK_NULL);
-	while (Task)
-	{
-		AudioContainer AudioData(size_t(double(SrcSr) * Time));
-		WAVEHDR Header;
-		Header.lpData = (LPSTR)AudioData.Data();
-		Header.dwBufferLength = DWORD(AudioData.Size() * 2);
-		Header.dwBytesRecorded = 0;
-		Header.dwUser = 0;
-		Header.dwFlags = 0;
-		Header.dwLoops = 1;
-		waveInPrepareHeader(hWaveIn, &Header, sizeof(WAVEHDR));
-		waveInAddBuffer(hWaveIn, &Header, sizeof(WAVEHDR));
-		waveInStart(hWaveIn);
-		Sleep(DWORD(double(1000) * Time));
-		waveInReset(hWaveIn);
-		WaveInQueue.emplace_back(std::move(AudioData));
-		if (WaveInQueue.size() > 2)
-			Thp.Commit(InferTask, &Model, SrcSr, Params);
-	}
-	waveOutClose(hWaveOut);
-	waveInClose(hWaveIn);
-	Thp.Join();
 }
 
 #endif

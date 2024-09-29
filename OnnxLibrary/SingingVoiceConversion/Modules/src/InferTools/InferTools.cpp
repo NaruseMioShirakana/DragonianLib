@@ -7,7 +7,7 @@
 LibSvcHeader
 
 DragonianLibSTL::Vector<size_t> SliceAudio(
-    const DragonianLibSTL::Vector<int16_t>& _PcmData,
+    const DragonianLibSTL::Vector<float>& _PcmData,
     const SlicerSettings& _SlicerSettings
 )
 {

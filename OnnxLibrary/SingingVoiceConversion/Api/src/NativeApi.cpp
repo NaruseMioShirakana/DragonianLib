@@ -10,17 +10,14 @@
 #include <deque>
 #include <mutex>
 #include <string>
-
 #include "AvCodec/AvCodec.h"
 #include "Base.h"
 #include "../../Modules/header/Modules.hpp"
-
+#include "Util/Logger.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
 #endif
-
-
 
 const wchar_t* LibSvcNullString = L"";
 
@@ -40,12 +37,9 @@ void SysFreeString(BSTR _String)
 }
 #endif
 
-std::deque<std::wstring> ErrorQueue;
-size_t MaxErrorCount = 20;
-
 using Config = LibSvcSpace Hparams;
 using VitsSvc = LibSvcSpace VitsSvc;
-using UnionSvc = LibSvcSpace UnionSvcModel;
+using DiffusionSvc = LibSvcSpace DiffusionSvc;
 using ReflowSvc = LibSvcSpace ReflowSvc;
 using ClusterBase = DragonianLib::BaseCluster;
 using TensorExtractorBase = LibSvcSpace LibSvcTensorExtractor;
@@ -55,14 +49,20 @@ using Slices = LibSvcSpace SingleAudio;
 using SingleSlice = LibSvcSpace SingleSlice;
 using Params = LibSvcSpace InferenceParams;
 
-using AudioContainer = DragonianLibSTL::Vector<int16_t>;
-using OffsetContainer = DragonianLibSTL::Vector<size_t>;
+using DInt16Vector = DragonianLibSTL::Vector<int16_t>;
+using DFloat32Vector = DragonianLibSTL::Vector<float>;
+using DDFloat32Vector = DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>;
+using DUInt64Vector = DragonianLibSTL::Vector<size_t>;
 using MelContainer = std::pair<DragonianLibSTL::Vector<float>, int64_t>;
 using DataContainer = Slices;
+using OrtModelType = std::shared_ptr<Ort::Session>*;
+using SvcModelType = DragonianLib::SingingVoiceConversion::SingingVoiceConversion*;
 
 std::unordered_map<std::wstring, DlCodecStft::Mel*> MelOperators;
 
-void InitLibSvcHparams(LibSvcHparams* _Input)
+void InitLibSvcHparams(
+	LibSvcHparams* _Input
+)
 {
 	_Input->TensorExtractor = nullptr;
 	_Input->HubertPath = nullptr;
@@ -106,16 +106,14 @@ void InitLibSvcHparams(LibSvcHparams* _Input)
 	_Input->Scale = 1000.f;
 }
 
-void InitLibSvcParams(LibSvcParams* _Input)
+void InitLibSvcParams(
+	LibSvcParams* _Input
+)
 {
-	//通用
 	_Input->NoiseScale = 0.3f;							//噪声修正因子          0-10
 	_Input->Seed = 52468;									//种子
 	_Input->SpeakerId = 0;								//角色ID
-	_Input->SrcSamplingRate = 48000;						//源采样率
 	_Input->SpkCount = 2;									//模型角色数
-
-	//SVC
 	_Input->IndexRate = 0.f;								//索引比               0-1
 	_Input->ClusterRate = 0.f;							//聚类比               0-1
 	_Input->DDSPNoiseScale = 0.8f;						//DDSP噪声修正因子      0-10
@@ -128,208 +126,294 @@ void InitLibSvcParams(LibSvcParams* _Input)
 	_Input->Sampler = nullptr;							//Diffusion采样器
 	_Input->ReflowSampler = nullptr;						//Reflow采样器
 	_Input->F0Method = nullptr;							//F0提取算法
-	_Input->UseShallowDiffusionOrEnhancer = false;                  //使用浅扩散
-	_Input->_VocoderModel = nullptr;
-	_Input->_ShallowDiffusionModel = nullptr;
-	_Input->ShallowDiffusionUseSrcAudio = 1;
+	_Input->VocoderModel = nullptr;
 	_Input->VocoderHopSize = 512;
 	_Input->VocoderMelBins = 128;
 	_Input->VocoderSamplingRate = 44100;
-	_Input->ShallowDiffuisonSpeaker = 0;
 	_Input->__DEBUG__MODE__ = 0;
 }
 
-void InitLibSvcSlicerSettings(LibSvcSlicerSettings* _Input)
+void InitLibSvcSlicerSettings(
+	LibSvcSlicerSettings* _Input
+)
 {
 	_Input->SamplingRate = 48000;
-	_Input->Threshold = 30.;
+	_Input->Threshold = 30. / 32768.;
 	_Input->MinLength = 3.;
 	_Input->WindowLength = 2048;
 	_Input->HopSize = 512;
 }
 
-float* LibSvcGetFloatVectorData(void* _Obj)
+//FloatVector
+
+float* LibSvcGetFloatVectorData(
+	LibSvcFloatVector _Obj
+)
 {
-	auto& Obj = *(DragonianLibSTL::Vector<float>*)_Obj;
+	auto& Obj = *(DFloat32Vector*)_Obj;
 	return Obj.Data();
 }
 
-size_t LibSvcGetFloatVectorSize(void* _Obj)
+size_t LibSvcGetFloatVectorSize(
+	LibSvcFloatVector _Obj
+)
 {
-	auto& Obj = *(DragonianLibSTL::Vector<float>*)_Obj;
+	auto& Obj = *(DFloat32Vector*)_Obj;
 	return Obj.Size();
 }
 
-void* LibSvcGetDFloatVectorData(void* _Obj, size_t _Index)
+LibSvcFloatVector LibSvcAllocateFloatVector()
 {
-	auto& Obj = *(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>*)_Obj;
-	return Obj.Data() + _Index;
+	return LibSvcFloatVector(new DFloat32Vector);
 }
 
-size_t LibSvcGetDFloatVectorSize(void* _Obj)
+void LibSvcReleaseFloatVector(
+	LibSvcFloatVector _Obj
+)
 {
-	auto& Obj = *(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>*)_Obj;
+	delete (DFloat32Vector*)_Obj;
+}
+
+//DFloatVector
+
+LibSvcFloatVector LibSvcGetDFloatVectorData(
+	LibSvcDoubleDimsFloatVector _Obj,
+	size_t _Index
+)
+{
+	auto& Obj = *(DDFloat32Vector*)_Obj;
+	return LibSvcFloatVector(Obj.Data() + _Index);
+}
+
+size_t LibSvcGetDFloatVectorSize(
+	LibSvcDoubleDimsFloatVector _Obj
+)
+{
+	auto& Obj = *(DDFloat32Vector*)_Obj;
 	return Obj.Size();
 }
 
-void* LibSvcAllocateAudio()
+//Int16Vector
+
+LibSvcInt16Vector LibSvcAllocateInt16Vector()
 {
-	return new AudioContainer;
+	return LibSvcInt16Vector(new DInt16Vector);
 }
 
-void* LibSvcAllocateMel()
+void LibSvcReleaseInt16Vector(
+	LibSvcInt16Vector _Obj
+)
 {
-	return new MelContainer;
+	delete (DInt16Vector*)_Obj;
 }
 
-void* LibSvcAllocateOffset()
+void LibSvcSetInt16VectorLength(
+	LibSvcInt16Vector _Obj,
+	size_t _Size
+)
 {
-	return new OffsetContainer;
+	auto& Obj = *(DInt16Vector*)_Obj;
+	Obj.Resize(_Size);
 }
 
-void* LibSvcAllocateSliceData()
+void LibSvcInsertInt16Vector(
+	LibSvcInt16Vector _ObjA,
+	LibSvcInt16Vector _ObjB
+)
 {
-	return new DataContainer;
+	auto& ObjA = *(DInt16Vector*)_ObjA;
+	auto& ObjB = *(DInt16Vector*)_ObjB;
+	ObjA.Insert(ObjA.end(), ObjB.begin(), ObjB.end());
 }
 
-void LibSvcReleaseAudio(void* _Obj)
+int16_t* LibSvcGetInt16VectorData(
+	LibSvcInt16Vector _Obj
+)
 {
-	delete (AudioContainer*)_Obj;
+	auto& Obj = *(DInt16Vector*)_Obj;
+	return Obj.Data();
 }
 
-void LibSvcReleaseMel(void* _Obj)
+size_t LibSvcGetInt16VectorSize(
+	LibSvcInt16Vector _Obj
+)
+{
+	auto& Obj = *(DInt16Vector*)_Obj;
+	return Obj.Size();
+}
+
+//UInt64Vector
+
+LibSvcUInt64Vector LibSvcAllocateUInt64Vector()
+{
+	return LibSvcUInt64Vector(new DUInt64Vector);
+}
+
+void LibSvcReleaseUInt64Vector(
+	LibSvcUInt64Vector _Obj
+)
+{
+	delete (DUInt64Vector*)_Obj;
+}
+
+void LibSvcSetUInt64VectorLength(
+	LibSvcUInt64Vector _Obj,
+	size_t _Size
+)
+{
+	auto& Obj = *(DUInt64Vector*)_Obj;
+	Obj.Resize(_Size);
+}
+
+size_t* LibSvcGetUInt64VectorData(
+	LibSvcUInt64Vector _Obj
+)
+{
+	auto& Obj = *(DUInt64Vector*)_Obj;
+	return Obj.Data();
+}
+
+size_t LibSvcGetUInt64VectorSize(
+	LibSvcUInt64Vector _Obj
+)
+{
+	auto& Obj = *(DUInt64Vector*)_Obj;
+	return Obj.Size();
+}
+
+//Mel
+
+LibSvcMelType LibSvcAllocateMel()
+{
+	return LibSvcMelType(new MelContainer);
+}
+
+void LibSvcReleaseMel(
+	LibSvcMelType _Obj
+)
 {
 	delete (MelContainer*)_Obj;
 }
 
-void LibSvcReleaseOffset(void* _Obj)
-{
-	delete (OffsetContainer*)_Obj;
-}
-
-void LibSvcSetOffsetLength(void* _Obj, size_t _Size)
-{
-	auto& Obj = *(OffsetContainer*)_Obj;
-	Obj.Resize(_Size);
-}
-
-void LibSvcReleaseSliceData(void* _Obj)
-{
-	delete (DataContainer*)_Obj;
-}
-
-size_t* LibSvcGetOffsetData(void* _Obj)
-{
-	auto& Obj = *(OffsetContainer*)_Obj;
-	return Obj.Data();
-}
-
-size_t LibSvcGetOffsetSize(void* _Obj)
-{
-	auto& Obj = *(OffsetContainer*)_Obj;
-	return Obj.Size();
-}
-
-void LibSvcSetAudioLength(void* _Obj, size_t _Size)
-{
-	auto& Obj = *(AudioContainer*)_Obj;
-	Obj.Resize(_Size);
-}
-
-void LibSvcInsertAudio(void* _ObjA, void* _ObjB)
-{
-	auto& ObjA = *(AudioContainer*)_ObjA;
-	auto& ObjB = *(AudioContainer*)_ObjB;
-	ObjA.Insert(ObjA.end(), ObjB.begin(), ObjB.end());
-}
-
-int16_t* LibSvcGetAudioData(void* _Obj)
-{
-	auto& Obj = *(AudioContainer*)_Obj;
-	return Obj.Data();
-}
-
-size_t LibSvcGetAudioSize(void* _Obj)
-{
-	auto& Obj = *(AudioContainer*)_Obj;
-	return Obj.Size();
-}
-
-void* LibSvcGetMelData(void* _Obj)
+LibSvcFloatVector LibSvcGetMelData(
+	LibSvcMelType _Obj
+)
 {
 	auto& Obj = *(MelContainer*)_Obj;
-	return &Obj.first;
+	return LibSvcFloatVector(&Obj.first);
 }
 
-int64_t LibSvcGetMelSize(void* _Obj)
+int64_t LibSvcGetMelSize(
+	LibSvcMelType _Obj
+)
 {
 	auto& Obj = *(MelContainer*)_Obj;
 	return Obj.second;
 }
 
-void LibSvcSetMaxErrorCount(size_t Count)
-{
-	MaxErrorCount = Count;
-}
+//Slice
 
-BSTR LibSvcGetAudioPath(void* _Obj)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return SysAllocString(Obj.Path.c_str());
-}
-
-void* LibSvcGetSlice(void* _Obj, size_t _Index)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return Obj.Slices.Data() + _Index;
-}
-
-size_t LibSvcGetSliceCount(void* _Obj)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return Obj.Slices.Size();
-}
-
-void* LibSvcGetAudio(void* _Obj)
+LibSvcFloatVector LibSvcGetAudio(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
-	return &Obj.Audio;
+	return LibSvcFloatVector(&Obj.Audio);
 }
 
-void* LibSvcGetF0(void* _Obj)
+LibSvcFloatVector LibSvcGetF0(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
-	return &Obj.F0;
+	return LibSvcFloatVector(&Obj.F0);
 }
 
-void* LibSvcGetVolume(void* _Obj)
+LibSvcFloatVector LibSvcGetVolume(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
-	return &Obj.Volume;
+	return LibSvcFloatVector(&Obj.Volume);
 }
 
-void* LibSvcGetSpeaker(void* _Obj)
+LibSvcDoubleDimsFloatVector LibSvcGetSpeaker(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
-	return &Obj.Speaker;
+	return LibSvcDoubleDimsFloatVector(&Obj.Speaker);
 }
 
-INT32 LibSvcGetSrcLength(void* _Obj)
+UINT64 LibSvcGetSrcLength(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
 	return Obj.OrgLen;
 }
 
-INT32 LibSvcGetIsNotMute(void* _Obj)
+INT32 LibSvcGetIsNotMute(
+	LibSvcSliceType _Obj
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
 	return Obj.IsNotMute;
 }
 
-void LibSvcSetSpeakerMixDataSize(void* _Obj, size_t _NSpeaker)
+void LibSvcSetSpeakerMixDataSize(
+	LibSvcSliceType _Obj,
+	size_t _NSpeaker
+)
 {
 	auto& Obj = *(SingleSlice*)_Obj;
 	Obj.Speaker.Resize(_NSpeaker, DragonianLibSTL::Vector(Obj.F0.Size(), 0.f));
+}
+
+//Array Of Slice - MoeVoiceStudioSvcSlice
+
+LibSvcSlicesType LibSvcAllocateSliceData()
+{
+	return LibSvcSlicesType(new DataContainer);
+}
+
+void LibSvcReleaseSliceData(
+	LibSvcSlicesType _Obj
+)
+{
+	delete (DataContainer*)_Obj;
+}
+
+BSTR LibSvcGetAudioPath(
+	LibSvcSlicesType _Obj
+)
+{
+	auto& Obj = *(DataContainer*)_Obj;
+	return SysAllocString(Obj.Path.c_str());
+}
+
+LibSvcSliceType LibSvcGetSlice(
+	LibSvcSlicesType _Obj,
+	size_t _Index
+)
+{
+	auto& Obj = *(DataContainer*)_Obj;
+	return LibSvcSliceType(Obj.Slices.Data() + _Index);
+}
+
+size_t LibSvcGetSliceCount(
+	LibSvcSlicesType _Obj
+)
+{
+	auto& Obj = *(DataContainer*)_Obj;
+	return Obj.Slices.Size();
+}
+
+/***************************************Fun*******************************************/
+
+void RaiseError(const std::wstring& _Msg)
+{
+	DragonianLibLogMessage(_Msg.c_str());
 }
 
 void LibSvcSetGlobalEnvDir(
@@ -344,57 +428,39 @@ void LibSvcInit()
 	LibSvcSpace SetupKernel();
 }
 
-std::mutex ErrorMx;
-
 void LibSvcFreeString(BSTR _String)
 {
 	SysFreeString(_String);
 }
 
-BSTR LibSvcGetError(size_t Index)
+LibSvcEnv LibSvcCreateEnv(
+	UINT32 ThreadCount,
+	UINT32 DeviceID,
+	UINT32 Provider
+)
 {
-	const auto& Ref = ErrorQueue.at(Index);
-	auto Ret = SysAllocString(Ref.c_str());
-	ErrorQueue.erase(ErrorQueue.begin() + ptrdiff_t(Index));
-	ErrorMx.unlock();
-	return Ret;
-}
-
-void RaiseError(const std::wstring& _Msg)
-{
-	ErrorMx.lock();
-	ErrorQueue.emplace_front(_Msg);
-	if (ErrorQueue.size() > MaxErrorCount)
-		ErrorQueue.pop_back();
-}
-
-DragonianLib::DragonianLibOrtEnv* GlobalEnv = nullptr;
-size_t GlobalEnvRefCount = 0;
-
-INT32 LibSvcSetGlobalEnv(UINT32 ThreadCount, UINT32 DeviceID, UINT32 Provider)
-{
-	if (GlobalEnvRefCount)
-	{
-		RaiseError(L"You Must Unload All Vocoder First!");
-		return 1;
-	}
 	try
 	{
-		delete GlobalEnv;
-		GlobalEnv = new DragonianLib::DragonianLibOrtEnv(ThreadCount,DeviceID,Provider);
+		return LibSvcEnv(new DragonianLib::DragonianLibOrtEnv(ThreadCount, DeviceID, Provider));
 	}
 	catch (std::exception& e)
 	{
 		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
+		return nullptr;
 	}
-	return 0;
 }
 
-int32_t LibSvcSliceAudio(
-	const void* _Audio, //DragonianLibSTL::Vector<int16_t> By "LibSvcAllocateAudio()"
-	const void* _Setting, //LibSvcSlicerSettings
-	void* _Output //DragonianLibSTL::Vector<size_t> By "LibSvcAllocateOffset()"
+void LibSvcDestoryEnv(
+	LibSvcEnv Env
+)
+{
+	delete (DragonianLib::DragonianLibOrtEnv*)Env;
+}
+
+INT32 LibSvcSliceAudioI64(
+	LibSvcCInt16Vector _Audio,
+	const LibSvcSlicerSettings* _Setting,
+	LibSvcUInt64Vector _Output
 )
 {
 	if (!_Audio)
@@ -409,19 +475,26 @@ int32_t LibSvcSliceAudio(
 		return 1;
 	}
 
-	const LibSvcSlicerSettings* _SettingInp = (const LibSvcSlicerSettings*)_Setting;
-	auto& Ret = *(DragonianLibSTL::Vector<size_t>*)(_Output);
+	auto& Ret = *(DUInt64Vector*)(_Output);
 	LibSvcSpace SlicerSettings SliSetting{
-		_SettingInp->SamplingRate,
-		_SettingInp->Threshold,
-		_SettingInp->MinLength,
-		_SettingInp->WindowLength,
-		_SettingInp->HopSize
+		_Setting->SamplingRate,
+		_Setting->Threshold,
+		_Setting->MinLength,
+		_Setting->WindowLength,
+		_Setting->HopSize
 	};
-	
+
 	try
 	{
-		Ret = LibSvcSpace SliceAudio(*(const AudioContainer*)(_Audio), SliSetting);
+		Ret = LibSvcSpace SliceAudio(
+			InterpResample(
+				*(const DInt16Vector*)(_Audio),
+				1,
+				1,
+				32768.f
+			),
+			SliSetting
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -431,14 +504,57 @@ int32_t LibSvcSliceAudio(
 	return 0;
 }
 
-int32_t LibSvcPreprocess(
-	const void* _Audio, //DragonianLibSTL::Vector<int16_t> By "LibSvcAllocateAudio()"
-	const void* _SlicePos, //DragonianLibSTL::Vector<size_t> By "LibSvcAllocateOffset()"
-	int32_t _SamplingRate,
-	int32_t _HopSize,
+INT32 LibSvcSliceAudio(
+	LibSvcCFloatVector _Audio,
+	const LibSvcSlicerSettings* _Setting,
+	LibSvcUInt64Vector _Output
+)
+{
+	if (!_Audio)
+	{
+		RaiseError(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		RaiseError(L"Output Could Not Be Null!");
+		return 1;
+	}
+
+	auto& Ret = *(DUInt64Vector*)(_Output);
+
+	LibSvcSpace SlicerSettings SliSetting{
+		_Setting->SamplingRate,
+		_Setting->Threshold,
+		_Setting->MinLength,
+		_Setting->WindowLength,
+		_Setting->HopSize
+	};
+
+	try
+	{
+		Ret = LibSvcSpace SliceAudio(
+			*(const DFloat32Vector*)(_Audio), 
+			SliSetting
+		);
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+INT32 LibSvcPreprocessI64(
+	LibSvcCInt16Vector _Audio,
+	LibSvcCUInt64Vector _SlicePos,
+	INT32 _SamplingRate,
+	INT32 _HopSize,
 	double _Threshold,
 	const wchar_t* _F0Method,
-	void* _Output // Slices By "LibSvcAllocateSliceData()"
+	LibSvcSlicesType _Output
 )
 {
 	LibSvcSpace SlicerSettings _Setting{
@@ -457,21 +573,32 @@ int32_t LibSvcPreprocess(
 		return 1;
 	}
 
-	if(!_Output) 
+	if (!_Output)
 	{
 		RaiseError(L"_Output Could Not Be Null!");
 		return 1;
 	}
 
-	Slices& Ret = *static_cast<Slices*>(_Output);
+	Slices& Ret = *(Slices*)_Output;
 	try
 	{
 		Ret = LibSvcSpace SingingVoiceConversion::GetAudioSlice(
-			*(const AudioContainer*)(_Audio),
-			*(const OffsetContainer*)(_SlicePos),
+			InterpResample(
+				*(const DInt16Vector*)(_Audio),
+				1,
+				1,
+				32768.f
+			),
+			*(const DUInt64Vector*)(_SlicePos),
 			_Setting
 		);
-		LibSvcSpace SingingVoiceConversion::PreProcessAudio(Ret, _SamplingRate, _HopSize, _F0Method);
+
+		LibSvcSpace SingingVoiceConversion::PreProcessAudio(
+			Ret,
+			_SamplingRate,
+			_HopSize,
+			_F0Method
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -481,12 +608,68 @@ int32_t LibSvcPreprocess(
 	return 0;
 }
 
-INT32 LibSvcStft(
-	const void* _Audio,
+INT32 LibSvcPreprocess(
+	LibSvcCFloatVector _Audio,
+	LibSvcCUInt64Vector _SlicePos,
+	INT32 _SamplingRate,
+	INT32 _HopSize,
+	double _Threshold,
+	const wchar_t* _F0Method,
+	LibSvcSlicesType _Output
+)
+{
+	LibSvcSpace SlicerSettings _Setting{
+		.Threshold = _Threshold
+	};
+
+	if (!_Audio)
+	{
+		RaiseError(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_SlicePos)
+	{
+		RaiseError(L"Slice Pos Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		RaiseError(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	Slices& Ret = *(Slices*)_Output;
+	try
+	{
+		Ret = LibSvcSpace SingingVoiceConversion::GetAudioSlice(
+			*(const DFloat32Vector*)(_Audio),
+			*(const DUInt64Vector*)(_SlicePos),
+			_Setting
+		);
+
+		LibSvcSpace SingingVoiceConversion::PreProcessAudio(
+			Ret,
+			_SamplingRate,
+			_HopSize,
+			_F0Method
+		);
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+INT32 LibSvcStftI64(
+	LibSvcCInt16Vector _Audio,
 	INT32 _SamplingRate,
 	INT32 _Hopsize,
 	INT32 _MelBins,
-	void* _Output
+	LibSvcMelType _Output
 )
 {
 	if (!_Audio)
@@ -516,7 +699,7 @@ INT32 LibSvcStft(
 		if (!MelOperators.contains(_Name))
 			MelOperators[_Name] = new DlCodecStft::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
 		auto _NormalizedAudio = InterpResample(
-			*(const AudioContainer*)_Audio,
+			*(const DInt16Vector*)_Audio,
 			_SamplingRate,
 			_SamplingRate,
 			32768.
@@ -532,13 +715,62 @@ INT32 LibSvcStft(
 	return 0;
 }
 
+INT32 LibSvcStft(
+	LibSvcCFloatVector _Audio,
+	INT32 _SamplingRate,
+	INT32 _Hopsize,
+	INT32 _MelBins,
+	LibSvcMelType _Output
+)
+{
+	if (!_Audio)
+	{
+		RaiseError(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		RaiseError(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (MelOperators.size() > 5)
+	{
+		delete MelOperators.begin()->second;
+		MelOperators.erase(MelOperators.begin());
+	}
+
+	try
+	{
+		const std::wstring _Name = L"S" +
+			std::to_wstring(_SamplingRate) +
+			L"H" + std::to_wstring(_Hopsize) +
+			L"M" + std::to_wstring(_MelBins);
+		if (!MelOperators.contains(_Name))
+			MelOperators[_Name] = new DlCodecStft::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
+		auto _NormalizedAudio = InterpResample<double>(
+			*(const DFloat32Vector*)_Audio,
+			_SamplingRate,
+			_SamplingRate
+		);
+		*(MelContainer*)(_Output) = MelOperators.at(_Name)->operator()(_NormalizedAudio);
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
+}
+
 INT32 LibSvcInferSlice(
-	void* _Model,
-	UINT32 _T,
-	const void* _Slice,
-	const void* _InferParams,
+	LibSvcModel _Model,
+	LibSvcCSliceType _Slice,
+	const LibSvcParams* _InferParams,
 	size_t* _Process,
-	void* _Output
+	LibSvcFloatVector _Output
 )
 {
 	if (!_Model)
@@ -571,54 +803,37 @@ INT32 LibSvcInferSlice(
 		return 1;
 	}
 
-	const auto& InpParam = *(const LibSvcParams*)(_InferParams);
-
-	if (!InpParam._VocoderModel && _T == 1)
-	{
-		RaiseError(L"_VocoderModel Could Not Be Null!");
-		return 1;
-	}
-
 	const Params Param
 	{
-		InpParam.NoiseScale,
-		InpParam.Seed,
-		InpParam.SpeakerId,
-		InpParam.SrcSamplingRate,
-		InpParam.SpkCount,
-		InpParam.IndexRate,
-		InpParam.ClusterRate,
-		InpParam.DDSPNoiseScale,
-		InpParam.Keys,
-		InpParam.MeanWindowLength,
-		InpParam.Pndm,
-		InpParam.Step,
-		InpParam.TBegin,
-		InpParam.TEnd,
-		LibSvcNullStrCheck(InpParam.Sampler),
-		LibSvcNullStrCheck(InpParam.ReflowSampler),
-		LibSvcNullStrCheck(InpParam.F0Method),
-		(bool)InpParam.UseShallowDiffusionOrEnhancer,
-		InpParam._VocoderModel,
-		InpParam._ShallowDiffusionModel,
-		(bool)InpParam.ShallowDiffusionUseSrcAudio,
-		InpParam.VocoderHopSize,
-		InpParam.VocoderMelBins,
-		InpParam.VocoderSamplingRate,
-		InpParam.ShallowDiffuisonSpeaker
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		LibSvcNullStrCheck(_InferParams->Sampler),
+		LibSvcNullStrCheck(_InferParams->ReflowSampler),
+		LibSvcNullStrCheck(_InferParams->F0Method),
+		*OrtModelType(_InferParams->VocoderModel),
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate
 	};
 
 	try
 	{
-		if (_T == 0)
-			*(AudioContainer*)(_Output) = ((VitsSvc*)(_Model))->SliceInference(*(const SingleSlice*)(_Slice), Param, *_Process);
-		else if (_T == 1)
-			*(AudioContainer*)(_Output) = ((UnionSvc*)(_Model))->SliceInference(*(const SingleSlice*)(_Slice), Param, *_Process);
-		else
-		{
-			RaiseError(L"UnSupported Model Type!");
-			return 1;
-		}
+		*(DFloat32Vector*)(_Output) = (SvcModelType(_Model))->SliceInference(
+			*(const SingleSlice*)(_Slice),
+			Param,
+			*_Process
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -630,13 +845,12 @@ INT32 LibSvcInferSlice(
 }
 
 INT32 LibSvcInferAudio(
-	SvcModel _Model,
-	UINT32 _T,
-	SlicesType _Audio,
-	const void* _InferParams,
+	LibSvcModel _Model,
+	LibSvcSlicesType _Audio,
+	const LibSvcParams* _InferParams,
 	UINT64 _SrcLength,
 	size_t* _Process,
-	Int16Vector _Output
+	LibSvcFloatVector _Output
 )
 {
 	if (!_Model)
@@ -669,68 +883,40 @@ INT32 LibSvcInferAudio(
 		return 1;
 	}
 
-	const auto& InpParam = *(const LibSvcParams*)(_InferParams);
-
-	if (!InpParam._VocoderModel && _T == 1)
-	{
-		RaiseError(L"_VocoderModel Could Not Be Null!");
-		return 1;
-	}
-
 	const Params Param
 	{
-		InpParam.NoiseScale,
-		InpParam.Seed,
-		InpParam.SpeakerId,
-		InpParam.SrcSamplingRate,
-		InpParam.SpkCount,
-		InpParam.IndexRate,
-		InpParam.ClusterRate,
-		InpParam.DDSPNoiseScale,
-		InpParam.Keys,
-		InpParam.MeanWindowLength,
-		InpParam.Pndm,
-		InpParam.Step,
-		InpParam.TBegin,
-		InpParam.TEnd,
-		LibSvcNullStrCheck(InpParam.Sampler),
-		LibSvcNullStrCheck(InpParam.ReflowSampler),
-		LibSvcNullStrCheck(InpParam.F0Method),
-		(bool)InpParam.UseShallowDiffusionOrEnhancer,
-		InpParam._VocoderModel,
-		InpParam._ShallowDiffusionModel,
-		(bool)InpParam.ShallowDiffusionUseSrcAudio,
-		InpParam.VocoderHopSize,
-		InpParam.VocoderMelBins,
-		InpParam.VocoderSamplingRate,
-		InpParam.ShallowDiffuisonSpeaker
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		LibSvcNullStrCheck(_InferParams->Sampler),
+		LibSvcNullStrCheck(_InferParams->ReflowSampler),
+		LibSvcNullStrCheck(_InferParams->F0Method),
+		*OrtModelType(_InferParams->VocoderModel),
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate
 	};
+
 	auto __Slices = *(const Slices*)(_Audio);
 
-	auto& OutPutAudio = *(AudioContainer*)(_Output);
+	auto& OutPutAudio = *(DFloat32Vector*)(_Output);
 	OutPutAudio.Reserve(_SrcLength);
 	try
 	{
-		if (_T == 0)
+		for (const auto& Single : __Slices.Slices)
 		{
-			for (const auto& Single : __Slices.Slices)
-			{
-				auto Out = ((VitsSvc*)(_Model))->SliceInference(Single, Param, *_Process);
-				OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
-			}
-		}
-		else if (_T == 1)
-		{
-			for (const auto& Single : __Slices.Slices)
-			{
-				auto Out = ((UnionSvc*)(_Model))->SliceInference(Single, Param, *_Process);
-				OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
-			}
-		}
-		else
-		{
-			RaiseError(L"UnSupported Model Type!");
-			return 1;
+			auto Out = SvcModelType(_Model)->SliceInference(Single, Param, *_Process);
+			OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
 		}
 	}
 	catch (std::exception& e)
@@ -743,11 +929,11 @@ INT32 LibSvcInferAudio(
 }
 
 INT32 LibSvcInferPCMData(
-	SvcModel _Model,							//SingingVoiceConversion Model
-	UINT32 _T,
-	CInt16Vector _PCMData,
-	const void* _InferParams,					//Ptr Of LibSvcParams
-	Int16Vector _Output							//DragonianLibSTL::Vector<int16_t> By "LibSvcAllocateAudio()"
+	LibSvcModel _Model,
+	LibSvcCFloatVector _PCMData,
+	const LibSvcParams* _InferParams,
+	INT32 SamplingRate,
+	LibSvcFloatVector _Output
 )
 {
 	if (!_Model)
@@ -774,56 +960,39 @@ INT32 LibSvcInferPCMData(
 		return 1;
 	}
 
-	const auto& InpParam = *(const LibSvcParams*)(_InferParams);
-
-	if (!InpParam._VocoderModel && _T == 1)
-	{
-		RaiseError(L"_VocoderModel Could Not Be Null!");
-		return 1;
-	}
-
 	const Params Param
 	{
-		InpParam.NoiseScale,
-		InpParam.Seed,
-		InpParam.SpeakerId,
-		InpParam.SrcSamplingRate,
-		InpParam.SpkCount,
-		InpParam.IndexRate,
-		InpParam.ClusterRate,
-		InpParam.DDSPNoiseScale,
-		InpParam.Keys,
-		InpParam.MeanWindowLength,
-		InpParam.Pndm,
-		InpParam.Step,
-		InpParam.TBegin,
-		InpParam.TEnd,
-		LibSvcNullStrCheck(InpParam.Sampler),
-		LibSvcNullStrCheck(InpParam.ReflowSampler),
-		LibSvcNullStrCheck(InpParam.F0Method),
-		(bool)InpParam.UseShallowDiffusionOrEnhancer,
-		InpParam._VocoderModel,
-		InpParam._ShallowDiffusionModel,
-		(bool)InpParam.ShallowDiffusionUseSrcAudio,
-		InpParam.VocoderHopSize,
-		InpParam.VocoderMelBins,
-		InpParam.VocoderSamplingRate,
-		InpParam.ShallowDiffuisonSpeaker
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		LibSvcNullStrCheck(_InferParams->Sampler),
+		LibSvcNullStrCheck(_InferParams->ReflowSampler),
+		LibSvcNullStrCheck(_InferParams->F0Method),
+		*OrtModelType(_InferParams->VocoderModel),
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate
 	};
 
-	auto& InputData = *(const AudioContainer*)(_PCMData);
+	auto& InputData = *(const DFloat32Vector*)(_PCMData);
 
 	try
 	{
-		if (_T == 0)
-			*(AudioContainer*)(_Output) = ((VitsSvc*)(_Model))->InferPCMData(InputData, (long)InputData.Size(), Param);
-		else if (_T == 1)
-			*(AudioContainer*)(_Output) = ((UnionSvc*)(_Model))->InferPCMData(InputData, (long)InputData.Size(), Param);
-		else
-		{
-			RaiseError(L"UnSupported Model Type!");
-			return 1;
-		}
+		*(DFloat32Vector*)(_Output) = SvcModelType(_Model)->InferPCMData(
+			InputData,
+			SamplingRate,
+			Param
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -835,16 +1004,16 @@ INT32 LibSvcInferPCMData(
 }
 
 INT32 LibSvcShallowDiffusionInference(
-	void* _Model,
-	const void* _16KAudioHubert,
-	void* _Mel,
-	const void* _SrcF0,
-	const void* _SrcVolume,
-	const void* _SrcSpeakerMap,
+	LibSvcModel _Model,
+	LibSvcCFloatVector _16KAudioHubert,
+	LibSvcMelType _Mel,
+	LibSvcCFloatVector _SrcF0,
+	LibSvcCFloatVector _SrcVolume,
+	LibSvcCDoubleDimsFloatVector _SrcSpeakerMap,
 	INT64 _SrcSize,
-	const void* _InferParams,
+	const LibSvcParams* _InferParams,
 	size_t* _Process,
-	void* _Output
+	LibSvcFloatVector _Output
 )
 {
 	if (!_Model)
@@ -901,59 +1070,39 @@ INT32 LibSvcShallowDiffusionInference(
 		return 1;
 	}
 
-	const auto& InpParam = *(const LibSvcParams*)(_InferParams);
-
-	if(!InpParam._VocoderModel)
-	{
-		RaiseError(L"_VocoderModel Could Not Be Null!");
-		return 1;
-	}
-
 	const Params Param
 	{
-		InpParam.NoiseScale,
-		InpParam.Seed,
-		InpParam.SpeakerId,
-		InpParam.SrcSamplingRate,
-		InpParam.SpkCount,
-		InpParam.IndexRate,
-		InpParam.ClusterRate,
-		InpParam.DDSPNoiseScale,
-		InpParam.Keys,
-		InpParam.MeanWindowLength,
-		InpParam.Pndm,
-		InpParam.Step,
-		InpParam.TBegin,
-		InpParam.TEnd,
-		LibSvcNullStrCheck(InpParam.Sampler),
-		LibSvcNullStrCheck(InpParam.ReflowSampler),
-		LibSvcNullStrCheck(InpParam.F0Method),
-		(bool)InpParam.UseShallowDiffusionOrEnhancer,
-		InpParam._VocoderModel,
-		InpParam._ShallowDiffusionModel,
-		(bool)InpParam.ShallowDiffusionUseSrcAudio,
-		InpParam.VocoderHopSize,
-		InpParam.VocoderMelBins,
-		InpParam.VocoderSamplingRate,
-		InpParam.ShallowDiffuisonSpeaker
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		LibSvcNullStrCheck(_InferParams->Sampler),
+		LibSvcNullStrCheck(_InferParams->ReflowSampler),
+		LibSvcNullStrCheck(_InferParams->F0Method),
+		*OrtModelType(_InferParams->VocoderModel),
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate
 	};
-
-	auto _NormalizedAudio = InterpResample(
-		*(const AudioContainer*)_16KAudioHubert,
-		16000,
-		16000,
-		32768.f
-	);
 
 	try
 	{
-		*(AudioContainer*)(_Output) = ((UnionSvc*)(_Model))->ShallowDiffusionInference(
-			_NormalizedAudio,
+		*(DFloat32Vector*)(_Output) = SvcModelType(_Model)->ShallowDiffusionInference(
+			*(DFloat32Vector*)_16KAudioHubert,
 			Param,
 			*(MelContainer*)(_Mel),
-			*(const DragonianLibSTL::Vector<float>*)(_SrcF0),
-			*(const DragonianLibSTL::Vector<float>*)(_SrcVolume),
-			*(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>*)(_SrcSpeakerMap),
+			*(DFloat32Vector*)(_SrcF0),
+			*(DFloat32Vector*)(_SrcVolume),
+			*(DDFloat32Vector*)(_SrcSpeakerMap),
 			*_Process,
 			_SrcSize
 		);
@@ -968,16 +1117,23 @@ INT32 LibSvcShallowDiffusionInference(
 }
 
 INT32 LibSvcVocoderEnhance(
-	void* _Model,
-	void* _Mel,
-	const void* _F0,
+	LibSvcVocoderModel _Model,
+	LibSvcEnv _Env,
+	LibSvcMelType _Mel,
+	LibSvcCFloatVector _F0,
 	INT32 _VocoderMelBins,
-	void* _Output
+	LibSvcFloatVector _Output
 )
 {
 	if (!_Model)
 	{
 		RaiseError(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Env)
+	{
+		RaiseError(L"_Env Could Not Be Null!");
 		return 1;
 	}
 
@@ -999,33 +1155,33 @@ INT32 LibSvcVocoderEnhance(
 		return 1;
 	}
 
-	auto Rf0 = *(const DragonianLibSTL::Vector<float>*)(_F0);
+	auto Rf0 = *(DFloat32Vector*)(_F0);
 	auto& MelTemp = *(MelContainer*)(_Mel);
 	if (Rf0.Size() != (size_t)MelTemp.second)
 		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
 	try
 	{
-		*(AudioContainer*)(_Output) = LibSvcSpace VocoderInfer(
-		   MelTemp.first,
-		   Rf0,
-		   _VocoderMelBins,
-		   MelTemp.second,
-		   GlobalEnv->GetMemoryInfo(),
-		   _Model
-	   );
+		*(DFloat32Vector*)(_Output) = LibSvcSpace VocoderInfer(
+			MelTemp.first,
+			Rf0,
+			_VocoderMelBins,
+			MelTemp.second,
+			((DragonianLib::DragonianLibOrtEnv*)_Env)->GetMemoryInfo(),
+			*(OrtModelType)_Model
+		);
 	}
 	catch (std::exception& e)
 	{
 		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
 		return 1;
 	}
-	
+
 	return 0;
 }
 
-void* LibSvcLoadModel(
+LibSvcModel LibSvcLoadModel(
 	UINT32 _T,
-	const void* _Config,
+	const LibSvcHparams* _Config,
 	ProgCallback _ProgressCallback,
 	UINT32 _ExecutionProvider,
 	UINT32 _DeviceID,
@@ -1038,57 +1194,57 @@ void* LibSvcLoadModel(
 		return nullptr;
 	}
 
-	auto& Config = *(const LibSvcHparams*)(_Config);
-
 	//printf("%lld", (long long)(Config.DiffusionSvc.Encoder));
 
 	LibSvcSpace Hparams ModelConfig{
-		LibSvcNullStrCheck(Config.TensorExtractor),
-		LibSvcNullStrCheck(Config.HubertPath),
+		LibSvcNullStrCheck(_Config->TensorExtractor),
+		LibSvcNullStrCheck(_Config->HubertPath),
 		{
-			LibSvcNullStrCheck(Config.DiffusionSvc.Encoder),
-			LibSvcNullStrCheck(Config.DiffusionSvc.Denoise),
-			LibSvcNullStrCheck(Config.DiffusionSvc.Pred),
-			LibSvcNullStrCheck(Config.DiffusionSvc.After),
-			LibSvcNullStrCheck(Config.DiffusionSvc.Alpha),
-			LibSvcNullStrCheck(Config.DiffusionSvc.Naive),
-			LibSvcNullStrCheck(Config.DiffusionSvc.DiffSvc)
+			LibSvcNullStrCheck(_Config->DiffusionSvc.Encoder),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.Denoise),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.Pred),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.After),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.Alpha),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.Naive),
+			LibSvcNullStrCheck(_Config->DiffusionSvc.DiffSvc)
 		},
 		{
-			LibSvcNullStrCheck(Config.VitsSvc.VitsSvc)
+			LibSvcNullStrCheck(_Config->VitsSvc.VitsSvc)
 		},
 		{
-			LibSvcNullStrCheck(Config.ReflowSvc.Encoder),
-			LibSvcNullStrCheck(Config.ReflowSvc.VelocityFn),
-			LibSvcNullStrCheck(Config.ReflowSvc.After)
+			LibSvcNullStrCheck(_Config->ReflowSvc.Encoder),
+			LibSvcNullStrCheck(_Config->ReflowSvc.VelocityFn),
+			LibSvcNullStrCheck(_Config->ReflowSvc.After)
 		},
 		{
-			Config.Cluster.ClusterCenterSize,
-			LibSvcNullStrCheck(Config.Cluster.Path),
-			LibSvcNullStrCheck(Config.Cluster.Type)
+			_Config->Cluster.ClusterCenterSize,
+			LibSvcNullStrCheck(_Config->Cluster.Path),
+			LibSvcNullStrCheck(_Config->Cluster.Type)
 		},
-		Config.SamplingRate,
-		Config.HopSize,
-		Config.HiddenUnitKDims,
-		Config.SpeakerCount,
-		(bool)Config.EnableCharaMix,
-		(bool)Config.EnableVolume,
-		(bool)Config.VaeMode,
-		Config.MelBins,
-		Config.Pndms,
-		Config.MaxStep,
-		Config.SpecMin,
-		Config.SpecMax,
-		Config.Scale
+		_Config->SamplingRate,
+		_Config->HopSize,
+		_Config->HiddenUnitKDims,
+		_Config->SpeakerCount,
+		(bool)_Config->EnableCharaMix,
+		(bool)_Config->EnableVolume,
+		(bool)_Config->VaeMode,
+		_Config->MelBins,
+		_Config->Pndms,
+		_Config->MaxStep,
+		_Config->SpecMin,
+		_Config->SpecMax,
+		_Config->Scale
 	};
-	
+
 	try
 	{
-		if(_T == 0)
-		{
-			return new VitsSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount);
-		}
-		return new UnionSvc(ModelConfig, _ProgressCallback, int(_ExecutionProvider), int(_DeviceID), int(_ThreadCount));
+		if (_T == 0)
+			return LibSvcModel(new VitsSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+		if (_T == 1)
+			return LibSvcModel(new DiffusionSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+		if (_T == 2)
+			return LibSvcModel(new ReflowSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+		return nullptr;
 	}
 	catch (std::exception& e)
 	{
@@ -1098,16 +1254,12 @@ void* LibSvcLoadModel(
 }
 
 INT32 LibSvcUnloadModel(
-	UINT32 _T,
-	void* _Model
+	LibSvcModel _Model
 )
 {
 	try
 	{
-		if (_T == 0)
-			delete (VitsSvc*)_Model;
-		else
-			delete (UnionSvc*)_Model;
+		delete (SvcModelType)_Model;
 	}
 	catch (std::exception& e)
 	{
@@ -1118,7 +1270,10 @@ INT32 LibSvcUnloadModel(
 	return 0;
 }
 
-void* LibSvcLoadVocoder(LPWSTR VocoderPath)
+LibSvcVocoderModel LibSvcLoadVocoder(
+	LPWSTR VocoderPath,
+	LibSvcEnv _Env
+)
 {
 	if (!VocoderPath)
 	{
@@ -1126,12 +1281,20 @@ void* LibSvcLoadVocoder(LPWSTR VocoderPath)
 		return nullptr;
 	}
 
+	if (!_Env)
+	{
+		RaiseError(L"_Env Could Not Be Null");
+		return nullptr;
+	}
+
 	try
 	{
-		auto VocoderL = new Ort::Session(*GlobalEnv->GetEnv(), VocoderPath, *GlobalEnv->GetSessionOptions());
-		if (VocoderL)
-			++GlobalEnvRefCount;
-		return VocoderL;
+		return LibSvcVocoderModel(
+			&LibSvcSpace SingingVoiceConversion::RefOrtCachedModel(
+				VocoderPath,
+				*(DragonianLib::DragonianLibOrtEnv*)_Env
+			)
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -1140,27 +1303,52 @@ void* LibSvcLoadVocoder(LPWSTR VocoderPath)
 	}
 }
 
-INT32 LibSvcUnloadVocoder(void* _Model)
+INT32 LibSvcUnloadVocoder(
+	LPWSTR VocoderPath,
+	LibSvcEnv _Env
+)
 {
+	if (!VocoderPath)
+	{
+		RaiseError(L"VocoderPath Could Not Be Null");
+		return 1;
+	}
+
+	if (!_Env)
+	{
+		RaiseError(L"_Env Could Not Be Null");
+		return 1;
+	}
+
 	try
 	{
-		delete (Ort::Session*)_Model;
+		LibSvcSpace SingingVoiceConversion::UnRefOrtCachedModel(
+			VocoderPath,
+			*(DragonianLib::DragonianLibOrtEnv*)_Env
+		);
 	}
 	catch (std::exception& e)
 	{
 		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
 		return 1;
 	}
-	if (_Model)
-		--GlobalEnvRefCount;
 	return 0;
 }
 
-INT32 LibSvcReadAudio(LPWSTR _AudioPath, INT32 _SamplingRate, void* _Output)
+void LibSvcClearCachedModel()
+{
+	LibSvcSpace SingingVoiceConversion::ClearModelCache();
+}
+
+INT32 LibSvcReadAudio(
+	LPWSTR _AudioPath,
+	INT32 _SamplingRate,
+	LibSvcFloatVector _Output
+)
 {
 	try
 	{
-		*(DragonianLibSTL::Vector<int16_t>*)(_Output) = DragonianLib::AvCodec().DecodeSigned16(
+		*(DFloat32Vector*)(_Output) = DragonianLib::AvCodec().DecodeFloat(
 			DragonianLib::WideStringToUTF8(_AudioPath).c_str(),
 			_SamplingRate
 		);
@@ -1174,11 +1362,15 @@ INT32 LibSvcReadAudio(LPWSTR _AudioPath, INT32 _SamplingRate, void* _Output)
 	return 0;
 }
 
-void LibSvcWriteAudioFile(void* _PCMData, LPWSTR _OutputPath, INT32 _SamplingRate)
+void LibSvcWriteAudioFile(
+	LibSvcFloatVector _PCMData,
+	LPWSTR _OutputPath,
+	INT32 _SamplingRate
+)
 {
 	DragonianLib::WritePCMData(
 		_OutputPath,
-		*(DragonianLibSTL::Vector<int16_t>*)(_PCMData),
+		*(DFloat32Vector*)(_PCMData),
 		_SamplingRate
 	);
 }
