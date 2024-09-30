@@ -174,6 +174,13 @@ void LibSvcReleaseFloatVector(
 	delete (DFloat32Vector*)_Obj;
 }
 
+void LibSvcInsertFloatVector(LibSvcFloatVector _ObjA, LibSvcFloatVector _ObjB)
+{
+	auto& ObjA = *(DFloat32Vector*)_ObjA;
+	auto& ObjB = *(DFloat32Vector*)_ObjB;
+	ObjA.Insert(ObjA.end(), ObjB.begin(), ObjB.end());
+}
+
 //DFloatVector
 
 LibSvcFloatVector LibSvcGetDFloatVectorData(
@@ -417,7 +424,7 @@ void RaiseError(const std::wstring& _Msg)
 }
 
 void LibSvcSetGlobalEnvDir(
-	LPWSTR _Dir
+	LPCWSTR _Dir
 )
 {
 	DragonianLib::SetGlobalEnvDir(_Dir);
@@ -1271,7 +1278,7 @@ INT32 LibSvcUnloadModel(
 }
 
 LibSvcVocoderModel LibSvcLoadVocoder(
-	LPWSTR VocoderPath,
+	LPCWSTR VocoderPath,
 	LibSvcEnv _Env
 )
 {
@@ -1304,7 +1311,7 @@ LibSvcVocoderModel LibSvcLoadVocoder(
 }
 
 INT32 LibSvcUnloadVocoder(
-	LPWSTR VocoderPath,
+	LPCWSTR VocoderPath,
 	LibSvcEnv _Env
 )
 {
@@ -1341,7 +1348,7 @@ void LibSvcClearCachedModel()
 }
 
 INT32 LibSvcReadAudio(
-	LPWSTR _AudioPath,
+	LPCWSTR _AudioPath,
 	INT32 _SamplingRate,
 	LibSvcFloatVector _Output
 )
@@ -1364,7 +1371,7 @@ INT32 LibSvcReadAudio(
 
 void LibSvcWriteAudioFile(
 	LibSvcFloatVector _PCMData,
-	LPWSTR _OutputPath,
+	LPCWSTR _OutputPath,
 	INT32 _SamplingRate
 )
 {

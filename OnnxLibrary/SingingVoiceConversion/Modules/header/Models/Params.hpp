@@ -65,6 +65,7 @@ struct InferenceParams
     int VocoderHopSize = 512;
     int VocoderMelBins = 128;
     int VocoderSamplingRate = 44100;
+#ifndef DRAGONIANLIB_IMPORT
     mutable DragonianLibSTL::Vector<float> _16KAudio, _F0, _Volume;
     mutable DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _Speaker;
     void CacheData(
@@ -79,6 +80,7 @@ struct InferenceParams
         _Volume = std::move(MVolume);
         _Speaker = std::move(MSpeaker);
     }
+#endif
 };
 
 LibSvcEnd

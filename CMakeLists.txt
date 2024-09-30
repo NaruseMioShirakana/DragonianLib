@@ -9,6 +9,8 @@ option(DRAGONIANLIB_ONNXRUNTIME             "build ort libs"      ON)
 option(DRAGONIANLIB_TENSORRT                "build trt libs"      ON)
 option(DRAGONIANLIB_STATIC_FFMPEG           "use static ffmpeg"   ON)
 option(DRAGONIANLIB_BUILD_DEMO              "build demo"          ON)
+set(DRAGONIANLIB_SHARED_LIBS ON)
+set(DRAGONIANLIB_TENSORRT OFF)
 add_definitions(-DDRAGONIANLIB_ALLOC_ALIG=32)
 add_definitions(-DDRAGONIANLIB_ALIG_DIM_SHAPE=8)  #Don't Change This Value'
 add_definitions(-DDRAGONIANLIB_CONT_THRESHOLD_FRONT=8)

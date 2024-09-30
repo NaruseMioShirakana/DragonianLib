@@ -1,9 +1,9 @@
 #include <iostream>
 #include <tchar.h>
+#ifndef DRAGONIANLIB_IMPORT
 #include "AvCodec/AvCodec.h"
 #include "MusicTranscription/ByteDancePianoTranScription.hpp"
 #include "SingingVoiceConversion/Modules/header/Modules.hpp"
-#include "SingingVoiceConversion/Api/header/NativeApi.h"
 #include "MusicTranscription/MoePianoTranScription.hpp"
 #include "SuperResolution/MoeSuperResolution.hpp"
 #include "Tensor/Tensor.h"
@@ -12,6 +12,13 @@
 #include <mmeapi.h>
 #pragma comment(lib, "winmm.lib") 
 #endif
+#else
+#include <functional>
+#include "SingingVoiceConversion/Modules/header/Models/ModelBase.hpp"
+#include "SingingVoiceConversion/Modules/header/Models/Params.hpp"
+#endif
+#include "SingingVoiceConversion/Api/header/NativeApi.h"
+
 class WithTimer
 {
 public:
@@ -84,8 +91,6 @@ void PrintTensor<bool>(DragonianLib::Tensor& _Tensor)
 	std::cout << "\n";
 }
 #endif
-
-using DInt16Vector = DragonianLibSTL::Vector<int16_t>;
 
 void LibSvcTest();
 
@@ -194,27 +199,17 @@ void LibSvcTest()
 		NumThread
 	);
 	if (!Model)
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
 		return;
-	}
 
 	wchar_t AudioInputPath[] = LR"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)";
-	auto Audio = LibSvcAllocateAudio();
+	auto Audio = LibSvcAllocateFloatVector();
 	auto Error = LibSvcReadAudio(
 		AudioInputPath,
 		SrcSr,
 		Audio
 	);
 	if (Error)
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
 		return;
-	}
 #else
 	auto Model = LibSvcSpace DiffusionSvc(
 		Config,
@@ -252,25 +247,22 @@ void LibSvcTest()
 	Params.VocoderSamplingRate = Config.SamplingRate;
 	Params.VocoderHopSize = Config.HopSize;
 	Params.VocoderMelBins = static_cast<int>(Config.MelBins);
+#ifndef DRAGONIANLIB_IMPORT
 	Params.VocoderModel = LibSvcSpace SingingVoiceConversion::RefOrtCachedModel(
 		VocoderPath,
 		*(DragonianLib::DragonianLibOrtEnv*)GlobalEnv
 	);
+#endif
 
 #ifdef DRAGONIANLIB_IMPORT
-	const auto SliPos = LibSvcAllocateOffset();
+	const auto SliPos = LibSvcAllocateUInt64Vector();
 	Error = LibSvcSliceAudio(
 		Audio,
 		&SlicerConf,
 		SliPos
 	);
 	if (Error)
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
 		return;
-	}
 
 	wchar_t F0MethodS[] = L"Dio";
 	auto Slices = LibSvcAllocateSliceData();
@@ -284,12 +276,7 @@ void LibSvcTest()
 		Slices
 	);
 	if (Error)
-	{
-		auto ErrorMessage = LibSvcGetError(0);
-		std::cout << WideStringToUTF8(ErrorMessage);
-		LibSvcFreeString(ErrorMessage);
 		return;
-	}
 #else
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
 	auto Slices = LibSvcSpace SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
@@ -300,7 +287,7 @@ void LibSvcTest()
 	Params.Step = 100;
 	Params.Pndm = 5;
 #ifdef DRAGONIANLIB_IMPORT
-	auto OutAudio = LibSvcAllocateAudio();
+	auto OutAudio = LibSvcAllocateFloatVector();
 	TotalStep = LibSvcGetSliceCount(Slices) * Params.Step / Params.Pndm;
 #else
 	DragonianLibSTL::Vector<float> OutAudio;
@@ -309,11 +296,15 @@ void LibSvcTest()
 #endif
 
 #ifdef DRAGONIANLIB_IMPORT
+	auto VocoderModel = LibSvcLoadVocoder(
+		VocoderPath.c_str(),
+		GlobalEnv
+	);
+
 	LibSvcParams DynParams{
 		Params.NoiseScale,
 		Params.Seed,
 		Params.SpeakerId,
-		Params.SrcSamplingRate,
 		Params.SpkCount,
 		Params.IndexRate,
 		Params.ClusterRate,
@@ -327,20 +318,18 @@ void LibSvcTest()
 		Params.Sampler.data(),
 		Params.ReflowSampler.data(),
 		Params.F0Method.data(),
-		Params.UseShallowDiffusion,
-		Params.VocoderModel,
-		Params.ShallowDiffusionModel,
-		Params.ShallowDiffusionUseSrcAudio,
+		VocoderModel,
 		Params.VocoderHopSize,
 		Params.VocoderMelBins,
 		Params.VocoderSamplingRate,
-		Params.ShallowDiffuisonSpeaker
+		0
 	};
-	auto TestAudio = LibSvcAllocateAudio();
+	auto TestAudio = LibSvcAllocateFloatVector();
 	auto __BeginTime = clock();
-	LibSvcInferAudio(Model, 1, Slices, &DynParams, LibSvcGetAudioSize(Audio) * 2, &Proc, TestAudio);
+	LibSvcInferAudio(Model, Slices, &DynParams, LibSvcGetFloatVectorSize(Audio) * 2, &Proc, TestAudio);
+	LibSvcReleaseFloatVector(TestAudio);
 	auto __InferenceTime = double(clock() - __BeginTime) / 1000.;
-	std::cout << "RTF: " << __InferenceTime / ((double)LibSvcGetAudioSize(Audio) / (double)SrcSr) << '\n';
+	std::cout << "RTF: " << __InferenceTime / ((double)LibSvcGetFloatVectorSize(Audio) / (double)SrcSr) << '\n';
 #endif
 
 #ifdef DRAGONIANLIB_IMPORT
@@ -367,15 +356,10 @@ void LibSvcTest()
 		const auto SliceTime = double(WavPaddedSize) / 16000.;
 		auto BeginTime = clock();
 #ifdef DRAGONIANLIB_IMPORT
-		auto OutputObj = LibSvcAllocateAudio();
-		Error = LibSvcInferSlice(Model, 1, Single, &DynParams, &Proc, OutputObj);
+		auto OutputObj = LibSvcAllocateFloatVector();
+		Error = LibSvcInferSlice(Model, Single, &DynParams, &Proc, OutputObj);
 		if (Error)
-		{
-			auto ErrorMessage = LibSvcGetError(0);
-			std::cout << WideStringToUTF8(ErrorMessage);
-			LibSvcFreeString(ErrorMessage);
 			return;
-		}
 #else
 		auto Out = Model.SliceInference(Single, Params, Proc);
 #endif
@@ -389,8 +373,8 @@ void LibSvcTest()
 		);
 #endif
 #ifdef DRAGONIANLIB_IMPORT
-		LibSvcInsertAudio(OutAudio, OutputObj);
-		LibSvcReleaseAudio(OutputObj);
+		LibSvcInsertFloatVector(OutAudio, OutputObj);
+		LibSvcReleaseFloatVector(OutputObj);
 #else
 		OutAudio.Insert(OutAudio.end(), Out.begin(), Out.end());
 #endif
@@ -407,10 +391,12 @@ void LibSvcTest()
 		OutPutPath,
 		Config.SamplingRate
 	);
-	LibSvcReleaseOffset(SliPos);
+	LibSvcReleaseUInt64Vector(SliPos);
 	LibSvcReleaseSliceData(Slices);
-	LibSvcReleaseAudio(OutAudio);
-	LibSvcReleaseAudio(Audio);
+	LibSvcReleaseFloatVector(OutAudio);
+	LibSvcReleaseFloatVector(Audio);
+	LibSvcUnloadVocoder(VocoderPath.c_str(), GlobalEnv);
+	LibSvcDestoryEnv(GlobalEnv);
 #else
 	DragonianLib::WritePCMData(
 		LR"(D:/VSGIT/MoeSS - Release/Testdata/Output-PCM-SignedInt-16.wav)",

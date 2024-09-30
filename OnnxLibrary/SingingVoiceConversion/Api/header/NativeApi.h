@@ -44,6 +44,7 @@ extern "C" {
 	typedef unsigned int        UINT32, * PUINT32;
 	typedef unsigned long long    UINT64, * PUINT64;
 	typedef wchar_t* NWPSTR, * LPWSTR, * PWSTR, * BSTR;
+	typedef const wchar_t* LPCWSTR;
 #endif
 
 	typedef void(*ProgCallback)(size_t, size_t);
@@ -211,6 +212,11 @@ extern "C" {
 		LibSvcFloatVector _Obj
 	);
 
+	LibSvcApi void LibSvcInsertFloatVector(
+		LibSvcFloatVector _ObjA,
+		LibSvcFloatVector _ObjB
+	);
+
 	//DFloatVector - vector<vector<float>>
 
 	LibSvcApi LibSvcFloatVector LibSvcGetDFloatVectorData(
@@ -340,7 +346,7 @@ extern "C" {
 	/******************************************Fun**********************************************/
 
 	LibSvcApi void LibSvcSetGlobalEnvDir(
-		LPWSTR _Dir
+		LPCWSTR _Dir
 	);
 
 	LibSvcApi void LibSvcInit();
@@ -468,26 +474,26 @@ extern "C" {
 	);
 
 	LibSvcApi LibSvcVocoderModel LibSvcLoadVocoder(
-		LPWSTR VocoderPath,
+		LPCWSTR VocoderPath,
 		LibSvcEnv _Env
 	);
 
 	LibSvcApi INT32 LibSvcUnloadVocoder(
-		LPWSTR VocoderPath,
+		LPCWSTR VocoderPath,
 		LibSvcEnv _Env
 	);
 
 	LibSvcApi void LibSvcClearCachedModel();
 
 	LibSvcApi INT32 LibSvcReadAudio(
-		LPWSTR _AudioPath,
+		LPCWSTR _AudioPath,
 		INT32 _SamplingRate,
 		LibSvcFloatVector _Output
 	);
 
 	LibSvcApi void LibSvcWriteAudioFile(
 		LibSvcFloatVector _PCMData,
-		LPWSTR _OutputPath,
+		LPCWSTR _OutputPath,
 		INT32 _SamplingRate
 	);
 
