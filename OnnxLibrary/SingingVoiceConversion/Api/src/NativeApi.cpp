@@ -7,7 +7,6 @@
 #undef min
 #endif
 
-#include <deque>
 #include <mutex>
 #include <string>
 #include "AvCodec/AvCodec.h"
@@ -110,22 +109,22 @@ void InitLibSvcParams(
 	LibSvcParams* _Input
 )
 {
-	_Input->NoiseScale = 0.3f;							//噪声修正因子          0-10
-	_Input->Seed = 52468;									//种子
-	_Input->SpeakerId = 0;								//角色ID
-	_Input->SpkCount = 2;									//模型角色数
-	_Input->IndexRate = 0.f;								//索引比               0-1
-	_Input->ClusterRate = 0.f;							//聚类比               0-1
-	_Input->DDSPNoiseScale = 0.8f;						//DDSP噪声修正因子      0-10
-	_Input->Keys = 0.f;									//升降调               -64-64
-	_Input->MeanWindowLength = 2;						//均值滤波器窗口大小     1-20
-	_Input->Pndm = 100;									//Diffusion加速倍数    1-200
-	_Input->Step = 1000;									//Diffusion总步数      1-1000
+	_Input->NoiseScale = 0.3f;					
+	_Input->Seed = 52468;							
+	_Input->SpeakerId = 0;					
+	_Input->SpkCount = 2;							
+	_Input->IndexRate = 0.f;				
+	_Input->ClusterRate = 0.f;					
+	_Input->DDSPNoiseScale = 0.8f;				
+	_Input->Keys = 0.f;									
+	_Input->MeanWindowLength = 2;					
+	_Input->Pndm = 100;								
+	_Input->Step = 1000;							
 	_Input->TBegin = 0.f;
 	_Input->TEnd = 1.f;
-	_Input->Sampler = nullptr;							//Diffusion采样器
-	_Input->ReflowSampler = nullptr;						//Reflow采样器
-	_Input->F0Method = nullptr;							//F0提取算法
+	_Input->Sampler = nullptr;						
+	_Input->ReflowSampler = nullptr;					
+	_Input->F0Method = nullptr;						
 	_Input->VocoderModel = nullptr;
 	_Input->VocoderHopSize = 512;
 	_Input->VocoderMelBins = 128;
@@ -542,7 +541,7 @@ INT32 LibSvcSliceAudio(
 	try
 	{
 		Ret = LibSvcSpace SliceAudio(
-			*(const DFloat32Vector*)(_Audio), 
+			*(const DFloat32Vector*)(_Audio),
 			SliSetting
 		);
 	}
@@ -1297,7 +1296,7 @@ LibSvcVocoderModel LibSvcLoadVocoder(
 	try
 	{
 		return LibSvcVocoderModel(
-			&LibSvcSpace SingingVoiceConversion::RefOrtCachedModel(
+			&DragonianLib::DragonianLibOrtEnv::RefOrtCachedModel(
 				VocoderPath,
 				*(DragonianLib::DragonianLibOrtEnv*)_Env
 			)
@@ -1329,7 +1328,7 @@ INT32 LibSvcUnloadVocoder(
 
 	try
 	{
-		LibSvcSpace SingingVoiceConversion::UnRefOrtCachedModel(
+		DragonianLib::DragonianLibOrtEnv::UnRefOrtCachedModel(
 			VocoderPath,
 			*(DragonianLib::DragonianLibOrtEnv*)_Env
 		);
@@ -1344,7 +1343,7 @@ INT32 LibSvcUnloadVocoder(
 
 void LibSvcClearCachedModel()
 {
-	LibSvcSpace SingingVoiceConversion::ClearModelCache();
+	DragonianLib::DragonianLibOrtEnv::ClearModelCache();
 }
 
 INT32 LibSvcReadAudio(

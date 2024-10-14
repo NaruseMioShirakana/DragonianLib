@@ -1,4 +1,4 @@
-﻿#include "../../../header/InferTools/TensorExtractor/BaseTensorExtractor.hpp"
+#include "../../../header/InferTools/TensorExtractor/BaseTensorExtractor.hpp"
 #include "Base.h"
 
 LibSvcHeader
@@ -35,7 +35,7 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetCurrectSpkMixData(const
 {
 	DragonianLibSTL::Vector<float> mixData;
 	mixData.Reserve(_NSpeaker * dst_len);
-	if(_input.Empty())
+	if (_input.Empty())
 	{
 		DragonianLibSTL::Vector<float> LenData(_NSpeaker, 0.0);
 		LenData[curspk] = 1.0;
@@ -180,7 +180,7 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const Dragonian
 	UVF0Indices.Reserve(F0.Size());
 	NUVF0.Reserve(F0.Size());
 	NUVF0Indices.Reserve(F0.Size());
-	if(F0[0] < 0.0001f)
+	if (F0[0] < 0.0001f)
 	{
 		NUVF0.EmplaceBack(0);
 		NUVF0Indices.EmplaceBack(0);
@@ -202,8 +202,8 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const Dragonian
 	NUVF0.EmplaceBack(0.);
 	DragonianLibSTL::Vector<double> UVF0(F0.Size());
 	DragonianLibSTL::Vector<float> Of0 = F0;
-	interp1(NUVF0Indices.Data(), NUVF0.Data(), (int)NUVF0.Size(),
-		UVF0Indices.Data(), (int)UVF0Indices.Size(), UVF0.Data());
+	//interp1(NUVF0Indices.Data(), NUVF0.Data(), (int)NUVF0.Size(),
+	//	UVF0Indices.Data(), (int)UVF0Indices.Size(), UVF0.Data());
 	for (size_t i = 0; i < UVF0Indices.Size(); ++i)
 		Of0[size_t(UVF0Indices[i])] = (float)UVF0[i];
 	return Of0;

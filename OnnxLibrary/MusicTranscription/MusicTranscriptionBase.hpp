@@ -20,6 +20,7 @@
 #pragma once
 #include "MyTemplateLibrary/Vector.h"
 #include "EnvManager.hpp"
+#include "AvCodec/AvCodec.h"
 
 namespace DragonianLib
 {
@@ -29,37 +30,6 @@ namespace DragonianLib
 		using OrtTensors = std::vector<Ort::Value>;
 
 		void MeanFliter(DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _Signal, size_t WindowLength);
-
-		struct MidiEvent
-		{
-			double Time = 0;
-			long MidiNote = 0;
-			long Velocity = 0;
-			MidiEvent(double t = 0.0, long m = 0, long v = 0) :Time(t), MidiNote(m), Velocity(v) {}
-		};
-
-		struct EstPedalEvents
-		{
-			double OnsetTime = 0.0;
-			double OffsetTime = 0.0;
-		};
-
-		struct EstNoteEvents
-		{
-			double OnsetTime = 0.0;
-			double OffsetTime = 0.0;
-			long MidiNote = 0;
-			long Velocity = 0;
-			EstNoteEvents(double a, double b, long c, long d) :OnsetTime(a), OffsetTime(b), MidiNote(c), Velocity(d) {}
-		};
-
-		struct MidiTrack
-		{
-			DragonianLibSTL::Vector<EstNoteEvents> NoteEvents;
-			DragonianLibSTL::Vector<EstPedalEvents> PedalEvents;
-			MidiTrack() = default;
-			MidiTrack(DragonianLibSTL::Vector<EstNoteEvents>&& ene, DragonianLibSTL::Vector<EstPedalEvents>&& epe) : NoteEvents(std::move(ene)), PedalEvents(std::move(epe)) {}
-		};
 
 		struct Hparams
 		{
@@ -93,10 +63,8 @@ namespace DragonianLib
 			EstNoteTp(long a, long b, double c, double d, double e) :Begin(a), End(b), OnsetShift(c), OffsetShift(d), NormalizedVelocity(e) {}
 		};
 
-		void WriteMidiFile(const std::wstring& _Path, const MidiTrack& _Events, long _Begin, long _TPS, long tempo = 500000);
 		// operators used to sort
 		bool operator<(const EstNoteTp& a, const EstNoteTp& b);
-		bool operator<(const MidiEvent& a, const MidiEvent& b);
 		EstNoteTp operator+(const EstNoteTp& a, const EstNoteTp& b);
 
 		class MusicTranscription

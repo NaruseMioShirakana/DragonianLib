@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: EnvManager.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -43,6 +43,9 @@ namespace DragonianLib {
 		[[nodiscard]] int GetCurThreadCount() const { return (int)CurThreadCount; }
 		[[nodiscard]] int GetCurDeviceID() const { return (int)CurDeviceID; }
 		[[nodiscard]] int GetCurProvider() const { return (int)CurProvider; }
+        static std::shared_ptr<Ort::Session>& RefOrtCachedModel(const std::wstring& Path_, const DragonianLibOrtEnv& Env_);
+        static void UnRefOrtCachedModel(const std::wstring& Path_, const DragonianLibOrtEnv& Env_);
+        static void ClearModelCache();
 	private:
 		void Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
 		void Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_);
@@ -54,6 +57,21 @@ namespace DragonianLib {
 		unsigned CurProvider = unsigned(-1);
 		OrtCUDAProviderOptionsV2* cuda_option_v2 = nullptr;
 	};
+
+    inline std::shared_ptr<Ort::Session>& RefOrtCachedModel(const std::wstring& Path_, const DragonianLibOrtEnv& Env_)
+    {
+        return DragonianLibOrtEnv::RefOrtCachedModel(Path_, Env_);
+    }
+
+    inline void UnRefOrtCachedModel(const std::wstring& Path_, const DragonianLibOrtEnv& Env_)
+    {
+        DragonianLibOrtEnv::UnRefOrtCachedModel(Path_, Env_);
+    }
+
+    inline void ClearModelCache()
+    {
+        DragonianLibOrtEnv::ClearModelCache();
+    }
 
 }
 

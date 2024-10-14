@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: HarvestF0Extractor.hpp
  * Note: DragonianLib 官方F0提取算法 Harvest
  *
@@ -34,7 +34,7 @@ public:
 	HarvestF0Extractor operator=(HarvestF0Extractor&&) = delete;
 
 	void compute_f0(const double* PCMData, size_t PCMLen);
-	void InterPf0(size_t TargetLength);
+	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
 
 private:

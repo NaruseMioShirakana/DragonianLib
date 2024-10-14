@@ -1,4 +1,4 @@
-﻿#include "../../../header/InferTools/TensorExtractor/TensorExtractor.hpp"
+#include "../../../header/InferTools/TensorExtractor/TensorExtractor.hpp"
 #include <random>
 
 LibSvcHeader
@@ -512,7 +512,7 @@ LibSvcTensorExtractor::Inputs DiffusionSvcTensorExtractor::Extract(const Dragoni
 		Padding = size_t(-1);
 
 	SvcTensors.Data.HiddenUnit = HiddenUnit;
-	SvcTensors.Data.F0 = InterpUVF0(InterpFunc(F0, long(F0.Size()), long(SvcTensors.Data.FrameShape[1])), Padding);
+	SvcTensors.Data.F0 = InterpFunc(F0, long(F0.Size()), long(SvcTensors.Data.FrameShape[1]));
 	for (auto& it : SvcTensors.Data.F0)
 		it *= (float)pow(2.0, static_cast<double>(params.upKeys) / 12.0);
 	SvcTensors.Data.Alignment = GetAligments(SvcTensors.Data.FrameShape[1], HubertLen);

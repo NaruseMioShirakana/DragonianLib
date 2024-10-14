@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: SVC.hpp
  * Note: MoeVoiceStudioCore OnnxSvc 模型基类
  *
@@ -102,44 +102,18 @@ public:
 		unsigned ThreadCount_ = 0
 	);
 
-	/**
-	 * \brief 推理一个切片
-	 * \param _Slice 切片数据
-	 * \param _Params 推理参数
-	 * \param _Process 推理进度指针
-	 * \return 推理结果（PCM Float32 单声道）
-	 */
 	[[nodiscard]] virtual DragonianLibSTL::Vector<float> SliceInference(
 		const SingleSlice& _Slice,
 		const InferenceParams& _Params,
 		size_t& _Process
 	) const;
 
-	/**
-	 * \brief 推理一个音频（使用PCM）
-	 * \param _PCMData 输入的PCM数据（Float32 单声道）
-	 * \param _SrcSamplingRate 输入PCM的采样率
-	 * \param _Params 推理参数
-	 * \return 推理结果（PCM Float32 单声道）
-	 */
 	[[nodiscard]] virtual DragonianLibSTL::Vector<float> InferPCMData(
 		const DragonianLibSTL::Vector<float>& _PCMData,
 		long _SrcSamplingRate, 
 		const InferenceParams& _Params
 	) const;
 
-	/**
-	 * \brief 浅扩散推理
-	 * \param _16KAudioHubert 16000采样率的音频（PCM Float32 单声道）
-	 * \param _Params 推理参数
-	 * \param _Mel Mel谱
-	 * \param _SrcF0 基频信息
-	 * \param _SrcVolume 音量信息
-	 * \param _SrcSpeakerMap 角色轨道信息
-	 * \param Process 进度
-	 * \param SrcSize 原始音频大小
-	 * \return 推理结果（PCM Float32 单声道）
-	 */
 	[[nodiscard]] virtual DragonianLibSTL::Vector<float> ShallowDiffusionInference(
 		DragonianLibSTL::Vector<float>& _16KAudioHubert,
 		const InferenceParams& _Params,
@@ -151,37 +125,21 @@ public:
 		int64_t SrcSize
 	) const;
 
-	//提取音量
 	[[nodiscard]] static DragonianLibSTL::Vector<float> ExtractVolume(
 		const DragonianLibSTL::Vector<float>& _Audio,
 		int _HopSize
 	);
 
-	//提取音量
 	[[nodiscard]] DragonianLibSTL::Vector<float> ExtractVolume(
 		const DragonianLibSTL::Vector<float>& _Audio
 	) const;
 
-	/**
-	 * \brief 切片一个音频
-	 * \param _InputPCM 输入的PCM数据（Float32 单声道）
-	 * \param _SlicePos 切片位置（单位为采样）
-	 * \param _SlicerConfig 切片机设置
-	 * \return 音频数据
-	 */
 	[[nodiscard]] static SingleAudio GetAudioSlice(
 		const DragonianLibSTL::Vector<float>& _InputPCM,
 		const DragonianLibSTL::Vector<size_t>& _SlicePos,
 		const SlicerSettings& _SlicerConfig
 	);
 
-	/**
-	 * \brief 预处理音频数据
-	 * \param _Input 完成切片的音频数据
-	 * \param _SamplingRate 采样率
-	 * \param _HopSize HopSize
-	 * \param _F0Method F0算法
-	 */
 	static void PreProcessAudio(
 		const SingleAudio& _Input,
 		int _SamplingRate = 48000, 
@@ -191,42 +149,23 @@ public:
 
 	~SingingVoiceConversion() override;
 
-	//获取HopSize
 	[[nodiscard]] int GetHopSize() const;
 
-	//获取HiddenUnitKDims
 	[[nodiscard]] int64_t GetHiddenUnitKDims() const;
 
-	//获取角色数量
 	[[nodiscard]] int64_t GetSpeakerCount() const;
 
-	//获取角色混合启用状态
 	[[nodiscard]] bool SpeakerMixEnabled() const;
 
-	//获取循环系模型的最大循环步数
 	[[nodiscard]] virtual int64_t GetMaxStep() const;
 
-	//获取UnionSvc的版本
 	[[nodiscard]] virtual const std::wstring& GetUnionSvcVer() const;
 
-	//获取MelBins
 	[[nodiscard]] virtual int64_t GetMelBins() const;
 
 	virtual void NormMel(
 		DragonianLibSTL::Vector<float>& MelSpec
 	) const;
-
-	static std::shared_ptr<Ort::Session>& RefOrtCachedModel(
-		const std::wstring& Path_,
-		const DragonianLibOrtEnv& Env_
-	);
-
-	static void UnRefOrtCachedModel(
-		const std::wstring& Path_,
-		const DragonianLibOrtEnv& Env_
-	);
-
-	static void ClearModelCache();
 
 protected:
 	TensorExtractor Preprocessor;

@@ -89,7 +89,7 @@ extern "C" {
 
 	struct LibSvcSlicerSettings
 	{
-		INT32 SamplingRate;
+		INT32 SamplingRate;								
 		double Threshold;
 		double MinLength;
 		INT32 WindowLength;

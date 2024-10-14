@@ -1,15 +1,15 @@
-﻿#include "F0Extractor/HarvestF0Extractor.hpp"
-#include "matlabfunctions.h"
-#include "harvest.h"
-#include "stonemask.h"
+#include "F0Extractor/HarvestF0Extractor.hpp"
+#include "world/harvest.h"
+#include "world/stonemask.h"
 
 DragonianLibF0ExtractorHeader
-	HarvestF0Extractor::HarvestF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0):
+
+HarvestF0Extractor::HarvestF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0):
 	BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
 {
 }
 
-void HarvestF0Extractor::InterPf0(size_t TargetLength)
+/*void HarvestF0Extractor::InterPf0(size_t TargetLength)
 {
     const auto f0Len = refined_f0.Size();
     if (abs((int64_t)TargetLength - (int64_t)f0Len) < 3)
@@ -32,15 +32,16 @@ void HarvestF0Extractor::InterPf0(size_t TargetLength)
 
     for (size_t i = 0; i < xi.Size(); i++) if (isnan(raw_f0[i])) raw_f0[i] = 0.0;
     refined_f0 = std::move(raw_f0);
-}
+}*/
 
 DragonianLibSTL::Vector<float> HarvestF0Extractor::ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength)
 {
     compute_f0(PCMData.Data(), PCMData.Size());
-    InterPf0(TargetLength);
-    DragonianLibSTL::Vector<float> f0(refined_f0.Size());
-    for (size_t i = 0; i < refined_f0.Size(); ++i) f0[i] = (float)refined_f0[i];
-    return f0;
+    return DragonianLibSTL::InterpResample<float>(
+        refined_f0,
+        static_cast<long>(refined_f0.Size()),
+        static_cast<long>(TargetLength)
+    );
 }
 
 void HarvestF0Extractor::compute_f0(const double* PCMData, size_t PCMLen)

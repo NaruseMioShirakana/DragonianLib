@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: DioF0Extractor.hpp
  * Note: DragonianLib 官方F0提取算法 Dio
  *
@@ -34,7 +34,7 @@ public:
 	DioF0Extractor operator=(DioF0Extractor&&) = delete;
 
 	void compute_f0(const double* PCMData, size_t PCMLen);
-	void InterPf0(size_t TargetLength);
+	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
 private:
 	DragonianLibSTL::Vector<double> refined_f0;

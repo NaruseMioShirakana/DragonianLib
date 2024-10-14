@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: NetF0Predictors.hpp
  * Note: DragonianLib 官方F0提取算法 Net
  *
@@ -37,7 +37,7 @@ public:
 	RMVPEF0Extractor operator=(const RMVPEF0Extractor&) = delete;
 	RMVPEF0Extractor operator=(RMVPEF0Extractor&&) = delete;
 
-	void InterPf0(size_t TargetLength);
+	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
 private:
 	DragonianLibSTL::Vector<const char*> InputNames = { "waveform", "threshold" };
@@ -55,7 +55,7 @@ public:
 	MELPEF0Extractor operator=(const MELPEF0Extractor&) = delete;
 	MELPEF0Extractor operator=(MELPEF0Extractor&&) = delete;
 
-	void InterPf0(size_t TargetLength);
+	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
 private:
 	DragonianLibSTL::Vector<const char*> InputNames = { "waveform" };
@@ -63,9 +63,13 @@ private:
 	DragonianLibSTL::Vector<double> refined_f0;
 };
 
-void LoadNetPEModel(bool MelPE, const wchar_t* _ModelPath, unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
+void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env);
 
-void UnloadNetPEModel(bool MelPE);
+void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env);
+
+void UnloadFCPEModel();
+
+void UnloadRMVPEModel();
 
 DragonianLibF0ExtractorEnd
 

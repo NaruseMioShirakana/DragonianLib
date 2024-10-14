@@ -1,5 +1,4 @@
-﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
-
+#ifdef DRAGONIANLIB_ONNXRT_LIB
 #include "EnvManager.hpp"
 #include <providers/dml/dml_provider_factory.h>
 #include <thread>
@@ -7,6 +6,8 @@
 #include "Util/StringPreprocess.h"
 
 namespace DragonianLib {
+
+    std::unordered_map<std::wstring, std::shared_ptr<Ort::Session>> GlobalOrtModelCache;
 
 	const char* logger_id = "DragonianLib";
 
@@ -175,6 +176,41 @@ namespace DragonianLib {
 		}
 		GetLogger().log(L"[Info] Env Created");
 	}
+
+    std::shared_ptr<Ort::Session>& DragonianLibOrtEnv::RefOrtCachedModel(
+        const std::wstring& Path_,
+        const DragonianLibOrtEnv& Env_
+    )
+    {
+        const auto ID = L"EP:" + std::to_wstring(Env_.GetCurProvider()) +
+            L" DEVICE:" + std::to_wstring(Env_.GetCurDeviceID()) +
+            L" THREAD:" + std::to_wstring(Env_.GetCurThreadCount()) +
+            L" PATH:" + Path_;
+        auto Iter = GlobalOrtModelCache.find(ID);
+        if (Iter != GlobalOrtModelCache.end())
+            return Iter->second;
+        return GlobalOrtModelCache[ID] = std::make_shared<Ort::Session>(*Env_.GetEnv(), Path_.c_str(), *Env_.GetSessionOptions());
+    }
+
+    void DragonianLibOrtEnv::UnRefOrtCachedModel(
+        const std::wstring& Path_,
+        const DragonianLibOrtEnv& Env_
+    )
+    {
+        const auto ID = L"EP:" + std::to_wstring(Env_.GetCurProvider()) +
+            L" DEVICE:" + std::to_wstring(Env_.GetCurDeviceID()) +
+            L" THREAD:" + std::to_wstring(Env_.GetCurThreadCount()) +
+            L" PATH:" + Path_;
+        auto Iter = GlobalOrtModelCache.find(ID);
+        if (Iter != GlobalOrtModelCache.end())
+            GlobalOrtModelCache.erase(Iter);
+    }
+
+    void DragonianLibOrtEnv::ClearModelCache()
+    {
+        GlobalOrtModelCache.clear();
+    }
+
 }
 
 #endif

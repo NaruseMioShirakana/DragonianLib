@@ -6,8 +6,8 @@
 #include "SingingVoiceConversion/Modules/header/Modules.hpp"
 #include "MusicTranscription/MoePianoTranScription.hpp"
 #include "SuperResolution/MoeSuperResolution.hpp"
-#include "Tensor/Tensor.h"
-#include "tlibsvc/VitsSvc.hpp"
+#include "Include/Base/Tensor/Tensor.h"
+//#include "tlibsvc/VitsSvc.hpp"
 #ifdef _WIN32
 #include <mmeapi.h>
 #pragma comment(lib, "winmm.lib") 
@@ -443,7 +443,7 @@ void OperatorTest()
 	auto Slices = tlibsvc:: GetAudioSlice(Audio, SliPos, SlicerConfig.Threshold);
 	tlibsvc::PreProcessAudio(Slices, 44100, 512, L"Dio");*/
 	/*
-	
+
 	auto ddddd = adddd(1, 2.f, 3, 4.f, 5);
 	std::cout << ddddd << '\n';
 	DragonianLib::Tensor::SetThreadCount(8);
@@ -621,7 +621,7 @@ void LibSrTest()
 {
 	DragonianLib::LibSuperResolution::MoeSR Model(
 		{
-			LR"(D:\VSGIT\°×Ò¶µÄAI¹¤¾ßÏä\Models\real-hatgan\x2\x2_universal-fix1.onnx)",
+			LR"(D:\VSGIT\ç™½å¶çš„AIå·¥å…·ç®±\Models\real-hatgan\x2\x2_universal-fix1.onnx)",
 			LR"(None)",
 			0,
 			0,
@@ -663,14 +663,14 @@ void LibMtsTest()
 {
 	DragonianLib::LibMusicTranscription::ByteDancePianoTranScription Model(
 		{
-			LR"(D:\VSGIT\°×Ò¶µÄAI¹¤¾ßÏä\Models\PianoTranscription\modeln.onnx)",
+			LR"(D:\VSGIT\ç™½å¶çš„AIå·¥å…·ç®±\Models\PianoTranscription\modeln.onnx)",
 			L"null",
 		},
 		ProgressCbS,
 		8,
 		0,
 		0
-	);
+		);
 
 	DragonianLib::LibMusicTranscription::Hparams _Config;
 	auto Audio = DragonianLib::AvCodec().DecodeFloat(

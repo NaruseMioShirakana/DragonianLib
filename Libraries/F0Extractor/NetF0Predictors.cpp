@@ -1,17 +1,16 @@
-﻿#include "Base.h"
 #ifdef DRAGONIANLIB_ONNXRT_LIB
+#include "Base.h"
 #include "EnvManager.hpp"
 #include "F0Extractor/NetF0Predictors.hpp"
-#include "matlabfunctions.h"
 #include "F0Extractor/DioF0Extractor.hpp"
+#include "Util/StringPreprocess.h"
 
 DragonianLibF0ExtractorHeader
 
-Ort::Session* MelPEModel = nullptr;
-DragonianLibOrtEnv* MelPEEnv = nullptr;
-
-Ort::Session* RmvPEModel = nullptr;
-DragonianLibOrtEnv* RmvPEEnv = nullptr;
+std::shared_ptr<Ort::Session> MelPEModel = nullptr;
+std::shared_ptr<Ort::Session> RmvPEModel = nullptr;
+std::shared_ptr<DragonianLibOrtEnv> MelPEEnv = nullptr;
+std::shared_ptr<DragonianLibOrtEnv> RmvPEEnv = nullptr;
 
 inline double NetPredictorAverage(const double* begin, const double* end)
 {
@@ -67,68 +66,16 @@ DragonianLibSTL::Vector<float> RMVPEF0Extractor::ExtractF0(const DragonianLibSTL
 
 	const auto osize = out[0].GetTensorTypeAndShapeInfo().GetElementCount();
 	const auto of0 = out[0].GetTensorData<float>();
-	refined_f0 = DragonianLibSTL::Vector<double>(osize);
-	for (size_t i = 0; i < osize; ++i) refined_f0[i] = ((of0[i] > 0.001f) ? (double)out[0].GetTensorData<float>()[i] : NAN);
-	InterPf0(TargetLength);
-	DragonianLibSTL::Vector<float> finaF0(refined_f0.Size());
-	for (size_t i = 0; i < refined_f0.Size(); ++i) finaF0[i] = isnan(refined_f0[i]) ? 0 : (float)refined_f0[i];
-	return finaF0;
-}
-
-void RMVPEF0Extractor::InterPf0(size_t TargetLength)
-{
-	const auto f0Len = refined_f0.Size();
-	if (abs((int64_t)TargetLength - (int64_t)f0Len) < 3)
-	{
-		refined_f0.Resize(TargetLength, 0.0);
-		return;
-	}
-	for (size_t i = 0; i < f0Len; ++i) if (refined_f0[i] < 0.001) refined_f0[i] = NAN;
-
-	auto xi = DragonianLibSTL::Arange(0., (double)f0Len * (double)TargetLength, (double)f0Len, (double)TargetLength);
-	while (xi.Size() < TargetLength) xi.EmplaceBack(*(xi.End() - 1) + ((double)f0Len / (double)TargetLength));
-	while (xi.Size() > TargetLength) xi.PopBack();
-
-	auto x0 = DragonianLibSTL::Arange(0., (double)f0Len);
-	while (x0.Size() < f0Len) x0.EmplaceBack(*(x0.End() - 1) + 1.);
-	while (x0.Size() > f0Len) x0.PopBack();
-
-	auto raw_f0 = DragonianLibSTL::Vector<double>(xi.Size());
-	interp1(x0.Data(), refined_f0.Data(), static_cast<int>(x0.Size()), xi.Data(), (int)xi.Size(), raw_f0.Data());
-
-	for (size_t i = 0; i < xi.Size(); i++) if (isnan(raw_f0[i])) raw_f0[i] = 0.0;
-	refined_f0 = std::move(raw_f0);
+	
+    DragonianLibSTL::Vector<float> OutPut(TargetLength);
+    DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
+    return OutPut;
 }
 
 MELPEF0Extractor::MELPEF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0) :
 	BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
 {
 
-}
-
-void MELPEF0Extractor::InterPf0(size_t TargetLength)
-{
-	const auto f0Len = refined_f0.Size();
-	if (abs((int64_t)TargetLength - (int64_t)f0Len) < 3)
-	{
-		refined_f0.Resize(TargetLength, 0.0);
-		return;
-	}
-	for (size_t i = 0; i < f0Len; ++i) if (refined_f0[i] < 0.001) refined_f0[i] = NAN;
-
-	auto xi = DragonianLibSTL::Arange(0., (double)f0Len * (double)TargetLength, (double)f0Len, (double)TargetLength);
-	while (xi.Size() < TargetLength) xi.EmplaceBack(*(xi.End() - 1) + ((double)f0Len / (double)TargetLength));
-	while (xi.Size() > TargetLength) xi.PopBack();
-
-	auto x0 = DragonianLibSTL::Arange(0., (double)f0Len);
-	while (x0.Size() < f0Len) x0.EmplaceBack(*(x0.End() - 1) + 1.);
-	while (x0.Size() > f0Len) x0.PopBack();
-
-	auto raw_f0 = DragonianLibSTL::Vector<double>(xi.Size());
-	interp1(x0.Data(), refined_f0.Data(), static_cast<int>(x0.Size()), xi.Data(), (int)xi.Size(), raw_f0.Data());
-
-	for (size_t i = 0; i < xi.Size(); i++) if (isnan(raw_f0[i])) raw_f0[i] = 0.0;
-	refined_f0 = std::move(raw_f0);
 }
 
 DragonianLibSTL::Vector<float> MELPEF0Extractor::ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength)
@@ -167,53 +114,34 @@ DragonianLibSTL::Vector<float> MELPEF0Extractor::ExtractF0(const DragonianLibSTL
 
 	const auto osize = out[0].GetTensorTypeAndShapeInfo().GetElementCount();
 	const auto of0 = out[0].GetTensorData<float>();
-	refined_f0 = DragonianLibSTL::Vector<double>(osize);
-	for (size_t i = 0; i < osize; ++i) refined_f0[i] = ((of0[i] > 0.001f) ? (double)out[0].GetTensorData<float>()[i] : NAN);
-	InterPf0(TargetLength);
-	DragonianLibSTL::Vector<float> finaF0(refined_f0.Size());
-	for (size_t i = 0; i < refined_f0.Size(); ++i) finaF0[i] = isnan(refined_f0[i]) ? 0 : (float)refined_f0[i];
-	return finaF0;
+
+    DragonianLibSTL::Vector<float> OutPut(TargetLength);
+    DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
+    return OutPut;
 }
 
-void LoadNetPEModel(bool MelPE, const wchar_t* _ModelPath, unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
+void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env)
 {
-	UnloadNetPEModel(MelPE);
-	try
-	{
-		if (MelPE)
-		{
-			MelPEEnv = new DragonianLibOrtEnv(ThreadCount, DeviceID, Provider);
-			MelPEModel = new Ort::Session(*MelPEEnv->GetEnv(), _ModelPath, *MelPEEnv->GetSessionOptions());
-		}
-		else
-		{
-			RmvPEEnv = new DragonianLibOrtEnv(ThreadCount, DeviceID, Provider);
-			RmvPEModel = new Ort::Session(*RmvPEEnv->GetEnv(), _ModelPath, *RmvPEEnv->GetSessionOptions());
-		}
-	}
-	catch (std::exception& e)
-	{
-		UnloadNetPEModel(MelPE);
-		DragonianLibThrow(e.what());
-	}
+    MelPEEnv = _Env;
+    MelPEModel = RefOrtCachedModel(UTF8ToWideString(FCPEModelPath), *MelPEEnv);
 }
 
-void UnloadNetPEModel(bool MelPE)
+void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env)
 {
-	if(MelPE)
-	{
-		delete MelPEModel;
-		delete MelPEEnv;
-		MelPEModel = nullptr;
-		MelPEEnv = nullptr;
-	}
-	else
-	{
-		delete RmvPEModel;
-		delete RmvPEEnv;
-		RmvPEModel = nullptr;
-		RmvPEEnv = nullptr;
-	}
+    RmvPEEnv = _Env;
+    RmvPEModel = RefOrtCachedModel(UTF8ToWideString(RMVPEModelPath), *RmvPEEnv);
+}
+
+void UnloadFCPEModel()
+{
+    MelPEModel.reset();
+    MelPEEnv.reset();
+}
+
+void UnloadRMVPEModel()
+{
+    RmvPEModel.reset();
+    RmvPEEnv.reset();
 }
 
 DragonianLibF0ExtractorEnd

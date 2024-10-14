@@ -1,40 +1,35 @@
-﻿#include "IndexCluster.hpp"
+#include "IndexCluster.hpp"
 #include <filesystem>
 #include "Base.h"
+#include <faiss/IndexIVFFlat.h>
+#include <faiss/index_io.h>
 
 namespace DragonianLib{
 
-	IndexClusterCore::~IndexClusterCore()
-	{
-		delete IndexPtr;
-		IndexPtr = nullptr;
-	}
+    class IndexClusterCore
+    {
+    public:
+        IndexClusterCore() = delete;
+        IndexClusterCore(const char* _path);
+        ~IndexClusterCore() = default;
+        IndexClusterCore(const IndexClusterCore&) = default;
+        IndexClusterCore(IndexClusterCore&& move) noexcept = default;
+        IndexClusterCore& operator=(const IndexClusterCore&) = default;
+        IndexClusterCore& operator=(IndexClusterCore&& move) noexcept = default;
+        DragonianLibSTL::Vector<float> find(const float* points, faiss::idx_t n_points, faiss::idx_t n_searched_points = 8);
+        float* GetVec(faiss::idx_t index);
+    private:
+        std::shared_ptr<faiss::Index> IndexPtr = nullptr;
+        faiss::idx_t Dim = 0;
+        DragonianLibSTL::Vector<float> IndexsVector;
+    };
 
-	IndexClusterCore::IndexClusterCore(const char* _path)
+
+    IndexClusterCore::IndexClusterCore(const char* _path) : IndexPtr(faiss::read_index(_path))
 	{
-		IndexPtr = faiss::read_index(_path);
 		IndexsVector = DragonianLibSTL::Vector(IndexPtr->ntotal * IndexPtr->d, 0.f);
 		IndexPtr->reconstruct_n(0, IndexPtr->ntotal, IndexsVector.Data());
 		Dim = IndexPtr->d;
-	}
-
-	IndexClusterCore::IndexClusterCore(IndexClusterCore&& move) noexcept
-	{
-		IndexPtr = move.IndexPtr;
-		Dim = move.Dim;
-		IndexsVector = std::move(move.IndexsVector);
-		move.IndexPtr = nullptr;
-	}
-
-	IndexClusterCore& IndexClusterCore::operator=(IndexClusterCore&& move) noexcept
-	{
-		if (&move == this) return *this;
-		delete IndexPtr;
-		IndexPtr = move.IndexPtr;
-		Dim = move.Dim;
-		IndexsVector = std::move(move.IndexsVector);
-		move.IndexPtr = nullptr;
-		return *this;
 	}
 
 	float* IndexClusterCore::GetVec(faiss::idx_t index)
@@ -84,7 +79,7 @@ namespace DragonianLib{
 		{
 			std::filesystem::path IndexPath = RawPath + std::to_wstring(idx++) + L".index";
 			if(!exists(IndexPath)) break;
-			Indexs.emplace_back(IndexPath.string().c_str());
+			Indexs.emplace_back(std::make_shared<IndexClusterCore>(IndexPath.string().c_str()));
 		}
 		if (Indexs.empty())
 			DragonianLibThrow("Index Is Empty");
@@ -93,7 +88,7 @@ namespace DragonianLib{
 	DragonianLibSTL::Vector<float> IndexCluster::Search(float* point, long sid, int64_t n_points)
 	{
 		if (size_t(sid) < Indexs.size())
-			return Indexs[sid].find(point, n_points);
+			return Indexs[sid]->find(point, n_points);
 		return { point,point + n_hidden_size * n_points };
 	}
 

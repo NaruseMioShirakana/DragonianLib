@@ -1,6 +1,6 @@
-﻿/**
+/**
  * FileName: IndexCluster.hpp
- * Note: DragonianLib 官方聚类（Index）
+ * Note: DragonianLib Index Cluster
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -20,44 +20,29 @@
 */
 
 #pragma once
+#include <memory>
 #include <string>
+#include <vector>
 #include "BaseCluster.hpp"
-#include <faiss/IndexIVFFlat.h>
-#include <faiss/index_io.h>
 
 namespace DragonianLib {
-	class IndexClusterCore
-	{
-	public:
-		IndexClusterCore() = delete;
-		~IndexClusterCore();
-		IndexClusterCore(const char* _path);
-		IndexClusterCore(const IndexClusterCore&) = delete;
-		IndexClusterCore(IndexClusterCore&& move) noexcept;
-		IndexClusterCore& operator=(const IndexClusterCore&) = delete;
-		IndexClusterCore& operator=(IndexClusterCore&& move) noexcept;
-		DragonianLibSTL::Vector<float> find(const float* points, faiss::idx_t n_points, faiss::idx_t n_searched_points = 8);
-		float* GetVec(faiss::idx_t index);
-	private:
-		faiss::Index* IndexPtr = nullptr;
-		faiss::idx_t Dim = 0;
-		DragonianLibSTL::Vector<float> IndexsVector;
-	};
 
-	class IndexCluster : public BaseCluster
-	{
-	public:
-		IndexCluster() = delete;
-		~IndexCluster() override = default;
-		IndexCluster(const IndexCluster&) = delete;
-		IndexCluster(IndexCluster&&) = delete;
-		IndexCluster operator=(const IndexCluster&) = delete;
-		IndexCluster operator=(IndexCluster&&) = delete;
-		IndexCluster(const std::wstring& _path, size_t hidden_size, size_t KmeansLen);
-		DragonianLibSTL::Vector<float> Search(float* point, long sid, int64_t n_points = 1) override;
-	private:
-		std::vector<IndexClusterCore> Indexs;
-		size_t n_hidden_size = 256;
-	};
+    class IndexClusterCore;
+
+    class IndexCluster : public BaseCluster
+    {
+    public:
+        IndexCluster() = delete;
+        ~IndexCluster() override = default;
+        IndexCluster(const IndexCluster&) = delete;
+        IndexCluster(IndexCluster&&) = delete;
+        IndexCluster operator=(const IndexCluster&) = delete;
+        IndexCluster operator=(IndexCluster&&) = delete;
+        IndexCluster(const std::wstring& _path, size_t hidden_size, size_t KmeansLen);
+        DragonianLibSTL::Vector<float> Search(float* point, long sid, int64_t n_points = 1) override;
+    private:
+        std::vector<std::shared_ptr<IndexClusterCore>> Indexs;
+        size_t n_hidden_size = 256;
+    };
 
 }

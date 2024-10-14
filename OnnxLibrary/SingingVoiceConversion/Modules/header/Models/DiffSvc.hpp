@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FileName: DiffSvc.hpp
  * Note: MoeVoiceStudioCore Onnx Diffusion系Svc 模型定义
  *
