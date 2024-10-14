@@ -6,7 +6,7 @@
 #include "SingingVoiceConversion/Modules/header/Modules.hpp"
 #include "MusicTranscription/MoePianoTranScription.hpp"
 #include "SuperResolution/MoeSuperResolution.hpp"
-#include "Include/Base/Tensor/Tensor.h"
+#include "../TensorLib/Include/Base/Tensor/Tensor.h"
 //#include "tlibsvc/VitsSvc.hpp"
 #ifdef _WIN32
 #include <mmeapi.h>
