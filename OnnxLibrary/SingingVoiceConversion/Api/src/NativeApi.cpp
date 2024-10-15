@@ -1,4 +1,4 @@
-#include "../header/NativeApi.h"
+﻿#include "../header/NativeApi.h"
 
 #ifdef max
 #undef max
@@ -13,6 +13,7 @@
 #include "Base.h"
 #include "../../Modules/header/Modules.hpp"
 #include "Util/Logger.h"
+#include "Util/StringPreprocess.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)

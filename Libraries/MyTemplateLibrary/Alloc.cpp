@@ -1,4 +1,4 @@
-#include "Alloc.h"
+﻿#include "Alloc.h"
 #include <exception>
 
 namespace DragonianLib

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: ThreadPool.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -71,7 +71,7 @@ public:
         return ThreadCount_;
     }
 
-    operator ThreadPool*()
+    operator ThreadPool* ()
     {
         return this;
     }

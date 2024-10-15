@@ -1,4 +1,4 @@
-#include "Util/StringPreprocess.h"
+﻿#include "Util/StringPreprocess.h"
 #include <regex>
 #ifdef _WIN32
 #include <Windows.h>

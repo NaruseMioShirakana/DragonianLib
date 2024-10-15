@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: BaseCluster.hpp
- * Note: DragonianLib 聚类基类
+ * Note: DragonianLib Cluster Base
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -24,6 +24,10 @@
 
 namespace DragonianLib
 {
+	/**
+	 * @class BaseCluster
+	 * @brief Base class for clustering algorithms
+	 */
 	class BaseCluster
 	{
 	public:
@@ -31,13 +35,14 @@ namespace DragonianLib
 		virtual ~BaseCluster() = default;
 
 		/**
-		 * \brief 查找聚类最邻近点
-		 * \param point 待查找的点
-		 * \param sid 角色ID
-		 * \param n_points 点数
-		 * \return 查找到的最邻近点
+		 * @brief Search for the nearest Points to the Point in the cluster of SpeakerId
+		 * @param Point Point that needs to be searched
+		 * @param SpeakerId SpeakerId of the cluster center vector
+		 * @param Count Count of the nearest Points
+		 * @return A vector of the nearest Points, Shape: [Count, Dimension]
 		 */
-		virtual DragonianLibSTL::Vector<float> Search(float* point, long sid, int64_t n_points = 1);
+		virtual DragonianLibSTL::Vector<float> Search(float* Point, long SpeakerId, int64_t Count = 1);
+
 		BaseCluster(const BaseCluster&) = delete;
 		BaseCluster(BaseCluster&&) = delete;
 		BaseCluster operator=(const BaseCluster&) = delete;

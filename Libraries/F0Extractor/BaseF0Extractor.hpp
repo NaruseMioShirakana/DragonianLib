@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: BaseF0Extractor.hpp
  * Note: DragonianLib BaseF0Extractor
  *
@@ -28,6 +28,10 @@
 
 DragonianLibF0ExtractorHeader
 
+/**
+ * @class BaseF0Extractor
+ * @brief Base class for F0 extraction
+ */
 class BaseF0Extractor
 {
 public:
@@ -40,10 +44,28 @@ public:
     BaseF0Extractor operator=(const BaseF0Extractor&) = delete;
     BaseF0Extractor operator=(BaseF0Extractor&&) = delete;
 
+    /**
+	 * @brief Extract F0 from PCM data
+	 * @param PCMData PCM data
+	 * @param TargetLength Target length of F0
+	 * @return F0
+     */
     virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength);
 
+	/**
+	 * @brief Extract F0 from PCM data
+	 * @param PCMData PCM data
+	 * @param TargetLength Target length of F0
+	 * @return F0
+	 */
     virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<float>& PCMData, size_t TargetLength);
 
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data
+     * @param TargetLength Target length of F0
+     * @return F0
+     */
     virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<int16_t>& PCMData, size_t TargetLength);
 protected:
     const uint32_t fs;

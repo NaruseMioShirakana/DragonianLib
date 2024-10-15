@@ -1,6 +1,6 @@
-/**
+﻿/**
  * FileName: NetF0Predictors.hpp
- * Note: DragonianLib 官方F0提取算法 Net
+ * Note: DragonianLib RMVPE & FCPE F0 Extractor
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -63,12 +63,28 @@ private:
 	DragonianLibSTL::Vector<double> refined_f0;
 };
 
-void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env);
+/**
+ * @brief Load FCPE Model
+ * @param FCPEModelPath Path to FCPE Model
+ * @param Env Environment of ONNX Runtime
+ */
+void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env);
 
-void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env);
+/**
+ * @brief Load RMVPE Model
+ * @param RMVPEModelPath Path to RMVPE Model
+ * @param Env Environment of ONNX Runtime
+ */
+void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env);
 
+/**
+ * @brief Unload FCPE Model
+ */
 void UnloadFCPEModel();
 
+/**
+ * @brief Unload RMVPE Model
+ */
 void UnloadRMVPEModel();
 
 DragonianLibF0ExtractorEnd

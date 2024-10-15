@@ -82,8 +82,8 @@ Image::Image(const wchar_t* input, int interp_mode)
 	graph.SetInterpolationMode(Gdiplus::InterpolationMode(interp_mode));
 	graph.DrawImage(bmp, 0, 0, shape[0], shape[1]);
 	delete bmp;
-	
-	
+
+
 	width_ = shape[0];
 	height_ = shape[1];
 	m_clip.clipSize = std::make_pair(width_, width_);
@@ -153,17 +153,17 @@ Image::Image(const wchar_t* input, int width, int height, int len, float pad, bo
 	bmp->GetHBITMAP(Gdiplus::Color::Transparent, &hbmp);
 	SelectObject(compDC, hbmp);
 	auto DrawImage = [&canvasDC, &compDC, this](int x, int y, int srcx, int srcy, int w, int h)
-	{
-		//const Gdiplus::Rect dst(x, y, w, h);
-		//dw.DrawImage(bmp, dst, srcx, srcy, w, h, Gdiplus::UnitPixel);
-		if(srcx + w > shape[0])
-			w = shape[0] - srcx;
-		if (srcy + h > shape[1])
-			h = shape[1] - srcy;
+		{
+			//const Gdiplus::Rect dst(x, y, w, h);
+			//dw.DrawImage(bmp, dst, srcx, srcy, w, h, Gdiplus::UnitPixel);
+			if (srcx + w > shape[0])
+				w = shape[0] - srcx;
+			if (srcy + h > shape[1])
+				h = shape[1] - srcy;
 
-		BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-		AlphaBlend(canvasDC, x, y, w, h, compDC, srcx, srcy, w, h, blend);
-	};
+			BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+			AlphaBlend(canvasDC, x, y, w, h, compDC, srcx, srcy, w, h, blend);
+		};
 
 	//显示网格线
 	HPEN pen = nullptr;
@@ -248,7 +248,7 @@ Image::Image(const wchar_t* input, int width, int height, int len, float pad, bo
 
 	Gdiplus::Rect lockRect(0, 0, clipWidth, clipHeight);
 	Gdiplus::BitmapData lockData{};
-	if(canvas->LockBits(&lockRect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &lockData) != Gdiplus::Status::Ok)
+	if (canvas->LockBits(&lockRect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &lockData) != Gdiplus::Status::Ok)
 	{
 		delete canvas;
 		throw std::runtime_error("LockBits failed!");
@@ -256,20 +256,20 @@ Image::Image(const wchar_t* input, int width, int height, int len, float pad, bo
 
 	//按切片存储
 	auto ReadImage = [&](int x, int y)
-	{
-		for (int _y = 0; _y < width; _y++)
 		{
-			for (int _x = 0; _x < height; _x++)
+			for (int _y = 0; _y < width; _y++)
 			{
-				BYTE* ptr = static_cast<BYTE*>(lockData.Scan0) + ptrdiff_t(lockData.Stride * (y + _y) + (x + _x) * 4);
+				for (int _x = 0; _x < height; _x++)
+				{
+					BYTE* ptr = static_cast<BYTE*>(lockData.Scan0) + ptrdiff_t(lockData.Stride * (y + _y) + (x + _x) * 4);
 
-				data.alpha.EmplaceBack((float)ptr[3] / 255.f);//A
-				data.rgb.EmplaceBack((float)ptr[2] / 255.f);  //R
-				data.rgb.EmplaceBack((float)ptr[1] / 255.f);  //G
-				data.rgb.EmplaceBack((float)ptr[0] / 255.f);  //B
+					data.alpha.EmplaceBack((float)ptr[3] / 255.f);//A
+					data.rgb.EmplaceBack((float)ptr[2] / 255.f);  //R
+					data.rgb.EmplaceBack((float)ptr[1] / 255.f);  //G
+					data.rgb.EmplaceBack((float)ptr[0] / 255.f);  //B
+				}
 			}
-		}
-	};
+		};
 
 	dstY = 0;
 	for (int y = 0; y < clipCountY; y++)
@@ -307,7 +307,7 @@ Image::Image(unsigned char* input, int src_width, int src_height, int width, int
 		PixelFormat32bppARGB,
 		input
 	);
-	if (!bmp) 
+	if (!bmp)
 		throw std::runtime_error("image create failed!");
 
 	shape[0] = (int)bmp->GetWidth();
@@ -501,7 +501,7 @@ void Image::Transpose(size_t scale)
 	const auto WHC = C * W * H;
 	const auto N = Src.Size() / WHC;
 	data.rgb = { Src.Size(), Src.GetAllocator() };
-	if(T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
+	if (T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
 	{
 		for (size_t i = 0; i < N; ++i)
 		{
@@ -600,44 +600,44 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 	}
 
 	auto WriteImage = [&](int x, int y, int srcx, int srcy, int w, int h, int blockX, int blockY)
-	{
-		if (x + w > srcWidth)
-			w = srcWidth - x;
-		if (x + h > srcHeight)
-			h = srcHeight - h;
-
-		srcx -= blockX * newClipW;
-		srcy -= blockY * newClipH;
-
-		//block偏移
-		const int blockSizeA = newClipW * newClipH;
-		const int blockSizeRGB = blockSizeA * 3;
-		const int blockOffsetA = (blockY * clipCountX + blockX) * blockSizeA;
-		const int blockOffsetRGB = (blockY * clipCountX + blockX) * blockSizeRGB;
-
-		for (int _y = 0; _y < h; _y++)
 		{
-			for (int _x = 0; _x < w; _x++)
+			if (x + w > srcWidth)
+				w = srcWidth - x;
+			if (x + h > srcHeight)
+				h = srcHeight - h;
+
+			srcx -= blockX * newClipW;
+			srcy -= blockY * newClipH;
+
+			//block偏移
+			const int blockSizeA = newClipW * newClipH;
+			const int blockSizeRGB = blockSizeA * 3;
+			const int blockOffsetA = (blockY * clipCountX + blockX) * blockSizeA;
+			const int blockOffsetRGB = (blockY * clipCountX + blockX) * blockSizeRGB;
+
+			for (int _y = 0; _y < h; _y++)
 			{
-				auto SrcPixel = [&](int index)
+				for (int _x = 0; _x < w; _x++)
 				{
-					const int offset = blockOffsetRGB + ((srcy + _y) * newClipW + (srcx + _x)) * 3;
-					auto val = data.rgb[offset + index] * 255.f;
-					return static_cast<BYTE>(val > 255.f ? 255.f : val);
-				};
-				if (y + _y >= srcHeight || x + _x >= srcWidth) break;
+					auto SrcPixel = [&](int index)
+						{
+							const int offset = blockOffsetRGB + ((srcy + _y) * newClipW + (srcx + _x)) * 3;
+							auto val = data.rgb[offset + index] * 255.f;
+							return static_cast<BYTE>(val > 255.f ? 255.f : val);
+						};
+					if (y + _y >= srcHeight || x + _x >= srcWidth) break;
 
-				BYTE* p = static_cast<BYTE*>(lockData.Scan0) + ptrdiff_t(lockData.Stride * (y + _y) + (x + _x) * 4);
+					BYTE* p = static_cast<BYTE*>(lockData.Scan0) + ptrdiff_t(lockData.Stride * (y + _y) + (x + _x) * 4);
 
-				p[0] = SrcPixel(2);//B
-				p[1] = SrcPixel(1);//G
-				p[2] = SrcPixel(0);//R
+					p[0] = SrcPixel(2);//B
+					p[1] = SrcPixel(1);//G
+					p[2] = SrcPixel(0);//R
 
-				//alpha
-				p[3] = BYTE(data.alpha[blockOffsetA + ((srcy + _y) * newClipW + (srcx + _x))] * 255.f);
+					//alpha
+					p[3] = BYTE(data.alpha[blockOffsetA + ((srcy + _y) * newClipW + (srcx + _x))] * 255.f);
+				}
 			}
-		}
-	};
+		};
 
 	//反推切片即可还原
 	int dstY = 0;
@@ -655,7 +655,7 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 					srcX + newLength,						 //srcX
 					y != 0 ? srcY + newLength : srcY,		 //srcY
 					_w,		 //width
-					y != 0 ? newClipH - newLength  - newLength : newClipH,//height
+					y != 0 ? newClipH - newLength - newLength : newClipH,//height
 					x, y									 //blockX,blockY
 				);
 				dstX += _w;

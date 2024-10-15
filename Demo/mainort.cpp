@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <tchar.h>
 #ifndef DRAGONIANLIB_IMPORT
 #include "AvCodec/AvCodec.h"
@@ -9,8 +9,7 @@
 #include "../TensorLib/Include/Base/Tensor/Tensor.h"
 //#include "tlibsvc/VitsSvc.hpp"
 #ifdef _WIN32
-#include <mmeapi.h>
-#pragma comment(lib, "winmm.lib") 
+#include <Windows.h>
 #endif
 #else
 #include <functional>
@@ -248,7 +247,7 @@ void LibSvcTest()
 	Params.VocoderHopSize = Config.HopSize;
 	Params.VocoderMelBins = static_cast<int>(Config.MelBins);
 #ifndef DRAGONIANLIB_IMPORT
-	Params.VocoderModel = LibSvcSpace SingingVoiceConversion::RefOrtCachedModel(
+	Params.VocoderModel = DragonianLib::RefOrtCachedModel(
 		VocoderPath,
 		*(DragonianLib::DragonianLibOrtEnv*)GlobalEnv
 	);

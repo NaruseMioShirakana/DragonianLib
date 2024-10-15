@@ -229,52 +229,6 @@ namespace DlCodecStft
         );
     }
 
-    float EstimateTuning(
-        const DragonianLibSTL::Vector<float>& y,
-        int sr = 22050,
-        const DragonianLibSTL::Vector<float>& S = {},
-        int n_fft = 2048,
-        float resolution = 0.01f,
-        int bins_per_octave = 12
-    )
-    {
-        DragonianLibNotImplementedError;
-    }
-
-    auto interval_frequencies(
-        int n_bins,
-        float fmin = 32.70f,
-        const char* intervals = "Equal",
-        int bins_per_octave = 12,
-        float tuning = 0.f,
-        bool sort = true
-    )
-    {
-        auto ratios = DragonianLibSTL::Arange(0.f, float(bins_per_octave));
-        if (strcmp(intervals, "Equal") == 0)
-            for (auto& i : ratios)
-                i = powf(2.f, tuning + i / float(bins_per_octave));
-        else
-            DragonianLibNotImplementedError;
-        auto n_octaves = ceil(float(n_bins) / float(bins_per_octave));
-        auto temp = DragonianLibSTL::Arange(0.f, float(n_octaves));
-        for (auto& i : temp)
-            i = powf(2.f, i);
-        DragonianLibSTL::Vector all_ratios(
-            temp.Size(),
-            DragonianLibSTL::Vector<float>(ratios.Size(), temp.GetAllocator()),
-            temp.GetAllocator()
-        );
-        for (size_t i = 0; i < temp.Size(); ++i)
-        {
-	        for (size_t j = 0; j < ratios.Size(); ++j)
-	        	all_ratios[i][j] = temp[i] * ratios[j];
-            if (sort)
-                std::ranges::sort(all_ratios[i]);
-        }
-        return all_ratios;
-    }
-
     DragonianLibSTL::Vector<float> VQT(
         const DragonianLibSTL::Vector<float>& AudioData,
         int SamplingRate,
@@ -294,23 +248,9 @@ namespace DlCodecStft
         const char* ResourceType
     )
     {
-        auto n_octaves = int(ceil(float(CQTBins) / float(BinsPerOctave)));
-        auto n_filters = std::min(BinsPerOctave, CQTBins);
-        if (isnan(Tuning))
-            Tuning = EstimateTuning(AudioData, SamplingRate, {}, 2048, 0.01f, BinsPerOctave);
-        FreqMin = FreqMin * powf(2.f , (Tuning / float(BinsPerOctave)));
-        auto freqs = interval_frequencies(
-            CQTBins,
-            FreqMin,
-            Intervals,
-            BinsPerOctave,
-            Tuning,
-            true
-        );
-
-        DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> freqs_top{ BinsPerOctave < (int)freqs.Size() ? freqs.end() - BinsPerOctave : freqs.begin(), freqs.end() };
-
         DragonianLibNotImplementedError;
     }
+
+
 
 }

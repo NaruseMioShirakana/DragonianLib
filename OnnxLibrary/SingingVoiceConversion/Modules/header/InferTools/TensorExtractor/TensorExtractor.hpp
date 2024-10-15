@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: MoeVSCoreTensorExtractor.hpp
- * Note: MoeVoiceStudioCore 官方张量预处理
+ * Note: MoeVoiceStudioCore TensorExtractors
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *

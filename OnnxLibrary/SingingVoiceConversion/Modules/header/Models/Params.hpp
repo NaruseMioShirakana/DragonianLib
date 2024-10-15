@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: MoeVSProject.hpp
- * Note: MoeVoiceStudioCore 项目相关的定义
+ * Note: MoeVoiceStudioCore Parameters
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -17,57 +17,206 @@
  * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
  *
  * date: 2022-10-17 Create
-*/
+ */
 
 #pragma once
 #include "../InferTools/InferTools.hpp"
-#include "Util/StringPreprocess.h"
 
 LibSvcHeader
 
+/**
+ * @struct SingleSlice
+ * @brief Represents a single slice of audio data
+ */
 struct SingleSlice
 {
+    /**
+     * @brief Audio data
+     */
     DragonianLibSTL::Vector<float> Audio;
+
+    /**
+     * @brief F0 data
+     */
     DragonianLibSTL::Vector<float> F0;
+
+    /**
+     * @brief Volume data
+     */
     DragonianLibSTL::Vector<float> Volume;
+
+    /**
+     * @brief Speaker data
+     */
     DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> Speaker;
+
+    /**
+     * @brief Original length of the audio
+     */
     size_t OrgLen = 0;
+
+    /**
+     * @brief Indicates if the slice is not mute
+     */
     bool IsNotMute = false;
+
+    /**
+     * @brief Sampling rate of the audio
+     */
     size_t SamplingRate = 44100;
 };
 
+/**
+ * @struct SingleAudio
+ * @brief Represents a single audio file
+ */
 struct SingleAudio
 {
+    /**
+     * @brief Slices of the audio
+     */
     DragonianLibSTL::Vector<SingleSlice> Slices;
+
+    /**
+     * @brief Path to the audio file
+     */
     std::wstring Path;
 };
 
+/**
+ * @struct InferenceParams
+ * @brief Parameters for inference
+ */
 struct InferenceParams
 {
-    float NoiseScale = 0.3f;                           //噪声修正因子          0-10
-    int64_t Seed = 52468;                              //种子
-    int64_t SpeakerId = 0;                             //角色ID
-    //uint64_t SrcSamplingRate = 48000;                  //源采样率
-    int64_t SpkCount = 2;                              //模型角色数
-    float IndexRate = 0.f;                             //索引比               0-1
-    float ClusterRate = 0.f;                           //聚类比               0-1
-    float DDSPNoiseScale = 0.8f;                       //DDSP噪声修正因子      0-10
-    float Keys = 0.f;                                  //升降调               -64-64
-    size_t MeanWindowLength = 2;                       //均值滤波器窗口大小     1-20
-    size_t Pndm = 1;                                   //Diffusion加速倍数    1-200
-    size_t Step = 100;                                 //Diffusion总步数      1-1000
+    /**
+     * @brief Noise scale factor (0-10)
+     */
+    float NoiseScale = 0.3f;
+
+    /**
+     * @brief Seed for random number generation
+     */
+    int64_t Seed = 52468;
+
+    /**
+     * @brief Speaker ID
+     */
+    int64_t SpeakerId = 0;
+
+    /**
+     * @brief Number of speakers in the model
+     */
+    int64_t SpkCount = 2;
+
+    /**
+     * @brief Index rate (0-1)
+     */
+    float IndexRate = 0.f;
+
+    /**
+     * @brief Cluster rate (0-1)
+     */
+    float ClusterRate = 0.f;
+
+    /**
+     * @brief DDSP noise scale factor (0-10)
+     */
+    float DDSPNoiseScale = 0.8f;
+
+    /**
+     * @brief Key shift (-64 to 64)
+     */
+    float Keys = 0.f;
+
+    /**
+     * @brief Mean filter window length (1-20)
+     */
+    size_t MeanWindowLength = 2;
+
+    /**
+     * @brief Diffusion acceleration factor (1-200)
+     */
+    size_t Pndm = 1;
+
+    /**
+     * @brief Total number of diffusion steps (1-1000)
+     */
+    size_t Step = 100;
+
+    /**
+     * @brief Start time for reflow
+     */
     float TBegin = 0.f;
+
+    /**
+     * @brief End time for reflow
+     */
     float TEnd = 1.f;
-    std::wstring Sampler = L"Pndm";                    //Diffusion采样器
-    std::wstring ReflowSampler = L"Eular";             //Reflow采样器
-    std::wstring F0Method = L"Dio";                    //F0提取算法
+
+    /**
+     * @brief Diffusion sampler
+     */
+    std::wstring Sampler = L"Pndm";
+
+    /**
+     * @brief Reflow sampler
+     */
+    std::wstring ReflowSampler = L"Eular";
+
+    /**
+     * @brief F0 extraction method
+     */
+    std::wstring F0Method = L"Dio";
+
+    /**
+     * @brief Shared pointer to the vocoder model session
+     */
     std::shared_ptr<Ort::Session> VocoderModel = nullptr;
+
+    /**
+     * @brief Hop size for the vocoder
+     */
     int VocoderHopSize = 512;
+
+    /**
+     * @brief Number of mel bins for the vocoder
+     */
     int VocoderMelBins = 128;
+
+    /**
+     * @brief Sampling rate for the vocoder
+     */
     int VocoderSamplingRate = 44100;
+
 #ifndef DRAGONIANLIB_IMPORT
-    mutable DragonianLibSTL::Vector<float> _16KAudio, _F0, _Volume;
+    /**
+     * @brief Cached 16K audio data
+     */
+    mutable DragonianLibSTL::Vector<float> _16KAudio;
+
+    /**
+     * @brief Cached F0 data
+     */
+    mutable DragonianLibSTL::Vector<float> _F0;
+
+    /**
+     * @brief Cached volume data
+     */
+    mutable DragonianLibSTL::Vector<float> _Volume;
+
+    /**
+     * @brief Cached speaker data
+     */
     mutable DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _Speaker;
+
+    /**
+     * @brief Caches the data for inference
+     * @param M16KAudio 16K audio data
+     * @param MF0 F0 data
+     * @param MVolume Volume data
+     * @param MSpeaker Speaker data
+     */
     void CacheData(
         DragonianLibSTL::Vector<float>&& M16KAudio,
         DragonianLibSTL::Vector<float>&& MF0,

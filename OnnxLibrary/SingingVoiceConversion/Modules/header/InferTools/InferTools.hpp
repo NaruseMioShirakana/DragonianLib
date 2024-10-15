@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: InferTools.hpp
- * Note: MoeVoiceStudioCore 推理工具的定义
+ * Note: MoeVoiceStudioCore InferTools
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -37,10 +37,10 @@ struct SlicerSettings
 };
 
 /**
- * \brief 切片机切片（获取切片位置）
- * \param _PcmData PCM数据（SignedInt16）
- * \param _SlicerSettings 切片机设置
- * \return 切片位置
+ * @brief Slice audio data into segments
+ * @param _PcmData Input audio data
+ * @param _SlicerSettings Slice settings
+ * @return 
  */
 DragonianLibSTL::Vector<size_t> SliceAudio(
 	const DragonianLibSTL::Vector<float>& _PcmData,
@@ -56,7 +56,7 @@ public:
 	FloatTensorWrapper(float* const data_p, size_t _size) : _data_ptr(data_p), _data_size(_size) {}
 	FloatTensorWrapper(const FloatTensorWrapper& _copy) = delete;
 	FloatTensorWrapper& operator=(const FloatTensorWrapper&) = delete;
-	FloatTensorWrapper(FloatTensorWrapper&& _move) noexcept:_data_ptr(_move._data_ptr), _data_size(_move._data_size) {}
+	FloatTensorWrapper(FloatTensorWrapper&& _move) noexcept :_data_ptr(_move._data_ptr), _data_size(_move._data_size) {}
 	FloatTensorWrapper& operator=(FloatTensorWrapper&& _move) noexcept
 	{
 		_data_ptr = _move._data_ptr;

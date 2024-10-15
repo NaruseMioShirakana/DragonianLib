@@ -1,10 +1,10 @@
-#include "MoeSuperResolution.hpp"
+﻿#include "MoeSuperResolution.hpp"
 #include "Base.h"
 
 namespace DragonianLib
 {
-    namespace LibSuperResolution
-    {
+	namespace LibSuperResolution
+	{
 		void MoeSR::Destory()
 		{
 			delete Model;
@@ -104,5 +104,5 @@ namespace DragonianLib
 		{
 			Destory();
 		}
-    }
+	}
 }

@@ -1,10 +1,10 @@
-#include "Real-ESRGan.hpp"
+﻿#include "Real-ESRGan.hpp"
 #include "Base.h"
 
 namespace DragonianLib
 {
-    namespace LibSuperResolution
-    {
+	namespace LibSuperResolution
+	{
 		RealESRGan::RealESRGan(const Hparams& _Config, ProgressCallback _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider) : SuperResolution(_ThreadCount, _DeviceID, _Provider, std::move(_Callback))
 		{
 			s_width = _Config.InputWidth;
@@ -195,5 +195,5 @@ namespace DragonianLib
 
 			 */
 		}
-    }
+	}
 }

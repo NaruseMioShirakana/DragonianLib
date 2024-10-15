@@ -1,4 +1,4 @@
-#include "../../header/Models/SVC.hpp"
+﻿#include "../../header/Models/SVC.hpp"
 #include "Base.h"
 #include "F0Extractor/F0ExtractorManager.hpp"
 
@@ -186,46 +186,46 @@ void SingingVoiceConversion::NormMel(
 }
 
 DragonianLibSTL::Vector<float> VocoderInfer(
-    DragonianLibSTL::Vector<float>& Mel,
-    DragonianLibSTL::Vector<float>& F0,
-    int64_t MelBins,
-    int64_t MelSize,
-    const Ort::MemoryInfo* Mem,
-    const std::shared_ptr<Ort::Session>& _VocoderModel
+	DragonianLibSTL::Vector<float>& Mel,
+	DragonianLibSTL::Vector<float>& F0,
+	int64_t MelBins,
+	int64_t MelSize,
+	const Ort::MemoryInfo* Mem,
+	const std::shared_ptr<Ort::Session>& _VocoderModel
 )
 {
-    if (!_VocoderModel)
-        DragonianLibThrow("Missing Vocoder Model!");
+	if (!_VocoderModel)
+		DragonianLibThrow("Missing Vocoder Model!");
 
-    const int64_t MelShape[] = { 1i64,MelBins,MelSize };
-    const int64_t FrameShape[] = { 1,MelSize };
-    OrtTensors Tensors;
-    Tensors.emplace_back(Ort::Value::CreateTensor(
-        *Mem,
-        Mel.Data(),
-        Mel.Size(),
-        MelShape,
-        3)
-    );
-    Tensors.emplace_back(Ort::Value::CreateTensor(
-        *Mem,
-        F0.Data(),
-        FrameShape[1],
-        FrameShape,
-        2)
-    );
-    const DragonianLibSTL::Vector nsfInput = { "c", "f0" };
-    const DragonianLibSTL::Vector nsfOutput = { "audio" };
+	const int64_t MelShape[] = { 1i64,MelBins,MelSize };
+	const int64_t FrameShape[] = { 1,MelSize };
+	OrtTensors Tensors;
+	Tensors.emplace_back(Ort::Value::CreateTensor(
+		*Mem,
+		Mel.Data(),
+		Mel.Size(),
+		MelShape,
+		3)
+	);
+	Tensors.emplace_back(Ort::Value::CreateTensor(
+		*Mem,
+		F0.Data(),
+		FrameShape[1],
+		FrameShape,
+		2)
+	);
+	const DragonianLibSTL::Vector nsfInput = { "c", "f0" };
+	const DragonianLibSTL::Vector nsfOutput = { "audio" };
 
-    Tensors = _VocoderModel->Run(Ort::RunOptions{ nullptr },
-        nsfInput.Data(),
-        Tensors.data(),
-        _VocoderModel->GetInputCount(),
-        nsfOutput.Data(),
-        nsfOutput.Size());
-    const auto AudioSize = Tensors[0].GetTensorTypeAndShapeInfo().GetShape()[2];
-    const auto OutputData = Tensors[0].GetTensorData<float>();
-    return { OutputData , OutputData + AudioSize };
+	Tensors = _VocoderModel->Run(Ort::RunOptions{ nullptr },
+		nsfInput.Data(),
+		Tensors.data(),
+		_VocoderModel->GetInputCount(),
+		nsfOutput.Data(),
+		nsfOutput.Size());
+	const auto AudioSize = Tensors[0].GetTensorTypeAndShapeInfo().GetShape()[2];
+	const auto OutputData = Tensors[0].GetTensorData<float>();
+	return { OutputData , OutputData + AudioSize };
 }
 
 LibSvcEnd

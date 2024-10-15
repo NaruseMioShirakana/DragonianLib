@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: Modules.hpp
- * Note: MoeVoiceStudioCore组件管理
+ * Note: MoeVoiceStudioCore component management
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -27,8 +27,18 @@
 
 LibSvcHeader
 
+/**
+ * @brief Sets up the kernel for the components
+ */
 void SetupKernel();
 
+/**
+ * @brief Gets the Mel operator for the given parameters
+ * @param _SamplingRate Sampling rate
+ * @param _Hopsize Hop size
+ * @param _MelBins Number of Mel bins
+ * @return Reference to the Mel operator
+ */
 DlCodecStft::Mel& GetMelOperator(
 	int32_t _SamplingRate,
 	int32_t _Hopsize,
@@ -39,6 +49,6 @@ LibSvcEnd
 
 namespace MoeVSRename
 {
-	
+	// Namespace for MoeVSRename related functions and classes
 }
 

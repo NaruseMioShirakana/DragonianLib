@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Module.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -107,7 +107,7 @@ public:
 	ModuleList(Module* _Parent, const std::wstring& _Name, const std::initializer_list<Module*>& _Input);
 	~ModuleList() override;
 	ModuleList& operator=(const std::initializer_list<Module*>& _Input) override;
-	
+
 private:
 	std::any operator()(const std::any& _Input, ThreadPool* _Thp = nullptr, bool _Inplace = false) override;
 	ModuleList(const ModuleList&) = delete;

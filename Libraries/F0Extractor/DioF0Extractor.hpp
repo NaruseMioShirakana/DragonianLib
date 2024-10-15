@@ -1,6 +1,6 @@
-/**
+﻿/**
  * FileName: DioF0Extractor.hpp
- * Note: DragonianLib 官方F0提取算法 Dio
+ * Note: DragonianLib Dio F0Extractor
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *

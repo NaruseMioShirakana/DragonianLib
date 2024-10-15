@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: IndexCluster.hpp
  * Note: DragonianLib Index Cluster
  *

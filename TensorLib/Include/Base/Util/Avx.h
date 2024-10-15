@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Avx.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -126,7 +126,7 @@ static INLINE void DragonianLibMemCpy(void* const __restrict _Dst, const void* c
 		_Src_Ptr += 32;
 		_Size -= 32;
 	}
-	if(_Size)
+	if (_Size)
 		memcpy(_Dst_Ptr, _Src_Ptr, _Size);
 }
 

@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: TensorExtractorManager.hpp
- * Note: MoeVoiceStudioCore 张量预处理类的注册和管理
+ * Note: MoeVoiceStudioCore TensorExtractorManager
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -29,20 +29,28 @@ using TensorExtractor = std::shared_ptr<LibSvcTensorExtractor>;
 
 using GetTensorExtractorFn = std::function<TensorExtractor(uint64_t, uint64_t, uint64_t, bool, bool, uint64_t, uint64_t, const LibSvcTensorExtractor::Others&)>;
 
-void RegisterTensorExtractor(const std::wstring& _name, const GetTensorExtractorFn& _constructor_fn);
+/**
+ * @brief Register a tensor extractor
+ * @param _name Name of the tensor extractor
+ * @param _constructor_fn Constructor function of the tensor extractor
+ */
+void RegisterTensorExtractor(
+	const std::wstring& _name,
+	const GetTensorExtractorFn& _constructor_fn
+);
 
 /**
- * \brief 获取张量预处理器
- * \param _name 类名
- * \param _srcsr 原始采样率
- * \param _sr 目标采样率
- * \param _hop HopSize
- * \param _smix 是否启用角色混合
- * \param _volume 是否启用音量emb
- * \param _hidden_size hubert的维数
- * \param _nspeaker 角色数
- * \param _other 其他参数，其中的memoryInfo必须为你当前模型的memoryInfo
- * \return 张量预处理器
+ * @brief Get a tensor extractor
+ * @param _name Name of the tensor extractor
+ * @param _srcsr Source sample rate
+ * @param _sr Sample rate
+ * @param _hop Hop size
+ * @param _smix Use speaker mix
+ * @param _volume Use volume
+ * @param _hidden_size Hidden size
+ * @param _nspeaker Number of speakers
+ * @param _other Other parameters
+ * @return Tensor extractor
  */
 TensorExtractor GetTensorExtractor(
 	const std::wstring& _name,

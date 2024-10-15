@@ -1,4 +1,4 @@
-#include "Util/ThreadPool.h"
+﻿#include "Util/ThreadPool.h"
 #include "Util/Logger.h"
 
 #ifdef _WIN32
@@ -8,7 +8,7 @@
 DragonianLibSpaceBegin
 ThreadPool::~ThreadPool() {
     Stoped_ = true;
-	Condition_.release((ptrdiff_t)Threads_.size());
+    Condition_.release((ptrdiff_t)Threads_.size());
     for (auto& CurTask : Threads_)
         if (CurTask.joinable()) CurTask.join();
 }
@@ -32,7 +32,7 @@ void ThreadPool::Init(int64 _ThreadCount) {
     Stoped_ = false;
     Threads_.clear();
     for (int64 i = 0; i < _ThreadCount; i++)
-	    Threads_.emplace_back(&ThreadPool::Run, this);
+        Threads_.emplace_back(&ThreadPool::Run, this);
 
     ThreadCount_ = _ThreadCount;
 }
@@ -54,14 +54,14 @@ void ThreadPool::Run() {
             Tasks_.pop();
         }
 #ifdef WIN32
-        if(LogTime_)
+        if (LogTime_)
             QueryPerformanceCounter(&Time1);
 #endif
         task();
 #ifdef WIN32
         if (LogTime_)
         {
-	        QueryPerformanceCounter(&Time2);
+            QueryPerformanceCounter(&Time2);
             DragonianLibLogMessage(("[Thread] Task Cost Time:" + std::to_string(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + "ms").c_str());
         }
 #endif

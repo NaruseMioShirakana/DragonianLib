@@ -1,11 +1,10 @@
-#include "F0Extractor/DioF0Extractor.hpp"
+﻿#include "F0Extractor/DioF0Extractor.hpp"
 #include "world/dio.h"
 #include "world/stonemask.h"
-#include "world/matlabfunctions.h"
 
 DragonianLibF0ExtractorHeader
-DioF0Extractor::DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0):
-	BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
+DioF0Extractor::DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0) :
+    BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
 {
 }
 
@@ -23,7 +22,7 @@ DioF0Extractor::DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, d
     while (xi.Size() < TargetLength) xi.EmplaceBack(*(xi.End() - 1) + ((double)f0Len / (double)TargetLength));
     while (xi.Size() > TargetLength) xi.PopBack();
 
-	auto x0 = DragonianLibSTL::Arange(0., (double)f0Len);
+    auto x0 = DragonianLibSTL::Arange(0., (double)f0Len);
     while (x0.Size() < f0Len) x0.EmplaceBack(*(x0.End() - 1) + 1.);
     while (x0.Size() > f0Len) x0.PopBack();
 
@@ -37,11 +36,14 @@ DioF0Extractor::DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, d
 DragonianLibSTL::Vector<float> DioF0Extractor::ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength)
 {
     compute_f0(PCMData.Data(), PCMData.Size());
-    return DragonianLibSTL::InterpResample<float>(
+    for (auto& f0 : refined_f0) if (f0 < 0.001) f0 = NAN;
+    auto Output = DragonianLibSTL::InterpResample<float>(
         refined_f0,
         static_cast<long>(refined_f0.Size()),
         static_cast<long>(TargetLength)
     );
+    for (auto& f0 : Output) if (isnan(f0)) f0 = 0.f;
+    return Output;
 }
 
 void DioF0Extractor::compute_f0(const double* PCMData, size_t PCMLen)
@@ -53,8 +55,8 @@ void DioF0Extractor::compute_f0(const double* PCMData, size_t PCMLen)
     Doption.frame_period = 1000.0 * hop / fs;
 
     const size_t f0Length = GetSamplesForDIO(int(fs), (int)PCMLen, Doption.frame_period);
-	auto temporal_positions = DragonianLibSTL::Vector<double>(f0Length);
-	auto raw_f0 = DragonianLibSTL::Vector<double>(f0Length);
+    auto temporal_positions = DragonianLibSTL::Vector<double>(f0Length);
+    auto raw_f0 = DragonianLibSTL::Vector<double>(f0Length);
     refined_f0 = DragonianLibSTL::Vector<double>(f0Length);
     Dio(PCMData, (int)PCMLen, int(fs), &Doption, temporal_positions.Data(), raw_f0.Data());
     StoneMask(PCMData, (int)PCMLen, int(fs), temporal_positions.Data(), raw_f0.Data(), (int)f0Length, refined_f0.Data());

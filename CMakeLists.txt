@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+﻿cmake_minimum_required (VERSION 3.13)
 
 #Global Visual Studio Macros
 add_definitions(-DUNICODE)
@@ -335,12 +335,15 @@ if(DRAGONIANLIB_ONNXRUNTIME)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${ONNXRUNTIME_INCLUDE_DIRS})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${ONNXRUNTIME_LIBRARIES})
 	add_subdirectory(OnnxLibrary)
+	set(DRAGONIANLIB_ORT_LIB ${DRAGONIANLIB_LIB}OrtLib)
 endif()
 
 if(DRAGONIANLIB_TENSORRT)
 	add_definitions(-DDRAGONIANLIB_TENSORRT_LIB)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${TENSORRT_INCLUDE_DIRS})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${TENSORRT_LIBRARIES})
+
+	set(DRAGONIANLIB_TRT_LIB ${DRAGONIANLIB_LIB}TRTLib)
 endif()
 
 #C++ Standard
@@ -365,9 +368,11 @@ set(DRAGONIANLIB_INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/Libraries
 	${PROJECT_SOURCE_DIR}/OnnxLibrary
 	${PROJECT_SOURCE_DIR}/TensorRT
-	${PROJECT_SOURCE_DIR}/TensorLib)
+	${PROJECT_SOURCE_DIR}/TensorLib
+	${PROJECT_SOURCE_DIR}/TensorLib/Include/Base
+	${ONNXRUNTIME_INCLUDE_DIRS})
 
-# 安装目标
+#Install Target
 install(
 	TARGETS ${DRAGONIANLIB_LIB}
 	EXPORT ${DRAGONIANLIB_LIB}Targets
@@ -377,7 +382,7 @@ install(
 	INCLUDES DESTINATION include
 )
 
-# 安装头文件
+#Install Header File
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/Libraries/
 	DESTINATION include/Libraries
@@ -403,7 +408,7 @@ install(
 	PATTERN "*/" EXCLUDE
 )
 
-# 导出子目录中的目标
+#Export Subprojects
 install(
 	EXPORT ${DRAGONIANLIB_LIB}Targets
 	FILE ${DRAGONIANLIB_LIB}Targets.cmake
@@ -412,7 +417,6 @@ install(
 )
 
 if(DRAGONIANLIB_ONNXRUNTIME)
-	set(DRAGONIANLIB_ORT_LIB ${DRAGONIANLIB_LIB}OrtLib)
 	install(
 		EXPORT ${DRAGONIANLIB_ORT_LIB}Targets
 		FILE ${DRAGONIANLIB_ORT_LIB}Targets.cmake
@@ -422,7 +426,6 @@ if(DRAGONIANLIB_ONNXRUNTIME)
 endif()
 
 if(DRAGONIANLIB_TENSORRT)
-	set(DRAGONIANLIB_TRT_LIB ${DRAGONIANLIB_LIB}TRTLib)
 	install(
 		EXPORT ${DRAGONIANLIB_TRT_LIB}Targets
 		FILE ${DRAGONIANLIB_TRT_LIB}Targets.cmake
@@ -431,7 +434,7 @@ if(DRAGONIANLIB_TENSORRT)
 	)
 endif()
 
-# 配置和安装配置文件
+#Config Files
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
 	${CMAKE_CURRENT_BINARY_DIR}/${DRAGONIANLIB_LIB}ConfigVersion.cmake

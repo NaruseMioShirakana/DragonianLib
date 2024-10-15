@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: KmeansCluster.hpp
- * Note: DragonianLib 官方聚类（Kmeans）
+ * Note: DragonianLib Kmeans cluster
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *

@@ -420,7 +420,7 @@ DragonianLibSTL::Vector<float> VitsSvc::InferPCMData(
 
 	const auto dstWavLen = (_PCMData.Size() * int64_t(ModelSamplingRate)) / _SrcSamplingRate;
 	TempVecWav.Resize(dstWavLen, 0.f);
-	
+
 	UNUSED(IstftInput.Size());
 	UNUSED(VolumeData.Size());
 	UNUSED(UV.Size());

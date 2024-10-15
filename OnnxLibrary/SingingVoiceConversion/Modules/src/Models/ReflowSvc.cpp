@@ -205,7 +205,7 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 		const auto x_size = EncoderOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
 		float t_end = std::max(std::min(1.f, _Params.TEnd), 0.002f);
 		float t_start = std::max(std::min(_Params.TBegin, t_end - 0.001f), 0.f);
-		if(x_size != 1)
+		if (x_size != 1)
 		{
 			auto x_it = EncoderOut[0].GetTensorMutableData<float>();
 			auto x_end = EncoderOut[0].GetTensorMutableData<float>() + x_size;
@@ -225,7 +225,7 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 		const auto dt = (t_end - t_start) / float(step);
 
 		auto PredOut = GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, _Process);
-		
+
 		try
 		{
 			ReflowOut = PostDecoder->Run(Ort::RunOptions{ nullptr },
@@ -244,7 +244,7 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 
 		try
 		{
-			finaOut = _Params.VocoderModel->Run(Ort::RunOptions{nullptr},
+			finaOut = _Params.VocoderModel->Run(Ort::RunOptions{ nullptr },
 				nsfInput.data(),
 				ReflowOut.data(),
 				_Params.VocoderModel->GetInputCount(),

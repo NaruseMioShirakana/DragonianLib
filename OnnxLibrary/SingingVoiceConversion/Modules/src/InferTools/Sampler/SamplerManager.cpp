@@ -43,10 +43,10 @@ std::vector<std::wstring> GetSamplerList()
 }
 
 ReflowSamplerWrp GetReflowSampler(
-	const std::wstring& _name, 
-	Ort::Session* velocity, 
-	int64_t Mel_Bins, 
-	const BaseSampler::ProgressCallback& _ProgressCallback, 
+	const std::wstring& _name,
+	Ort::Session* velocity,
+	int64_t Mel_Bins,
+	const BaseSampler::ProgressCallback& _ProgressCallback,
 	Ort::MemoryInfo* memory
 )
 {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Vector.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -815,6 +815,15 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector
     return Temp;
 }
 
+/**
+ * @brief Generate an arithmetic progression within the range [Start, End) and step size Step.
+ * @tparam Type The type of the elements in the vector.
+ * @param Start Start value.
+ * @param End End value.
+ * @param Step Step size.
+ * @param NDiv Division factor.
+ * @return
+ */
 template <typename Type>
 DRAGONIANLIBCONSTEXPR Vector<Type> Arange(Type Start, Type End, Type Step = Type(1.), Type NDiv = Type(1.))
 {
@@ -829,6 +838,13 @@ DRAGONIANLIBCONSTEXPR Vector<Type> Arange(Type Start, Type End, Type Step = Type
     return OutPut;
 }
 
+/**
+ * @brief Mean filter for 1D signal.
+ * @tparam _Type The type of the elements in the vector.
+ * @param _Signal Input signal.
+ * @param _WindowSize Window size.
+ * @return Signal after mean filter.
+ */
 template <typename _Type>
 DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
 {
@@ -839,7 +855,7 @@ DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, siz
 
     auto WndSz = (_Type)(_WindowSize % 2 ? _WindowSize : _WindowSize + 1);
 
-    const size_t half = _WindowSize / 2; // 缁愭褰涢崡濠傜窞閿涘苯鎮滄稉瀣絿閺?
+    const size_t half = _WindowSize / 2;
     auto Ptr = Result.Data();
 
     for (size_t i = 0; i < half; ++i)
@@ -858,6 +874,13 @@ DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, siz
     return Result;
 }
 
+/**
+ * @brief Calculate the average value of the elements in the range [Start, End].
+ * @tparam T The type of the elements in the range.
+ * @param Start The start of the range.
+ * @param End The end of the range.
+ * @return The average value of the elements in the range.
+ */
 template<typename T>
 DRAGONIANLIBCONSTEXPR double Average(const T* Start, const T* End)
 {
@@ -868,10 +891,27 @@ DRAGONIANLIBCONSTEXPR double Average(const T* Start, const T* End)
     return Avg;
 }
 
+/**
+ * @brief Calculate the size of the resampled signal.
+ * @param SrcSize Source signal size.
+ * @param SrcSamplingRate Source signal sampling rate.
+ * @param DstSamplingRate Destination signal sampling rate.
+ * @return Size of the resampled signal.
+ */
 inline size_t CalculateResampledSize(size_t SrcSize, double SrcSamplingRate, double DstSamplingRate) {
     return static_cast<size_t>(ceil(double(SrcSize) * DstSamplingRate / SrcSamplingRate));
 }
 
+/**
+ * @brief Resample the signal.
+ * @tparam TypeInput The type of the source signal.
+ * @tparam TypeOutput The type of the destination signal.
+ * @param SrcBuffer Source signal buffer.
+ * @param SrcSize Source signal size.
+ * @param DstBuffer Destination signal buffer.
+ * @param DstSize Destination signal size.
+ * @param Div Division factor.
+ */
 template<typename TypeInput, typename TypeOutput>
 DRAGONIANLIBCONSTEXPR void Resample(
     const TypeInput* SrcBuffer,
@@ -880,25 +920,45 @@ DRAGONIANLIBCONSTEXPR void Resample(
     size_t DstSize,
     TypeOutput Div
 ) {
+    if (SrcSize == 0 || DstSize == 0) DragonianLibStlThrow("Invalid size!");
     if (SrcSize == DstSize) {
         for (size_t i = 0; i < SrcSize; ++i)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[i]) / Div;
         return;
     }
-
-    double ratio = static_cast<double>(SrcSize - 1) / (DstSize - 1);
+    const double scale = static_cast<double>(SrcSize - 1) / (DstSize - 1);
     for (size_t i = 0; i < DstSize; ++i) {
-        double srcIndex = i * ratio;
-        size_t index = static_cast<size_t>(srcIndex);
-        double frac = srcIndex - index;
+        const double srcPos = i * scale;
+        const size_t srcIndex = static_cast<size_t>(srcPos);
+        const double frac = srcPos - srcIndex;
 
-        if (index + 1 < SrcSize)
-            DstBuffer[i] = static_cast<TypeOutput>(double(SrcBuffer[index]) * (1.0 - frac) + double(SrcBuffer[index + 1]) * frac) / Div;
+        if (srcIndex >= SrcSize - 1)
+            DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[SrcSize - 1] / Div);
         else
-            DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[index]) / Div;
+        {
+            TypeInput val1 = SrcBuffer[srcIndex];
+            TypeInput val2 = SrcBuffer[srcIndex + 1];
+            if (isnan(val1) && isnan(val2))
+                DstBuffer[i] = std::numeric_limits<TypeOutput>::quiet_NaN();
+            else if (isnan(val1))
+                DstBuffer[i] = static_cast<TypeOutput>(val2 / Div);
+            else if (isnan(val2))
+                DstBuffer[i] = static_cast<TypeOutput>(val1 / Div);
+            else
+                DstBuffer[i] = static_cast<TypeOutput>((val1 * (1.0 - frac) + val2 * frac) / Div);
+        }
     }
 }
 
+/**
+ * @brief Resample the signal.
+ * @tparam TypeInput The type of the source signal.
+ * @tparam TypeOutput The type of the destination signal.
+ * @param SrcBuffer Source signal buffer.
+ * @param SrcSize Source signal size.
+ * @param DstBuffer Destination signal buffer.
+ * @param DstSize Destination signal size.
+ */
 template<typename TypeInput, typename TypeOutput>
 DRAGONIANLIBCONSTEXPR void Resample(
     const TypeInput* SrcBuffer,
@@ -906,25 +966,46 @@ DRAGONIANLIBCONSTEXPR void Resample(
     TypeOutput* DstBuffer,
     size_t DstSize
 ) {
+    if (SrcSize == 0 || DstSize == 0) DragonianLibStlThrow("Invalid size!");
     if (SrcSize == DstSize) {
         for (size_t i = 0; i < SrcSize; ++i)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[i]);
         return;
     }
-
-    double ratio = static_cast<double>(SrcSize - 1) / (DstSize - 1);
+    const double scale = static_cast<double>(SrcSize - 1) / (DstSize - 1);
     for (size_t i = 0; i < DstSize; ++i) {
-        double srcIndex = i * ratio;
-        size_t index = static_cast<size_t>(srcIndex);
-        double frac = srcIndex - index;
+        const double srcPos = i * scale;
+        const size_t srcIndex = static_cast<size_t>(srcPos);
+        const double frac = srcPos - srcIndex;
 
-        if (index + 1 < SrcSize)
-            DstBuffer[i] = static_cast<TypeOutput>(double(SrcBuffer[index]) * (1.0 - frac) + double(SrcBuffer[index + 1]) * frac);
+        if (srcIndex >= SrcSize - 1)
+            DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[SrcSize - 1]);
         else
-            DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[index]);
+        {
+            TypeInput val1 = SrcBuffer[srcIndex];
+            TypeInput val2 = SrcBuffer[srcIndex + 1];
+            if (isnan(val1) && isnan(val2))
+                DstBuffer[i] = std::numeric_limits<TypeOutput>::quiet_NaN();
+            else if (isnan(val1))
+                DstBuffer[i] = static_cast<TypeOutput>(val2);
+            else if (isnan(val2))
+                DstBuffer[i] = static_cast<TypeOutput>(val1);
+            else
+                DstBuffer[i] = static_cast<TypeOutput>((val1 * (1.0 - frac) + val2 * frac));
+        }
     }
 }
 
+/**
+ * @brief Resample the signal.
+ * @tparam TypeOutput The type of the destination signal.
+ * @tparam TypeInput The type of the source signal.
+ * @param Data Source signal.
+ * @param SrcSamplingRate Source signal sampling rate.
+ * @param DstSamplingRate Destination signal sampling rate.
+ * @param Div Division factor.
+ * @return Resampled signal.
+ */
 template<typename TypeOutput, typename TypeInput>
 DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
@@ -938,6 +1019,15 @@ DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
     return Output;
 }
 
+/**
+ * @brief Resample the signal.
+ * @tparam TypeOutput The type of the destination signal.
+ * @tparam TypeInput The type of the source signal.
+ * @param Data Source signal.
+ * @param SrcSamplingRate Source signal sampling rate.
+ * @param DstSamplingRate Destination signal sampling rate.
+ * @return Resampled signal.
+ */
 template<typename TypeOutput, typename TypeInput>
 DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
@@ -950,6 +1040,14 @@ DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
     return Output;
 }
 
+/**
+ * @brief Resample the signal.
+ * @tparam T The type of the signal.
+ * @param _Data Source signal.
+ * @param _SrcSamplingRate Source signal sampling rate.
+ * @param _DstSamplingRate Destination signal sampling rate.
+ * @return Resampled signal.
+ */
 template<typename T>
 DRAGONIANLIBCONSTEXPR Vector<T> InterpFunc(
     const Vector<T>& _Data,
@@ -957,7 +1055,15 @@ DRAGONIANLIBCONSTEXPR Vector<T> InterpFunc(
     long _DstSamplingRate
 )
 {
-    return InterpResample<T, T>(_Data, _SrcSamplingRate, _DstSamplingRate);
+    if constexpr (!std::is_floating_point_v<T>)
+        return InterpResample<T, T>(_Data, _SrcSamplingRate, _DstSamplingRate);
+
+    Vector<T> Temp(_Data.Size());
+    for (size_t i = 0; i < _Data.Size(); ++i)
+        Temp[i] = _Data[i] < 0.001 ? NAN : _Data[i];
+    auto Output = InterpResample<T, T>(Temp, _SrcSamplingRate, _DstSamplingRate);
+    for (auto& f0 : Output) if (isnan(f0)) f0 = 0;
+    return Output;
 }
 
 DRAGONIANLIBSTLEND

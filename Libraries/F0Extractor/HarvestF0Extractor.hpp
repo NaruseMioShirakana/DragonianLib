@@ -1,6 +1,6 @@
-/**
+﻿/**
  * FileName: HarvestF0Extractor.hpp
- * Note: DragonianLib 官方F0提取算法 Harvest
+ * Note: DragonianLib Harvest F0 Extractor
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *

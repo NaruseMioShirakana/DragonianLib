@@ -1,31 +1,31 @@
-#include "IndexCluster.hpp"
+﻿#include "IndexCluster.hpp"
 #include <filesystem>
 #include "Base.h"
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/index_io.h>
 
-namespace DragonianLib{
+namespace DragonianLib {
 
-    class IndexClusterCore
-    {
-    public:
-        IndexClusterCore() = delete;
-        IndexClusterCore(const char* _path);
-        ~IndexClusterCore() = default;
-        IndexClusterCore(const IndexClusterCore&) = default;
-        IndexClusterCore(IndexClusterCore&& move) noexcept = default;
-        IndexClusterCore& operator=(const IndexClusterCore&) = default;
-        IndexClusterCore& operator=(IndexClusterCore&& move) noexcept = default;
-        DragonianLibSTL::Vector<float> find(const float* points, faiss::idx_t n_points, faiss::idx_t n_searched_points = 8);
-        float* GetVec(faiss::idx_t index);
-    private:
-        std::shared_ptr<faiss::Index> IndexPtr = nullptr;
-        faiss::idx_t Dim = 0;
-        DragonianLibSTL::Vector<float> IndexsVector;
-    };
+	class IndexClusterCore
+	{
+	public:
+		IndexClusterCore() = delete;
+		IndexClusterCore(const char* _path);
+		~IndexClusterCore() = default;
+		IndexClusterCore(const IndexClusterCore&) = default;
+		IndexClusterCore(IndexClusterCore&& move) noexcept = default;
+		IndexClusterCore& operator=(const IndexClusterCore&) = default;
+		IndexClusterCore& operator=(IndexClusterCore&& move) noexcept = default;
+		DragonianLibSTL::Vector<float> find(const float* points, faiss::idx_t n_points, faiss::idx_t n_searched_points = 8);
+		float* GetVec(faiss::idx_t index);
+	private:
+		std::shared_ptr<faiss::Index> IndexPtr = nullptr;
+		faiss::idx_t Dim = 0;
+		DragonianLibSTL::Vector<float> IndexsVector;
+	};
 
 
-    IndexClusterCore::IndexClusterCore(const char* _path) : IndexPtr(faiss::read_index(_path))
+	IndexClusterCore::IndexClusterCore(const char* _path) : IndexPtr(faiss::read_index(_path))
 	{
 		IndexsVector = DragonianLibSTL::Vector(IndexPtr->ntotal * IndexPtr->d, 0.f);
 		IndexPtr->reconstruct_n(0, IndexPtr->ntotal, IndexsVector.Data());
@@ -51,7 +51,7 @@ namespace DragonianLib{
 			float sum = 0.f;                                                       // dis_vec[i] / sum = pGetVec(idx_vec[i])
 			for (faiss::idx_t spt = 0; spt < n_searched_points; ++spt)             // result_pt = GetVec(idx_vec[i])
 			{
-				if(idx_vec[spt] < 0)
+				if (idx_vec[spt] < 0)
 					continue;
 				dis_vec[spt] = (1 / dis_vec[spt]) * (1 / dis_vec[spt]);
 				sum += dis_vec[spt];
@@ -75,10 +75,10 @@ namespace DragonianLib{
 	{
 		const auto RawPath = _path + L"/Index-";
 		size_t idx = 0;
-		while(true)
+		while (true)
 		{
 			std::filesystem::path IndexPath = RawPath + std::to_wstring(idx++) + L".index";
-			if(!exists(IndexPath)) break;
+			if (!exists(IndexPath)) break;
 			Indexs.emplace_back(std::make_shared<IndexClusterCore>(IndexPath.string().c_str()));
 		}
 		if (Indexs.empty())

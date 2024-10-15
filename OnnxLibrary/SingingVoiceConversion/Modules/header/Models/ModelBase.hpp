@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: ModelBase.hpp
- * Note: MoeVoiceStudioCore Onnx 模型基类
+ * Note: MoeVoiceStudioCore Onnx Module Base
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -32,145 +32,321 @@
 
 LibSvcHeader
 
+/**
+ * @struct DiffusionSvcPaths
+ * @brief Paths Of DiffusionSvc
+ */
 struct DiffusionSvcPaths
 {
-	std::wstring Encoder;
-	std::wstring Denoise;
-	std::wstring Pred;
-	std::wstring After;
-	std::wstring Alpha;
-	std::wstring Naive;
+    /**
+     * @brief Path to the encoder
+     */
+    std::wstring Encoder;
 
-	std::wstring DiffSvc;
+    /**
+     * @brief Path to the denoise model
+     */
+    std::wstring Denoise;
+
+    /**
+     * @brief Path to the prediction model
+     */
+    std::wstring Pred;
+
+    /**
+     * @brief Path to the after model
+     */
+    std::wstring After;
+
+    /**
+     * @brief Path to the alpha model
+     */
+    std::wstring Alpha;
+
+    /**
+     * @brief Path to the naive model
+     */
+    std::wstring Naive;
+
+    /**
+     * @brief Path to the DiffSvc model
+     */
+    std::wstring DiffSvc;
 };
 
+/**
+ * @struct ReflowSvcPaths
+ * @brief Paths Of ReflowSvc
+ */
 struct ReflowSvcPaths
 {
-	std::wstring Encoder;
-	std::wstring VelocityFn;
-	std::wstring After;
+    /**
+     * @brief Path to the encoder
+     */
+    std::wstring Encoder;
+
+    /**
+     * @brief Path to the velocity function
+     */
+    std::wstring VelocityFn;
+
+    /**
+     * @brief Path to the after model
+     */
+    std::wstring After;
 };
 
+/**
+ * @struct VitsSvcPaths
+ * @brief Paths Of VitsSvc
+ */
 struct VitsSvcPaths
 {
-	std::wstring VitsSvc;
+    /**
+     * @brief Path to the VitsSvc model
+     */
+    std::wstring VitsSvc;
 };
 
+/**
+ * @struct ClusterConfig
+ * @brief Configuration for Clustering
+ */
 struct ClusterConfig
 {
-	int64_t ClusterCenterSize = 10000;
-	std::wstring Path;
-	/**
-	 * \brief Type Of Cluster : "KMeans" "Index"
-	 */
-	std::wstring Type;
+    /**
+     * @brief Size of the cluster center
+     */
+    int64_t ClusterCenterSize = 10000;
+
+    /**
+     * @brief Path to the cluster configuration
+     */
+    std::wstring Path;
+
+    /**
+     * @brief Type of cluster: "KMeans" or "Index"
+     */
+    std::wstring Type;
 };
 
+/**
+ * @struct Hparams
+ * @brief Hyperparameters for the model
+ */
 struct Hparams
 {
-	/**
-	 * \brief Model Version
-	 * For VitsSvc : "SoVits2.0" "SoVits3.0" "SoVits4.0" "SoVits4.0-DDSP" "RVC"
-	 * For DiffusionSvc : "DiffSvc" "DiffusionSvc"
-	 */
-	std::wstring TensorExtractor = L"DiffSvc";
-	/**
-	 * \brief Path Of Hubert Model
-	 */
-	std::wstring HubertPath;
-	/**
-	 * \brief Path Of DiffusionSvc Model
-	 */
-	DiffusionSvcPaths DiffusionSvc;
-	/**
-	 * \brief Path Of VitsSvc Model
-	 */
-	VitsSvcPaths VitsSvc;
-	/**
-	 * \brief Path Of ReflowSvc Model
-	 */
-	ReflowSvcPaths ReflowSvc;
-	/**
-	 * \brief Config Of Cluster
-	 */
-	ClusterConfig Cluster;
-	
-	long SamplingRate = 22050;
+    /**
+     * @brief Model Version
+     * For VitsSvc: "SoVits2.0", "SoVits3.0", "SoVits4.0", "SoVits4.0-DDSP", "RVC"
+     * For DiffusionSvc: "DiffSvc", "DiffusionSvc"
+     */
+    std::wstring TensorExtractor = L"DiffSvc";
 
-	int HopSize = 320;
-	int64_t HiddenUnitKDims = 256;
-	int64_t SpeakerCount = 1;
-	bool EnableCharaMix = false;
-	bool EnableVolume = false;
-	bool VaeMode = true;
+    /**
+     * @brief Path of Hubert model
+     */
+    std::wstring HubertPath;
 
-	int64_t MelBins = 128;
-	int64_t Pndms = 100;
-	int64_t MaxStep = 1000;
-	float SpecMin = -12;
-	float SpecMax = 2;
-	float Scale = 1000.f;
+    /**
+     * @brief Path of DiffusionSvc model
+     */
+    DiffusionSvcPaths DiffusionSvc;
+
+    /**
+     * @brief Path of VitsSvc model
+     */
+    VitsSvcPaths VitsSvc;
+
+    /**
+     * @brief Path of ReflowSvc model
+     */
+    ReflowSvcPaths ReflowSvc;
+
+    /**
+     * @brief Configuration of cluster
+     */
+    ClusterConfig Cluster;
+
+    /**
+     * @brief Sampling rate
+     */
+    long SamplingRate = 22050;
+
+    /**
+     * @brief Hop size
+     */
+    int HopSize = 320;
+
+    /**
+     * @brief Hidden unit K dimensions
+     */
+    int64_t HiddenUnitKDims = 256;
+
+    /**
+     * @brief Number of speakers
+     */
+    int64_t SpeakerCount = 1;
+
+    /**
+     * @brief Enable character mix
+     */
+    bool EnableCharaMix = false;
+
+    /**
+     * @brief Enable volume
+     */
+    bool EnableVolume = false;
+
+    /**
+     * @brief Enable VAE mode
+     */
+    bool VaeMode = true;
+
+    /**
+     * @brief Number of mel bins
+     */
+    int64_t MelBins = 128;
+
+    /**
+     * @brief Number of PNDMS
+     */
+    int64_t Pndms = 100;
+
+    /**
+     * @brief Maximum step
+     */
+    int64_t MaxStep = 1000;
+
+    /**
+     * @brief Minimum value of the spectrum
+     */
+    float SpecMin = -12;
+
+    /**
+     * @brief Maximum value of the spectrum
+     */
+    float SpecMax = 2;
+
+    /**
+     * @brief Scale factor
+     */
+    float Scale = 1000.f;
 };
 
+/**
+ * @brief Clamps a value between a minimum and maximum
+ * @param in Input value
+ * @param min Minimum value
+ * @param max Maximum value
+ * @return Clamped value
+ */
 inline float Clamp(float in, float min = -1.f, float max = 1.f)
 {
-	if (in > max)
-		return max;
-	if (in < min)
-		return min;
-	return in;
+    if (in > max)
+        return max;
+    if (in < min)
+        return min;
+    return in;
 }
 
+/**
+ * @class LibSvcModule
+ * @brief Base class for Onnx models in MoeVoiceStudioCore
+ */
 class LibSvcModule
 {
 public:
-	//进度条回调
-	using ProgressCallback = std::function<void(size_t, size_t)>;
+    /**
+     * @typedef ProgressCallback
+     * @brief Callback function for progress updates
+     */
+    using ProgressCallback = std::function<void(size_t, size_t)>;
 
-	//Provicer
-	enum class ExecutionProviders
-	{
-		CPU = 0,
-		CUDA = 1,
-		DML = 2
-	};
+    /**
+     * @enum ExecutionProviders
+     * @brief Enum for execution providers (devices)
+     */
+    enum class ExecutionProviders
+    {
+        CPU = 0,
+        CUDA = 1,
+        DML = 2
+    };
 
-	/**
-	 * \brief 构造Onnx模型基类
-	 * \param ExecutionProvider_ ExecutionProvider(可以理解为设备)
-	 * \param DeviceID_ 设备ID
-	 * \param ThreadCount_ 线程数
-	 */
-	LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_ = 0);
+    /**
+     * @brief Constructs the Onnx model base class
+     * @param ExecutionProvider_ ExecutionProvider (device)
+     * @param DeviceID_ Device ID
+     * @param ThreadCount_ Number of threads
+     */
+    LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_ = 0);
 
-	virtual ~LibSvcModule();
+    /**
+     * @brief Destructor for LibSvcModule
+     */
+    virtual ~LibSvcModule();
 
-	/**
-	 * \brief 获取采样率
-	 * \return 采样率
-	 */
-	[[nodiscard]] long GetSamplingRate() const
-	{
-		return ModelSamplingRate;
-	}
+    /**
+     * @brief Gets the sampling rate
+     * @return Sampling rate
+     */
+    [[nodiscard]] long GetSamplingRate() const
+    {
+        return ModelSamplingRate;
+    }
 
-	[[nodiscard]] DragonianLibOrtEnv& GetDlEnv() { return *OrtApiEnv; }
+    /**
+     * @brief Gets the DragonianLibOrtEnv
+     * @return Reference to DragonianLibOrtEnv
+     */
+    [[nodiscard]] DragonianLibOrtEnv& GetDlEnv() { return *OrtApiEnv; }
 
-	[[nodiscard]] const DragonianLibOrtEnv& GetDlEnv() const { return *OrtApiEnv; }
+    /**
+     * @brief Gets the DragonianLibOrtEnv (const version)
+     * @return Const reference to DragonianLibOrtEnv
+     */
+    [[nodiscard]] const DragonianLibOrtEnv& GetDlEnv() const { return *OrtApiEnv; }
 protected:
-	//采样率
-	long ModelSamplingRate = 22050;
-	Ort::Env* OnnxEnv = nullptr;
-	Ort::SessionOptions* SessionOptions = nullptr;
-	Ort::MemoryInfo* MemoryInfo = nullptr;
-	ExecutionProviders ModelExecutionProvider = ExecutionProviders::CPU;
-	std::shared_ptr<DragonianLibOrtEnv> OrtApiEnv;
-	ProgressCallback ProgressCallbackFunction;
+    /**
+     * @brief Sampling rate
+     */
+    long ModelSamplingRate = 22050;
+
+    /**
+     * @brief ONNX environment
+     */
+    Ort::Env* OnnxEnv = nullptr;
+
+    /**
+     * @brief Session options
+     */
+    Ort::SessionOptions* SessionOptions = nullptr;
+
+    /**
+     * @brief Memory info
+     */
+    Ort::MemoryInfo* MemoryInfo = nullptr;
+
+    /**
+     * @brief Execution provider
+     */
+    ExecutionProviders ModelExecutionProvider = ExecutionProviders::CPU;
+
+    /**
+     * @brief Shared pointer to DragonianLibOrtEnv
+     */
+    std::shared_ptr<DragonianLibOrtEnv> OrtApiEnv;
+
+    /**
+     * @brief Progress callback function
+     */
+    ProgressCallback ProgressCallbackFunction;
 public:
-	LibSvcModule& operator=(LibSvcModule&&) = default;
-	LibSvcModule& operator=(const LibSvcModule&) = default;
-	LibSvcModule(const LibSvcModule&) = default;
-	LibSvcModule(LibSvcModule&&) = default;
+    LibSvcModule& operator=(LibSvcModule&&) = default;
+    LibSvcModule& operator=(const LibSvcModule&) = default;
+    LibSvcModule(const LibSvcModule&) = default;
+    LibSvcModule(LibSvcModule&&) = default;
 };
 
 LibSvcEnd

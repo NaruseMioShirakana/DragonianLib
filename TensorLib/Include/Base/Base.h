@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Base.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -20,17 +20,19 @@
 #pragma once
 #include <cstdint>
 #include <filesystem>
-#include <mutex>
 #include <unordered_map>
 
+// Define UNUSED macro for unused variables
 #ifndef UNUSED
 #define UNUSED(x) (void)(x)
 #endif
 
+// Define namespace macros
 #define DragonianLibSpaceBegin namespace DragonianLib {
 #define DragonianLibSpaceEnd }
 #define DragonianLibNDIS [[nodiscard]]
 
+// Define exception throwing macro
 #define DragonianLibThrowImpl(message, exception_type) do {\
 	const std::string __DragonianLib__Message__ = message;\
 	const std::string __DragonianLib__Message__Prefix__ =\
@@ -42,129 +44,61 @@
 	throw exception_type(__DragonianLib__Message__.c_str());\
 } while(0)
 
+// Define general exception throwing macro
 #define DragonianLibThrow(message) DragonianLibThrowImpl(message, std::exception)
 
+// Define not implemented error macro
 #define DragonianLibNotImplementedError DragonianLibThrow("NotImplementedError!")
 
+// Define fatal error macro
 #define DragonianLibFatalError DragonianLibThrow("FatalError!")
 
+// Define registration layer macro
 #define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
 
+// Define log message macro
 #define DragonianLibLogMessage(message) DragonianLib::GetLogger().log(message)
 
+// Define error message macro
 #define DragonianLibErrorMessage(message) DragonianLib::GetLogger().error(message)
 
+// Define macro to get unused memory size
 #define GetGGMLUnusedMemorySize(ctx) (ggml_get_mem_size(ctx) - ggml_used_mem(ctx)) 
 
 DragonianLibSpaceBegin
 
-struct float16_t
-{
+// Define float16_t struct
+struct float16_t {
+	float16_t(float _Val);
+	float16_t& operator=(float _Val);
+	operator float() const;
+private:
 	unsigned char Val[2];
-	float16_t(float _Val)
-	{
-		auto Ptr = (unsigned short*)Val;
-		uint32_t inu = *((uint32_t*)&_Val);
-
-		uint32_t t1 = inu & 0x7fffffffu;                 // Non-sign bits
-		uint32_t t2 = inu & 0x80000000u;                 // Sign bit
-		uint32_t t3 = inu & 0x7f800000u;                 // Exponent
-
-		t1 >>= 13u;                             // Align mantissa on MSB
-		t2 >>= 16u;                             // Shift sign bit into position
-
-		t1 -= 0x1c000;                         // Adjust bias
-
-		t1 = (t3 < 0x38800000u) ? 0 : t1;       // Flush-to-zero
-		t1 = (t3 > 0x8e000000u) ? 0x7bff : t1;  // Clamp-to-max
-		t1 = (t3 == 0 ? 0 : t1);               // Denormals-as-zero
-
-		t1 |= t2;                              // Re-insert sign bit
-
-		*(Ptr) = t1;
-	}
-	float16_t& operator=(float _Val)
-	{
-		auto Ptr = (unsigned short*)Val;
-		uint32_t inu = *((uint32_t*)&_Val);
-
-		uint32_t t1 = inu & 0x7fffffffu;                 // Non-sign bits
-		uint32_t t2 = inu & 0x80000000u;                 // Sign bit
-		uint32_t t3 = inu & 0x7f800000u;                 // Exponent
-
-		t1 >>= 13u;                             // Align mantissa on MSB
-		t2 >>= 16u;                             // Shift sign bit into position
-
-		t1 -= 0x1c000;                         // Adjust bias
-
-		t1 = (t3 < 0x38800000u) ? 0 : t1;       // Flush-to-zero
-		t1 = (t3 > 0x8e000000u) ? 0x7bff : t1;  // Clamp-to-max
-		t1 = (t3 == 0 ? 0 : t1);               // Denormals-as-zero
-
-		t1 |= t2;                              // Re-insert sign bit
-
-		*(Ptr) = t1;
-		return *this;
-	}
-	operator float() const
-	{
-		float out;
-		auto in = *(const uint16_t*)Val;
-
-		uint32_t t1 = in & 0x7fffu;                       // Non-sign bits
-		uint32_t t2 = in & 0x8000u;                       // Sign bit
-		uint32_t t3 = in & 0x7c00u;                       // Exponent
-
-		t1 <<= 13u;                              // Align mantissa on MSB
-		t2 <<= 16u;                              // Shift sign bit into position
-
-		t1 += 0x38000000;                       // Adjust bias
-
-		t1 = (t3 == 0 ? 0 : t1);                // Denormals-as-zero
-
-		t1 |= t2;                               // Re-insert sign bit
-
-		*((uint32_t*)&out) = t1;
-		return out;
-	}
+	static uint16_t float32_to_float16(uint32_t f32);
+	static uint32_t float16_to_float32(uint16_t f16);
 };
 
+// Define float8_t struct
 struct float8_t
 {
+	float8_t(float _Val);
+	float8_t& operator=(float _Val);
+	operator float() const;
+private:
 	unsigned char Val;
-	float8_t(float _Val)
-	{
-		Val = 0ui8;
-	}
-	float8_t& operator=(float _Val)
-	{
-		Val = 0ui8;
-		DragonianLibNotImplementedError;
-	}
-	operator float() const
-	{
-		DragonianLibNotImplementedError;
-	}
 };
 
+// Define bfloat16_t struct
 struct bfloat16_t
 {
+	bfloat16_t(float _Val);
+	bfloat16_t& operator=(float _Val);
+	operator float() const;
+private:
 	unsigned char Val[2];
-	bfloat16_t(float _Val)
-	{
-		*((uint16_t*)Val) = 0;
-	}
-	bfloat16_t& operator=(float _Val)
-	{
-		Val[0] = 0ui8;
-		DragonianLibNotImplementedError;
-	}
-	operator float() const
-	{
-		DragonianLibNotImplementedError;
-	}
 };
 
+// Type aliases
 using int8 = int8_t;
 using int16 = int16_t;
 using int32 = int32_t;
@@ -189,6 +123,7 @@ static constexpr NoneType None;
 #else
 #pragma pack(1)
 #endif
+// Define WeightHeader struct
 struct WeightHeader
 {
 	int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
@@ -201,6 +136,7 @@ struct WeightHeader
 #pragma pack()
 #endif
 
+// Define WeightData struct
 struct WeightData
 {
 	WeightHeader Header_;
@@ -209,12 +145,25 @@ struct WeightData
 	std::string Type_, LayerName_;
 };
 
+// Type alias for dictionary
 using DictType = std::unordered_map<std::string, WeightData>;
 
+/**
+ * @brief Get global enviroment folder
+ * @return global enviroment folder
+ */
 std::wstring GetCurrentFolder();
 
+/**
+ * @brief Set global enviroment folder
+ * @param _Folder Folder to set
+ */
 void SetGlobalEnvDir(const std::wstring& _Folder);
 
+/**
+ * @class FileGuard
+ * @brief RAII File
+ */
 class FileGuard
 {
 public:
@@ -225,33 +174,32 @@ public:
 	FileGuard& operator=(const FileGuard& _Left) = delete;
 	FileGuard(FileGuard&& _Right) noexcept;
 	FileGuard& operator=(FileGuard&& _Right) noexcept;
+
+	/**
+	 * @brief Open file
+	 * @param _Path file path
+	 * @param _Mode file mode
+	 */
 	void Open(const std::wstring& _Path, const std::wstring& _Mode);
+
+	/**
+	 * @brief Close file
+	 */
 	void Close();
+
+	/**
+	 * @brief Get file pointer
+	 * @return file pointer
+	 */
 	operator FILE* () const;
+
+	/**
+	 * @brief Check if file is enabled
+	 * @return true if file is enabled
+	 */
 	DragonianLibNDIS bool Enabled() const;
+
 private:
 	FILE* file_ = nullptr;
 };
-
-class DObject
-{
-public:
-	DObject() = delete;
-	virtual ~DObject();
-	DObject(std::atomic_int64_t* RefCountPtr_);
-	DObject(const DObject& _Left);
-	DObject(DObject&& _Right) noexcept;
-
-	DObject& operator=(const DObject& _Left);
-	DObject& operator=(DObject&& _Right) noexcept;
-private:
-	void _Tidy();
-	virtual void Destory() = 0;
-
-	void AddRef(int64_t Count = 1) const;
-	int64_t RemoveRef(int64_t Count = 1) const;
-
-	std::atomic_int64_t* MyRefCountPtr_ = nullptr;
-};
-
 DragonianLibSpaceEnd

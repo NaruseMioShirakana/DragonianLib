@@ -8,22 +8,22 @@ namespace DragonianLib {
 
 	std::map<std::wstring, GetClusterFn> RegisteredCluster;
 
-	ClusterWrp GetCluster(const std::wstring& _name, const std::wstring& _path, size_t hidden_size, size_t KmeansLen)
+	ClusterWrp GetCluster(const std::wstring& ClusterName, const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize)
 	{
-		const auto f_ClusterFn = RegisteredCluster.find(_name);
+		const auto f_ClusterFn = RegisteredCluster.find(ClusterName);
 		if (f_ClusterFn != RegisteredCluster.end())
-			return f_ClusterFn->second(_path, hidden_size, KmeansLen);
+			return f_ClusterFn->second(ClusterFile, ClusterDimension, ClusterSize);
 		throw std::runtime_error("Unable To Find An Available Cluster");
 	}
 
-	void RegisterCluster(const std::wstring& _name, const GetClusterFn& _constructor_fn)
+	void RegisterCluster(const std::wstring& ClusterName, const GetClusterFn& Constructor)
 	{
-		if (RegisteredCluster.contains(_name))
+		if (RegisteredCluster.contains(ClusterName))
 		{
 			DragonianLibLogMessage(L"[Warn] ClusterNameConflict");
 			return;
 		}
-		RegisteredCluster[_name] = _constructor_fn;
+		RegisteredCluster[ClusterName] = Constructor;
 	}
 
 }

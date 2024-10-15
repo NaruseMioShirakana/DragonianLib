@@ -1,4 +1,4 @@
-#include <random>
+﻿#include <random>
 #include "Tensor/OperatorMacro.h"
 #include "Tensor/Tensor.h"
 #include "Tensor/Int8Tensor.h"
@@ -79,7 +79,7 @@ Tensor::Tensor(const ShapeType& _Shape, TensorType _DType, Device _Device) : Ten
 	AlignSize_ = DType2Size(DType_);
 	ShapeBack_ = _Shape;
 	StepFront_.clear();
-	StepBack_ = { _Shape.begin() + 1,_Shape.end(), ShapeType::allocator_type()};
+	StepBack_ = { _Shape.begin() + 1,_Shape.end(), ShapeType::allocator_type() };
 	StepBack_.emplace_back(AlignSize_);
 	std::ranges::reverse(StepBack_);
 	for (size_t i = 1; i < StepBack_.size(); ++i)
@@ -261,12 +261,12 @@ Tensor Tensor::Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _D
 	Tensor Ret(_Shape, _Dtype, _Device);
 	Ret.Assign(_Step, _ThreadPool);
 
-	if(_Dtype == TensorType::Float32)
+	if (_Dtype == TensorType::Float32)
 	{
 		*(float32*)Ret.GetPtr() = (float32)_Begin;
 		Float32::CumSumImpl(Ret, 1);
 	}
-	else if(_Dtype == TensorType::Float64)
+	else if (_Dtype == TensorType::Float64)
 	{
 		*(float64*)Ret.GetPtr() = _Begin;
 		Float64::CumSumImpl(Ret, 1);
@@ -320,7 +320,7 @@ void Tensor::Free()
 		ClearViewChilds();
 		Device_->Free(DataPtr_);
 	}
-	else if(IsView())
+	else if (IsView())
 	{
 		std::lock_guard Lock(ViewParent_->ViewMx_);
 		if (ViewParent_)
@@ -344,7 +344,7 @@ void Tensor::ClearViewChilds()
 	std::lock_guard Lock(ViewMx_);
 	for (const auto& Iter : ViewChild_)
 	{
-		if(Iter == this)
+		if (Iter == this)
 			continue;
 		Iter->ViewParent_ = nullptr;
 		Iter->DataPtr_ = nullptr;
@@ -894,7 +894,7 @@ Tensor Tensor::operator>(float64 _Right) const
 Tensor Tensor::operator>(int64 _Right) const
 {
 	Tensor Ret(TensorType::Boolean, Device_->GetDevice());
-	if (UseThreadPool_&& GlobalThreadPool.Enabled())
+	if (UseThreadPool_ && GlobalThreadPool.Enabled())
 	{
 		DragonianLibOperator(DType_, Ret, Greater, *this, &_Right, TensorType::Int64, &GlobalThreadPool);
 	}
@@ -1287,7 +1287,7 @@ Tensor Tensor::CreateView() const
 	Ret.IsBroadCasted_ = IsBroadCasted_;
 	Ret.DataPtr_ = DataPtr_;
 
-	if(IsView())
+	if (IsView())
 		Ret.ViewParent_ = ViewParent_;
 	else
 		Ret.ViewParent_ = (Tensor*)((size_t)(this));
@@ -1405,7 +1405,7 @@ void Tensor::Invoke(Tensor& _Tensor, SizeType InvokedDim, InvokeFnType _Fn)
 		return;
 	const auto Dims = SizeType(_Tensor.ShapeBack_.size());
 	InvokedDim = CalcIndex(InvokedDim, Dims);
-	if(SizeType(_Tensor.ShapeBack_.size()) <= InvokedDim + 1)
+	if (SizeType(_Tensor.ShapeBack_.size()) <= InvokedDim + 1)
 	{
 		_Fn(_Tensor);
 	}
@@ -2035,7 +2035,7 @@ Tensor Tensor::Stack(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _
 
 	Vector<Range> SliceOptions(Shape.size(), None);
 	auto& CurSlice = SliceOptions[_Dim];
-	if(NDims == _Dim)
+	if (NDims == _Dim)
 	{
 		for (SizeType i = 0; i < (SizeType)_Inputs.size(); ++i)
 		{
@@ -2094,7 +2094,7 @@ Tensor Tensor::Cat(const Vector<Tensor>& _Inputs, SizeType _Dim, ThreadPool* _Th
 	for (SizeType i = 0; i < (SizeType)_Inputs.size(); ++i)
 	{
 		auto __Shape = _Inputs[i].Shape();
-		CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Dim]};
+		CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Dim] };
 		Ret.Slice(SliceOptions).Assign(_Inputs[i], _ThreadPool);
 	}
 	return Ret;
@@ -2133,7 +2133,7 @@ Tensor Tensor::Cast(TensorType _Dtype, ThreadPool* _ThreadPool) const
 Tensor Tensor::Sum(const Tensor& _Input, SizeType _Axis, ThreadPool* _ThreadPool)
 {
 	_Input.ThrowOnNotEnabled();
-	
+
 	Tensor Ret(_Input.DType(), _Input.Device_->GetDevice());
 	DragonianLibOperator(_Input.DType(), Ret, Sum, _Input, _Axis, _ThreadPool);
 

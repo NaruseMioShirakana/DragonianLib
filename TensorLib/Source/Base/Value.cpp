@@ -1,4 +1,4 @@
-#include "Value.h"
+﻿#include "Value.h"
 
 DragonianLibSpaceBegin
 Value::~Value()

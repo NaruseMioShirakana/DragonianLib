@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: MoeVSSamplerManager.hpp
- * Note: MoeVoiceStudioCore Diffusion 采样器管理
+ * Note: MoeVoiceStudioCore Diffusion Sampler
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -30,18 +30,23 @@ using ReflowSamplerWrp = std::shared_ptr<ReflowBaseSampler>;
 
 using GetSamplerFn = std::function<SamplerWrp(Ort::Session*, Ort::Session*, Ort::Session*, int64_t, const BaseSampler::ProgressCallback&, Ort::MemoryInfo*)>;
 
+/**
+ * \brief Register a sampler
+ * \param _name Class name
+ * \param _constructor_fn Constructor function
+ */
 void RegisterSampler(const std::wstring& _name, const GetSamplerFn& _constructor_fn);
 
 /**
- * \brief 获取采样器
- * \param _name 类名
- * \param alpha Alphas Onnx模型Session
- * \param dfn DenoiseFn Onnx模型Session
- * \param pred Predictor Onnx模型Session
+ * \brief Get a sampler
+ * \param _name Class name
+ * \param alpha Alphas Onnx model session
+ * \param dfn DenoiseFn Onnx model session
+ * \param pred Predictor Onnx model session
  * \param Mel_Bins MelBins
- * \param _ProgressCallback 进度条回调（直接传模型的回调就可以了）
- * \param memory 模型的OrtMemoryInfo
- * \return 采样器
+ * \param _ProgressCallback Progress bar callback (directly pass the model's callback)
+ * \param memory Model's OrtMemoryInfo
+ * \return Sampler
  */
 SamplerWrp GetSampler(
 	const std::wstring& _name,
@@ -53,27 +58,36 @@ SamplerWrp GetSampler(
 	Ort::MemoryInfo* memory
 );
 
+/**
+ * \brief Get the list of samplers
+ * \return List of sampler names
+ */
 std::vector<std::wstring> GetSamplerList();
 
 /******************************* Reflow ***********************************/
 
 using GetReflowSamplerFn = std::function<ReflowSamplerWrp(
-	Ort::Session*, 
-	int64_t, 
+	Ort::Session*,
+	int64_t,
 	const ReflowBaseSampler::ProgressCallback&,
 	Ort::MemoryInfo*
 )>;
 
+/**
+ * \brief Register a reflow sampler
+ * \param _name Class name
+ * \param _constructor_fn Constructor function
+ */
 void RegisterReflowSampler(const std::wstring& _name, const GetReflowSamplerFn& _constructor_fn);
 
 /**
- * \brief 获取采样器
- * \param _name 类名
- * \param velocity Velocity Onnx模型Session
+ * \brief Get a reflow sampler
+ * \param _name Class name
+ * \param velocity Velocity Onnx model session
  * \param Mel_Bins MelBins
- * \param _ProgressCallback 进度条回调（直接传模型的回调就可以了）
- * \param memory 模型的OrtMemoryInfo
- * \return 采样器
+ * \param _ProgressCallback Progress bar callback (directly pass the model's callback)
+ * \param memory Model's OrtMemoryInfo
+ * \return Reflow sampler
  */
 ReflowSamplerWrp GetReflowSampler(
 	const std::wstring& _name,
@@ -83,6 +97,10 @@ ReflowSamplerWrp GetReflowSampler(
 	Ort::MemoryInfo* memory
 );
 
+/**
+ * \brief Get the list of reflow samplers
+ * \return List of reflow sampler names
+ */
 std::vector<std::wstring> GetReflowSamplerList();
 
 LibSvcEnd

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Alloc.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -77,7 +77,7 @@ public:
 	virtual ~BaseAllocator() {}
 	virtual unsigned char* Allocate(size_t _Size);
 	virtual void Free(void* _Block);
-	
+
 	Device GetDevice() const;
 protected:
 	BaseAllocator(Device _Type) : Type_(_Type) {}

@@ -1,4 +1,4 @@
-#include "Util/Logger.h"
+﻿#include "Util/Logger.h"
 #include "Util/StringPreprocess.h"
 #ifdef _WIN32
 #include <Windows.h>

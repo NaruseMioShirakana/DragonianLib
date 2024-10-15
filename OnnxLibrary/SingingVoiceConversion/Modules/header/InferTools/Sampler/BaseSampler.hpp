@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: MoeVSBaseSampler.hpp
- * Note: MoeVoiceStudioCore Diffusion 采样器基类
+ * Note: MoeVoiceStudioCore Diffusion Sampler
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -32,20 +32,20 @@ public:
 	using ProgressCallback = std::function<void(size_t, size_t)>;
 
 	/**
-	 * \brief 构造采样器
-	 * \param alpha Alphas Onnx模型Session
-	 * \param dfn DenoiseFn Onnx模型Session
-	 * \param pred Predictor Onnx模型Session
+	 * \brief Constructor for the sampler
+	 * \param alpha Alphas Onnx model session
+	 * \param dfn DenoiseFn Onnx model session
+	 * \param pred Predictor Onnx model session
 	 * \param Mel_Bins MelBins
-	 * \param _ProgressCallback 进度条回调（直接传模型的回调就可以了） 
-	 * \param memory 模型的OrtMemoryInfo
+	 * \param _ProgressCallback Progress bar callback (directly pass the model's callback)
+	 * \param memory Model's OrtMemoryInfo
 	 */
 	BaseSampler(
-		Ort::Session* alpha, 
-		Ort::Session* dfn, 
-		Ort::Session* pred, 
-		int64_t Mel_Bins, 
-		const ProgressCallback& _ProgressCallback, 
+		Ort::Session* alpha,
+		Ort::Session* dfn,
+		Ort::Session* pred,
+		int64_t Mel_Bins,
+		const ProgressCallback& _ProgressCallback,
 		Ort::MemoryInfo* memory
 	);
 	BaseSampler(const BaseSampler&) = delete;
@@ -55,14 +55,14 @@ public:
 	virtual ~BaseSampler() = default;
 
 	/**
-	 * \brief 采样
-	 * \param Tensors 输入张量（Tensors[0]为Condition，Tensors[1]为初始噪声）
-	 * \param Steps 采样步数
-	 * \param SpeedUp 加速倍数
-	 * \param NoiseScale 噪声规模
-	 * \param Seed 种子
-	 * \param Process 当前进度
-	 * \return Mel张量
+	 * \brief Sampling
+	 * \param Tensors Input tensors (Tensors[0] is Condition, Tensors[1] is initial noise)
+	 * \param Steps Number of sampling steps
+	 * \param SpeedUp Speed up factor
+	 * \param NoiseScale Noise scale
+	 * \param Seed Seed
+	 * \param Process Current progress
+	 * \return Mel tensor
 	 */
 	virtual std::vector<Ort::Value> Sample(std::vector<Ort::Value>& Tensors, int64_t Steps, int64_t SpeedUp, float NoiseScale, int64_t Seed, size_t& Process);
 protected:
@@ -80,17 +80,17 @@ public:
 	using ProgressCallback = std::function<void(size_t, size_t)>;
 
 	/**
-	 * \brief 获取采样器
-	 * \param Velocity Velocity Onnx模型Session
+	 * \brief Get the sampler
+	 * \param Velocity Velocity Onnx model session
 	 * \param MelBins MelBins
-	 * \param _ProgressCallback 进度条回调（直接传模型的回调就可以了）
-	 * \param memory 模型的OrtMemoryInfo
-	 * \return 采样器
+	 * \param _ProgressCallback Progress bar callback (directly pass the model's callback)
+	 * \param memory Model's OrtMemoryInfo
+	 * \return Sampler
 	 */
 	ReflowBaseSampler(
-		Ort::Session* Velocity, 
-		int64_t MelBins, 
-		const ProgressCallback& _ProgressCallback, 
+		Ort::Session* Velocity,
+		int64_t MelBins,
+		const ProgressCallback& _ProgressCallback,
 		Ort::MemoryInfo* memory
 	);
 	ReflowBaseSampler(const ReflowBaseSampler&) = delete;
@@ -100,13 +100,13 @@ public:
 	virtual ~ReflowBaseSampler() = default;
 
 	/**
-	 * \brief 采样
-	 * \param Tensors 输入张量
-	 * \param Steps 采样步数
+	 * \brief Sampling
+	 * \param Tensors Input tensors
+	 * \param Steps Number of sampling steps
 	 * \param dt dt
 	 * \param Scale Scale
-	 * \param Process 当前进度
-	 * \return Mel张量
+	 * \param Process Current progress
+	 * \return Mel tensor
 	 */
 	virtual std::vector<Ort::Value> Sample(std::vector<Ort::Value>& Tensors, int64_t Steps, float dt, float Scale, size_t& Process);
 protected:

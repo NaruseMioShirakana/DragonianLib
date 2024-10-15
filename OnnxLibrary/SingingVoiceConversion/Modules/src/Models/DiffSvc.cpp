@@ -19,8 +19,8 @@ DiffusionSvc::DiffusionSvc(
 	ExecutionProviders ExecutionProvider_,
 	unsigned DeviceID_,
 	unsigned ThreadCount_
-) : 
-	SingingVoiceConversion(_Hps.HubertPath ,ExecutionProvider_, DeviceID_, ThreadCount_)
+) :
+	SingingVoiceConversion(_Hps.HubertPath, ExecutionProvider_, DeviceID_, ThreadCount_)
 {
 	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
 	MelBins = std::max(_Hps.MelBins, 1ll);
@@ -92,8 +92,8 @@ DiffusionSvc::DiffusionSvc(
 }
 
 DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
-	const SingleSlice& _Slice, 
-	const InferenceParams& _Params, 
+	const SingleSlice& _Slice,
+	const InferenceParams& _Params,
 	size_t& _Process
 ) const
 {
@@ -404,7 +404,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 	if (HubertOutPutShape[2] != HiddenUnitKDims)
 		DragonianLibThrow("HiddenUnitKDims UnMatch");
 
-		DragonianLibSTL::Vector HiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
+	DragonianLibSTL::Vector HiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
 
 	if (EnableCluster && _Params.ClusterRate > 0.001f)
 	{
@@ -620,7 +620,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	if (OldDiffSvc || DiffSvcVersion != L"DiffusionSvc")
 		DragonianLibThrow("ShallowDiffusion Only Support DiffusionSvc Model");
 
-		auto speedup = (int64_t)_Params.Pndm;
+	auto speedup = (int64_t)_Params.Pndm;
 	auto step = (int64_t)_Params.Step;
 	if (step > MaxStep) step = MaxStep;
 	if (speedup >= step) speedup = step / 5;
@@ -718,7 +718,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	}
 
 	const DragonianLibSTL::Vector OutputNamesEncoder = { "mel_pred" };
-	
+
 	OrtTensors EncoderOut;
 	try {
 		EncoderOut = PreEncoder->Run(Ort::RunOptions{ nullptr },

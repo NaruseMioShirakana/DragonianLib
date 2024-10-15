@@ -245,7 +245,7 @@ ReflowRk4Sampler::ReflowRk4Sampler(Ort::Session* Velocity, int64_t MelBins, cons
 
 std::vector<Ort::Value> ReflowEularSampler::Sample(std::vector<Ort::Value>& Tensors, int64_t Steps, float dt, float Scale, size_t& Process)
 {
-	std::vector<Ort::Value> Spec ,TensorsOut;
+	std::vector<Ort::Value> Spec, TensorsOut;
 	Spec.emplace_back(std::move(Tensors[0]));
 	Spec.emplace_back(std::move(Tensors[1]));
 	Spec.emplace_back(std::move(Tensors[2]));
@@ -281,7 +281,7 @@ std::vector<Ort::Value> ReflowEularSampler::Sample(std::vector<Ort::Value>& Tens
 		KWrapper *= dt;
 		XWrapper += KWrapper
 #endif
-		t += dt;
+			t += dt;
 		Callback_(++Process, 1);
 	}
 	return Spec;

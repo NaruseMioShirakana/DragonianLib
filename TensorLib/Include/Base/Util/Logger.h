@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: Logger.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -21,7 +21,7 @@
 #include <filesystem>
 #include <mutex>
 
-namespace DragonianLib{
+namespace DragonianLib {
 
 	class Logger
 	{

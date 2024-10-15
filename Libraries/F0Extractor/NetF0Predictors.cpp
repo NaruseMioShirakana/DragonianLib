@@ -1,9 +1,10 @@
-#ifdef DRAGONIANLIB_ONNXRT_LIB
+﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
 #include "Base.h"
 #include "EnvManager.hpp"
 #include "F0Extractor/NetF0Predictors.hpp"
 #include "F0Extractor/DioF0Extractor.hpp"
 #include "Util/StringPreprocess.h"
+#include "onnxruntime_cxx_api.h"
 
 DragonianLibF0ExtractorHeader
 
@@ -24,7 +25,7 @@ inline double NetPredictorAverage(const double* begin, const double* end)
 RMVPEF0Extractor::RMVPEF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0) :
 	BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
 {
-	
+
 }
 
 DragonianLibSTL::Vector<float> RMVPEF0Extractor::ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength)
@@ -42,7 +43,7 @@ DragonianLibSTL::Vector<float> RMVPEF0Extractor::ExtractF0(const DragonianLibSTL
 	for (size_t i = 0; i < f0_size; ++i)
 	{
 		const auto index = size_t(round(idx));
-		if(index + half_window_len > pcm_idx_size)
+		if (index + half_window_len > pcm_idx_size)
 			break;
 		if (half_window_len == 0)
 			pcm[i] = (float)PCMData[index];
@@ -57,7 +58,7 @@ DragonianLibSTL::Vector<float> RMVPEF0Extractor::ExtractF0(const DragonianLibSTL
 	Tensors.emplace_back(Ort::Value::CreateTensor(*RmvPEEnv->GetMemoryInfo(), pcm.Data(), pcm.Size(), pcm_shape, 2));
 	Tensors.emplace_back(Ort::Value::CreateTensor(*RmvPEEnv->GetMemoryInfo(), threshold, 1, one_shape, 1));
 
-	const auto out = RmvPEModel->Run(Ort::RunOptions{ nullptr },
+	auto out = RmvPEModel->Run(Ort::RunOptions{ nullptr },
 		InputNames.Data(),
 		Tensors.data(),
 		Tensors.size(),
@@ -65,11 +66,13 @@ DragonianLibSTL::Vector<float> RMVPEF0Extractor::ExtractF0(const DragonianLibSTL
 		OutputNames.Size());
 
 	const auto osize = out[0].GetTensorTypeAndShapeInfo().GetElementCount();
-	const auto of0 = out[0].GetTensorData<float>();
-	
-    DragonianLibSTL::Vector<float> OutPut(TargetLength);
-    DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
-    return OutPut;
+	const auto of0 = out[0].GetTensorMutableData<float>();
+
+	for (size_t i = 0; i < osize; ++i) if (of0[i] < 0.001f) of0[i] = NAN;
+	DragonianLibSTL::Vector<float> OutPut(TargetLength);
+	DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
+	for (auto& f0 : OutPut) if (isnan(f0)) f0 = 0.f;
+	return OutPut;
 }
 
 MELPEF0Extractor::MELPEF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0) :
@@ -105,7 +108,7 @@ DragonianLibSTL::Vector<float> MELPEF0Extractor::ExtractF0(const DragonianLibSTL
 	const int64_t pcm_shape[] = { 1, (int64_t)pcm.Size() };
 	Tensors.emplace_back(Ort::Value::CreateTensor(*MelPEEnv->GetMemoryInfo(), pcm.Data(), pcm.Size(), pcm_shape, 2));
 
-	const auto out = MelPEModel->Run(Ort::RunOptions{ nullptr },
+	auto out = MelPEModel->Run(Ort::RunOptions{ nullptr },
 		InputNames.Data(),
 		Tensors.data(),
 		Tensors.size(),
@@ -113,35 +116,37 @@ DragonianLibSTL::Vector<float> MELPEF0Extractor::ExtractF0(const DragonianLibSTL
 		OutputNames.Size());
 
 	const auto osize = out[0].GetTensorTypeAndShapeInfo().GetElementCount();
-	const auto of0 = out[0].GetTensorData<float>();
+	const auto of0 = out[0].GetTensorMutableData<float>();
 
-    DragonianLibSTL::Vector<float> OutPut(TargetLength);
-    DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
-    return OutPut;
+	for (size_t i = 0; i < osize; ++i) if (of0[i] < 0.001f) of0[i] = NAN;
+	DragonianLibSTL::Vector<float> OutPut(TargetLength);
+	DragonianLibSTL::Resample(of0, osize, OutPut.Data(), OutPut.Size());
+	for (auto& f0 : OutPut) if (isnan(f0)) f0 = 0.f;
+	return OutPut;
 }
 
-void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env)
+void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env)
 {
-    MelPEEnv = _Env;
-    MelPEModel = RefOrtCachedModel(UTF8ToWideString(FCPEModelPath), *MelPEEnv);
+	MelPEEnv = Env;
+	MelPEModel = RefOrtCachedModel(UTF8ToWideString(FCPEModelPath), *MelPEEnv);
 }
 
-void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& _Env)
+void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env)
 {
-    RmvPEEnv = _Env;
-    RmvPEModel = RefOrtCachedModel(UTF8ToWideString(RMVPEModelPath), *RmvPEEnv);
+	RmvPEEnv = Env;
+	RmvPEModel = RefOrtCachedModel(UTF8ToWideString(RMVPEModelPath), *RmvPEEnv);
 }
 
 void UnloadFCPEModel()
 {
-    MelPEModel.reset();
-    MelPEEnv.reset();
+	MelPEModel.reset();
+	MelPEEnv.reset();
 }
 
 void UnloadRMVPEModel()
 {
-    RmvPEModel.reset();
-    RmvPEEnv.reset();
+	RmvPEModel.reset();
+	RmvPEEnv.reset();
 }
 
 DragonianLibF0ExtractorEnd

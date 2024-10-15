@@ -1,9 +1,18 @@
-#include "../../../header/InferTools/TensorExtractor/BaseTensorExtractor.hpp"
+﻿#include "../../../header/InferTools/TensorExtractor/BaseTensorExtractor.hpp"
 #include "Base.h"
 
 LibSvcHeader
 
-LibSvcTensorExtractor::LibSvcTensorExtractor(uint64_t _srcsr, uint64_t _sr, uint64_t _hop, bool _smix, bool _volume, uint64_t _hidden_size, uint64_t _nspeaker, const Others& _other)
+LibSvcTensorExtractor::LibSvcTensorExtractor(
+	uint64_t _srcsr,
+	uint64_t _sr,
+	uint64_t _hop,
+	bool _smix,
+	bool _volume,
+	uint64_t _hidden_size,
+	uint64_t _nspeaker,
+	const Others& _other
+)
 {
 	//_SrcSamplingRate = _srcsr;
 	_SamplingRate = _sr;
@@ -31,7 +40,11 @@ LibSvcTensorExtractor::Inputs LibSvcTensorExtractor::Extract(
 	DragonianLibNotImplementedError;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk) const
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetCurrectSpkMixData(
+	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+	size_t dst_len,
+	int64_t curspk
+) const
 {
 	DragonianLibSTL::Vector<float> mixData;
 	mixData.Reserve(_NSpeaker * dst_len);
@@ -67,7 +80,11 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetCurrectSpkMixData(const
 	return mixData;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetSpkMixData(
+	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+	size_t dst_len,
+	size_t spk_count
+)
 {
 	DragonianLibSTL::Vector<float> mixData;
 	mixData.Reserve(spk_count * dst_len);
@@ -103,7 +120,9 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetSpkMixData(const Dragon
 	return mixData;
 }
 
-DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetNSFF0(const DragonianLibSTL::Vector<float>& F0) const
+DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetNSFF0(
+	const DragonianLibSTL::Vector<float>& F0
+) const
 {
 	const auto f0Len = F0.Size();
 	DragonianLibSTL::Vector<int64_t> NSFF0(f0Len);
@@ -121,7 +140,9 @@ DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetNSFF0(const Dragonian
 	return NSFF0;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0(
+	const DragonianLibSTL::Vector<float>& F0
+)
 {
 	const auto specLen = F0.Size();
 	DragonianLibSTL::Vector<float> Of0(specLen, 0.0);
@@ -171,7 +192,10 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0(const Dragon
 	return Of0;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const DragonianLibSTL::Vector<float>& F0, size_t PaddedIndex)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(
+	const DragonianLibSTL::Vector<float>& F0,
+	size_t PaddedIndex
+)
 {
 	if (PaddedIndex == size_t(-1))
 		PaddedIndex = F0.Size();
@@ -209,7 +233,9 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(const Dragonian
 	return Of0;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetUV(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetUV(
+	const DragonianLibSTL::Vector<float>& F0
+)
 {
 	const auto specLen = F0.Size();
 	DragonianLibSTL::Vector<float> ruv(specLen, 1.0);
@@ -221,7 +247,10 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetUV(const DragonianLibST
 	return ruv;
 }
 
-DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetAligments(size_t specLen, size_t hubertLen)
+DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetAligments(
+	size_t specLen,
+	size_t hubertLen
+)
 {
 	DragonianLibSTL::Vector mel2ph(specLen + 1, 0ll);
 
@@ -237,7 +266,10 @@ DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetAligments(size_t spec
 	return mel2ph;
 }
 
-DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0log(const DragonianLibSTL::Vector<float>& rF0, bool enable_log)
+DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0log(
+	const DragonianLibSTL::Vector<float>& rF0,
+	bool enable_log
+)
 {
 	const auto specLen = rF0.Size();
 	DragonianLibSTL::Vector<float> F0(specLen);

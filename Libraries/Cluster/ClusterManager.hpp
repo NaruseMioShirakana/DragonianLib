@@ -1,6 +1,6 @@
 ﻿/**
  * FileName: ClusterManager.hpp
- * Note: DragonianLib 聚类管理
+ * Note: DragonianLib ClusterManager Header File
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
  *
@@ -26,20 +26,27 @@
 #include <string>
 
 namespace DragonianLib {
+	
 	using ClusterWrp = std::shared_ptr<BaseCluster>;
 
+	//Cluster Constructor Function
 	using GetClusterFn = std::function<ClusterWrp(const std::wstring&, size_t, size_t)>;
 
-	void RegisterCluster(const std::wstring& _name, const GetClusterFn& _constructor_fn);
+	/**
+	 * @brief Register a constructor function for a cluster
+	 * @param ClusterName Name of the cluster
+	 * @param Constructor Constructor function
+	 */
+	void RegisterCluster(const std::wstring& ClusterName, const GetClusterFn& Constructor);
 
 	/**
-	 * \brief 获取聚类
-	 * \param _name 类名
-	 * \param _path 聚类数据路径
-	 * \param hidden_size hubert维数
-	 * \param KmeansLen 聚类的长度
-	 * \return 聚类
+	 * @brief Get a cluster by name
+	 * @param ClusterName Name of the cluster
+	 * @param ClusterFile File path of the cluster
+	 * @param ClusterDimension Dimension of the cluster
+	 * @param ClusterSize Size of the cluster
+	 * @return A shared pointer to the cluster
 	 */
-	ClusterWrp GetCluster(const std::wstring& _name, const std::wstring& _path, size_t hidden_size, size_t KmeansLen);
+	ClusterWrp GetCluster(const std::wstring& ClusterName, const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize);
 
 }
