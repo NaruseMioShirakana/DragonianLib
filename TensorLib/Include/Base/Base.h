@@ -24,7 +24,7 @@
 
 // Define UNUSED macro for unused variables
 #ifndef UNUSED
-#define UNUSED(x) (void)(x)
+#define UNUSED(...) (void)(__VA_ARGS__)
 #endif
 
 // Define namespace macros
@@ -33,39 +33,26 @@
 #define DragonianLibNDIS [[nodiscard]]
 
 // Define exception throwing macro
-#define DragonianLibThrowImpl(message, exception_type) do {\
-	const std::string __DragonianLib__Message__ = message;\
-	const std::string __DragonianLib__Message__Prefix__ =\
-	std::string("[In File: \"") + std::filesystem::path(__FILE__).filename().string() + "\", " +\
-	"Function: \"" + __FUNCSIG__ + "\", " +\
-	"Line: " + std::to_string(__LINE__) + " ]; \n";\
-	if (__DragonianLib__Message__.substr(0, __DragonianLib__Message__Prefix__.length()) != __DragonianLib__Message__Prefix__)\
-		throw exception_type((__DragonianLib__Message__Prefix__ + __DragonianLib__Message__).c_str());\
-	throw exception_type(__DragonianLib__Message__.c_str());\
-} while(0)
+#define DragonianLibThrowImpl(message, exception_type) throw exception_type(::DragonianLib::DragonianLibThrowFunctionImpl(message, __FILE__, __FUNCTION__, __LINE__).c_str())
 
 // Define general exception throwing macro
 #define DragonianLibThrow(message) DragonianLibThrowImpl(message, std::exception)
 
 // Define not implemented error macro
-#define DragonianLibNotImplementedError DragonianLibThrow("NotImplementedError!")
+#define DragonianLibNotImplementedError DragonianLibThrow("Not Implemented Error!")
 
 // Define fatal error macro
-#define DragonianLibFatalError DragonianLibThrow("FatalError!")
+#define DragonianLibFatalError DragonianLibThrow("Fatal Error!")
 
 // Define registration layer macro
 #define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
-
-// Define log message macro
-#define DragonianLibLogMessage(message) DragonianLib::GetLogger().log(message)
-
-// Define error message macro
-#define DragonianLibErrorMessage(message) DragonianLib::GetLogger().error(message)
 
 // Define macro to get unused memory size
 #define GetGGMLUnusedMemorySize(ctx) (ggml_get_mem_size(ctx) - ggml_used_mem(ctx)) 
 
 DragonianLibSpaceBegin
+
+std::string DragonianLibThrowFunctionImpl(const std::string& Message, const char* Path, const char* Function, int Line);
 
 // Define float16_t struct
 struct float16_t {

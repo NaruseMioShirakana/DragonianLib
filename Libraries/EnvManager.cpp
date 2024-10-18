@@ -1,4 +1,4 @@
-#ifdef DRAGONIANLIB_ONNXRT_LIB
+﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
 #include "EnvManager.hpp"
 #include <providers/dml/dml_provider_factory.h>
 #include <thread>
@@ -14,22 +14,19 @@ namespace DragonianLib {
 	void DragonianLibOrtLoggingFn(void* param, OrtLoggingLevel severity, const char* category, const char* logid, const char* code_location,
 		const char* message)
 	{
-		std::string ort_message = "[";
-		ort_message += category;
-		ort_message += "; In ";
+		std::string ort_message = severity == ORT_LOGGING_LEVEL_ERROR ? "[Error" : severity == ORT_LOGGING_LEVEL_WARNING ? "[Warning" : severity == ORT_LOGGING_LEVEL_INFO ? "[Info" : severity == ORT_LOGGING_LEVEL_VERBOSE ? "[Verbose" : severity == ORT_LOGGING_LEVEL_FATAL ? "[Fatal" : "[Unknown";
+		ort_message += "; @OnnxRuntime::";
 		ort_message += code_location;
-		ort_message += "; By";
-		ort_message += logger_id;
-		ort_message += "] ";
+		ort_message += "]: ";
 		ort_message += message;
-		GetLogger().log(ort_message.c_str());
+		LogMessage(UTF8ToWideString(ort_message));
 	}
 
 	void DragonianLibOrtEnv::Destory()
 	{
 		const bool log = GlobalOrtSessionOptions;
 		if (log)
-			GetLogger().log(L"[Info] Removing Env & Release Memory");
+			LogInfo(L"Removing Env & Release Memory");
 		delete GlobalOrtSessionOptions;
 		delete GlobalOrtEnv;
 		delete GlobalOrtMemoryInfo;
@@ -42,7 +39,7 @@ namespace DragonianLib {
 		cuda_option_v2 = nullptr;
 
 		if (log)
-			GetLogger().log(L"[Info] Env Was Destroyed!");
+			LogInfo(L"Env Was Destroyed!");
 	}
 
 	void DragonianLibOrtEnv::Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
@@ -63,7 +60,6 @@ namespace DragonianLib {
 			CurThreadCount = unsigned(-1);
 			CurDeviceID = unsigned(-1);
 			CurProvider = unsigned(-1);
-			GetLogger().log(UTF8ToWideString(e.what()));
 			throw std::exception(e.what());
 		}
 	}
@@ -71,8 +67,8 @@ namespace DragonianLib {
 	void DragonianLibOrtEnv::Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_)
 	{
 		Destory();
-		GetLogger().log(
-			L"[Info] Creating Env With Provider:[" +
+		LogInfo(
+			L"Creating Env With Provider:[" +
 			std::to_wstring(ExecutionProvider_) +
 			L"] DeviceID:[" +
 			std::to_wstring(DeviceID_)
@@ -174,7 +170,7 @@ namespace DragonianLib {
 			break;
 		}
 		}
-		GetLogger().log(L"[Info] Env Created");
+		LogInfo(L"Env Created");
 	}
 
     std::shared_ptr<Ort::Session>& DragonianLibOrtEnv::RefOrtCachedModel(

@@ -1,85 +1,113 @@
 ﻿#include "Util/Logger.h"
-#include "Util/StringPreprocess.h"
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#error
-#endif
 
 namespace DragonianLib
 {
 	Logger GlobalLogger;
 
-	Logger::~Logger()
+	Logger::~Logger() = default;
+
+	Logger::Logger() = default;
+
+	Logger::Logger(LoggerFunction Function)
 	{
+		LoggerFn_ = Function;
 	}
 
-	Logger::Logger()
+	void Logger::Log(LogLevel Level, const wchar_t* Message, const wchar_t* Id)
 	{
-	}
-
-	Logger::Logger(logger_fn error_fn, logger_fn log_fn)
-	{
-		custom_logger_fn = true;
-		cerror_fn = error_fn;
-		cloggerfn = log_fn;
-	}
-
-	void Logger::log(const std::wstring& format)
-	{
-		std::lock_guard mtx(mx);
-		if (custom_logger_fn)
-		{
-			cloggerfn(format.c_str(), nullptr);
+		if (Level < Level_)
 			return;
-		}
-		fprintf_s(stdout, "%s\n", WideStringToUTF8(format).c_str());
-	}
-
-	void Logger::log(const char* format)
-	{
-		std::lock_guard mtx(mx);
-		if (custom_logger_fn)
+		std::lock_guard Lock(Mutex_);
+		if (LoggerFn_)
+			LoggerFn_(static_cast<unsigned>(Level), Message, Id);
+		else
 		{
-			cloggerfn(nullptr, format);
-			return;
+			std::wstring Prefix = Level == LogLevel::Info ? L"[Info; @" : Level == LogLevel::Warn ? L"[Warn; @" : L"[Error; @";
+			Prefix += Id;
+			Prefix += L"]: ";
+			Prefix += Message;
+			printf("%ls\n", Prefix.c_str());
 		}
-		fprintf_s(stdout, "%s\n", format);
 	}
 
-	void Logger::error(const std::wstring& format)
+	void Logger::Message(const wchar_t* Message)
 	{
-		std::lock_guard mtx(mx);
-		if (custom_logger_fn)
-		{
-			cloggerfn(format.c_str(), nullptr);
-			cerror_fn(format.c_str(), nullptr);
-			return;
-		}
-		fprintf_s(stdout, "[ERROR]%s\n", WideStringToUTF8(format).c_str());
+		std::lock_guard Lock(Mutex_);
+		if (LoggerFn_)
+			LoggerFn_(static_cast<unsigned>(LogLevel::None), Message, L"");
+		else
+			printf("%ls\n", Message);
 	}
 
-	void Logger::error(const char* format)
+	Logger& Logger::operator<<(const wchar_t* Message)
 	{
-		std::lock_guard mtx(mx);
-		if (custom_logger_fn)
-		{
-			cloggerfn(nullptr, format);
-			cerror_fn(nullptr, format);
-			return;
-		}
-		fprintf_s(stdout, "[ERROR]%s\n", format);
+		Log(LogLevel::Info, Message, Id_.c_str());
+		return *this;
 	}
 
-	void Logger::set_custom_logger(logger_fn error, logger_fn log)
+	Logger& Logger::operator<<(const std::wstring& Message)
 	{
-		custom_logger_fn = true;
-		cerror_fn = error;
-		cloggerfn = log;
+		Log(LogLevel::Info, Message.c_str(), Id_.c_str());
+		return *this;
 	}
 
 	Logger& GetLogger()
 	{
 		return GlobalLogger;
+	}
+
+	void SetLoggerId(const wchar_t* Id)
+	{
+		GlobalLogger.SetLoggerId(Id);
+	}
+
+	void SetLoggerLevel(LogLevel Level)
+	{
+		GlobalLogger.SetLoggerLevel(Level);
+	}
+
+	void SetLoggerFunction(Logger::LoggerFunction Function)
+	{
+		GlobalLogger.SetLoggerFunction(Function);
+	}
+
+	void LogInfo(const wchar_t* Message)
+	{
+		GlobalLogger.Log(LogLevel::Info, Message, GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogWarn(const wchar_t* Message)
+	{
+		GlobalLogger.Log(LogLevel::Warn, Message, GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogError(const wchar_t* Message)
+	{
+		GlobalLogger.Log(LogLevel::Error, Message, GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogMessage(const wchar_t* Message)
+	{
+		GlobalLogger.Message(Message);
+	}
+
+	void LogInfo(const std::wstring& Message)
+	{
+		GlobalLogger.Log(LogLevel::Info, Message.c_str(), GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogWarn(const std::wstring& Message)
+	{
+		GlobalLogger.Log(LogLevel::Warn, Message.c_str(), GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogError(const std::wstring& Message)
+	{
+		GlobalLogger.Log(LogLevel::Error, Message.c_str(), GlobalLogger.GetLoggerId().c_str());
+	}
+
+	void LogMessage(const std::wstring& Message)
+	{
+		GlobalLogger.Message(Message.c_str());
 	}
 }

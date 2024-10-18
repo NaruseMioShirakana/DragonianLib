@@ -39,6 +39,7 @@ public:
 
 	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
+	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<float>& PCMData, size_t TargetLength) override;
 private:
 	DragonianLibSTL::Vector<const char*> InputNames = { "waveform", "threshold" };
 	DragonianLibSTL::Vector<const char*> OutputNames = { "f0", "uv" };
@@ -57,6 +58,7 @@ public:
 
 	//void InterPf0(size_t TargetLength);
 	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
+	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<float>& PCMData, size_t TargetLength) override;
 private:
 	DragonianLibSTL::Vector<const char*> InputNames = { "waveform" };
 	DragonianLibSTL::Vector<const char*> OutputNames = { "f0" };
@@ -68,14 +70,14 @@ private:
  * @param FCPEModelPath Path to FCPE Model
  * @param Env Environment of ONNX Runtime
  */
-void LoadFCPEModel(const char* FCPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env);
+void LoadFCPEModel(const wchar_t* FCPEModelPath, const DragonianLibOrtEnv& Env);
 
 /**
  * @brief Load RMVPE Model
  * @param RMVPEModelPath Path to RMVPE Model
  * @param Env Environment of ONNX Runtime
  */
-void LoadRMVPEModel(const char* RMVPEModelPath, const std::shared_ptr<DragonianLibOrtEnv>& Env);
+void LoadRMVPEModel(const wchar_t* RMVPEModelPath, const DragonianLibOrtEnv& Env);
 
 /**
  * @brief Unload FCPE Model

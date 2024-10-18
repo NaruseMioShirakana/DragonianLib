@@ -6,11 +6,12 @@
 #include <random>
 #include <regex>
 
-LibSvcHeader
+#include "Util/StringPreprocess.h"
 
-VitsSvc::~VitsSvc()
+LibSvcHeader
+	VitsSvc::~VitsSvc()
 {
-	DragonianLibLogMessage(L"[Info] Unloading VitsSvc Models");
+	LogInfo(L"Unloading VitsSvc Models");
 }
 
 VitsSvc::VitsSvc(
@@ -43,16 +44,16 @@ VitsSvc::VitsSvc(
 		}
 		catch (std::exception& e)
 		{
-			DragonianLibErrorMessage(e.what());
+			LogWarn(UTF8ToWideString(e.what()));
 			EnableCluster = false;
 		}
 	}
 
 	try
 	{
-		DragonianLibLogMessage(L"[Info] loading VitsSvcModel Models");
+		LogInfo(L"[Info] loading VitsSvcModel Models");
 		VitsSvcModel = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.VitsSvc.VitsSvc.c_str(), *SessionOptions);
-		DragonianLibLogMessage(L"[Info] VitsSvcModel Models loaded");
+		LogInfo(L"[Info] VitsSvcModel Models loaded");
 	}
 	catch (Ort::Exception& _exception)
 	{

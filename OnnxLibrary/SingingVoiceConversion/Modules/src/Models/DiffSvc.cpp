@@ -5,12 +5,12 @@
 #include "F0Extractor/F0ExtractorManager.hpp"
 #include "../../header/InferTools/Sampler/SamplerManager.hpp"
 #include "Util/Logger.h"
+#include "Util/StringPreprocess.h"
 
 LibSvcHeader
-
-DiffusionSvc::~DiffusionSvc()
+	DiffusionSvc::~DiffusionSvc()
 {
-	DragonianLibLogMessage(L"[Info] Unloading DiffSvc Models");
+	LogInfo(L"Unloading DiffSvc Models");
 }
 
 DiffusionSvc::DiffusionSvc(
@@ -47,7 +47,7 @@ DiffusionSvc::DiffusionSvc(
 		}
 		catch (std::exception& e)
 		{
-			DragonianLibErrorMessage(e.what());
+			LogWarn(UTF8ToWideString(e.what()));
 			EnableCluster = false;
 		}
 	}
@@ -55,7 +55,7 @@ DiffusionSvc::DiffusionSvc(
 	//LoadModels
 	try
 	{
-		DragonianLibLogMessage(L"[Info] loading DiffSvc Models");
+		LogInfo(L"Loading DiffusionSvc Models");
 		if (!_Hps.DiffusionSvc.Encoder.empty())
 		{
 			PreEncoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Encoder.c_str(), *SessionOptions);
@@ -71,7 +71,7 @@ DiffusionSvc::DiffusionSvc(
 		if (!_Hps.DiffusionSvc.Naive.empty())
 			NaiveModel = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.DiffusionSvc.Naive.c_str(), *SessionOptions);
 
-		DragonianLibLogMessage(L"[Info] DiffSvc Models loaded");
+		LogInfo(L"DiffusionSvc Models loaded");
 	}
 	catch (Ort::Exception& _exception)
 	{

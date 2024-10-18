@@ -9,7 +9,7 @@ add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 option(DRAGONIANLIB_DML                     "dml backend"         OFF)
 option(DRAGONIANLIB_CUDA                    "cuda backend"        OFF)
 option(DRAGONIANLIB_ROCM                    "rocm backend"        OFF)
-option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   OFF)
+option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   ON)
 option(DRAGONIANLIB_ONNXRUNTIME             "build ort libs"      ON)
 option(DRAGONIANLIB_TENSORRT                "build trt libs"      OFF)
 option(DRAGONIANLIB_STATIC_FFMPEG           "use static ffmpeg"   ON)
@@ -260,12 +260,10 @@ file(GLOB_RECURSE DRAGONIANLIB_LIBRARIES_SRC
 
 #Source code
 if(DRAGONIANLIB_SHARED_LIBS)
-	add_library(${DRAGONIANLIB_LIB} SHARED ${DRAGONIANLIB_LIBRARIES_SRC})
 	add_definitions(-DDRAGONIANLIB_EXPORT)
 	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-else()
-	add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 endif()
+add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 
 #Link Libraries
 if(DEFINED FFMPEG_LIBRARIES)

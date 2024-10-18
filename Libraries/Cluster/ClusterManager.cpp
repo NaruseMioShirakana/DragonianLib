@@ -20,7 +20,7 @@ namespace DragonianLib {
 	{
 		if (RegisteredCluster.contains(ClusterName))
 		{
-			DragonianLibLogMessage(L"[Warn] ClusterNameConflict");
+			LogWarn(L"Name Of Cluster Already Registered");
 			return;
 		}
 		RegisteredCluster[ClusterName] = Constructor;

@@ -12,6 +12,7 @@
 #include "AvCodec/AvCodec.h"
 #include "Base.h"
 #include "../../Modules/header/Modules.hpp"
+#include "F0Extractor/NetF0Predictors.hpp"
 #include "Util/Logger.h"
 #include "Util/StringPreprocess.h"
 
@@ -420,7 +421,7 @@ size_t LibSvcGetSliceCount(
 
 void RaiseError(const std::wstring& _Msg)
 {
-	DragonianLibLogMessage(_Msg.c_str());
+	DragonianLib::LogError(_Msg.c_str());
 }
 
 void LibSvcSetGlobalEnvDir(
@@ -428,6 +429,27 @@ void LibSvcSetGlobalEnvDir(
 )
 {
 	DragonianLib::SetGlobalEnvDir(_Dir);
+}
+
+void LibSvcSetLoggerId(
+	LPCWSTR _Id
+)
+{
+	DragonianLib::SetLoggerId(_Id);
+}
+
+void LibSvcSetLoggerLevel(
+	INT32 _Level
+)
+{
+	SetLoggerLevel(static_cast<DragonianLib::LogLevel>(_Level));
+}
+
+void LibSvcSetLoggerFunction(
+	LibSvcLoggerFunction _Logger
+)
+{
+	DragonianLib::SetLoggerFunction(_Logger);
 }
 
 void LibSvcInit()
@@ -464,7 +486,7 @@ void LibSvcDestoryEnv(
 	delete (DragonianLib::DragonianLibOrtEnv*)Env;
 }
 
-INT32 LibSvcSliceAudioI64(
+INT32 LibSvcSliceAudioI16(
 	LibSvcCInt16Vector _Audio,
 	const LibSvcSlicerSettings* _Setting,
 	LibSvcUInt64Vector _Output
@@ -554,7 +576,7 @@ INT32 LibSvcSliceAudio(
 	return 0;
 }
 
-INT32 LibSvcPreprocessI64(
+INT32 LibSvcPreprocessI16(
 	LibSvcCInt16Vector _Audio,
 	LibSvcCUInt64Vector _SlicePos,
 	INT32 _SamplingRate,
@@ -671,7 +693,7 @@ INT32 LibSvcPreprocess(
 	return 0;
 }
 
-INT32 LibSvcStftI64(
+INT32 LibSvcStftI16(
 	LibSvcCInt16Vector _Audio,
 	INT32 _SamplingRate,
 	INT32 _Hopsize,
@@ -831,7 +853,11 @@ INT32 LibSvcInferSlice(
 		*OrtModelType(_InferParams->VocoderModel),
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate
+		_InferParams->VocoderSamplingRate,
+		{},
+		{},
+		{},
+		{}
 	};
 
 	try
@@ -911,7 +937,11 @@ INT32 LibSvcInferAudio(
 		*OrtModelType(_InferParams->VocoderModel),
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate
+		_InferParams->VocoderSamplingRate,
+		{},
+		{},
+		{},
+		{}
 	};
 
 	auto __Slices = *(const Slices*)(_Audio);
@@ -988,7 +1018,11 @@ INT32 LibSvcInferPCMData(
 		*OrtModelType(_InferParams->VocoderModel),
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate
+		_InferParams->VocoderSamplingRate,
+		{},
+		{},
+		{},
+		{}
 	};
 
 	auto& InputData = *(const DFloat32Vector*)(_PCMData);
@@ -1012,7 +1046,7 @@ INT32 LibSvcInferPCMData(
 
 INT32 LibSvcShallowDiffusionInference(
 	LibSvcModel _Model,
-	LibSvcCFloatVector _16KAudioHubert,
+	LibSvcFloatVector _16KAudioHubert,
 	LibSvcMelType _Mel,
 	LibSvcCFloatVector _SrcF0,
 	LibSvcCFloatVector _SrcVolume,
@@ -1098,7 +1132,11 @@ INT32 LibSvcShallowDiffusionInference(
 		*OrtModelType(_InferParams->VocoderModel),
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate
+		_InferParams->VocoderSamplingRate,
+		{},
+		{},
+		{},
+		{}
 	};
 
 	try
@@ -1107,9 +1145,9 @@ INT32 LibSvcShallowDiffusionInference(
 			*(DFloat32Vector*)_16KAudioHubert,
 			Param,
 			*(MelContainer*)(_Mel),
-			*(DFloat32Vector*)(_SrcF0),
-			*(DFloat32Vector*)(_SrcVolume),
-			*(DDFloat32Vector*)(_SrcSpeakerMap),
+			*(const DFloat32Vector*)(_SrcF0),
+			*(const DFloat32Vector*)(_SrcVolume),
+			*(const DDFloat32Vector*)(_SrcSpeakerMap),
 			*_Process,
 			_SrcSize
 		);
@@ -1162,7 +1200,7 @@ INT32 LibSvcVocoderEnhance(
 		return 1;
 	}
 
-	auto Rf0 = *(DFloat32Vector*)(_F0);
+	auto Rf0 = *(const DFloat32Vector*)(_F0);
 	auto& MelTemp = *(MelContainer*)(_Mel);
 	if (Rf0.Size() != (size_t)MelTemp.second)
 		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
@@ -1308,6 +1346,74 @@ LibSvcVocoderModel LibSvcLoadVocoder(
 		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
 		return nullptr;
 	}
+}
+
+INT32 LibSvcLoadRmvPE(
+	LPCWSTR Path,
+	LibSvcEnv _Env
+)
+{
+	if (!Path)
+	{
+		RaiseError(L"Path Could Not Be Null");
+		return 1;
+	}
+
+	if (!_Env)
+	{
+		RaiseError(L"_Env Could Not Be Null");
+		return 1;
+	}
+
+	try
+	{
+		LoadRMVPEModel(Path, *(DragonianLib::DragonianLibOrtEnv*)_Env);
+		return 0;
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+}
+
+void LibSvcUnloadRMVPE()
+{
+	DragonianLib::UnloadRMVPEModel();
+}
+
+INT32 LibSvcLoadFCPE(
+	LPCWSTR Path,
+	LibSvcEnv _Env
+)
+{
+	if (!Path)
+	{
+		RaiseError(L"Path Could Not Be Null");
+		return 1;
+	}
+
+	if (!_Env)
+	{
+		RaiseError(L"_Env Could Not Be Null");
+		return 1;
+	}
+
+	try
+	{
+		LoadFCPEModel(Path, *(DragonianLib::DragonianLibOrtEnv*)_Env);
+		return 0;
+	}
+	catch (std::exception& e)
+	{
+		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+}
+
+void LibSvcUnloadFCPE()
+{
+	DragonianLib::UnloadFCPEModel();
 }
 
 INT32 LibSvcUnloadVocoder(

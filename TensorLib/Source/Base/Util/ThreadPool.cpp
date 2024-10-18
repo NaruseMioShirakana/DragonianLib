@@ -62,7 +62,7 @@ void ThreadPool::Run() {
         if (LogTime_)
         {
             QueryPerformanceCounter(&Time2);
-            DragonianLibLogMessage(("[Thread] Task Cost Time:" + std::to_string(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + "ms").c_str());
+            LogInfo(L"Task Cost Time:" + std::to_wstring(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + L"ms");
         }
 #endif
         --TaskProcessing_;
@@ -79,7 +79,7 @@ void ThreadPool::Join()
     JoinCondition_.acquire();
     Joinable = false;
     if (LogTime_)
-        DragonianLibLogMessage("[Thread] All Task Finished!");
+        LogInfo(L"All Task Finished!");
 }
 
 DragonianLibSpaceEnd

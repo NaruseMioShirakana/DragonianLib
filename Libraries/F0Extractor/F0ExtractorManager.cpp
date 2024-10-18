@@ -27,7 +27,7 @@ void RegisterF0Extractor(const std::wstring& Name, const GetF0ExtractorFn& Const
 {
     if (RegisteredF0Extractors.contains(Name))
     {
-        DragonianLibLogMessage(L"[Warn] F0ExtractorNameConflict");
+		LogWarn(L"Name Of F0Extractor Already Registered");
         return;
     }
     RegisteredF0Extractors[Name] = ConstructorFn;

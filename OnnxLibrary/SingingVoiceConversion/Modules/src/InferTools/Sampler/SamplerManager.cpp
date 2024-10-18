@@ -27,7 +27,7 @@ void RegisterSampler(const std::wstring& _name, const GetSamplerFn& _constructor
 {
 	if (RegisteredSamplers.contains(_name))
 	{
-		DragonianLibLogMessage(L"[Warn] SamplerNameConflict");
+		LogWarn(L"Name Of Sampler Already Exists");
 		return;
 	}
 	RegisteredSamplers[_name] = _constructor_fn;
@@ -60,7 +60,7 @@ void RegisterReflowSampler(const std::wstring& _name, const GetReflowSamplerFn& 
 {
 	if (RegisteredReflowSamplers.contains(_name))
 	{
-		DragonianLibLogMessage(L"[Warn] SamplerNameConflict");
+		LogWarn(L"Name Of Sampler Already Exists");
 		return;
 	}
 	RegisteredReflowSamplers[_name] = _constructor_fn;

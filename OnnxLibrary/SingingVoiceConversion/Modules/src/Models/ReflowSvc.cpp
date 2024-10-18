@@ -5,12 +5,12 @@
 #include "F0Extractor/F0ExtractorManager.hpp"
 #include "../../header/InferTools/Sampler/SamplerManager.hpp"
 #include "Util/Logger.h"
+#include "Util/StringPreprocess.h"
 
 LibSvcHeader
-
-ReflowSvc::~ReflowSvc()
+	ReflowSvc::~ReflowSvc()
 {
-	DragonianLibLogMessage(L"[Info] Unloading ReflowSvc Models");
+	LogInfo(L"Unloading ReflowSvc Models");
 }
 
 ReflowSvc::ReflowSvc(
@@ -49,7 +49,7 @@ ReflowSvc::ReflowSvc(
 		}
 		catch (std::exception& e)
 		{
-			DragonianLibErrorMessage(e.what());
+			LogWarn(UTF8ToWideString(e.what()));
 			EnableCluster = false;
 		}
 	}
@@ -57,13 +57,13 @@ ReflowSvc::ReflowSvc(
 	//LoadModels
 	try
 	{
-		DragonianLibLogMessage(L"[Info] loading ReflowSvc Models");
+		LogInfo(L"Loading ReflowSvc Models");
 
 		PreEncoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.Encoder.c_str(), *SessionOptions);
 		VelocityFunction = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.VelocityFn.c_str(), *SessionOptions);
 		PostDecoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.After.c_str(), *SessionOptions);
 
-		DragonianLibLogMessage(L"[Info] ReflowSvc Models loaded");
+		LogInfo(L"ReflowSvc Models loaded");
 	}
 	catch (Ort::Exception& _exception)
 	{

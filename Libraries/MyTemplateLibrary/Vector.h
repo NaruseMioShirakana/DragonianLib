@@ -425,7 +425,7 @@ public:
         auto _Size = std::min(_NewCapacity, Size());
 
         if constexpr (!std::is_arithmetic_v<ValueType>)
-            for (IndexType i = 0; i < _Size; ++i)
+            for (SizeType i = 0; i < _Size; ++i)
                 new (_Data + i) ValueType(std::move(_MyFirst[i]));
         else
             memcpy(_Data, _MyFirst, sizeof(ValueType) * _Size);

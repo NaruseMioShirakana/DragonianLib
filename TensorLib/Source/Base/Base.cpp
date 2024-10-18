@@ -1,9 +1,25 @@
 ﻿#include "Base.h"
+#include "Util/StringPreprocess.h"
 #ifdef _WIN32
 #include "Windows.h"
 #endif
 
 DragonianLibSpaceBegin
+
+std::string DragonianLibThrowFunctionImpl(const std::string& Message, const char* Path, const char* Function, int Line)
+{
+	const std::string Prefix =
+		std::string("[@file: \"") + std::filesystem::path(Path).filename().string() + "\"; " +
+		"function: \"" + Function + "\"; " +
+		"line: " + std::to_string(Line) + "]:";
+	if (Message.substr(0, 2) == "[@")
+	{
+		if (Message.substr(0, Prefix.length()) == Prefix)
+			return Message;
+		return Prefix.substr(0, Prefix.length() - 2) + "\n " + Message.substr(1);
+	}
+	return Prefix + ' ' + Message;
+}
 
 std::wstring GlobalEnvDir;
 

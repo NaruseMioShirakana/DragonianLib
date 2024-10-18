@@ -18,33 +18,55 @@
 */
 
 #pragma once
-#include <filesystem>
 #include <mutex>
 
 namespace DragonianLib {
 
+	enum class LogLevel
+	{
+		Info,
+		Warn,
+		Error,
+		None
+	};
+
 	class Logger
 	{
 	public:
-		using logger_fn = void(*)(const wchar_t*, const char*);
+		using LoggerFunction = void(*)(unsigned Level, const wchar_t* Message, const wchar_t* Id);
 		Logger();
 		~Logger();
-		Logger(logger_fn error_fn, logger_fn log_fn);
+		Logger(LoggerFunction Function);
 		Logger(const Logger&) = delete;
 		Logger(Logger&&) = delete;
 		Logger& operator=(const Logger&) = delete;
 		Logger& operator=(Logger&&) = delete;
-		void log(const std::wstring&);
-		void log(const char*);
-		void error(const std::wstring&);
-		void error(const char*);
-		void set_custom_logger(logger_fn error, logger_fn log);
+		void Log(LogLevel Level, const wchar_t* Message, const wchar_t* Id);
+		void Message(const wchar_t* Message);
+		Logger& operator<<(const wchar_t* Message);
+		Logger& operator<<(const std::wstring& Message);
+		void SetLoggerId(const wchar_t* Id) { Id_ = Id; }
+		void SetLoggerLevel(LogLevel Level) { Level_ = Level; }
+		void SetLoggerFunction(LoggerFunction Function) { LoggerFn_ = Function; }
+		std::wstring& GetLoggerId() { return Id_; }
 	private:
-		bool custom_logger_fn = false;
-		logger_fn cerror_fn = nullptr, cloggerfn = nullptr;
-		std::mutex mx;
+		LoggerFunction LoggerFn_;
+		std::mutex Mutex_;
+		std::wstring Id_ = L"DragonianLib";
+		LogLevel Level_ = LogLevel::Info;
 	};
 
 	Logger& GetLogger();
+	void SetLoggerId(const wchar_t* Id);
+	void SetLoggerLevel(LogLevel Level);
+	void SetLoggerFunction(Logger::LoggerFunction Function);
+	void LogInfo(const wchar_t* Message);
+	void LogWarn(const wchar_t* Message);
+	void LogError(const wchar_t* Message);
+	void LogMessage(const wchar_t* Message);
+	void LogInfo(const std::wstring& Message);
+	void LogWarn(const std::wstring& Message);
+	void LogError(const std::wstring& Message);
+	void LogMessage(const std::wstring& Message);
 }
 

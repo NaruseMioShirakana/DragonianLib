@@ -137,6 +137,10 @@ static INLINE void DragonianLibMemSet(void* const __restrict _Dst, const void* c
 	if (256 % _AlignSize != 0)
 		return;
 	unsigned char* _Src_Base = (unsigned char*)ALIGN_ALLOC(256, 32);
+
+	if (!_Src_Base)
+		throw std::bad_alloc();
+
 	unsigned char* __restrict _Src_Ptr = _Src_Base;
 	const unsigned char* const _Src_Ptr_End = _Src_Base + 256;
 	while (_Src_Ptr != _Src_Ptr_End)

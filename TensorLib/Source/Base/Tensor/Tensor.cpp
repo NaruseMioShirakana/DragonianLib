@@ -43,7 +43,7 @@ SizeType VectorMul(const ShapeType& _Input)
 SizeType VectorMul(const SliceOptions& _Input)
 {
 	SizeType All = 1;
-	for (const auto i : _Input)
+	for (const auto& i : _Input)
 		All *= (i.End - i.Begin);
 	return All;
 }
@@ -485,7 +485,7 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 	if (&_Right == this)
 		return *this;
 	if (_Right.ViewParent_ && _Right.ViewParent_ == this)
-		DragonianLibThrow("Assign To Parent Is Not Allowed!");
+		return *this;
 	std::lock_guard LockRel(_Right.RelMx_);
 	Free();
 	DType_ = _Right.DType_;
@@ -513,7 +513,7 @@ Tensor& Tensor::operator=(Tensor&& _Right) noexcept
 	else
 	{
 		ViewParent_ = _Right.ViewParent_;
-		if (!ViewParent_->HasChild(this))
+		if (ViewParent_ && !ViewParent_->HasChild(this))
 		{
 			std::lock_guard Lock(ViewParent_->ViewMx_);
 			ViewParent_->ViewChild_.emplace_back(this);

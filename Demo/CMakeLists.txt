@@ -1,11 +1,10 @@
 ﻿include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-option(DRAGONIANLIBORTDEMO	"" OFF)
-
 set(DRAGONIANLIBDEMOEXE DragonianLibDemo)
 add_compile_options(/ZI)
 
 if(DRAGONIANLIB_SHARED_LIBS)
+	message("Build Shared Lib Demo")
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 

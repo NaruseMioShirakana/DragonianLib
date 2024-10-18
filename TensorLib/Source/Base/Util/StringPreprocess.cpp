@@ -2,8 +2,6 @@
 #include <regex>
 #ifdef _WIN32
 #include <Windows.h>
-#else
-#error
 #endif
 namespace DragonianLib
 {
@@ -27,7 +25,8 @@ namespace DragonianLib
 		);
 		return ByteString.data();
 #else
-		//TODO
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		return converter.to_bytes(input);
 #endif
 	}
 
@@ -47,7 +46,8 @@ namespace DragonianLib
 		);
 		return ByteString.data();
 #else
-		//TODO
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		return converter.to_bytes(input);
 #endif
 	}
 
@@ -65,7 +65,8 @@ namespace DragonianLib
 		);
 		return WideString.data();
 #else
-		//TODO
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		return converter.from_bytes(input);
 #endif
 	}
 

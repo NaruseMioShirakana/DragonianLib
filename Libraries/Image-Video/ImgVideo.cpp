@@ -12,11 +12,15 @@
 #include <comdef.h>
 #include <gdiplus.h>
 #pragma comment(lib, "Msimg32.lib")
-#pragma comment(lib, "gdiplus.lib")  
+#pragma comment(lib, "gdiplus.lib")
+#else
+#error GDIPLUS is not supported on this platform.
 #endif
 #include <stdexcept>
 
 IMAGEVIDEOCLASSHEADER
+
+#ifdef _WIN32
 
 void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
@@ -44,7 +48,6 @@ void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	free(pImageCodecInfo);
 }
 
-//quality - 压缩质量 (0-100), 100 表示最高质量
 bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT quality = 100)
 {
 	CLSID pngClsid;
@@ -489,85 +492,6 @@ Image::Image(unsigned char* input, int src_width, int src_height, int width, int
 	delete canvas;
 }
 
-void Image::Transpose(size_t scale)
-{
-	auto Src = std::move(data.rgb);
-	constexpr size_t C = 3;
-	const size_t W = width_ * scale;
-	const size_t H = height_ * scale;
-	const size_t WH = W * H;
-	//const size_t HC = H * C;
-	//const size_t WC = W * C;
-	const auto WHC = C * W * H;
-	const auto N = Src.Size() / WHC;
-	data.rgb = { Src.Size(), Src.GetAllocator() };
-	if (T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
-	{
-		for (size_t i = 0; i < N; ++i)
-		{
-			float* __restrict SrcData = Src.Data() + i * WHC;
-			float* __restrict DstData = data.rgb.Data() + i * WHC;
-			for (size_t j = 0; j < WH; ++j)
-				for (size_t k = 0; k < C; ++k)
-					DstData[j * C + k] = SrcData[k * WH + j];
-		}
-		T_ = false;
-	}
-	else	// [N W H C] -> [N C W H]    [i j k n] -> [i n j k]
-	{		// [N WH C ] -> [N C WH ]    [ i j k ] -> [ i k j ]
-		for (size_t i = 0; i < N; ++i)
-		{
-			float* __restrict SrcData = Src.Data() + i * WHC;
-			float* __restrict DstData = data.rgb.Data() + i * WHC;
-			for (size_t j = 0; j < WH; ++j)
-				for (size_t k = 0; k < C; ++k)
-					DstData[k * WH + j] = SrcData[j * C + k];
-		}
-		T_ = true;
-	}
-}
-
-void Image::TransposeBGR(size_t scale)
-{
-	auto Src = std::move(data.rgb);
-	constexpr size_t C = 3;
-	const size_t W = width_ * scale;
-	const size_t H = height_ * scale;
-	const size_t WH = W * H;
-	const size_t HC = H * C;
-	//const size_t WC = W * C;
-	const auto WHC = C * W * H;
-	const auto N = Src.Size() / WHC;
-	data.rgb = { Src.Size(), Src.GetAllocator() };
-	if (T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
-	{
-		for (size_t i = 0; i < N; ++i)
-		{
-			float* __restrict SrcData = Src.Data() + i * WHC;
-			float* __restrict DstData = data.rgb.Data() + i * WHC;
-			for (size_t n = 0; n < C; ++n)
-				for (size_t j = 0; j < W; ++j)
-					for (size_t k = 0; k < H; ++k)
-						DstData[j * HC + k * C + (2 - n)] = SrcData[n * WH + j * H + k];
-		}
-		T_ = false;
-	}
-	else	// [N W H C] -> [N C W H]    [i j k n] -> [i n j k]
-	{
-		for (size_t i = 0; i < N; ++i)
-		{
-			float* __restrict SrcData = Src.Data() + i * WHC;
-			float* __restrict DstData = data.rgb.Data() + i * WHC;
-			for (size_t j = 0; j < W; ++j)
-				for (size_t k = 0; k < H; ++k)
-					for (size_t n = 0; n < C; ++n)
-						DstData[n * WH + j * H + k] = SrcData[j * HC + k * C + (2 - n)];
-		}
-		T_ = true;
-	}
-}
-
-// 使用压缩比较高的格式从_RGB和_Alpha保存图像
 bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 {
 	//缩放切片
@@ -684,22 +608,108 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 	return ret;
 }
 
+#else
+#error GDIPLUS is not supported on this platform.
+#endif
+
+void Image::Transpose(size_t scale)
+{
+	auto Src = std::move(data.rgb);
+	constexpr size_t C = 3;
+	const size_t W = width_ * scale;
+	const size_t H = height_ * scale;
+	const size_t WH = W * H;
+	//const size_t HC = H * C;
+	//const size_t WC = W * C;
+	const auto WHC = C * W * H;
+	const auto N = Src.Size() / WHC;
+	data.rgb = { Src.Size(), Src.GetAllocator() };
+	if (T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
+	{
+		for (size_t i = 0; i < N; ++i)
+		{
+			float* __restrict SrcData = Src.Data() + i * WHC;
+			float* __restrict DstData = data.rgb.Data() + i * WHC;
+			for (size_t j = 0; j < WH; ++j)
+				for (size_t k = 0; k < C; ++k)
+					DstData[j * C + k] = SrcData[k * WH + j];
+		}
+		T_ = false;
+	}
+	else	// [N W H C] -> [N C W H]    [i j k n] -> [i n j k]
+	{		// [N WH C ] -> [N C WH ]    [ i j k ] -> [ i k j ]
+		for (size_t i = 0; i < N; ++i)
+		{
+			float* __restrict SrcData = Src.Data() + i * WHC;
+			float* __restrict DstData = data.rgb.Data() + i * WHC;
+			for (size_t j = 0; j < WH; ++j)
+				for (size_t k = 0; k < C; ++k)
+					DstData[k * WH + j] = SrcData[j * C + k];
+		}
+		T_ = true;
+	}
+}
+
+void Image::TransposeBGR(size_t scale)
+{
+	auto Src = std::move(data.rgb);
+	constexpr size_t C = 3;
+	const size_t W = width_ * scale;
+	const size_t H = height_ * scale;
+	const size_t WH = W * H;
+	const size_t HC = H * C;
+	//const size_t WC = W * C;
+	const auto WHC = C * W * H;
+	const auto N = Src.Size() / WHC;
+	data.rgb = { Src.Size(), Src.GetAllocator() };
+	if (T_)	// [N W H C] <- [N C W H]    [i j k n] <- [i n j k]
+	{
+		for (size_t i = 0; i < N; ++i)
+		{
+			float* __restrict SrcData = Src.Data() + i * WHC;
+			float* __restrict DstData = data.rgb.Data() + i * WHC;
+			for (size_t n = 0; n < C; ++n)
+				for (size_t j = 0; j < W; ++j)
+					for (size_t k = 0; k < H; ++k)
+						DstData[j * HC + k * C + (2 - n)] = SrcData[n * WH + j * H + k];
+		}
+		T_ = false;
+	}
+	else	// [N W H C] -> [N C W H]    [i j k n] -> [i n j k]
+	{
+		for (size_t i = 0; i < N; ++i)
+		{
+			float* __restrict SrcData = Src.Data() + i * WHC;
+			float* __restrict DstData = data.rgb.Data() + i * WHC;
+			for (size_t j = 0; j < W; ++j)
+				for (size_t k = 0; k < H; ++k)
+					for (size_t n = 0; n < C; ++n)
+						DstData[n * WH + j * H + k] = SrcData[j * HC + k * C + (2 - n)];
+		}
+		T_ = true;
+	}
+}
+
 ULONG_PTR Token = 0;
 
 void GdiInit()
 {
+#ifdef _WIN32
 	if (Token)
 		return;
 	Gdiplus::GdiplusStartupInput In;
 	Gdiplus::GdiplusStartupOutput Out;
 	GdiplusStartup(&Token, &In, &Out);
+#endif
 }
 
 void GdiClose()
 {
+#ifdef _WIN32
 	if (!Token)
 		return;
 	Gdiplus::GdiplusShutdown(Token);
+#endif
 }
 
 IMAGEVIDEOCLASSEND

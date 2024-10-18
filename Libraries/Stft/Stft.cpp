@@ -113,7 +113,7 @@ namespace DlCodecStft
     {
         auto BgnTime = clock();
         const auto Spec = stft(audioData);  //[frame, nfft] * [nfft, mel_bins]  |  [mel_bins, nfft] * [nfft, frame]
-        DragonianLibLogMessage(("[Stft] Slice Stft Use Time " + std::to_string(clock() - BgnTime) + "ms").c_str());
+        DragonianLib::LogInfo(L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms");
         const auto NFrames = Spec.second;
         DragonianLibSTL::Vector Mel(MEL_SIZE * NFrames, 0.f);
         BgnTime = clock();
@@ -135,7 +135,7 @@ namespace DlCodecStft
         );
         for (auto& it : Mel)
             it = log(std::max(1e-5f, it));
-        DragonianLibLogMessage(("[Mel] Slice Mel Use Time " + std::to_string(clock() - BgnTime) + "ms").c_str());
+        DragonianLib::LogInfo(L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms");
         return { std::move(Mel), (int64_t)NFrames };
     }
 
@@ -250,7 +250,5 @@ namespace DlCodecStft
     {
         DragonianLibNotImplementedError;
     }
-
-
 
 }

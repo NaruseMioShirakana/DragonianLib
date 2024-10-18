@@ -11,7 +11,7 @@ void RegisterTensorExtractor(const std::wstring& _name, const GetTensorExtractor
 {
 	if (RegisteredTensorExtractors.contains(_name))
 	{
-		DragonianLibLogMessage(L"[Warn] TensorExtractorNameConflict");
+		LogWarn(L"Name Of Tensor Extractor Already Exists");
 		return;
 	}
 	RegisteredTensorExtractors[_name] = _constructor_fn;
@@ -22,7 +22,7 @@ TensorExtractor GetTensorExtractor(const std::wstring& _name, uint64_t _srcsr, u
 	const auto f_TensorExtractor = RegisteredTensorExtractors.find(_name);
 	if (f_TensorExtractor != RegisteredTensorExtractors.end())
 		return f_TensorExtractor->second(_srcsr, _sr, _hop, _smix, _volume, _hidden_size, _nspeaker, _other);
-	throw std::runtime_error("Unable To Find An Available TensorExtractor");
+	throw std::runtime_error("Unable To Find An Available Tensor Extractor");
 }
 
 LibSvcEnd

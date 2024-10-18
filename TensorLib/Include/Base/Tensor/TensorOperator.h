@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: TensorOperator.h
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -1329,6 +1329,6 @@ void NearestInterpolate2D(
 	}
 }
 
-void PtrOperatorMono();
+void PtrOperatorMono() = delete;
 
 DragonianLibSpaceEnd

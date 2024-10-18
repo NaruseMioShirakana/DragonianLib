@@ -32,15 +32,31 @@ public:
 	}
 };
 
+void ShowProgressBar(size_t progress, size_t total) {
+	int barWidth = 70;
+	float progressRatio = static_cast<float>(progress) / float(total);
+	int pos = static_cast<int>(float(barWidth) * progressRatio);
+
+	std::cout << "\r";
+	std::cout.flush();
+	std::cout << "[";
+	for (int i = 0; i < barWidth; ++i) {
+		if (i < pos) std::cout << "=";
+		else if (i == pos) std::cout << ">";
+		else std::cout << " ";
+	}
+	std::cout << "] " << int(progressRatio * 100.0) << " %";
+}
+
 size_t TotalStep = 0;
 void ProgressCb(size_t a, size_t)
 {
-	printf("%lf%c\n", double(a) / double(TotalStep) * 100., '%');
+	ShowProgressBar(a, TotalStep);
 }
 
 void ProgressCbS(size_t a, size_t b)
 {
-	printf("%lf%c\n", double(a) / double(b) * 100., '%');
+	ShowProgressBar(a, b);
 }
 
 std::string WideStringToUTF8(const std::wstring& input)
@@ -64,6 +80,10 @@ std::string WideStringToUTF8(const std::wstring& input)
 }
 
 #ifndef DRAGONIANLIB_IMPORT
+[[noreturn]] void exceptionfn1() { DragonianLibFatalError; }
+[[noreturn]] void exceptionfn2() { try { exceptionfn1(); } catch (std::exception& e) { DragonianLibThrow(e.what()); } }
+[[noreturn]] void exceptionfn3() { try { exceptionfn2(); } catch (std::exception& e) { DragonianLibThrow(e.what()); } }
+
 template<typename _T = float>
 void PrintTensor(DragonianLib::Tensor& _Tensor)
 {
@@ -120,8 +140,16 @@ void LibSvcTest()
 	LibSvcInit();
 #else
 	LibSvcSpace SetupKernel();
+	try 
+	{
+		exceptionfn3();
+	}
+	catch (std::exception& e)
+	{
+		std::cout << e.what() << '\n';
+	}
 #endif
-	constexpr auto EProvider = 1;
+	constexpr auto EProvider = 2;
 	constexpr auto NumThread = 16;
 	constexpr auto DeviceId = 0;
 
@@ -327,6 +355,7 @@ void LibSvcTest()
 	auto __BeginTime = clock();
 	LibSvcInferAudio(Model, Slices, &DynParams, LibSvcGetFloatVectorSize(Audio) * 2, &Proc, TestAudio);
 	LibSvcReleaseFloatVector(TestAudio);
+	Proc = 0;
 	auto __InferenceTime = double(clock() - __BeginTime) / 1000.;
 	std::cout << "RTF: " << __InferenceTime / ((double)LibSvcGetFloatVectorSize(Audio) / (double)SrcSr) << '\n';
 #endif

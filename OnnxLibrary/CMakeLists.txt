@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+﻿cmake_minimum_required (VERSION 3.13)
 
 set(DRAGONIANLIB_ORT_LIB ${DRAGONIANLIB_LIB}OrtLib)
 
@@ -27,6 +27,11 @@ target_include_directories(
 	${DRAGONIANLIB_TENSORLIB_BASE_INCLUDE_DIRS}
 	${DRAGONIANLIB_BASE_INCLUDE_DIRS}
 	${ONNXRUNTIME_INCLUDE_DIRS}
+)
+
+target_link_libraries(
+	${DRAGONIANLIB_ORT_LIB} PRIVATE
+	${DRAGONIANLIB_LIB}
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
