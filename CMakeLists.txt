@@ -1,5 +1,10 @@
 ﻿cmake_minimum_required (VERSION 3.13)
 
+#Version
+set(DRAGONIANLIB_VERSION_MAJOR 1)
+set(DRAGONIANLIB_VERSION_MINOR 0)
+set(DRAGONIANLIB_VERSION_PATCH 1)
+
 #Global Visual Studio Macros
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
@@ -51,11 +56,6 @@ endif ()
 if (DRAGONIANLIB_DML)
 	add_definitions(-DDRAGONIANLIB_ENABLEDML)
 endif ()
-
-#Version
-set(DRAGONIANLIB_VERSION_MAJOR 1)
-set(DRAGONIANLIB_VERSION_MINOR 0)
-set(DRAGONIANLIB_VERSION_PATCH 0)
 
 #Project
 project (

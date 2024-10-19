@@ -45,7 +45,7 @@ void ShowProgressBar(size_t progress, size_t total) {
 		else if (i == pos) std::cout << ">";
 		else std::cout << " ";
 	}
-	std::cout << "] " << int(progressRatio * 100.0) << " %";
+	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
 }
 
 size_t TotalStep = 0;
