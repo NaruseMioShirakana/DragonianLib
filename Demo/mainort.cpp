@@ -21,7 +21,8 @@
 class WithTimer
 {
 public:
-	WithTimer(const std::function<void()>& _Fn)
+	template<typename Callable>
+	WithTimer(const Callable& _Fn)
 	{
 		LARGE_INTEGER Time1, Time2, Freq;
 		QueryPerformanceFrequency(&Freq);
@@ -85,26 +86,26 @@ std::string WideStringToUTF8(const std::wstring& input)
 [[noreturn]] void exceptionfn3() { try { exceptionfn2(); } catch (std::exception& e) { DragonianLibThrow(e.what()); } }
 
 template<typename _T = float>
-void PrintTensor(DragonianLib::Tensor& _Tensor)
+void PrintTensor(DragonianLib::Tensor<_T>& _Tensor)
 {
 	for (DragonianLib::SizeType i = 0; i < _Tensor.Size(0); ++i)
 	{
 		std::cout << '[';
 		for (DragonianLib::SizeType j = 0; j < _Tensor.Size(1); ++j)
-			std::cout << _Tensor.Item<_T>({ i,j }) << ", ";
+			std::cout << _Tensor.Item({ i,j }) << ", ";
 		std::cout << "],\n";
 	}
 	std::cout << "\n";
 }
 
 template<>
-void PrintTensor<bool>(DragonianLib::Tensor& _Tensor)
+void PrintTensor<bool>(DragonianLib::Tensor<bool>& _Tensor)
 {
 	for (DragonianLib::SizeType i = 0; i < _Tensor.Size(0); ++i)
 	{
 		std::cout << '[';
 		for (DragonianLib::SizeType j = 0; j < _Tensor.Size(1); ++j)
-			std::cout << ((_Tensor.Item<bool>({ i,j })) ? "true " : "false") << ", ";
+			std::cout << ((_Tensor.Item({ i,j })) ? "true " : "false") << ", ";
 		std::cout << "]\n";
 	}
 	std::cout << "\n";
@@ -128,8 +129,8 @@ int main()
 #endif
 	//LibMtsTest();
 	//LibSrTest();
-	LibSvcTest();
-	//OperatorTest();
+	//LibSvcTest();
+	OperatorTest();
 	system("pause");
 	return 0;
 }
@@ -439,8 +440,19 @@ void LibSvcTest()
 void OperatorTest()
 {
 	using namespace DragonianLib;
-	Tensor Test{ {114,514,1919}, TensorType::Float32, Device::CPU };
-	std::cout << Test.Item<float>();
+	std::vector<float> _Dest(1145140 * 8ll);
+	int aaaa = 20;
+	static std::mt19937_64 RandomEngine(std::random_device{}());
+	std::normal_distribution<float> Distribution;
+	while (aaaa--)
+	{
+		WithTimer(
+			[&]()
+			{
+				auto TensorA = Tensor<>::Ones({ 11451400 * 8ll });
+			}
+		);
+	}
 	/*tlibsvc::VitsSvcConfig Config{
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\SoVits4\SoVits4_SoVits.onnx)",
 		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
@@ -495,7 +507,7 @@ void OperatorTest()
 
 void TensorLibDemo()
 {
-	DragonianLib::Tensor aaaaaaaaaaaaa{ {114,514,810}, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU };
+	/*DragonianLib::Tensor aaaaaaaaaaaaa{ {114,514,810}, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU };
 	aaaaaaaaaaaaa.Assign(1.f);
 	aaaaaaaaaaaaa.Permute({ 2,0,1 }).Assign(1.f);
 
@@ -573,13 +585,13 @@ void TensorLibDemo()
 		//Embedding.Assign(Embedding);
 		//Ten114514.Permute({ 3,1,2,0 }).Clone();
 		//DragonianLib::Tensor::Pad(Ten114514, {DragonianLib::None,19 },DragonianLib::PaddingType::Zero, DragonianLib::TensorType::Float32,nullptr, &Thp);
-		/*DragonianLib::Tensor::Pad(
+		DragonianLib::Tensor::Pad(
 			Ten1919810,
 			{DragonianLib::None,1 },
 			DragonianLib::PaddingType::Replicate,
 			DragonianLib::TensorType::Float32,
 			nullptr, &Thp
-		);*/
+		);
 		//auto a = DragonianLib::Tensor::Diff(Ten1919810, 1, &Thp);
 		//DragonianLib::Tensor::Stack({Ten1919810.Squeeze()}, 0, &Thp);
 		//auto a = Ten1919810.Permute({ 0,2,1 });
@@ -642,7 +654,7 @@ void TensorLibDemo()
 	std::cout << '\n';
 	Tennnnn.Invoke(1, PrintTensor);
 	std::cout << '\n';
-	Tennnnn.Clone().Invoke(1, PrintTensor);
+	Tennnnn.Clone().Invoke(1, PrintTensor);*/
 }
 
 void LibSrTest()

@@ -21,7 +21,7 @@
 #include <initializer_list>
 #include <algorithm>
 
-#define DRAGONIANLIBCONSTEXPR inline
+#define DRAGONIANLIBCONSTEXPR __forceinline
 #define DragonianLibStlThrow(message) ThrowException(message, __FILE__, __FUNCSIG__, __LINE__)
 
 DRAGONIANLIBSTLBEGIN
@@ -205,42 +205,32 @@ protected:
     bool _MyOwner = true;
 
 public:
-    DRAGONIANLIBCONSTEXPR Iterator Begin()
+    DRAGONIANLIBCONSTEXPR decltype(auto) Begin() const
     {
         return _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR Iterator End()
+    DRAGONIANLIBCONSTEXPR decltype(auto) End() const
     {
         return _MyLast;
     }
 
-    DRAGONIANLIBCONSTEXPR ConstIterator Begin() const
+    DRAGONIANLIBCONSTEXPR decltype(auto) ReversedBegin() const
+    {
+        return _MyLast - 1;
+    }
+
+    DRAGONIANLIBCONSTEXPR decltype(auto) ReversedEnd() const
+    {
+        return _MyFirst - 1;
+    }
+
+    DRAGONIANLIBCONSTEXPR decltype(auto) begin() const
     {
         return _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR ConstIterator End() const
-    {
-        return _MyLast;
-    }
-
-    DRAGONIANLIBCONSTEXPR Iterator begin()
-    {
-        return _MyFirst;
-    }
-
-    DRAGONIANLIBCONSTEXPR Iterator end()
-    {
-        return _MyLast;
-    }
-
-    DRAGONIANLIBCONSTEXPR ConstIterator begin() const
-    {
-        return _MyFirst;
-    }
-
-    DRAGONIANLIBCONSTEXPR ConstIterator end() const
+    DRAGONIANLIBCONSTEXPR decltype(auto) end() const
     {
         return _MyLast;
     }
@@ -579,6 +569,20 @@ public:
         else
             for (SizeType i = 0; i < _Count; ++i)
                 *(_MyFirst + Idx + i) = *(_First++);
+    }
+
+    DRAGONIANLIBCONSTEXPR ValueType Erase(ConstIterator _Where)
+    {
+#ifdef DRAGONIANLIB_DEBUG
+		if (_Where >= _MyLast || _Where < _MyFirst)
+			DragonianLibStlThrow("Out Of Range!");
+#endif
+		auto Idx = _Where - _MyFirst;
+		ValueType _Value = std::move(*_Where);
+		for (auto i = Idx + 1; i < Size(); ++i)
+			*(_MyFirst + i - 1) = std::move(*(_MyFirst + i));
+		--_MyLast;
+		return _Value;
     }
 
     DRAGONIANLIBCONSTEXPR void Clear()

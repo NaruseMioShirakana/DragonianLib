@@ -16,6 +16,8 @@ else()
 	add_executable(${DRAGONIANLIBDEMOEXE} "main.cpp")
 endif()
 
+message(${DRAGONIANLIB_LIBRARIES})
+
 target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_LIBRARIES})
 target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_INCLUDE_DIRS}) 
 

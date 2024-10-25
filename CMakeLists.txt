@@ -14,7 +14,7 @@ add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 option(DRAGONIANLIB_DML                     "dml backend"         OFF)
 option(DRAGONIANLIB_CUDA                    "cuda backend"        OFF)
 option(DRAGONIANLIB_ROCM                    "rocm backend"        OFF)
-option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   ON)
+option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   OFF)
 option(DRAGONIANLIB_ONNXRUNTIME             "build ort libs"      ON)
 option(DRAGONIANLIB_TENSORRT                "build trt libs"      OFF)
 option(DRAGONIANLIB_STATIC_FFMPEG           "use static ffmpeg"   ON)
@@ -229,13 +229,13 @@ set(LIBRARY_OUTPUT_PATH             ${PROJECT_SOURCE_DIR}/OutPuts/${DRAGONIANLIB
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	message("Build Release")
-	add_compile_options(/GS- /arch:AVX2 /O2 /Ot)
+	add_compile_options(/GS- /arch:AVX2 /O2 /Ot /experimental:module /openmp:experimental)
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-	add_compile_options(/Zi /Gy /arch:AVX2 /O2 /Ot)
+	add_compile_options(/Zi /Gy /arch:AVX2 /O2 /Ot /experimental:module /openmp:experimental)
 else()
 	message("Build Debug")
 	add_definitions(-DDRAGONIANLIB_DEBUG)
-	add_compile_options(/Zi /Gy)
+	add_compile_options(/Zi /Gy /experimental:module /openmp:experimental)
 endif()
 
 if(MSVC)
@@ -255,6 +255,7 @@ file(GLOB_RECURSE DRAGONIANLIB_LIBRARIES_SRC
 	${PROJECT_SOURCE_DIR}/TensorLib/*.h
 	${PROJECT_SOURCE_DIR}/TensorLib/*.cpp
 	${PROJECT_SOURCE_DIR}/TensorLib/*.c
+	${PROJECT_SOURCE_DIR}/TensorLib/*.ixx
 	#${PROJECT_SOURCE_DIR}/Libraries/*.asm
 )
 
@@ -357,10 +358,8 @@ else()
 	)
 endif()
 
-set(DRAGONIANLIB_LIBRARIES
-	${DRAGONIANLIB_LIB}
-	${DRAGONIANLIB_ORT_LIB}
-	${DRAGONIANLIB_TRT_LIB})
+set(DRAGONIANLIB_LIBRARIES)
+list(APPEND DRAGONIANLIB_LIBRARIES ${DRAGONIANLIB_LIB} ${DRAGONIANLIB_ORT_LIB} ${DRAGONIANLIB_TRT_LIB})
 
 set(DRAGONIANLIB_INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/Libraries

@@ -39,10 +39,6 @@ namespace DragonianLib
 		CUDA,
 		HIP,
 		DIRECTX,
-		CPUMP,
-		CUDAMP,
-		HIPMP,
-		DIRECTXMP
 	};
 
 	class MemoryProvider
@@ -55,8 +51,6 @@ namespace DragonianLib
 		MemoryProvider& operator=(const MemoryProvider&) = delete;
 		MemoryProvider& operator=(MemoryProvider&&) = delete;
 
-	protected:
-		Allocator _Provider[8];
 	private:
 		MemoryProvider();
 	};
@@ -75,16 +69,15 @@ class BaseAllocator
 public:
 	friend class MemoryProvider;
 	virtual ~BaseAllocator() {}
+	BaseAllocator(const BaseAllocator&) = default;
+	BaseAllocator(BaseAllocator&&) = default;
+	BaseAllocator& operator=(const BaseAllocator&) = default;
+	BaseAllocator& operator=(BaseAllocator&&) = default;
 	virtual unsigned char* Allocate(size_t _Size);
 	virtual void Free(void* _Block);
-
 	Device GetDevice() const;
 protected:
 	BaseAllocator(Device _Type) : Type_(_Type) {}
-	BaseAllocator(const BaseAllocator&) = delete;
-	BaseAllocator(BaseAllocator&&) = delete;
-	BaseAllocator& operator=(const BaseAllocator&) = delete;
-	BaseAllocator& operator=(BaseAllocator&&) = delete;
 	Device Type_;
 };
 
@@ -93,14 +86,14 @@ class CPUAllocator : public BaseAllocator
 public:
 	friend class MemoryProvider;
 	~CPUAllocator() override {}
+	CPUAllocator(const CPUAllocator&) = default;
+	CPUAllocator(CPUAllocator&&) = default;
+	CPUAllocator& operator=(const CPUAllocator&) = default;
+	CPUAllocator& operator=(CPUAllocator&&) = default;
 	unsigned char* Allocate(size_t _Size) override;
 	void Free(void* _Block) override;
 protected:
 	CPUAllocator() : BaseAllocator(Device::CPU) {}
-	CPUAllocator(const CPUAllocator&) = delete;
-	CPUAllocator(CPUAllocator&&) = delete;
-	CPUAllocator& operator=(const CPUAllocator&) = delete;
-	CPUAllocator& operator=(CPUAllocator&&) = delete;
 };
 
 DRAGONIANLIBSTLEND

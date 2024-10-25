@@ -18,17 +18,17 @@
 */
 
 #pragma once
+
 #include <deque>
 #include <ranges>
-#include "Tensor/TensorBase.h"
+#include <mdspan>
+#include "Operators.h"
 #include "Util/ThreadPool.h"
-#include "Tensor/Macro.h"
-#include "MyTemplateLibrary/Vector.h"
 
 DragonianLibSpaceBegin
 
-using ShapeType = Vector<SizeType>; ///< Alias for vector of size types
-using ShapeIterator = ShapeType::iterator; ///< Alias for iterator of shape type
+using Dimensions = Vector<SizeType>; ///< Alias for vector of size types
+using ShapeIterator = Dimensions::Iterator; ///< Alias for iterator of shape type
 static inline double DoubleZero = 0.; ///< Static inline double zero
 
 /**
@@ -131,7 +131,6 @@ enum class InterpolateType
 {
 	Nearest1D, ///< Nearest neighbor interpolation for 1D
 	Nearest2D, ///< Nearest neighbor interpolation for 2D
-	Nearest2P, ///< Nearest neighbor interpolation for 2P
 	Linear, ///< Linear interpolation
 	Bilinear, ///< Bilinear interpolation
 	Bicubic, ///< Bicubic interpolation
@@ -146,7 +145,7 @@ using SliceOptions = Vector<Range>; ///< Alias for vector of ranges
  * @param _Input The input shape vector.
  * @return The product of the elements.
  */
-SizeType VectorMul(const ShapeType& _Input);
+SizeType VectorMul(const Dimensions& _Input);
 
 /**
  * @brief Multiply elements of a slice options vector.
@@ -160,7 +159,7 @@ SizeType VectorMul(const SliceOptions& _Input);
  * @param _Input The input slice options vector.
  * @return The begining indices as a shape type.
  */
-ShapeType GetBeginIndices(const SliceOptions& _Input);
+Dimensions GetBeginIndices(const SliceOptions& _Input);
 
 /**
  * @brief Check if all ranges in the vector are none.
@@ -170,1706 +169,1254 @@ ShapeType GetBeginIndices(const SliceOptions& _Input);
 bool RangeIsAllNone(const Vector<Range>& _Input);
 
 /**
- * @class Tensor
- * @brief Class representing a tensor.
+ * @brief Set the random seed.
+ * @param _Seed The seed value.
  */
-class Tensor : public TensorBase
+void SetRandomSeed(SizeType _Seed);
+
+/**
+ * @class Tensor
+ * @brief Tensor with a specified value type and device.
+ * @tparam _TensorType The value type of the tensor.
+ * @tparam _MyDevice The device of the tensor.
+ */
+template<typename _TensorType = float32, Device _MyDevice = Device::CPU>
+class Tensor : public Value
 {
 public:
-	using InvokeFnType = void(*)(Tensor&); ///< Alias for invoke function type
-
-	Tensor() = delete; ///< Deleted default constructor
-	~Tensor() override; ///< Destructor
-	Tensor(const Tensor& _Left); ///< Copy constructor
-	Tensor(Tensor&& _Right) noexcept; ///< Move constructor
-
-	/**
-	 * @brief Constructor for a tensor with a data type and device.
-	 * @param _DType The data type of the tensor.
-	 * @param _Device The device of the tensor.
-	 */
-	Tensor(TensorType _DType, Device _Device) :TensorBase(_DType), Device_(GetMemoryProvider(_Device)) {}
-
-	/**
-	 * @brief Constructor for a tensor with a shape, data type, and device (same as torch.empty()).
-	 * @param _Shape The shape of the tensor.
-	 * @param _DType The data type of the tensor.
-	 * @param _Device The device of the tensor.
-	 */
-	Tensor(const ShapeType& _Shape, TensorType _DType, Device _Device);
-
-	/**
-	 * @brief Create a tensor from a vector of float32 values.
-	 *
-	 * @param _Array The input vector of float32 values.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor FloatTensor(const Vector<float32>& _Array, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor from a vector of int64 values.
-	 *
-	 * @param _Array The input vector of int64 values.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor LongTensor(const Vector<int64>& _Array, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with ones.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Type The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Ones(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with zeros.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Type The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Zeros(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with a constant value.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Val The constant value.
-	 * @param _Type The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor ConstantOf(const ShapeType& _Shape, double _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with a constant value.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Val The constant value.
-	 * @param _Type The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor ConstantOf(const ShapeType& _Shape, int64 _Val, TensorType _Type = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with random values.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Type The type of the tensor.
-	 * @param _Seed The seed for the random number generator.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Rand(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor and fill it with random values.
-	 *
-	 * @param _Shape The shape of the tensor.
-	 * @param _Type The type of the tensor.
-	 * @param _Seed The seed for the random number generator.
-	 * @param _Mean The mean of the random values.
-	 * @param _Sigma The standard deviation of the random values.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Randn(const ShapeType& _Shape, TensorType _Type = TensorType::Float32, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with ones.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with ones.
-	 */
-	static Tensor OnesLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with zeros.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with zeros.
-	 */
-	static Tensor ZerosLike(const Tensor& _Shape, ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with a constant value.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _Val The constant value to fill the new tensor with.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with the constant value.
-	 */
-	static Tensor ConstantLike(const Tensor& _Shape, double _Val, ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with a constant value.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _Val The constant value to fill the new tensor with.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with the constant value.
-	 */
-	static Tensor ConstantLike(const Tensor& _Shape, int64 _Val, ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with random values.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _Seed The seed for the random number generator.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with random values.
-	 */
-	static Tensor RandLike(const Tensor& _Shape, int64_t _Seed = 1919810, ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Creates a tensor with the same shape as the given tensor, filled with random values.
-	 *
-	 * @param _Shape The tensor whose shape will be used to create the new tensor.
-	 * @param _Seed The seed for the random number generator.
-	 * @param _Mean The mean of the random values.
-	 * @param _Sigma The standard deviation of the random values.
-	 * @param _ThreadPool Optional thread pool for parallel operations.
-	 *
-	 * @return A new tensor with the same shape as the given tensor, filled with random values.
-	 */
-	static Tensor RandnLike(const Tensor& _Shape, int64_t _Seed = 1919810, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Create a tensor with a range of values.
-	 *
-	 * @param _Begin The begining value.
-	 * @param _End The end value.
-	 * @param _Step The step value.
-	 * @param _Dtype The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Arange(float64 _Begin, float64 _End, float64 _Step, TensorType _Dtype = TensorType::Float32, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor with a range of values.
-	 *
-	 * @param _Begin The begining value.
-	 * @param _End The end value.
-	 * @param _Step The step value.
-	 * @param _Dtype The type of the tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 * @param _Device The device to use.
-	 *
-	 * @return The created tensor.
-	 */
-	static Tensor Arange(int64 _Begin, int64 _End, int64 _Step, TensorType _Dtype = TensorType::Int64, ThreadPool* _ThreadPool = nullptr, Device _Device = Device::CPU);
-
-	/**
-	 * @brief Create a tensor from a vector (will not be copied and the vector will lose ownership of the data).
-	 *
-	 * @tparam _ValueType The type of the vector.
-	 *
-	 * @param _Vector The input vector.
-	 * @param _Shape The shape of the tensor.
-	 *
-	 * @return The created tensor.
-	 */
-	template<typename _ValueType>
-	Tensor(DragonianLibSTL::Vector<_ValueType>& _Vector, const ShapeType& _Shape)
-	{
-		if ((size_t)VectorMul(_Shape) != _Vector.Size())
-			DragonianLibThrow("Size MisMatch!");
-
-		if constexpr (std::is_same_v<_ValueType, int8>)
-			DType_ = TensorType::Int8;
-		else if constexpr (std::is_same_v<_ValueType, int16>)
-			DType_ = TensorType::Int16;
-		else if constexpr (std::is_same_v<_ValueType, int32>)
-			DType_ = TensorType::Int32;
-		else if constexpr (std::is_same_v<_ValueType, int64>)
-			DType_ = TensorType::Int64;
-		else if constexpr (std::is_same_v<_ValueType, float8>)
-			DType_ = TensorType::Float8;
-		else if constexpr (std::is_same_v<_ValueType, float16>)
-			DType_ = TensorType::Float16;
-		else if constexpr (std::is_same_v<_ValueType, float32>)
-			DType_ = TensorType::Float32;
-		else if constexpr (std::is_same_v<_ValueType, float64>)
-			DType_ = TensorType::Float64;
-		else
-			DragonianLibNotImplementedError;
-
-		Device_ = _Vector.GetAllocator();
-		AlignSize_ = DType2Size(DType_);
-		ShapeBack_ = _Shape;
-		StepFront_.clear();
-		StepBack_ = { _Shape.begin() + 1,_Shape.end(), ShapeType::allocator_type() };
-		StepBack_.emplace_back(AlignSize_);
-		std::ranges::reverse(StepBack_);
-		for (size_t i = 1; i < StepBack_.size(); ++i)
-			StepBack_[i] *= StepBack_[i - 1];
-		std::ranges::reverse(StepBack_);
-		SliceBegin_ = { _Shape.size(),0ll, ShapeType::allocator_type() };
-		DimStride_ = { _Shape.size(),1ll, ShapeType::allocator_type() };
-		CurIndices_.clear();
-
-		ViewParent_ = nullptr;
-		DataPtr_ = (byte*)_Vector.Release().first;
-		ViewChild_.clear();
-	}
-
-	/**
-	 * @brief Create a vector view from the tensor (the vector will not have ownership of the data).
-	 *
-	 * @tparam _ValueType
-	 *
-	 * @return The created vector view.
-	 */
-	template<typename _ValueType>
-	DragonianLibSTL::Vector<_ValueType> VectorView()
-	{
-		if (sizeof(_ValueType) != AlignSize_)
-			DragonianLibThrow("Type MisMatch!");
-		if (IsView())
-			DragonianLibThrow("Tensor View Could Not Have Vector View!");
-		std::lock_guard LockRel(RelMx_);
-		if (!DataPtr_)
-			return {};
-		auto Ptr = (_ValueType*)DataPtr_;
-		return { &Ptr, (size_t)VectorMul(ShapeBack_), Device_, false };
-	}
-
-	/**
-	 * @brief Set the thread count for the tensor operations.
-	 *
-	 * @param _Count The thread count.
-	 */
-	static void SetThreadCount(SizeType _Count);
-
-	/**
-	 * @brief Enable the time logger for the tensor operations.
-	 *
-	 * @param _Enabled True to enable, false to disable.
-	 */
-	static void EnableTimeLogger(bool _Enabled);
-
-	/**
-	 * @brief Get the alignment size.
-	 *
-	 * @return The alignment size.
-	 */
-	SizeType GetAlignSize() const
-	{
-		return AlignSize_;
-	}
-
-	/**
-	 * @brief Get the mutex for resource release.
-	 *
-	 * @return Reference to the mutex.
-	 */
-	std::mutex& GetRelMx() const
-	{
-		return RelMx_;
-	}
-
-	/**
-	 * @brief Get the device.
-	 *
-	 * @return The device.
-	 */
-	Device GetDevice() const
-	{
-		return Device_->GetDevice();
-	}
-
-	/**
-	 * @brief Get the allocator.
-	 *
-	 * @return The allocator.
-	 */
-	Allocator GetAllocator() const
-	{
-		return Device_;
-	}
-
-	/**
-	 * @brief Get the element at the specified index from raw data.
-	 *
-	 * @tparam _Ty The type of the element.
-	 *
-	 * @param Index The index of the element.
-	 *
-	 * @return Reference to the element.
-	 */
-	template<typename _Ty>
-	_Ty& Get(SizeType Index)
-	{
-		return *((_Ty*)DataPtr_ + Index);
-	}
+	using InvokeFnType = void(*)(Tensor&);
+	using ValueType = std::remove_reference_t<_TensorType>;
+	using Pointer = std::shared_ptr<ValueType>;
+	using RawPointer = ValueType*;
+	using Reference = ValueType&;
+	using ConstReference = const ValueType&;
 
 protected:
-	byte* DataPtr_ = nullptr; ///< Pointer to the data
-	Tensor* ViewParent_ = nullptr; ///< Pointer to the view parent, view means the tensor has no ownership of the data but has the different attributes (like shape, strides, etc.), for better performance.
+	Allocator _MyAllocator = nullptr;
+	Pointer _MyFirst = nullptr;
+	RawPointer _MyLast = nullptr, _MyData = nullptr;
 
-	ShapeType ShapeBack_; ///< Shape of the tensor
-	ShapeType StepFront_, StepBack_; ///< Steps of the tensor
-	ShapeType SliceBegin_; ///< Begining indices of the tensor
-	ShapeType DimStride_; ///< Strides of the tensor
-	ShapeType CurIndices_; ///< Current indices of the tensor
-	int64_t AlignSize_ = 4; ///< Alignment size of the tensor
-	bool IsBroadCasted_ = false; ///< Flag indicating if the tensor is broadcasted
-	std::deque<Tensor*> ViewChild_; ///< Child views of the tensor
-	mutable std::mutex ViewMx_, RelMx_; ///< Mutex for view and resource release
-	SliceOptions OpSlice; ///< Slice options for operations
-	
-public:
+	Dimensions _MyShape;
+	Dimensions _MyViewStep;
+	Dimensions _MyViewLeft;
+	Dimensions _MyViewStride;
 
-	/**
-	 * @brief Remind the operator not to use the thread pool.
-	 *
-	 * @return Reference to the current Tensor object.
-	 */
-	Tensor& DisableThreadPool()
-	{
-		UseThreadPool_ = false;
-		return *this;
-	}
+	//SliceOptions _MyOpSlice;
 
-	/**
-	 * @brief Remind the operator to use the thread pool.
-	 *
-	 * @return Reference to the current Tensor object.
-	 */
-	Tensor& PlUseThreadPool()
-	{
-		UseThreadPool_ = true;
-		return *this;
-	}
-
-	/**
-	 * @brief Get an element using indices.
-	 *
-	 * @tparam Ref The type of the element.
-	 *
-	 * @param _Indices The indices to access the element.
-	 *
-	 * @return Reference to the element.
-	 */
-	template <typename Ref>
-	decltype(auto) Item(const ShapeType& _Indices)
-	{
-		if (sizeof(Ref) != AlignSize_)
-			DragonianLibThrow("TypeError!");
-		return *(Ref*)(Data(_Indices));
-	}
-
-	/**
-	 * @brief Get the first element.
-	 *
-	 * @tparam Ref The type of the element.
-	 *
-	 * @return Reference to the first element.
-	 */
-	template <typename Ref>
-	decltype(auto) Item()
-	{
-		if (sizeof(Ref) != AlignSize_)
-			DragonianLibThrow("TypeError!");
-		return *(Ref*)(GetPtr());
-	}
-
-	/**
-	 * @brief Get an element using indices (const version).
-	 *
-	 * @tparam Ref The type of the element.
-	 *
-	 * @param _Indices The indices to access the element.
-	 *
-	 * @return Const reference to the element.
-	 */
-	template <typename Ref>
-	decltype(auto) Item(const ShapeType& _Indices) const
-	{
-		if (sizeof(Ref) != AlignSize_)
-			DragonianLibThrow("TypeError!");
-		return *(Ref*)(Data(_Indices));
-	}
-
-	/**
-	 * @brief Get the first element (const version).
-	 *
-	 * @tparam Ref The type of the element.
-	 *
-	 * @return Const reference to the first element.
-	 */
-	template <typename Ref>
-	decltype(auto) Item() const
-	{
-		if (sizeof(Ref) != AlignSize_)
-			DragonianLibThrow("TypeError!");
-		return *(Ref*)(GetPtr());
-	}
-
-	/**
-	 * @brief Fill the entire Tensor with data of type _Type pointed to by _Val.
-	 *
-	 * @param _Val Pointer to the data.
-	 * @param _Type The type of the data.
-	 * @param _ThreadPool Optional thread pool for parallel execution.
-	 */
-	void Assign(const void* _Val, TensorType _Type, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Assign the entire Tensor using a Buffer, in row-major order, until the Buffer is exhausted or the entire Tensor is filled.
-	 *
-	 * @param _Buffer Pointer to the buffer.
-	 * @param _BufferSize Size of the buffer.
-	 * @param _ThreadPool Optional thread pool for parallel execution.
-	 */
-	void Assign(const void* _Buffer, SizeType _BufferSize, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with the value _Val.
-	 *
-	 * @param _Val The value to fill the Tensor with.
-	 * @param _ThreadPool Optional thread pool for parallel execution.
-	 */
-	void Assign(int64 _Val, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with the value _Val.
-	 *
-	 * @param _Val The value to fill the Tensor with.
-	 * @param _ThreadPool Optional thread pool for parallel execution.
-	 */
-	void Assign(float64 _Val, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Assign the entire Tensor using another Tensor, the input Shape must be the same or broadcastable.
-	 *
-	 * @param _Val The Tensor to assign from.
-	 * @param _ThreadPool Optional thread pool for parallel execution.
-	 */
-	void Assign(const Tensor& _Val, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Replace the current Tensor with a View of another Tensor (no copy); if the input is a View, the source of the other View cannot be the current Tensor (use Clone function to copy the Tensor).
-	 *
-	 * @param _Left The Tensor to assign from.
-	 * @return Reference to the assigned Tensor.
-	 */
-	Tensor& operator=(const Tensor& _Left);
-
-	/**
-	 * @brief Move assignment.
-	 *
-	 * @param _Right The Tensor to move from.
-	 * @return Reference to the assigned Tensor.
-	 */
-	Tensor& operator=(Tensor&& _Right) noexcept;
-
-	/**
-	 * @brief Fill the entire Tensor with the value _Val.
-	 *
-	 * @param _Val The value to fill the Tensor with.
-	 * @return Reference to the assigned Tensor.
-	 */
-	Tensor& operator=(int64 _Val);
-
-	/**
-	 * @brief Fill the entire Tensor with the value _Val.
-	 *
-	 * @param _Val The value to fill the Tensor with.
-	 * @return Reference to the assigned Tensor.
-	 */
-	Tensor& operator=(float64 _Val);
-
-	/**
-	 * @brief Add two Tensors element-wise.
-	 *
-	 * @param _Right The Tensor to add.
-	 * @return A new Tensor containing the result of the addition.
-	 */
-	Tensor operator+(const Tensor& _Right) const;
-
-	/**
-	 * @brief Subtract one Tensor from another element-wise.
-	 *
-	 * @param _Right The Tensor to subtract.
-	 * @return A new Tensor containing the result of the subtraction.
-	 */
-	Tensor operator-(const Tensor& _Right) const;
-
-	/**
-	 * @brief Multiply two Tensors element-wise.
-	 *
-	 * @param _Right The Tensor to multiply.
-	 * @return A new Tensor containing the result of the multiplication.
-	 */
-	Tensor operator*(const Tensor& _Right) const;
-
-	/**
-	 * @brief Divide one Tensor by another element-wise.
-	 *
-	 * @param _Right The Tensor to divide by.
-	 * @return A new Tensor containing the result of the division.
-	 */
-	Tensor operator/(const Tensor& _Right) const;
-
-	/**
-	 * @brief Add a scalar value to each element of the Tensor.
-	 *
-	 * @param _Right The scalar value to add.
-	 * @return A new Tensor containing the result of the addition.
-	 */
-	Tensor operator+(int64 _Right) const;
-
-	/**
-	 * @brief Subtract a scalar value from each element of the Tensor.
-	 *
-	 * @param _Right The scalar value to subtract.
-	 * @return A new Tensor containing the result of the subtraction.
-	 */
-	Tensor operator-(int64 _Right) const;
-
-	/**
-	 * @brief Multiply each element of the Tensor by a scalar value.
-	 *
-	 * @param _Right The scalar value to multiply by.
-	 * @return A new Tensor containing the result of the multiplication.
-	 */
-	Tensor operator*(int64 _Right) const;
-
-	/**
-	 * @brief Divide each element of the Tensor by a scalar value.
-	 *
-	 * @param _Right The scalar value to divide by.
-	 * @return A new Tensor containing the result of the division.
-	 */
-	Tensor operator/(int64 _Right) const;
-
-	/**
-	 * @brief Add a scalar value to each element of the Tensor.
-	 *
-	 * @param _Right The scalar value to add.
-	 * @return A new Tensor containing the result of the addition.
-	 */
-	Tensor operator+(float64 _Right) const;
-
-	/**
-	 * @brief Subtract a scalar value from each element of the Tensor.
-	 *
-	 * @param _Right The scalar value to subtract.
-	 * @return A new Tensor containing the result of the subtraction.
-	 */
-	Tensor operator-(float64 _Right) const;
-
-	/**
-	 * @brief Multiply each element of the Tensor by a scalar value.
-	 *
-	 * @param _Right The scalar value to multiply by.
-	 * @return A new Tensor containing the result of the multiplication.
-	 */
-	Tensor operator*(float64 _Right) const;
-
-	/**
-	 * @brief Divide each element of the Tensor by a scalar value.
-	 *
-	 * @param _Right The scalar value to divide by.
-	 * @return A new Tensor containing the result of the division.
-	 */
-	Tensor operator/(float64 _Right) const;
-
-
-	/**
-	 * @brief Add another Tensor to this Tensor element-wise and assign the result to this Tensor.
-	 *
-	 * @param _Right The Tensor to add.
-	 * @return A reference to this Tensor after the addition.
-	 */
-	Tensor& operator+=(const Tensor& _Right);
-
-	/**
-	 * @brief Subtract another Tensor from this Tensor element-wise and assign the result to this Tensor.
-	 *
-	 * @param _Right The Tensor to subtract.
-	 * @return A reference to this Tensor after the subtraction.
-	 */
-	Tensor& operator-=(const Tensor& _Right);
-
-	/**
-	 * @brief Multiply this Tensor by another Tensor element-wise and assign the result to this Tensor.
-	 *
-	 * @param _Right The Tensor to multiply by.
-	 * @return A reference to this Tensor after the multiplication.
-	 */
-	Tensor& operator*=(const Tensor& _Right);
-
-	/**
-	 * @brief Divide this Tensor by another Tensor element-wise and assign the result to this Tensor.
-	 *
-	 * @param _Right The Tensor to divide by.
-	 * @return A reference to this Tensor after the division.
-	 */
-	Tensor& operator/=(const Tensor& _Right);
-
-	/**
-	 * @brief Add a scalar value to each element of this Tensor and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to add.
-	 * @return A reference to this Tensor after the addition.
-	 */
-	Tensor& operator+=(int64 _Right);
-
-	/**
-	 * @brief Subtract a scalar value from each element of this Tensor and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to subtract.
-	 * @return A reference to this Tensor after the subtraction.
-	 */
-	Tensor& operator-=(int64 _Right);
-
-	/**
-	 * @brief Multiply each element of this Tensor by a scalar value and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to multiply by.
-	 * @return A reference to this Tensor after the multiplication.
-	 */
-	Tensor& operator*=(int64 _Right);
-
-	/**
-	 * @brief Divide each element of this Tensor by a scalar value and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to divide by.
-	 * @return A reference to this Tensor after the division.
-	 */
-	Tensor& operator/=(int64 _Right);
-
-	/**
-	 * @brief Add a scalar value to each element of this Tensor and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to add.
-	 * @return A reference to this Tensor after the addition.
-	 */
-	Tensor& operator+=(float64 _Right);
-
-	/**
-	 * @brief Subtract a scalar value from each element of this Tensor and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to subtract.
-	 * @return A reference to this Tensor after the subtraction.
-	 */
-	Tensor& operator-=(float64 _Right);
-
-	/**
-	 * @brief Multiply each element of this Tensor by a scalar value and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to multiply by.
-	 * @return A reference to this Tensor after the multiplication.
-	 */
-	Tensor& operator*=(float64 _Right);
-
-	/**
-	 * @brief Divide each element of this Tensor by a scalar value and assign the result to this Tensor.
-	 *
-	 * @param _Right The scalar value to divide by.
-	 * @return A reference to this Tensor after the division.
-	 */
-	Tensor& operator/=(float64 _Right);
-
-
-	/**
-	 * @brief Access a specific element of the Tensor by index.
-	 *
-	 * @param _Index The index of the element to access.
-	 * @return A Tensor representing the element at the specified index.
-	 */
-	Tensor operator[](SizeType _Index) const;
-
-	/**
-	 * @brief Access a slice of the Tensor using slice options.
-	 *
-	 * @param _SliceOptions The options defining the slice.
-	 * @return A Tensor representing the slice defined by the slice options.
-	 */
-	Tensor operator[](const SliceOptions& _SliceOptions) const;
-
-	/**
-	 * @brief Access elements of the Tensor using a shape type as indices.
-	 *
-	 * @param _Indice The shape type defining the indices.
-	 * @return A Tensor representing the elements at the specified indices.
-	 */
-	Tensor operator[](const ShapeType& _Indice) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor for inequality.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the inequality comparison.
-	 */
-	Tensor operator!=(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor for equality.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the equality comparison.
-	 */
-	Tensor operator==(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor to check if it is less than the other.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the less-than comparison.
-	 */
-	Tensor operator<(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor to check if it is greater than the other.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the greater-than comparison.
-	 */
-	Tensor operator>(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor to check if it is less than or equal to the other.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the less-than-or-equal-to comparison.
-	 */
-	Tensor operator<=(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with another Tensor to check if it is greater than or equal to the other.
-	 *
-	 * @param _Right The Tensor to compare with.
-	 * @return A Tensor representing the result of the greater-than-or-equal-to comparison.
-	 */
-	Tensor operator>=(const Tensor& _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value for inequality.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the inequality comparison.
-	 */
-	Tensor operator!=(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value for equality.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the equality comparison.
-	 */
-	Tensor operator==(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is less than the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the less-than comparison.
-	 */
-	Tensor operator<(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is greater than the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the greater-than comparison.
-	 */
-	Tensor operator>(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is less than or equal to the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the less-than-or-equal-to comparison.
-	 */
-	Tensor operator<=(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is greater than or equal to the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the greater-than-or-equal-to comparison.
-	 */
-	Tensor operator>=(float64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value for inequality.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the inequality comparison.
-	 */
-	Tensor operator!=(int64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value for equality.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the equality comparison.
-	 */
-	Tensor operator==(int64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is less than the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the less-than comparison.
-	 */
-	Tensor operator<(int64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is greater than the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the greater-than comparison.
-	 */
-	Tensor operator>(int64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is less than or equal to the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the less-than-or-equal-to comparison.
-	 */
-	Tensor operator<=(int64 _Right) const;
-
-	/**
-	 * @brief Compare this Tensor with a scalar value to check if it is greater than or equal to the value.
-	 *
-	 * @param _Right The scalar value to compare with.
-	 * @return A Tensor representing the result of the greater-than-or-equal-to comparison.
-	 */
-	Tensor operator>=(int64 _Right) const;
-
-private:
-	
-	/**
-	 * @brief Free the resources associated with this Tensor.
-	 */
-	void Free();
-
-	/**
-	 * @brief Clear all child views of this Tensor.
-	 */
-	void ClearViewChilds();
-
-	/**
-	 * @brief Throw an exception if this Tensor is not enabled.
-	 *
-	 * @throws std::exception if the Tensor is not enabled.
-	 */
-	void ThrowOnNotEnabled() const;
-
-	/**
-	 * @brief Remove the pointer to this Tensor from its parent view.
-	 */
-	void RemoveSelfViewPtr();
-
-	/**
-	 * @brief Check if this Tensor has a specific child Tensor.
-	 *
-	 * @param _Child The child Tensor to check for.
-	 * @return True if the child Tensor exists, false otherwise.
-	 */
-	bool HasChild(const Tensor* _Child) const;
-
-	/**
-	 * @brief Assign a 1D array to this Tensor.
-	 *
-	 * @param _Val Pointer to the 1D array to assign.
-	 */
-	void Assign1D(const void* _Val) const;
-
-	/**
-	 * @brief Recalculate the view information for this Tensor.
-	 */
-	void ReCalcViewInfo();
-
+	bool IsBroadCasted_ = false;
 
 public:
-	/**
-	 * @brief Increment the index of the LoopIterator by 1.
-	 *
-	 * @param _Indices The indices to increment.
-	 */
-	void IteratorAdd(ShapeType& _Indices) const;
+	~Tensor() override = default;
+	Tensor(const Tensor& Left) = default;
+	Tensor(Tensor&& Right) noexcept = default;
+
+	Tensor& operator=(const Tensor& _Left) = default;
+	Tensor& operator=(Tensor&& _Right) noexcept = default;
 
 	/**
-	 * @brief Decrement the index of the LoopIterator by 1.
-	 *
-	 * @param _Indices The indices to decrement.
+	 * @brief Get an element tensor of the tensor. for example, if the tensor is a 2D tensor, then tensor[0] will return the 1st row of the tensor.
+	 * @param _Index The index of the element tensor.
+	 * @return The element tensor.
 	 */
-	void IteratorSub(ShapeType& _Indices) const;
+	Tensor operator[](SizeType _Index) const
+	{
+		return GatherRef(_Index);
+	}
 
 	/**
-	 * @brief Calculate the index based on the given maximum value.
-	 *
-	 * @param _Index The index to calculate.
-	 * @param _Max The maximum value.
-	 *
-	 * @return The calculated index.
+	 * @brief Get a sliced tensor of the tensor.
+	 * @param _SliceOptions The slice options of the tensor.
+	 * @return The sliced tensor.
 	 */
-	static SizeType CalcIndex(SizeType _Index, SizeType _Max);
+	Tensor operator[](const SliceOptions& _SliceOptions) const
+	{
+		return Slice(_SliceOptions);
+	}
 
 	/**
-	 * @brief Calculate the range based on the given maximum value.
-	 *
-	 * @param _Index The index to calculate.
-	 * @param _Max The maximum value.
-	 *
-	 * @return The calculated range.
-	 */
-	static SizeType CalcRange(SizeType _Index, SizeType _Max);
-
-	/**
-	 * @brief Calculate the ceiling of two int64 values.
-	 *
-	 * @param _Left The left value.
-	 * @param _Right The right value.
-	 *
-	 * @return The ceiling value.
-	 */
-	static SizeType Ceil(SizeType _Left, SizeType _Right);
-
-	/**
-	 * @brief Check if the current Tensor is enabled.
-	 *
-	 * @return True if the Tensor is enabled, false otherwise.
-	 */
-	bool IsEnabled() const;
-
-	/**
-	 * @brief Check if the current Tensor is a scalar.
-	 *
-	 * @return True if the Tensor is a scalar, false otherwise.
-	 */
-	bool IsScalar() const;
-
-	/**
-	 * @brief Check if the current Tensor has the features of a view-type Tensor.
-	 *
-	 * @return True if the Tensor has view features, false otherwise.
-	 */
-	bool HasViewedFeature() const;
-
-	/**
-	 * @brief Check if the index order of the current Tensor is strictly memory contiguous.
-	 *
-	 * @param _Dim The dimension to check (default is 0).
-	 *
-	 * @return True if the Tensor is contiguous, false otherwise.
-	 */
-	bool IsContinuous(SizeType _Dim = 0) const;
-
-	/**
-	 * @brief Check if the index order of the current Tensor is strictly memory contiguous.
-	 *
-	 * @param _SlicePos The slice options to use.
-	 * @param _Dim The dimension to check (default is 0).
-	 *
+	 * @brief Get an element tensor of the tensor. for example, if the tensor is a 3D tensor, then tensor[{0, 0}] will return the 1st row of the 1st matrix of the tensor.
+	 * @param _Indice 
 	 * @return 
 	 */
-	bool IsContinuous(const SliceOptions& _SlicePos, SizeType _Dim = 0) const;
-
-	/**
-	 * @brief Check if the current Tensor can become memory contiguous by permuting last two axes.
-	 *
-	 * @return True if the Tensor can be permuted to be contiguous, false otherwise.
-	 */
-	bool IsTranSposedContinuous() const;
-
-	/**
-	 * @brief Check if the current Tensor has a view source.
-	 *
-	 * @return True if the Tensor has a view source, false otherwise.
-	 */
-	bool IsView() const;
-
-	/**
-	 * @brief Clone the current Tensor, returning a new Tensor with independent memory.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The cloned Tensor.
-	 */
-	Tensor Clone(ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Create a view of the current Tensor. The view does not have independent memory and only has its own properties. The current Tensor is the view source of this view.
-	 *
-	 * @return The created view.
-	 */
-	Tensor CreateView() const;
-
-	/**
-	 * @brief Create a view of the current Tensor, slice it, and return the view.
-	 *
-	 * @param _SliceOptions The slice options to use.
-	 *
-	 * @return The sliced view.
-	 */
-	Tensor Slice(const SliceOptions& _SliceOptions) const;
-
-	/**
-	 * @brief Create a view of the current Tensor, reverse slice it, and return the view.
-	 *
-	 * @param _SliceOptions The slice options to use.
-	 *
-	 * @return The reversed sliced view.
-	 */
-	Tensor ReversedSlice(const SliceOptions& _SliceOptions) const;
-
-	/**
-	 * @brief Create a view of the current Tensor, change its axis order, and return the view.
-	 *
-	 * @param _DPremute The new axis order.
-	 *
-	 * @return The permuted view.
-	 */
-	Tensor Permute(const ShapeType& _DPremute) const;
-
-	/**
-	 * @brief Create a view of the current Tensor, swap its _Dim axis with the last axis, and return the view.
-	 *
-	 * @param _Dim The axis to swap with the last axis.
-	 *
-	 * @return The swapped view.
-	 */
-	Tensor SwapLastDim(SizeType _Dim) const;
-
-	/**
-	 * @brief Get the default slice vector.
-	 *
-	 * @return The default slice vector.
-	 */
-	SliceOptions GetDefaultSliceVector() const;
-
-	/**
-	 * @brief Invoke a function on a specified axis of a Tensor.
-	 *
-	 * @param _Tensor The Tensor to invoke the function on.
-	 * @param InvokedDim The axis to invoke the function on.
-	 * @param _Fn The function to invoke.
-	 */
-	static void Invoke(Tensor& _Tensor, SizeType InvokedDim, InvokeFnType _Fn);
-
-	/**
-	 * @brief Invoke a function on a specified axis of the current Tensor.
-	 *
-	 * @param InvokedDim The axis to invoke the function on.
-	 * @param _Fn The function to invoke.
-	 */
-	void Invoke(SizeType InvokedDim, InvokeFnType _Fn);
-
-	/**
-	 * @brief Get the shape of the current Tensor.
-	 *
-	 * @return The shape of the Tensor.
-	 */
-	const ShapeType& Shape() const;
-
-	/**
-	 * @brief Get the shape of a specified axis of the current Tensor.
-	 *
-	 * @param _Index The axis index.
-	 *
-	 * @return The shape of the specified axis.
-	 */
-	SizeType Shape(SizeType _Index) const;
-
-	/**
-	 * @brief Get the size of the current Tensor.
-	 *
-	 * @return The size of the Tensor.
-	 */
-	const ShapeType& Size() const;
-
-	/**
-	 * @brief Get the size of a specified axis of the current Tensor.
-	 *
-	 * @param _Index The axis index.
-	 *
-	 * @return The size of the specified axis.
-	 */
-	SizeType Size(SizeType _Index) const;
-
-	/**
-	 * @brief Get the stride information of all axes of the current Tensor.
-	 *
-	 * @return The stride information.
-	 */
-	const ShapeType& Strides() const;
-
-	/**
-	 * @brief Get the step information of all axes of the current Tensor.
-	 *
-	 * @return The step information.
-	 */
-	const ShapeType& StepsBack() const;
-
-	/**
-	 * @brief Get the slice start positions of all axes of the current Tensor.
-	 *
-	 * @return The slice start positions.
-	 */
-	const ShapeType& SliceBegins() const;
-
-	/**
-	 * @brief Fill the entire Tensor with 1.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void FixOnes(ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with 0.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void FixZeros(ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with a specified value.
-	 *
-	 * @param _Val The value to fill.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void Fix(double _Val, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with a specified int64 value.
-	 *
-	 * @param _Val The int64 value to fill.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void Fix(int64 _Val, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with random numbers.
-	 *
-	 * @param _Seed The seed for the random number generator (default is 114514).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void RandFix(uint64 _Seed = 114514, ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with random numbers.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void RandFix(ThreadPool* _ThreadPool) const { RandFix(114514, _ThreadPool); }
-
-	/**
-	 * @brief Fill the entire Tensor with random numbers generated from a normal distribution.
-	 *
-	 * @param _Seed The seed for the random number generator (default is 114514).
-	 * @param _Mean The mean of the normal distribution (default is 0.0).
-	 * @param _Sigma The standard deviation of the normal distribution (default is 1.0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void RandnFix(uint64 _Seed = 114514, double _Mean = 0., double _Sigma = 1., ThreadPool* _ThreadPool = nullptr) const;
-
-	/**
-	 * @brief Fill the entire Tensor with random numbers generated from a normal distribution.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 */
-	void RandnFix(ThreadPool* _ThreadPool) const { RandnFix(114514, 0., 1., _ThreadPool); }
-
-	/**
-	 * @brief Get the starting address of the buffer of the current Tensor (if the Tensor is a view, return the view source's buffer address).
-	 *
-	 * @return The buffer address.
-	 */
-	byte* Buffer() const;
-
-	/**
-	 * @brief Get the address of the current Tensor's axis.
-	 *
-	 * @return The axis address.
-	 */
-	byte* Data() const;
-
-	/**
-	 * @brief Get the address of the data at the specified indices of the current Tensor.
-	 *
-	 * @param _Indices The indices to get the data address for.
-	 *
-	 * @return The data address.
-	 */
-	byte* Data(const ShapeType& _Indices) const;
-
-	/**
-	 * @brief Create a view of the current Tensor and treat it as a Tensor with the specified view shape, returning the view.
-	 *
-	 * @param _ViewShape The view shape to use.
-	 *
-	 * @return The created view.
-	 */
-	Tensor View(const ShapeType& _ViewShape) const;
-
-	/**
-	 * @brief Make the current Tensor memory contiguous, returning a reference to the current Tensor.
-	 *
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return A reference to the current Tensor.
-	 */
-	Tensor& Continuous(ThreadPool* _ThreadPool = nullptr);
-
-	/**
-	 * @brief Create a view of the current Tensor, insert an axis at the specified position, and return the view.
-	 *
-	 * @param Dim The position to insert the axis.
-	 *
-	 * @return The created view.
-	 */
-	Tensor UnSqueeze(SizeType Dim) const;
-
-	/**
-	 * @brief Create a view of the current Tensor, and if the size of the specified axis is 1, delete the axis and return the view.
-	 *
-	 * @param Dim The axis to delete if its size is 1.
-	 *
-	 * @return The created view.
-	 */
-	Tensor Squeeze(SizeType Dim) const;
-
-	/**
-	 * @brief Create a view of the current Tensor, delete all axes with size 1, and return the view.
-	 *
-	 * @return The created view.
-	 */
-	Tensor Squeeze() const;
-
-	/**
-	 * @brief Create views of two Tensors, broadcast them to have the same shape, and return the views.
-	 *
-	 * @param _A The first Tensor.
-	 * @param _B The second Tensor.
-	 *
-	 * @return A pair of the broadcasted views.
-	 */
-	static std::pair<Tensor, Tensor> BroadCast(const Tensor& _A, const Tensor& _B);
-
-	/**
-	 * @brief Create a view of the input Tensor, broadcast it to have the same shape as the current Tensor, and return the view.
-	 *
-	 * @param _Other The input Tensor.
-	 *
-	 * @return The broadcasted view.
-	 */
-	Tensor BroadCast(const Tensor& _Other) const;
-
-	/**
-	 * @brief Check if the current Tensor is a broadcasted Tensor.
-	 *
-	 * @return True if the Tensor is broadcasted, false otherwise.
-	 */
-	bool IsBroadCasted() const;
-
-	/**
-	 * @brief Get the number of axes of the current Tensor.
-	 *
-	 * @return The number of axes.
-	 */
-	SizeType DimCount() const;
-
-	/**
-	 * @brief Check if the current Tensor is a vector.
-	 *
-	 * @return True if the Tensor is a vector, false otherwise.
-	 */
-	bool IsVector() const;
-
-	/**
-	 * @brief Get the starting address of the current Tensor's data area.
-	 *
-	 * @return A pointer to the starting address of the data area.
-	 */
-	byte* GetPtr() const;
-
-	/**
-	 * @brief Get the axis order that minimizes the traversal cost of the Tensor.
-	 *
-	 * @return The axis order with the minimum traversal cost.
-	 */
-	ShapeType CalcContinuous() const;
-
-	bool IsTransposed(size_t _Size) const;
-
-	/**
-	 * @brief Get the Tensor at the specified indices along Axis (creates a new Tensor).
-	 *
-	 * @param _Indices The indices Tensor.
-	 * @param _Axis The axis along which to gather (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The gathered Tensor.
-	 */
-	Tensor Gather(
-		const Tensor& _Indices,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
-	) const;
-
-	/**
-	 * @brief Get the Tensor at the specified indices along Axis[0] (creates a new Tensor).
-	 *
-	 * @param _Indices The indices Tensor.
-	 * @param _ThreadPool The thread pool to use.
-	 *
-	 * @return The gathered Tensor.
-	 */
-	Tensor Gather(
-		const Tensor& _Indices,
-		ThreadPool* _ThreadPool
-	) const
+	Tensor operator[](const Dimensions& _Indice) const
 	{
-		return Gather(_Indices, 0, _ThreadPool);
+		Tensor Ret = CreateView();
+		for (auto i : _Indice)
+			Ret = Ret.GatherRef(i);
+		return Ret;
+	}
+
+	//****************************************************Constructor****************************************************//
+
+	/**
+	 * @brief Create a new tensor with the specified shape.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param MyShape The shape of the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> New(const Dimensions& MyShape)
+	{
+		return Tensor<_Type, _Device>(MyShape);
 	}
 
 	/**
-	 * @brief Convert the Tensor to a different type (creates a new Tensor).
-	 *
-	 * @param _Dtype The target data type.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The converted Tensor.
+	 * @brief Create an empty new tensor.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @return The new tensor.
 	 */
-	Tensor Cast(
-		TensorType _Dtype,
-		ThreadPool* _ThreadPool = nullptr
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> New()
+	{
+		return Tensor<_Type, _Device>();
+	}
+
+	/**
+	 * @brief Create a new tensor with the specified shape, and fix the tensor with ones.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> Ones(const Dimensions& _Shape)
+	{
+		Tensor<_Type, _Device> Ret(_Shape);
+		Ret.Assign(_Type(1));
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a new tensor with the specified shape, and fix the tensor with zeros.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> Zeros(const Dimensions& _Shape)
+	{
+		Tensor<_Type, _Device> Ret(_Shape);
+		Ret.Assign(_Type(0));
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a new tensor with the specified shape, and fix the tensor with a constant value.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @param _Val The constant value to fix the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> ConstantOf(const Dimensions& _Shape, _Type _Val)
+	{
+		Tensor<_Type, _Device> Ret(_Shape);
+		Ret.Assign(_Val);
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a new tensor with the specified shape, and fix the tensor with random values.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> Rand(const Dimensions& _Shape)
+	{
+		Tensor<_Type, _Device> Ret(_Shape);
+		Ret.RandFix();
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a new tensor with the specified shape, and fix the tensor with random values.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @param _Mean The mean value of the random values.
+	 * @param _Sigma The sigma value of the random values.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> Randn(const Dimensions& _Shape, double _Mean = 0., double _Sigma = 1.)
+	{
+		Tensor<_Type, _Device> Ret(_Shape);
+		Ret.RandnFix(_Mean, _Sigma);
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with ones.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> OnesLike(const Tensor& _ShapeReference)
+	{
+		return Ones<_Type, _Device>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with zeros.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> ZerosLike(const Tensor& _ShapeReference)
+	{
+		return Zeros<_Type, _Device>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with a constant value.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param _Val The constant value to fix the tensor.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> ConstantLike(const Tensor& _ShapeReference, _Type _Val)
+	{
+		return ConstantOf<_Type, _Device>(_ShapeReference.Shape(), _Val);
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> RandLike(const Tensor& _ShapeReference)
+	{
+		return Rand<_Type, _Device>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
+	 * @tparam _Type Value type of the tensor.
+	 * @tparam _Device Device of the tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param _Mean The mean value of the random values.
+	 * @param _Sigma The sigma value of the random values.
+	 * @return The new tensor.
+	 */
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> RandnLike(const Tensor& _ShapeReference,  double _Mean = 0., double _Sigma = 1.)
+	{
+		return Randn<_Type, _Device>(_ShapeReference.Shape(), _Mean, _Sigma);
+	}
+
+	template<typename _Type = float32, Device _Device = Device::CPU>
+	static Tensor<_Type, _Device> Arange(float64 _Begin, float64 _End, float64 _Step);
+
+private:
+	bool AllocateMemory(const Dimensions& MyShape, Allocator MyAlloc)
+	{
+		if (MyShape.Empty())
+			return false;
+
+		_MyAllocator = MyAlloc;
+		const auto Size = VectorMul(MyShape);
+		_MyFirst = Pointer(
+			(RawPointer)MyAlloc->Allocate(Size * sizeof(ValueType)),
+			[=](void* _Pointer)
+			{
+				_MyAllocator->Free(_Pointer);
+			}
+		);
+		_MyData = _MyFirst.get();
+		_MyLast = _MyData + Size;
+		return true;
+	}
+
+	Tensor() = default;
+
+	Tensor(const Dimensions& MyShape)
+	{
+		if(AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
+		{
+			_MyShape = MyShape;
+			_MyViewStep.Resize(_MyShape.Size());
+			auto _Begin = _MyViewStep.ReversedBegin();
+			auto _End = _MyViewStep.ReversedEnd();
+			auto _Iter = _MyShape.ReversedBegin();
+			*_Begin-- = 1;
+			while (_Begin != _End) *_Begin-- = *_Iter--;
+			_MyViewLeft = { _MyShape.Size(), 0ll, _MyShape.GetAllocator() };
+			_MyViewStride = { _MyShape.Size(), 1ll, _MyShape.GetAllocator() };
+		}
+	}
+
+public:
+
+	//********************************************************Info********************************************************//
+
+	/**
+	 * @brief Get the alignment size of the value type.
+	 * @return The alignment size of the value type.
+	 */
+	static DRAGONIANLIBCONSTEXPR SizeType GetAlignSize()
+	{
+		return alignof(ValueType);
+	}
+
+	/**
+	 * @brief Get the device of the tensor.
+	 * @return The device of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR Device GetDevice() const
+	{
+		return _MyAllocator->GetDevice();
+	}
+
+	/**
+	 * @brief Get the allocator of the tensor.
+	 * @return The allocator of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR Allocator GetAllocator() const
+	{
+		return _MyAllocator;
+	}
+
+	/**
+	 * @brief Get the buffer of the tensor.
+	 * @return The buffer of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Buffer()
+	{
+		return _MyFirst;
+	}
+
+	/**
+	 * @brief Get the data pointer of the tensor.
+	 * @return The data pointer of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Data() const
+	{
+		return _MyData;
+	}
+
+	/**
+	 * @brief Get the data pointer of the tensor with the specified indices.
+	 * @param _Indices The indices of the tensor.
+	 * @return The data pointer of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Data(const Dimensions& _Indices) const
+	{
+		SizeType Index = 0;
+		for (size_t i = 0; i < _Indices.Size(); ++i)
+		{
+			const SizeType Idx = CalcIndex(_Indices[i], _MyShape[i]);
+			Index += ((Idx * _MyViewStride[i]) + _MyViewLeft[i]) * _MyViewStep[i];
+		}
+		return _MyData + Index;
+	}
+
+	/**
+	 * @brief Get a val of the tensor with the specified indices.
+	 * @param Index The indices.
+	 * @return The val.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Get(SizeType Index) const
+	{
+		return *(_MyFirst.get() + Index);
+	}
+
+	/**
+	 * @brief Get a val of the tensor with the specified indices.
+	 * @param _Indices The indices.
+	 * @return The val.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Item(const Dimensions& _Indices) const
+	{
+		return *Data(_Indices);
+	}
+
+	/**
+	 * @brief Get the first val of the tensor.
+	 * @return The val.
+	 */
+	DRAGONIANLIBCONSTEXPR decltype(auto) Item() const
+	{
+		return *(Data());
+	}
+
+	//******************************************************Operator******************************************************//
+
+	void Assign(ValueType _Value) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Value,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	void Assign(const ValueType* _Buffer, SizeType _Count) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Buffer,
+			_Count,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	void Assign(const Tensor& _Val) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Val.Data(),
+			_Val.GetShapeInfo(),
+			!IsBroadCasted() && !_Val.IsBroadCasted() && IsContinuous() && _Val.IsContinuous()
+		);
+	}
+
+	/**
+	 * @brief Assign the tensor with ones.
+	 */
+	DRAGONIANLIBCONSTEXPR void FixOnes() const
+	{
+		Assign(ValueType(1));
+	}
+
+	/**
+	 * @brief Assign the tensor with zeros.
+	 */
+	DRAGONIANLIBCONSTEXPR void FixZeros() const
+	{
+		Assign(ValueType(0));
+	}
+
+	/**
+	 * @brief Assign the tensor with a constant value.
+	 * @param _Val The constant value.
+	 */
+	DRAGONIANLIBCONSTEXPR void Fix(ValueType _Val) const
+	{
+		Assign(_Val);
+	}
+
+	/**
+	 * @brief Assign the tensor with random values.
+	 */
+	void RandFix() const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
+			_MyData,
+			GetShapeInfo(),
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	/**
+	 * @brief Assign the tensor with random values.
+	 * @param _Mean The mean value of the random values.
+	 * @param _Sigma The sigma value of the random values.
+	 */
+	void RandnFix(double _Mean = 0., double _Sigma = 1.) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
+			_MyData,
+			GetShapeInfo(),
+			_Mean,
+			_Sigma,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	Tensor operator+(const Tensor& _Right) const;
+	Tensor operator-(const Tensor& _Right) const;
+	Tensor operator*(const Tensor& _Right) const;
+	Tensor operator/(const Tensor& _Right) const;
+	Tensor operator+(ValueType _Right) const;
+	Tensor operator-(ValueType _Right) const;
+	Tensor operator*(ValueType _Right) const;
+	Tensor operator/(ValueType _Right) const;
+
+	Tensor& operator+=(const Tensor& _Right);
+	Tensor& operator-=(const Tensor& _Right);
+	Tensor& operator*=(const Tensor& _Right);
+	Tensor& operator/=(const Tensor& _Right);
+	Tensor& operator+=(ValueType _Right);
+	Tensor& operator-=(ValueType _Right);
+	Tensor& operator*=(ValueType _Right);
+	Tensor& operator/=(ValueType _Right);
+
+	Tensor operator!=(const Tensor& _Right) const;
+	Tensor operator==(const Tensor& _Right) const;
+	Tensor operator<(const Tensor& _Right) const;
+	Tensor operator>(const Tensor& _Right) const;
+	Tensor operator<=(const Tensor& _Right) const;
+	Tensor operator>=(const Tensor& _Right) const;
+	Tensor operator!=(ValueType _Right) const;
+	Tensor operator==(ValueType _Right) const;
+	Tensor operator<(ValueType _Right) const;
+	Tensor operator>(ValueType _Right) const;
+	Tensor operator<=(ValueType _Right) const;
+	Tensor operator>=(ValueType _Right) const;
+
+	//*********************************************************Info*********************************************************//
+
+	/**
+	 * @brief Get the shape info of the tensor.
+	 * @param CurrentRank The current rank of the tensor.
+	 * @return The shape info of the tensor.
+	 */
+	Operators::TensorShapeInfo GetShapeInfo(SizeType CurrentRank = INT64_MAX) const
+	{
+		if (CurrentRank == INT64_MAX)
+			CurrentRank = Rank();
+
+		if (CurrentRank > 6)
+			DragonianLibThrow("The Rank Of The Tensor Is Too High! In General, Axis Which Greater Than 6 Is A Batch Axis, You Can Use Invoke() Or Write A Loop.");
+		Operators::TensorShapeInfo Ret;
+		SizeType i = 0;
+		SizeType Count = 6 - CurrentRank;
+		while (i < Count)
+		{
+			Ret.Shape[i] = 1;
+			Ret.ViewStep[i] = 1;
+			Ret.ViewLeft[i] = 0;
+			Ret.ViewStride[i] = 1;
+			++i;
+		}
+		for (; i < 6; ++i)
+		{
+			const auto CurIndex = i - Count;
+			Ret.Shape[i] = _MyShape[CurIndex];
+			Ret.ViewStep[i] = _MyViewStep[CurIndex];
+			Ret.ViewLeft[i] = _MyViewLeft[CurIndex];
+			Ret.ViewStride[i] = _MyViewStride[CurIndex];
+		}
+		return Ret;
+	}
+
+	/**
+	 * @brief Get the shape of the tensor.
+	 * @return The shape of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR const Dimensions& Shape() const
+	{
+		return _MyShape;
+	}
+
+	/**
+	 * @brief Get the shape of the specified axis of the tensor.
+	 * @param _Index 
+	 * @return 
+	 */
+	DRAGONIANLIBCONSTEXPR SizeType Shape(SizeType _Index) const
+	{
+		return _MyShape[_Index];
+	}
+
+	/**
+	 * @brief Get the shape of the tensor.
+	 * @return The shape of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR const Dimensions& Size() const
+	{
+		return _MyShape;
+	}
+
+	/**
+	 * @brief Get the shape of the specified axis of the tensor.
+	 * @param _Index
+	 * @return
+	 */
+	DRAGONIANLIBCONSTEXPR SizeType Size(SizeType _Index) const
+	{
+		return _MyShape[_Index];
+	}
+
+	/**
+	 * @brief Get the rank of the tensor.
+	 * @return The rank of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR SizeType Rank() const
+	{
+		return _MyShape.Size();
+	}
+
+	/**
+	 * @brief Get the strides of the tensor.
+	 * @return The strides of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR const Dimensions& ViewStrides() const
+	{
+		return _MyViewStride;
+	}
+
+	/**
+	 * @brief Get the steps of the tensor.
+	 * @return The steps of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR const Dimensions& ViewSteps() const
+	{
+		return _MyViewStep;
+	}
+
+	/**
+	 * @brief Get the left indices of the tensor.
+	 * @return The left indices of the tensor.
+	 */
+	DRAGONIANLIBCONSTEXPR const Dimensions& ViewLeft() const
+	{
+		return _MyViewLeft;
+	}
+
+	/**
+	 * @brief Get the default slice vector of the tensor.
+	 * @return The default slice vector of the tensor.
+	 */
+	SliceOptions GetDefaultSliceVector() const
+	{
+		SliceOptions Ret;
+		Ret.Reserve(_MyShape.Size());
+		for (auto i : _MyShape)
+			Ret.EmplaceBack(0, i);
+		return Ret;
+	}
+
+	/**
+	 * @brief Get the continuous access order of the tensor.
+	 * @return The continuous access order of the tensor.
+	 */
+	Dimensions CalcContinuousAccessOrder() const
+	{
+		const auto Dims = Rank();
+		if (Dims == 1)
+			return Dimensions(6, 0, _MyShape.GetAllocator());
+		Vector<std::pair<SizeType, SizeType>> Ret;
+		Ret.Reserve(Dims);
+		for (SizeType i = 0; i < Dims; ++i)
+			Ret.EmplaceBack(_MyViewStep[i], i);
+		std::ranges::sort(Ret);
+		std::ranges::reverse(Ret);
+		Dimensions Rtn;
+		for (const auto& i : Ret | std::views::values)
+			Rtn.EmplaceBack(i);
+		return Rtn;
+	}
+
+	//********************************************************Check********************************************************//
+
+	/**
+	 * @brief Check if the tensor is enabled.
+	 * @return True if the tensor is enabled, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsEnabled() const
+	{
+		return _MyData != nullptr;
+	}
+
+	/**
+	 * @brief Check if the tensor is scalar.
+	 * @return True if the tensor is scalar, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsScalar() const
+	{
+		return _MyShape.Size() == 1 && _MyShape[0] == 1;
+	}
+
+	/**
+	 * @brief Check if the tensor is vector.
+	 * @return True if the tensor is vector, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsVector() const
+	{
+		return _MyShape.Size() == 1;
+	}
+
+	/**
+	 * @brief Check if the tensor is continuous in the specified range.
+	 * @param _Begin start axis
+	 * @param _End end axis
+	 * @return True if the tensor is continuous, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsContinuous(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
+	{
+		if (_End == INT64_MAX)
+			_End = Rank();
+
+		_Begin = CalcIndex(_Begin, Rank());
+		_End = CalcRange(_End, Rank());
+
+		for (size_t i = _Begin; i < _End; ++i)
+			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0 || (Rank() > 1 && _MyViewStep[i - 1] / _MyViewStep[i] != _MyViewStep[i]))
+				return false;
+
+		return true;
+	}
+
+	/**
+	 * @brief Check if the tensor is view.
+	 * @return True if the tensor is view, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsView() const
+	{
+		return _MyData != _MyFirst.get();
+	}
+
+	/**
+	 * @brief Check if the tensor is broadcasted.
+	 * @return True if the tensor is broadcasted, false otherwise.
+	 */
+	DRAGONIANLIBCONSTEXPR bool IsBroadCasted() const
+	{
+		return IsBroadCasted_;
+	}
+
+private:
+
+	DRAGONIANLIBCONSTEXPR void ThrowOnNotEnabled() const
+	{
+		if (!IsEnabled())
+			DragonianLibFatalError;
+	}
+
+public:
+	//*******************************************************Iterator*******************************************************//
+
+	/**
+	 * @brief Add 1 to the indices of a loop iterator.
+	 * @param _Indices The indices of the loop iterator.
+	 */
+	DRAGONIANLIBCONSTEXPR void IteratorAdd(Dimensions& _Indices) const
+	{
+		auto Val = _Indices.Data() + _Indices.Size() - 1;
+		const auto ShapePtr = _MyShape.Data();
+		for (size_t i = _Indices.Size() - 1; ; --i)
+		{
+			const auto Ret = *Val + 1;
+			if (Ret < *(ShapePtr + i))
+			{
+				*Val = Ret;
+				return;
+			}
+			if (i == 0)
+				return;
+			*Val = 0;
+			--Val;
+		}
+	}
+
+	/**
+	 * @brief Sub 1 to the indices of a loop iterator.
+	 * @param _Indices The indices of the loop iterator.
+	 */
+	DRAGONIANLIBCONSTEXPR void IteratorSub(Dimensions& _Indices) const
+	{
+		auto Val = _Indices.Data() + _Indices.Size() - 1;
+		const auto ShapePtr = _MyShape.Data();
+
+		for (size_t i = _Indices.Size() - 1; ; --i)
+		{
+			const auto Ret = *Val - 1;
+			if (Ret >= 0)
+			{
+				*Val = Ret;
+				return;
+			}
+			if (i == 0)
+				return;
+			*Val = (*(ShapePtr + i) - 1);
+			--Val;
+		}
+	}
+
+	/**
+	 * @brief Transform the index which is negative to the positive index and check if it is out of range.
+	 * @param _Index The index to transform.
+	 * @param _Max The max index.
+	 * @return The transformed index.
+	 */
+	static DRAGONIANLIBCONSTEXPR SizeType CalcIndex(SizeType _Index, SizeType _Max)
+	{
+		if (_Index < 0)
+			_Index += _Max;
+		if (_Index >= _Max || _Index < 0)
+			DragonianLibThrow("Index Out Of Range!");
+		return _Index;
+	}
+
+	/**
+	 * @brief Transform the range index which is negative to the positive range index and check if it is out of range.
+	 * @param _Index The index to transform.
+	 * @param _Max The max index.
+	 * @return The transformed index.
+	 */
+	static DRAGONIANLIBCONSTEXPR SizeType CalcRange(SizeType _Index, SizeType _Max)
+	{
+		if (_Index < 0)
+			_Index += _Max + 1;
+		if (_Index > _Max || _Index < -1)
+			DragonianLibThrow("Index Out Of Range!");
+		return _Index;
+	}
+
+	/**
+	 * @brief Calculate the ceil of the division of two numbers.
+	 * @param _Left The left number.
+	 * @param _Right The right number.
+	 * @return The ceil of the division.
+	 */
+	static DRAGONIANLIBCONSTEXPR SizeType Ceil(SizeType _Left, SizeType _Right)
+	{
+		auto Mul = _Left / _Right;
+		if (_Left > (Mul * _Right))
+			++Mul;
+		return Mul;
+	}
+
+	//*********************************************************View*********************************************************//
+
+	/**
+	 * @brief Create a view of the tensor, view means the tensor has the same data but different shape, stride, and range, and the data is shared(has no copy).
+	 * @return The view tensor.
+	 */
+	Tensor CreateView() const
+	{
+		return *this;
+	}
+
+	/**
+	 * @brief Slice the tensor, the order of the axes is ([0, 1, ... , N_DIMS - 1]).
+	 * @param _SliceOptions A [[begin, step, end]/null, ...] array of all sliced axes, null means no slice.
+	 * @return A sliced tensor(view).
+	 */
+	Tensor Slice(const SliceOptions& _SliceOptions) const
+	{
+		ThrowOnNotEnabled();
+		if (IsBroadCasted())
+			DragonianLibThrow("Broad Casted Could Not Be Sliced!");
+		if (_MyShape.Empty() || _SliceOptions.Size() > _MyShape.Size())
+			DragonianLibThrow("Axis Out Of Range!");
+
+		Tensor Ret = CreateView();
+		for (size_t i = 0; i < _SliceOptions.Size(); ++i)
+		{
+			if (_SliceOptions[i].IsNone)
+				continue;
+			const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
+			auto SliceEndPos = _SliceOptions[i].End;
+			if (SliceEndPos > _MyShape[i] || SliceEndPos < -(_MyShape[i] + 1))
+				DragonianLibThrow("Index Out Of Range!");
+			if (SliceEndPos == -(_MyShape[i] + 1))
+				SliceEndPos = -1;
+			else if (SliceEndPos < 0)
+				SliceEndPos += _MyShape[i] + 1;
+			const auto SliceLength = SliceEndPos - SliceBeginPos;
+			if (SliceLength == 0)
+				DragonianLibThrow("Slice Length Must > 0");
+			if (SliceLength > 0 && _SliceOptions[i].Step < 0 ||
+				SliceLength < 0 && _SliceOptions[i].Step > 0)
+				DragonianLibThrow("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
+			Ret._MyViewLeft[i] += SliceBeginPos * Ret._MyViewStride[i];
+			Ret._MyShape[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i].Step));
+			Ret._MyViewStride[i] *= _SliceOptions[i].Step;
+		}
+		return Ret;
+	}
+
+	/**
+	 * @brief Slice the tensor, the order of the axes is reversed ([-1, -2, ... , -N_DIMS]).
+	 * @param _SliceOptions A [[begin, end, step]/none, ...] array of all sliced axes, none means no slice.
+	 * @return A sliced tensor(view).
+	 */
+	Tensor ReversedSlice(const SliceOptions& _SliceOptions) const
+	{
+		Vector<Range> TempRange = _SliceOptions, NewRange;
+		TempRange.Resize(_MyShape.Size(), None);
+		for (size_t i = TempRange.Size() - 1; i < TempRange.Size(); --i)
+		{
+			if (TempRange[i].IsNone)
+				NewRange.EmplaceBack(None);
+			else
+				NewRange.EmplaceBack(TempRange[i].Begin, TempRange[i].Step, TempRange[i].End);
+		}
+		return Slice(NewRange);
+	}
+
+	/**
+	 * @brief Permute the order of axes of a tensor, the order of original axes is ([0, 1, ... , N_DIMS - 1]). for example, we have a tensor with [N, H, C] shape, we can permute it to [N, C, H] shape with Permute([0, 2, 1])
+	 * @param _PremuteOrder The new order of axes.
+	 * @return A permuted tensor(view).
+	 */
+	Tensor Permute(const Dimensions& _PremuteOrder) const
+	{
+		ThrowOnNotEnabled();
+		if (_MyShape.Empty() || _PremuteOrder.Size() != _MyShape.Size())
+			DragonianLibThrow("N_DIMS MisMatch!");
+		Tensor Ret = CreateView();
+		auto TransposedDims = _PremuteOrder;
+		std::ranges::sort(TransposedDims);
+		if (TransposedDims[0] != 0)
+			DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+		for (size_t i = 1; i < TransposedDims.Size(); ++i)
+			if (TransposedDims[i] != TransposedDims[i - 1] + 1)
+				DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+
+		for (size_t i = 0; i < _PremuteOrder.Size(); ++i)
+		{
+			Ret._MyShape[i] = _MyShape[_PremuteOrder[i]];
+			Ret._MyViewStep[i] = _MyViewStep[_PremuteOrder[i]];
+			Ret._MyViewLeft[i] = _MyViewLeft[_PremuteOrder[i]];
+			Ret._MyViewStride[i] = _MyViewStride[_PremuteOrder[i]];
+		}
+		return Ret;
+	}
+
+	/**
+	 * @brief Swap the last axis with the specified axis. for example, we have a tensor with [N, H, W, C] shape, we can swap the last axis with the second axis with SwapLastDim(1) to get a tensor with [N, C, W, H] shape.
+	 * @param _Dim The specified axis.
+	 * @return A swapped tensor(view).
+	 */
+	Tensor SwapLastDim(SizeType _Dim) const
+	{
+		ThrowOnNotEnabled();
+		const auto AxisCount = (SizeType)_MyShape.Size();
+		_Dim = CalcIndex(_Dim, AxisCount);
+		Tensor Ret = CreateView();
+		if (_Dim == AxisCount - 1)
+			return Ret;
+		Ret._MyShape.Back() = _MyShape[_Dim];
+		Ret._MyViewStep.Back() = _MyViewStep[_Dim];
+		Ret._MyViewLeft.Back() = _MyViewLeft[_Dim];
+		Ret._MyViewStride.Back() = _MyViewStride[_Dim];
+		Ret._MyShape[_Dim] = _MyShape.Back();
+		Ret._MyViewStep[_Dim] = _MyViewStep.Back();
+		Ret._MyViewLeft[_Dim] = _MyViewLeft.Back();
+		Ret._MyViewStride[_Dim] = _MyViewStride.Back();
+		return Ret;
+	}
+
+	/**
+	 * @brief Unsqueeze the tensor, add a new axis at the specified position. for example, we have a tensor with [N, C, H] shape, we can unsqueeze it at the 1st axis with UnSqueeze(1) to get a tensor with [N, 1, C, H] shape.
+	 * @param _Dim The specified position.
+	 * @return An unsqueezed tensor(view).
+	 */
+	Tensor UnSqueeze(SizeType _Dim) const
+	{
+		ThrowOnNotEnabled();
+		Tensor Ret = CreateView();
+		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size() + 1));
+		Ret._MyShape.Insert(Ret._MyShape.begin() + _Dim, 1);
+		if (_Dim == SizeType(Ret._MyViewStep.Size()))
+			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, 1);
+		else
+			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, *(Ret._MyViewStep.begin() + _Dim));
+		Ret._MyViewLeft.Insert(Ret._MyViewLeft.begin() + _Dim, 0);
+		Ret._MyViewStride.Insert(Ret._MyViewStride.begin() + _Dim, 1);
+		return Ret;
+	}
+
+	/**
+	 * @brief Squeeze the tensor, remove the axis with size 1 at the specified position. for example, we have a tensor with [N, 1, C, H] shape, we can squeeze it at the 1st axis with Squeeze(1) to get a tensor with [N, C, H] shape.
+	 * @param _Dim The specified position.
+	 * @return A squeezed tensor(view).
+	 */
+	Tensor Squeeze(SizeType _Dim) const
+	{
+		ThrowOnNotEnabled();
+		Tensor Ret = CreateView();
+		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size()));
+		if (Ret._MyShape[_Dim] != 1)
+			DragonianLibThrow("The Dim Must Be 1!");
+
+		if (Ret._MyViewLeft[_Dim])
+			_MyData += _MyViewLeft[_Dim] * _MyViewStep[_Dim];
+		Ret._MyShape.Erase(Ret._MyShape.begin() + _Dim);
+		Ret._MyViewStep.Erase(Ret._MyViewStep.begin() + _Dim);
+		Ret._MyViewLeft.Erase(Ret._MyViewLeft.begin() + _Dim);
+		Ret._MyViewStride.Erase(Ret._MyViewStride.begin() + _Dim);
+		return Ret;
+	}
+
+	/**
+	 * @brief Squeeze the tensor, remove all axes with size 1. for example, we have a tensor with [N, 1, C, 1, H] shape, we can squeeze it with Squeeze() to get a tensor with [N, C, H] shape.
+	 * @return A squeezed tensor(view).
+	 */
+	Tensor Squeeze() const
+	{
+		ThrowOnNotEnabled();
+		Tensor Ret = CreateView();
+		for (size_t i = 0; i < Ret._MyShape.Size();)
+		{
+			if (Ret._MyShape[i] == 1)
+			{
+				if (Ret._MyViewLeft[i])
+					_MyData += _MyViewLeft[i] * _MyViewStep[i];
+				Ret._MyShape.Erase(Ret._MyShape.begin() + i);
+				Ret._MyViewStep.Erase(Ret._MyViewStep.begin() + i);
+				Ret._MyViewLeft.Erase(Ret._MyViewLeft.begin() + i);
+				Ret._MyViewStride.Erase(Ret._MyViewStride.begin() + i);
+			}
+			else
+				++i;
+		}
+		return Ret;
+	}
+
+	/**
+	 * @brief View the tensor with the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can view it with View([N, -1]) to get a tensor with [N, C * H * W] shape.
+	 * @param _ViewShape The specified shape.
+	 * @return A viewed tensor(view).
+	 */
+	Tensor View(const Dimensions& _ViewShape)
+	{
+		if (!IsContinuous())
+			DragonianLibThrow("View Should Be Continuous!");
+		if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
+			DragonianLibThrow("Count Of Dynamic Axis Should <= 1!");
+		for (const auto i : _ViewShape)
+			if (i <= 0 && i != -1)
+				DragonianLibThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
+		Tensor Ret = CreateView();
+		const auto SrcSize = VectorMul(Ret._MyShape);
+		const auto DstSize = VectorMul(_ViewShape);
+		if ((DstSize < 0 && (SrcSize % abs(DstSize)) != 0) || (DstSize > 0 && (SrcSize != DstSize)))
+			DragonianLibThrow("Size MisMatch!");
+		const auto DynamicAxes = SrcSize / DstSize;
+
+		Ret._MyShape = _ViewShape;
+		for (auto& i : Ret._MyShape)
+			if (i == -1)
+			{
+				i = abs(DynamicAxes);
+				break;
+			}
+		Ret._MyViewStep.Resize(Ret._MyShape.Size());
+		auto _Begin = Ret._MyViewStep.ReversedBegin();
+		auto _End = Ret._MyViewStep.ReversedEnd();
+		auto _Iter = Ret._MyShape.ReversedBegin();
+		*_Begin-- = 1;
+		while (_Begin != _End) *_Begin-- = *_Iter--;
+		Ret._MyViewLeft = { Ret._MyShape.Size(), 0ll, Ret._MyShape.GetAllocator() };
+		Ret._MyViewStride = { Ret._MyShape.Size(), 1ll, Ret._MyShape.GetAllocator() };
+		return Ret;
+	}
+
+	Tensor Clone() const;
+	Tensor& MakeContinuous();
+
+	//********************************************************Operation********************************************************//
+
+	static void Invoke(Tensor& _Tensor, SizeType InvokedDim, InvokeFnType _Fn);
+
+	void Invoke(SizeType InvokedDim, InvokeFnType _Fn);
+
+	Tensor Gather(
+		const Tensor& _Indices,
+		SizeType _Axis = 0
 	) const;
 
-	/**
-	 * @brief Apply padding to the input Tensor (forward order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Type The padding type.
-	 * @param _ValueType The value type for padding.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use.
-	 *
-	 * @return The padded Tensor.
-	 */
+	Tensor Gather(
+		const Tensor& _Indices
+	) const
+	{
+		return Gather(_Indices, 0);
+	}
+
+	Tensor Cast() const;
+
 	static Tensor Padding(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type,
-		TensorType _ValueType,
-		lpvoid _Val,
-		ThreadPool* _ThreadPool
+		ValueType _Val
 	);
 
-	/**
-	 * @brief Apply padding to the input Tensor (reverse order, i.e., Torch order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Type The padding type.
-	 * @param _ValueType The value type for padding.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use.
-	 *
-	 * @return The padded Tensor.
-	 */
 	static Tensor Pad(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type,
-		TensorType _ValueType,
-		lpvoid _Val,
-		ThreadPool* _ThreadPool
+		ValueType _Val
 	);
 
-	/**
-	 * @brief Apply padding to the input Tensor (forward order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Type The padding type (default is PaddingType::Zero).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
 	static Tensor Padding(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
-		PaddingType _Type = PaddingType::Zero,
-		ThreadPool* _ThreadPool = nullptr
+		PaddingType _Type = PaddingType::Zero
 	);
 
-	/**
-	 * @brief Apply padding to the input Tensor (reverse order, i.e., Torch order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Type The padding type (default is PaddingType::Zero).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
 	static Tensor Pad(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
-		PaddingType _Type = PaddingType::Zero,
-		ThreadPool* _ThreadPool = nullptr
+		PaddingType _Type = PaddingType::Zero
 	);
 
-	/**
-	 * @brief Apply padding to the input Tensor (forward order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
-	static Tensor Padding(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		float64 _Val,
-		ThreadPool* _ThreadPool = nullptr
-	);
-
-	/**
-	 * @brief Apply padding to the input Tensor (reverse order, i.e., Torch order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
-	static Tensor Pad(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		float64 _Val,
-		ThreadPool* _ThreadPool = nullptr
-	);
-
-	/**
-	 * @brief Apply padding to the input Tensor (forward order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
-	static Tensor Padding(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		int64 _Val,
-		ThreadPool* _ThreadPool = nullptr
-	);
-
-	/**
-	 * @brief Apply padding to the input Tensor (reverse order, i.e., Torch order), returning the padded Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Pad The padding ranges.
-	 * @param _Val The padding value.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The padded Tensor.
-	 */
-	static Tensor Pad(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		int64 _Val,
-		ThreadPool* _ThreadPool = nullptr
-	);
-
-	/**
-	 * @brief Repeat the input Tensor (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Repeat The repeat ranges, for example, { {2, 3}, {1, 2} } means repeat the first axis 2 times and the second axis 3 times.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The repeated Tensor.
-	 */
 	static Tensor Repeat(
 		const Tensor& _Input,
-		const Vector<std::pair<SizeType, SizeType>>& _Repeat,
-		ThreadPool* _ThreadPool = nullptr
+		const Vector<std::pair<SizeType, SizeType>>& _Repeat
 	);
 
-	/**
-	 * @brief Stack the input Tensors along a new axis (creates a new Tensor). The input Tensors must have the same shape.
-	 *
-	 * @param _Inputs The input Tensors.
-	 * @param _Dim The axis along which to stack (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The stacked Tensor.
-	 */
 	static Tensor Stack(
 		const Vector<Tensor>& _Inputs,
-		SizeType _Dim = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Dim = 0
 	);
 
-	/**
-	 * @brief Concatenate the input Tensors along an axis (creates a new Tensor). The input Tensors must have the same shape except for the specified axis.
-	 *
-	 * @param _Inputs The input Tensors.
-	 * @param _Dim The axis along which to concatenate (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The concatenated Tensor.
-	 */
 	static Tensor Cat(
 		const Vector<Tensor>& _Inputs,
-		SizeType _Dim = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Dim = 0
 	);
 
-	/**
-	 * @brief Get the Tensor at the specified indices along Axis[0] (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Indices The indices Tensor.
-	 * @param _Axis The axis along which to gather (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The gathered Tensor.
-	 */
 	static Tensor Gather(
 		const Tensor& _Input,
 		const Tensor& _Indices,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Axis = 0
 	);
 
-	/**
-	 * @brief Convert the input Tensor to a different type (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Dtype The target data type.
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The converted Tensor.
-	 */
-	static Tensor Cast(
-		const Tensor& _Input,
-		TensorType _Dtype,
-		ThreadPool* _ThreadPool = nullptr
-	);
-
-	/**
-	 * @brief Compute the sum of the input Tensor along an axis (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Axis The axis along which to sum (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The summed Tensor.
-	 */
 	static Tensor Sum(
 		const Tensor& _Input,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Axis = 0
 	);
 
-	/**
-	 * @brief Compute the cumulative sum of the input Tensor along an axis (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Axis The axis along which to compute the cumulative sum (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The cumulative summed Tensor.
-	 */
 	static Tensor CumSum(
 		const Tensor& _Input,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Axis = 0
 	);
 
-	/**
-	 * @brief Compute the difference of the input Tensor along an axis (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Axis The axis along which to compute the difference (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The differenced Tensor.
-	 */
 	static Tensor Diff(
 		const Tensor& _Input,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Axis = 0
 	);
 
-	/**
-	 * @brief Compute the cumulative product of the input Tensor along an axis (creates a new Tensor).
-	 *
-	 * @param _Input The input Tensor.
-	 * @param _Axis The axis along which to compute the cumulative product (default is 0).
-	 * @param _ThreadPool The thread pool to use (default is nullptr).
-	 *
-	 * @return The cumulative product Tensor.
-	 */
 	static Tensor CumProd(
 		const Tensor& _Input,
-		SizeType _Axis = 0,
-		ThreadPool* _ThreadPool = nullptr
+		SizeType _Axis = 0
 	);
 
-
 protected:
-	Tensor GatherRef(SizeType _Index) const;
+
+	static std::pair<Tensor, Tensor> BroadCast(const Tensor& _A, const Tensor& _B)
+	{
+		std::pair Ret{ _A.CreateView(), _B.CreateView() };
+		Tensor& First = Ret.first;
+		Tensor& Second = Ret.second;
+		const auto Dims = std::max(First._MyShape.Size(), Second._MyShape.Size());
+		std::ranges::reverse(First._MyShape);
+		std::ranges::reverse(Second._MyShape);
+		std::ranges::reverse(First._MyViewStep);
+		std::ranges::reverse(Second._MyViewStep);
+		std::ranges::reverse(First._MyViewLeft);
+		std::ranges::reverse(Second._MyViewLeft);
+		std::ranges::reverse(First._MyViewStride);
+		std::ranges::reverse(Second._MyViewStride);
+		for (size_t i = 0; i < Dims; ++i)
+		{
+			auto XSize = 1ll, YSize = 1ll;
+			if (i < First._MyShape.Size())
+				XSize = First._MyShape[i];
+			else
+			{
+				First._MyShape.EmplaceBack(1);
+				First._MyViewStep.EmplaceBack(1);
+				First._MyViewLeft.EmplaceBack(0);
+				First._MyViewStride.EmplaceBack(0);
+				First.IsBroadCasted_ = true;
+			}
+			if (i < Second._MyShape.Size())
+				YSize = Second._MyShape[i];
+			else
+			{
+				Second._MyShape.EmplaceBack(1);
+				Second._MyViewStep.EmplaceBack(1);
+				Second._MyViewLeft.EmplaceBack(0);
+				Second._MyViewStride.EmplaceBack(0);
+				Second.IsBroadCasted_ = true;
+			}
+			if (XSize == YSize)
+				continue;
+			if (XSize == 1)
+			{
+				First._MyShape[i] = YSize;
+				First._MyViewStride[i] = 0;
+				First.IsBroadCasted_ = true;
+			}
+			else if (YSize == 1)
+			{
+				Second._MyShape[i] = XSize;
+				Second._MyViewStride[i] = 0;
+				Second.IsBroadCasted_ = true;
+			}
+			else
+				DragonianLibThrow("TensorA & TensorB Can Not Be BroadCast!");
+		}
+		std::ranges::reverse(First._MyShape);
+		std::ranges::reverse(Second._MyShape);
+		std::ranges::reverse(First._MyViewStep);
+		std::ranges::reverse(Second._MyViewStep);
+		std::ranges::reverse(First._MyViewLeft);
+		std::ranges::reverse(Second._MyViewLeft);
+		std::ranges::reverse(First._MyViewStride);
+		std::ranges::reverse(Second._MyViewStride);
+		return Ret;
+	}
+
+	Tensor BroadCast(const Tensor& _Other) const
+	{
+		decltype(auto) Bd = BroadCast(*this, _Other);
+		if (Bd.first.IsBroadCasted())
+			DragonianLibThrow("TensorA & TensorB Can Not  Be BroadCast At The Same Time In This Operator!");
+		return std::move(Bd.second);
+	}
+
+	DRAGONIANLIBCONSTEXPR Tensor GatherRef(SizeType _Index) const
+	{
+		const auto Idx = CalcIndex(_Index, _MyShape.Front());
+		Tensor Ret;
+
+		Ret._MyShape = { _MyShape.begin() + 1,_MyShape.end(), _MyShape.GetAllocator() };
+		Ret._MyViewStep = { _MyViewStep.begin() + 1,_MyViewStep.end(), _MyShape.GetAllocator() };
+		Ret._MyViewLeft = { _MyViewLeft.begin() + 1,_MyViewLeft.end(), _MyShape.GetAllocator() };
+		Ret._MyViewStride = { _MyViewStride.begin() + 1,_MyViewStride.end(), _MyShape.GetAllocator() };
+
+		auto Index = _MyViewLeft.Front() + (Idx * _MyViewStride.Front());
+		Index = ((Index * _MyViewStride.Front()) + _MyViewLeft.Front()) * _MyViewStep.Front();
+		Ret._MyData = _MyData + Index;
+		Ret._MyFirst = _MyFirst;
+		Ret._MyLast = _MyLast;
+		Ret._MyAllocator = _MyAllocator;
+		Ret.IsBroadCasted_ = IsBroadCasted_;
+
+		if (Ret._MyShape.Empty())
+		{
+			Ret._MyShape.EmplaceBack(1);
+			Ret._MyViewStep.EmplaceBack(1);
+			Ret._MyViewLeft.EmplaceBack(0);
+			Ret._MyViewStride.EmplaceBack(1);
+		}
+
+		return Ret;
+	}
 
 public:
-	static Tensor Pow(const Tensor& _InputA, const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr);
-	static Tensor Pow(const Tensor& _InputA, float64 _Val, ThreadPool* _ThreadPool = nullptr);
-	Tensor Pow(const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr) const;
-	Tensor Pow(float64 _Val, ThreadPool* _ThreadPool = nullptr) const;
-	Tensor& Pow_(const Tensor& _InputB, ThreadPool* _ThreadPool = nullptr);
-	Tensor& Pow_(float64 _Val, ThreadPool* _ThreadPool = nullptr);
+	static Tensor Pow(const Tensor& _InputA, const Tensor& _InputB);
+	static Tensor Pow(const Tensor& _InputA, float64 _Val);
+	Tensor Pow(const Tensor& _InputB) const;
+	Tensor Pow(float64 _Val) const;
+	Tensor& Pow_(const Tensor& _InputB);
+	Tensor& Pow_(float64 _Val);
 
-	DragonianLibTensorFnDef(Abs);
+	/*DragonianLibTensorFnDef(Abs);
 	DragonianLibTensorFnDef(Sin);
 	DragonianLibTensorFnDef(Sinh);
 	DragonianLibTensorFnDef(Cos);
@@ -1890,11 +1437,7 @@ public:
 	DragonianLibTensorFnDef(Log10);
 	DragonianLibTensorFnDef(Floor);
 	DragonianLibTensorFnDef(Ceil);
-	DragonianLibTensorFnDef(Round);
-
-private:
-	bool UseThreadPool_ = true;
-	Allocator Device_;
+	DragonianLibTensorFnDef(Round);*/
 };
 
 DragonianLibSpaceEnd

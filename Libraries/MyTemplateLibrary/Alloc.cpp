@@ -3,6 +3,8 @@
 
 namespace DragonianLib
 {
+	static Allocator _Provider[8];
+
 	MemoryProvider::MemoryProvider()
 	{
 		_Provider[0] = new DragonianLibSTL::CPUAllocator;
@@ -24,7 +26,7 @@ namespace DragonianLib
 	Allocator GetMemoryProvider(Device _Device)
 	{
 		static MemoryProvider _Instance;
-		return _Instance._Provider[size_t(_Device)];
+		return _Provider[size_t(_Device)];
 	}
 }
 

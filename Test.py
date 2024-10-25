@@ -1,6 +1,12 @@
 import torch
 import time
 
+for i in range(20):
+    begin = time.time()
+    tensora = torch.ones(11451400*8)
+    print(time.time() - begin)
+    print(tensora)
+
 
 print(
     torch.sqrt(
