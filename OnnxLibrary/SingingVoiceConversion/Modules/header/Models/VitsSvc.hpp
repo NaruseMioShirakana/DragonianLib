@@ -22,7 +22,7 @@
 #pragma once
 #include "SVC.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
  * @class VitsSvc
@@ -115,4 +115,4 @@ public:
     VitsSvc& operator=(VitsSvc&&) = default;
 };
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

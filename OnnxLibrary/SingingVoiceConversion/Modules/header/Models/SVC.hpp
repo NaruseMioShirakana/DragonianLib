@@ -24,7 +24,7 @@
 #include "../InferTools/TensorExtractor/TensorExtractorManager.hpp"
 #include "Cluster/ClusterManager.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 using OrtTensors = std::vector<Ort::Value>;
 
@@ -243,4 +243,4 @@ DragonianLibSTL::Vector<float> VocoderInfer(
     const std::shared_ptr<Ort::Session>& _VocoderModel
 );
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

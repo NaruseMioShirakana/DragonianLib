@@ -239,7 +239,7 @@ void DragonianLib::AvCodec::Encode(
 	bool IsPlanar
 )
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 	OutBuffer[0] = nullptr;
 	UNUSED(OutBuffer);
 }
@@ -450,6 +450,6 @@ void DragonianLib::WriteMidiFile(
 	Writer.add_event(0, 0, libremidi::meta_events::end_of_track());
 	auto OutputFileStream = std::ofstream(Path, std::ios::out | std::ios::binary);
 	if (!OutputFileStream.is_open())
-		DragonianLibThrow("Could not write file!");
+		_D_Dragonian_Lib_Throw_Exception("Could not write file!");
 	Writer.write(OutputFileStream);
 }

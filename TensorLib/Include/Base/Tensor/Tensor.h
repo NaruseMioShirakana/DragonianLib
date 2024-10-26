@@ -25,7 +25,7 @@
 #include "Operators.h"
 #include "Util/ThreadPool.h"
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 
 using Dimensions = Vector<SizeType>; ///< Alias for vector of size types
 using ShapeIterator = Dimensions::Iterator; ///< Alias for iterator of shape type
@@ -468,7 +468,7 @@ public:
 	 * @brief Get the alignment size of the value type.
 	 * @return The alignment size of the value type.
 	 */
-	static DRAGONIANLIBCONSTEXPR SizeType GetAlignSize()
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType GetAlignSize()
 	{
 		return alignof(ValueType);
 	}
@@ -477,7 +477,7 @@ public:
 	 * @brief Get the device of the tensor.
 	 * @return The device of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR Device GetDevice() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Device GetDevice() const
 	{
 		return _MyAllocator->GetDevice();
 	}
@@ -486,7 +486,7 @@ public:
 	 * @brief Get the allocator of the tensor.
 	 * @return The allocator of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR Allocator GetAllocator() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Allocator GetAllocator() const
 	{
 		return _MyAllocator;
 	}
@@ -495,7 +495,7 @@ public:
 	 * @brief Get the buffer of the tensor.
 	 * @return The buffer of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Buffer()
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Buffer()
 	{
 		return _MyFirst;
 	}
@@ -504,7 +504,7 @@ public:
 	 * @brief Get the data pointer of the tensor.
 	 * @return The data pointer of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Data() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Data() const
 	{
 		return _MyData;
 	}
@@ -514,7 +514,7 @@ public:
 	 * @param _Indices The indices of the tensor.
 	 * @return The data pointer of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Data(const Dimensions& _Indices) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Data(const Dimensions& _Indices) const
 	{
 		SizeType Index = 0;
 		for (size_t i = 0; i < _Indices.Size(); ++i)
@@ -530,7 +530,7 @@ public:
 	 * @param Index The indices.
 	 * @return The val.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Get(SizeType Index) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Get(SizeType Index) const
 	{
 		return *(_MyFirst.get() + Index);
 	}
@@ -540,7 +540,7 @@ public:
 	 * @param _Indices The indices.
 	 * @return The val.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Item(const Dimensions& _Indices) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Item(const Dimensions& _Indices) const
 	{
 		return *Data(_Indices);
 	}
@@ -549,7 +549,7 @@ public:
 	 * @brief Get the first val of the tensor.
 	 * @return The val.
 	 */
-	DRAGONIANLIBCONSTEXPR decltype(auto) Item() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Item() const
 	{
 		return *(Data());
 	}
@@ -591,7 +591,7 @@ public:
 	/**
 	 * @brief Assign the tensor with ones.
 	 */
-	DRAGONIANLIBCONSTEXPR void FixOnes() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void FixOnes() const
 	{
 		Assign(ValueType(1));
 	}
@@ -599,7 +599,7 @@ public:
 	/**
 	 * @brief Assign the tensor with zeros.
 	 */
-	DRAGONIANLIBCONSTEXPR void FixZeros() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void FixZeros() const
 	{
 		Assign(ValueType(0));
 	}
@@ -608,7 +608,7 @@ public:
 	 * @brief Assign the tensor with a constant value.
 	 * @param _Val The constant value.
 	 */
-	DRAGONIANLIBCONSTEXPR void Fix(ValueType _Val) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Fix(ValueType _Val) const
 	{
 		Assign(_Val);
 	}
@@ -685,7 +685,7 @@ public:
 			CurrentRank = Rank();
 
 		if (CurrentRank > 6)
-			DragonianLibThrow("The Rank Of The Tensor Is Too High! In General, Axis Which Greater Than 6 Is A Batch Axis, You Can Use Invoke() Or Write A Loop.");
+			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Tensor Is Too High! In General, Axis Which Greater Than 6 Is A Batch Axis, You Can Use Invoke() Or Write A Loop.");
 		Operators::TensorShapeInfo Ret;
 		SizeType i = 0;
 		SizeType Count = 6 - CurrentRank;
@@ -712,7 +712,7 @@ public:
 	 * @brief Get the shape of the tensor.
 	 * @return The shape of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR const Dimensions& Shape() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& Shape() const
 	{
 		return _MyShape;
 	}
@@ -722,7 +722,7 @@ public:
 	 * @param _Index 
 	 * @return 
 	 */
-	DRAGONIANLIBCONSTEXPR SizeType Shape(SizeType _Index) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
 	{
 		return _MyShape[_Index];
 	}
@@ -731,7 +731,7 @@ public:
 	 * @brief Get the shape of the tensor.
 	 * @return The shape of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR const Dimensions& Size() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& Size() const
 	{
 		return _MyShape;
 	}
@@ -741,7 +741,7 @@ public:
 	 * @param _Index
 	 * @return
 	 */
-	DRAGONIANLIBCONSTEXPR SizeType Size(SizeType _Index) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
 	{
 		return _MyShape[_Index];
 	}
@@ -750,7 +750,7 @@ public:
 	 * @brief Get the rank of the tensor.
 	 * @return The rank of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR SizeType Rank() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Rank() const
 	{
 		return _MyShape.Size();
 	}
@@ -759,7 +759,7 @@ public:
 	 * @brief Get the strides of the tensor.
 	 * @return The strides of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR const Dimensions& ViewStrides() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& ViewStrides() const
 	{
 		return _MyViewStride;
 	}
@@ -768,7 +768,7 @@ public:
 	 * @brief Get the steps of the tensor.
 	 * @return The steps of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR const Dimensions& ViewSteps() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& ViewSteps() const
 	{
 		return _MyViewStep;
 	}
@@ -777,7 +777,7 @@ public:
 	 * @brief Get the left indices of the tensor.
 	 * @return The left indices of the tensor.
 	 */
-	DRAGONIANLIBCONSTEXPR const Dimensions& ViewLeft() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& ViewLeft() const
 	{
 		return _MyViewLeft;
 	}
@@ -822,7 +822,7 @@ public:
 	 * @brief Check if the tensor is enabled.
 	 * @return True if the tensor is enabled, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsEnabled() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsEnabled() const
 	{
 		return _MyData != nullptr;
 	}
@@ -831,7 +831,7 @@ public:
 	 * @brief Check if the tensor is scalar.
 	 * @return True if the tensor is scalar, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsScalar() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsScalar() const
 	{
 		return _MyShape.Size() == 1 && _MyShape[0] == 1;
 	}
@@ -840,7 +840,7 @@ public:
 	 * @brief Check if the tensor is vector.
 	 * @return True if the tensor is vector, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsVector() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsVector() const
 	{
 		return _MyShape.Size() == 1;
 	}
@@ -851,7 +851,7 @@ public:
 	 * @param _End end axis
 	 * @return True if the tensor is continuous, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsContinuous(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
 	{
 		if (_End == INT64_MAX)
 			_End = Rank();
@@ -870,7 +870,7 @@ public:
 	 * @brief Check if the tensor is view.
 	 * @return True if the tensor is view, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsView() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsView() const
 	{
 		return _MyData != _MyFirst.get();
 	}
@@ -879,17 +879,17 @@ public:
 	 * @brief Check if the tensor is broadcasted.
 	 * @return True if the tensor is broadcasted, false otherwise.
 	 */
-	DRAGONIANLIBCONSTEXPR bool IsBroadCasted() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsBroadCasted() const
 	{
 		return IsBroadCasted_;
 	}
 
 private:
 
-	DRAGONIANLIBCONSTEXPR void ThrowOnNotEnabled() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ThrowOnNotEnabled() const
 	{
 		if (!IsEnabled())
-			DragonianLibFatalError;
+			_D_Dragonian_Lib_Fatal_Error;
 	}
 
 public:
@@ -899,7 +899,7 @@ public:
 	 * @brief Add 1 to the indices of a loop iterator.
 	 * @param _Indices The indices of the loop iterator.
 	 */
-	DRAGONIANLIBCONSTEXPR void IteratorAdd(Dimensions& _Indices) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void IteratorAdd(Dimensions& _Indices) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -922,7 +922,7 @@ public:
 	 * @brief Sub 1 to the indices of a loop iterator.
 	 * @param _Indices The indices of the loop iterator.
 	 */
-	DRAGONIANLIBCONSTEXPR void IteratorSub(Dimensions& _Indices) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void IteratorSub(Dimensions& _Indices) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -948,12 +948,12 @@ public:
 	 * @param _Max The max index.
 	 * @return The transformed index.
 	 */
-	static DRAGONIANLIBCONSTEXPR SizeType CalcIndex(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max)
 	{
 		if (_Index < 0)
 			_Index += _Max;
 		if (_Index >= _Max || _Index < 0)
-			DragonianLibThrow("Index Out Of Range!");
+			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
 		return _Index;
 	}
 
@@ -963,12 +963,12 @@ public:
 	 * @param _Max The max index.
 	 * @return The transformed index.
 	 */
-	static DRAGONIANLIBCONSTEXPR SizeType CalcRange(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType CalcRange(SizeType _Index, SizeType _Max)
 	{
 		if (_Index < 0)
 			_Index += _Max + 1;
 		if (_Index > _Max || _Index < -1)
-			DragonianLibThrow("Index Out Of Range!");
+			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
 		return _Index;
 	}
 
@@ -978,7 +978,7 @@ public:
 	 * @param _Right The right number.
 	 * @return The ceil of the division.
 	 */
-	static DRAGONIANLIBCONSTEXPR SizeType Ceil(SizeType _Left, SizeType _Right)
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Ceil(SizeType _Left, SizeType _Right)
 	{
 		auto Mul = _Left / _Right;
 		if (_Left > (Mul * _Right))
@@ -1006,9 +1006,9 @@ public:
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
-			DragonianLibThrow("Broad Casted Could Not Be Sliced!");
+			_D_Dragonian_Lib_Throw_Exception("Broad Casted Could Not Be Sliced!");
 		if (_MyShape.Empty() || _SliceOptions.Size() > _MyShape.Size())
-			DragonianLibThrow("Axis Out Of Range!");
+			_D_Dragonian_Lib_Throw_Exception("Axis Out Of Range!");
 
 		Tensor Ret = CreateView();
 		for (size_t i = 0; i < _SliceOptions.Size(); ++i)
@@ -1018,17 +1018,17 @@ public:
 			const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
 			auto SliceEndPos = _SliceOptions[i].End;
 			if (SliceEndPos > _MyShape[i] || SliceEndPos < -(_MyShape[i] + 1))
-				DragonianLibThrow("Index Out Of Range!");
+				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
 			if (SliceEndPos == -(_MyShape[i] + 1))
 				SliceEndPos = -1;
 			else if (SliceEndPos < 0)
 				SliceEndPos += _MyShape[i] + 1;
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
-				DragonianLibThrow("Slice Length Must > 0");
+				_D_Dragonian_Lib_Throw_Exception("Slice Length Must > 0");
 			if (SliceLength > 0 && _SliceOptions[i].Step < 0 ||
 				SliceLength < 0 && _SliceOptions[i].Step > 0)
-				DragonianLibThrow("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
+				_D_Dragonian_Lib_Throw_Exception("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
 			Ret._MyViewLeft[i] += SliceBeginPos * Ret._MyViewStride[i];
 			Ret._MyShape[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i].Step));
 			Ret._MyViewStride[i] *= _SliceOptions[i].Step;
@@ -1064,15 +1064,15 @@ public:
 	{
 		ThrowOnNotEnabled();
 		if (_MyShape.Empty() || _PremuteOrder.Size() != _MyShape.Size())
-			DragonianLibThrow("N_DIMS MisMatch!");
+			_D_Dragonian_Lib_Throw_Exception("N_DIMS MisMatch!");
 		Tensor Ret = CreateView();
 		auto TransposedDims = _PremuteOrder;
 		std::ranges::sort(TransposedDims);
 		if (TransposedDims[0] != 0)
-			DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+			_D_Dragonian_Lib_Throw_Exception("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 		for (size_t i = 1; i < TransposedDims.Size(); ++i)
 			if (TransposedDims[i] != TransposedDims[i - 1] + 1)
-				DragonianLibThrow("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
+				_D_Dragonian_Lib_Throw_Exception("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
 
 		for (size_t i = 0; i < _PremuteOrder.Size(); ++i)
 		{
@@ -1139,7 +1139,7 @@ public:
 		Tensor Ret = CreateView();
 		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size()));
 		if (Ret._MyShape[_Dim] != 1)
-			DragonianLibThrow("The Dim Must Be 1!");
+			_D_Dragonian_Lib_Throw_Exception("The Dim Must Be 1!");
 
 		if (Ret._MyViewLeft[_Dim])
 			_MyData += _MyViewLeft[_Dim] * _MyViewStep[_Dim];
@@ -1183,17 +1183,17 @@ public:
 	Tensor View(const Dimensions& _ViewShape)
 	{
 		if (!IsContinuous())
-			DragonianLibThrow("View Should Be Continuous!");
+			_D_Dragonian_Lib_Throw_Exception("View Should Be Continuous!");
 		if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
-			DragonianLibThrow("Count Of Dynamic Axis Should <= 1!");
+			_D_Dragonian_Lib_Throw_Exception("Count Of Dynamic Axis Should <= 1!");
 		for (const auto i : _ViewShape)
 			if (i <= 0 && i != -1)
-				DragonianLibThrow("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
+				_D_Dragonian_Lib_Throw_Exception("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
 		Tensor Ret = CreateView();
 		const auto SrcSize = VectorMul(Ret._MyShape);
 		const auto DstSize = VectorMul(_ViewShape);
 		if ((DstSize < 0 && (SrcSize % abs(DstSize)) != 0) || (DstSize > 0 && (SrcSize != DstSize)))
-			DragonianLibThrow("Size MisMatch!");
+			_D_Dragonian_Lib_Throw_Exception("Size MisMatch!");
 		const auto DynamicAxes = SrcSize / DstSize;
 
 		Ret._MyShape = _ViewShape;
@@ -1358,7 +1358,7 @@ protected:
 				Second.IsBroadCasted_ = true;
 			}
 			else
-				DragonianLibThrow("TensorA & TensorB Can Not Be BroadCast!");
+				_D_Dragonian_Lib_Throw_Exception("TensorA & TensorB Can Not Be BroadCast!");
 		}
 		std::ranges::reverse(First._MyShape);
 		std::ranges::reverse(Second._MyShape);
@@ -1375,11 +1375,11 @@ protected:
 	{
 		decltype(auto) Bd = BroadCast(*this, _Other);
 		if (Bd.first.IsBroadCasted())
-			DragonianLibThrow("TensorA & TensorB Can Not  Be BroadCast At The Same Time In This Operator!");
+			_D_Dragonian_Lib_Throw_Exception("TensorA & TensorB Can Not  Be BroadCast At The Same Time In This Operator!");
 		return std::move(Bd.second);
 	}
 
-	DRAGONIANLIBCONSTEXPR Tensor GatherRef(SizeType _Index) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Tensor GatherRef(SizeType _Index) const
 	{
 		const auto Idx = CalcIndex(_Index, _MyShape.Front());
 		Tensor Ret;
@@ -1440,4 +1440,4 @@ public:
 	DragonianLibTensorFnDef(Round);*/
 };
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

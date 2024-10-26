@@ -30,7 +30,7 @@ namespace DragonianLib
 	}
 }
 
-DRAGONIANLIBSTLBEGIN
+_D_Dragonian_Lib_Template_Library_Space_Begin
 
 unsigned char* BaseAllocator::Allocate(size_t _Size)
 {
@@ -85,4 +85,4 @@ void CPUAllocator::Free(void* _Block)
 #endif
 }
 
-DRAGONIANLIBSTLEND
+_D_Dragonian_Lib_Template_Library_Space_End

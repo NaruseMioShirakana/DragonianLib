@@ -30,7 +30,7 @@
 #include "EnvManager.hpp"
 #include "../InferTools/inferTools.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
  * @struct DiffusionSvcPaths
@@ -349,4 +349,4 @@ public:
     LibSvcModule(LibSvcModule&&) = default;
 };
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

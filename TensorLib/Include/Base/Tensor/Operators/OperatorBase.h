@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include <random>
 #include "Tensor/TensorBase.h"
-#define DragonianLibOperatorSpaceBegin DragonianLibSpaceBegin namespace Operators {
-#define DragonianLibOperatorSpaceEnd } DragonianLibSpaceEnd
+#define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
+#define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
 
-DragonianLibOperatorSpaceBegin
+_D_Dragonian_Lib_Operator_Space_Begin
 
 static inline std::mt19937_64 RandomEngine(std::random_device{}());
 static inline std::uniform_int_distribution RandomInt64Distribution(INT64_MIN, INT64_MAX);
@@ -31,7 +31,7 @@ public:
 		bool Continuous
 	)
 	{
-		DragonianLibNotImplementedError;
+		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
 	static void ImplAssign(
@@ -42,7 +42,7 @@ public:
 		bool Continuous
 	)
 	{
-		DragonianLibNotImplementedError;
+		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
 	static void ImplAssign(
@@ -52,7 +52,7 @@ public:
 		bool Continuous
 	)
 	{
-		DragonianLibNotImplementedError;
+		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
 	static void ImplAssignRandn(
@@ -63,7 +63,7 @@ public:
 		bool Continuous
 	)
 	{
-		DragonianLibNotImplementedError;
+		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
 	static void ImplAssignRand(
@@ -72,9 +72,9 @@ public:
 		bool Continuous
 	)
 	{
-		DragonianLibNotImplementedError;
+		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 	
 };
 
-DragonianLibOperatorSpaceEnd
+_D_Dragonian_Lib_Operator_Space_End

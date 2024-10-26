@@ -21,12 +21,19 @@
 #include <initializer_list>
 #include <algorithm>
 
-#define DRAGONIANLIBCONSTEXPR __forceinline
-#define DragonianLibStlThrow(message) ThrowException(message, __FILE__, __FUNCSIG__, __LINE__)
+//Force Inline
+#ifdef _MSC_VER
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline __attribute__((always_inline)) inline
+#else
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline inline
+#endif
+#define _D_Dragonian_Lib_Stl_Throw(message) _Impl_Dragonian_Lib_Template_Library_Throw_Exception(message, __FILE__, __FUNCSIG__, __LINE__)
 
-DRAGONIANLIBSTLBEGIN
+_D_Dragonian_Lib_Template_Library_Space_Begin
 
-[[noreturn]] void ThrowException(const char* Message, const char* FILE, const char* FUN, int LINE);
+[[noreturn]] void _Impl_Dragonian_Lib_Template_Library_Throw_Exception(const char* Message, const char* FILE, const char* FUN, int LINE);
 
 //using Type_ = float;
 template <typename Type_>
@@ -46,12 +53,12 @@ public:
     using SizeType = size_t;
     using IndexType = long long;
 
-    DRAGONIANLIBCONSTEXPR ~Vector() noexcept
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ~Vector() noexcept
     {
         Destory();
     }
 
-    DRAGONIANLIBCONSTEXPR Vector()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector()
     {
         Allocator_ = GetMemoryProvider(Device::CPU);
         _MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
@@ -60,9 +67,9 @@ public:
         return;
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
-        if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
+        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         Allocator_ = _Alloc;
 
         if (_Size == 0)
@@ -74,7 +81,7 @@ public:
         }
 
         _MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-        if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
+        if (!_MyFirst) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyFirst + _Size * 2;
 
@@ -86,9 +93,9 @@ public:
         }
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
-        if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
+        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         Allocator_ = _Alloc;
 
         if (_Size == 0)
@@ -100,7 +107,7 @@ public:
         }
 
         _MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-        if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
+        if (!_MyFirst) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyFirst + _Size * 2;
 
@@ -118,9 +125,9 @@ public:
         }
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
     {
-        if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
+        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         Allocator_ = _Alloc;
         _MyOwner = _Owner;
         _MyFirst = *_Block;
@@ -129,27 +136,27 @@ public:
         *_Block = nullptr;
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
         ConstuctWithIteratorImpl(_Begin, _End, _Alloc);
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
         ConstuctWithIteratorImpl(_Buffer, _Buffer + _Size, _Alloc);
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
         ConstuctWithIteratorImpl(_List.begin(), _List.end(), _Alloc);
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(const Vector& _Left)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(const Vector& _Left)
     {
         ConstuctWithIteratorImpl(_Left._MyFirst, _Left._MyLast, _Left.Allocator_);
     }
 
-    DRAGONIANLIBCONSTEXPR Vector(Vector&& _Right) noexcept
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector(Vector&& _Right) noexcept
     {
         _MyFirst = _Right._MyFirst;
         _MyLast = _Right._MyLast;
@@ -163,7 +170,7 @@ public:
         _Right._MyEnd = nullptr;
     }
 
-    DRAGONIANLIBCONSTEXPR Vector& operator=(const Vector& _Left)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator=(const Vector& _Left)
     {
         if (&_Left == this)
             return *this;
@@ -172,7 +179,7 @@ public:
         return *this;
     }
 
-    DRAGONIANLIBCONSTEXPR Vector& operator=(Vector&& _Right) noexcept
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator=(Vector&& _Right) noexcept
     {
         if (&_Right != this)
             Destory();
@@ -190,7 +197,7 @@ public:
         return *this;
     }
 
-    DRAGONIANLIBCONSTEXPR Reference operator[](SizeType _Index) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference operator[](SizeType _Index) const
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (size_t(_Index) >= Size())
@@ -205,47 +212,47 @@ protected:
     bool _MyOwner = true;
 
 public:
-    DRAGONIANLIBCONSTEXPR decltype(auto) Begin() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Begin() const
     {
         return _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR decltype(auto) End() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) End() const
     {
         return _MyLast;
     }
 
-    DRAGONIANLIBCONSTEXPR decltype(auto) ReversedBegin() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedBegin() const
     {
         return _MyLast - 1;
     }
 
-    DRAGONIANLIBCONSTEXPR decltype(auto) ReversedEnd() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedEnd() const
     {
         return _MyFirst - 1;
     }
 
-    DRAGONIANLIBCONSTEXPR decltype(auto) begin() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) begin() const
     {
         return _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR decltype(auto) end() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) end() const
     {
         return _MyLast;
     }
 
-    DRAGONIANLIBCONSTEXPR SizeType Size() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size() const
     {
         return _MyLast - _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR SizeType Capacity() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Capacity() const
     {
         return _MyEnd - _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR std::pair<Pointer, SizeType> Release()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::pair<Pointer, SizeType> Release()
     {
         auto Ptr = _MyFirst;
         auto _Size = Size();
@@ -256,38 +263,38 @@ public:
         return { Ptr, _Size };
     }
 
-    DRAGONIANLIBCONSTEXPR ValueType* Data()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ValueType* Data()
     {
         return std::_Unfancy_maybe_null(_MyFirst);
     }
 
-    DRAGONIANLIBCONSTEXPR const ValueType* Data() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const ValueType* Data() const
     {
         return std::_Unfancy_maybe_null(_MyFirst);
     }
 
-    DRAGONIANLIBCONSTEXPR Allocator GetAllocator() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Allocator GetAllocator() const
     {
         return Allocator_;
     }
 
-    DRAGONIANLIBCONSTEXPR Reference Back() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Back() const
     {
         return *(_MyLast - 1);
     }
 
-    DRAGONIANLIBCONSTEXPR Reference Front() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Front() const
     {
         return *(_MyFirst);
     }
 
-    DRAGONIANLIBCONSTEXPR bool Empty() const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool Empty() const
     {
         return _MyFirst == _MyLast;
     }
 
 private:
-    DRAGONIANLIBCONSTEXPR void _Tidy()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void _Tidy()
     {
         if constexpr (!std::is_arithmetic_v<ValueType>)
         {
@@ -303,15 +310,15 @@ private:
         _MyEnd = nullptr;
     }
 
-    DRAGONIANLIBCONSTEXPR void Destory()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Destory()
     {
         _Tidy();
         Allocator_ = nullptr;
     }
 
-    DRAGONIANLIBCONSTEXPR void ConstuctWithIteratorImpl(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ConstuctWithIteratorImpl(ConstIterator _Begin, ConstIterator _End, Allocator _Alloc)
     {
-        if (!_Alloc) DragonianLibStlThrow("Bad Alloc!");
+        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         Allocator_ = _Alloc;
 
         const auto _Size = _End - _Begin;
@@ -325,7 +332,7 @@ private:
         }
 
         _MyFirst = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _Size * 2);
-        if (!_MyFirst) DragonianLibStlThrow("Bad Alloc!");
+        if (!_MyFirst) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyFirst + _Size * 2;
 
@@ -344,19 +351,19 @@ private:
     }
 
     template<typename... _ArgsTy>
-    DRAGONIANLIBCONSTEXPR decltype(auto) EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
     {
         ::new (static_cast<void*>(std::addressof(_Obj))) ValueType(std::forward<_ArgsTy>(_Args)...);
         return _Obj;
     }
 
-    DRAGONIANLIBCONSTEXPR void ReserveImpl(SizeType _NewCapacity, IndexType _Front, IndexType _Tail)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ReserveImpl(SizeType _NewCapacity, IndexType _Front, IndexType _Tail)
     {
         auto _Size = Size() + _Tail - _Front;
         auto _TailSize = (_MyLast - _MyFirst) - _Front;
 
         if (_NewCapacity <= _Size || _Front > _Tail)
-            DragonianLibStlThrow("Bad Alloc!");
+            _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
 
         auto _Data = (Pointer)Allocator_->Allocate(sizeof(ValueType) * _NewCapacity);
 
@@ -379,13 +386,13 @@ private:
         _MyEnd = _Data + _NewCapacity;
     }
 
-    DRAGONIANLIBCONSTEXPR void CopyImpl(IndexType _Front, IndexType _Tail)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void CopyImpl(IndexType _Front, IndexType _Tail)
     {
         auto _Size = Size() + _Tail - _Front;
         auto _TailSize = (_MyLast - _MyFirst) - _Front;
 
         if (_Front > _Tail || Capacity() < _Size)
-            DragonianLibStlThrow("Index Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Index Out Of Range!");
 
         if constexpr (!std::is_arithmetic_v<ValueType>)
             for (IndexType i = _TailSize - 1; i >= 0; --i)
@@ -397,7 +404,7 @@ private:
         _MyLast = _MyFirst + _Size;
     }
 public:
-    DRAGONIANLIBCONSTEXPR void Reserve(SizeType _NewCapacity)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Reserve(SizeType _NewCapacity)
     {
         if (_NewCapacity == Capacity())
             return;
@@ -426,7 +433,7 @@ public:
         _MyEnd = _Data + _NewCapacity;
     }
 
-    DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resize(SizeType _NewSize)
     {
         if (_NewSize == Size())
             return;
@@ -447,7 +454,7 @@ public:
         _MyLast = _MyFirst + _NewSize;
     }
 
-    DRAGONIANLIBCONSTEXPR void Resize(SizeType _NewSize, ConstReference _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resize(SizeType _NewSize, ConstReference _Val)
     {
         if (_NewSize == Size())
             return;
@@ -469,7 +476,7 @@ public:
     }
 
     template<typename... _ArgsTy>
-    DRAGONIANLIBCONSTEXPR decltype(auto) Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -484,12 +491,12 @@ public:
     }
 
     template<typename... _ArgsTy>
-    DRAGONIANLIBCONSTEXPR decltype(auto) EmplaceBack(_ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) EmplaceBack(_ArgsTy &&... _Args)
     {
         return Emplace(_MyLast, std::forward<_ArgsTy>(_Args)...);
     }
 
-    DRAGONIANLIBCONSTEXPR Reference Insert(ConstIterator _Where, const ValueType& _Value)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Insert(ConstIterator _Where, const ValueType& _Value)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -508,7 +515,7 @@ public:
         return *(_MyFirst + Idx);
     }
 
-    DRAGONIANLIBCONSTEXPR Reference Insert(ConstIterator _Where, ValueType&& _Value)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Insert(ConstIterator _Where, ValueType&& _Value)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -527,7 +534,7 @@ public:
         return *(_MyFirst + Idx);
     }
 
-    DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, SizeType _Count, const ValueType& _Value)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Insert(ConstIterator _Where, SizeType _Count, const ValueType& _Value)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -547,7 +554,7 @@ public:
                 *(_MyFirst + Idx + i) = _Value;
     }
 
-    DRAGONIANLIBCONSTEXPR void Insert(ConstIterator _Where, ConstIterator _First, ConstIterator _Last)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Insert(ConstIterator _Where, ConstIterator _First, ConstIterator _Last)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -556,7 +563,7 @@ public:
         auto Idx = _Where - _MyFirst;
         SizeType _Count = _Last - _First;
         if (_Last < _First)
-            DragonianLibStlThrow("Range Error!");
+            _D_Dragonian_Lib_Stl_Throw("Range Error!");
 
         if (_MyLast + _Count > _MyEnd)
             ReserveImpl((_Count + Size()) * 2, _Where - _MyFirst, _Where - _MyFirst + IndexType(_Count));
@@ -571,7 +578,7 @@ public:
                 *(_MyFirst + Idx + i) = *(_First++);
     }
 
-    DRAGONIANLIBCONSTEXPR ValueType Erase(ConstIterator _Where)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ValueType Erase(ConstIterator _Where)
     {
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where >= _MyLast || _Where < _MyFirst)
@@ -585,7 +592,7 @@ public:
 		return _Value;
     }
 
-    DRAGONIANLIBCONSTEXPR void Clear()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Clear()
     {
         if constexpr (!std::is_arithmetic_v<ValueType>)
         {
@@ -596,7 +603,7 @@ public:
         _MyLast = _MyFirst;
     }
 
-    DRAGONIANLIBCONSTEXPR void PopBack()
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void PopBack()
     {
         --_MyLast;
         if constexpr (!std::is_arithmetic_v<ValueType>)
@@ -604,7 +611,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector operator+(const _T& _Val) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator+(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -614,7 +621,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector operator-(const _T& _Val) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator-(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -624,7 +631,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector operator*(const _T& _Val) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator*(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -634,7 +641,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector operator/(const _T& _Val) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator/(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -644,7 +651,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector operator^(const _T& _Val) const
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator^(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -654,7 +661,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector& operator+=(const _T& _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator+=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -663,7 +670,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector& operator-=(const _T& _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator-=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -672,7 +679,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector& operator*=(const _T& _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator*=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -681,7 +688,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector& operator/=(const _T& _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator/=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -690,7 +697,7 @@ public:
     }
 
     template<typename _T>
-    DRAGONIANLIBCONSTEXPR Vector& operator^=(const _T& _Val)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator^=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -700,10 +707,10 @@ public:
 };
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator+(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
 {
     if (_ValA.Size() != _ValB.Size())
-        DragonianLibStlThrow("Size MisMatch!");
+        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
     auto Temp = _ValA;
     auto Iter = Temp.Data();
     auto ValIter = _ValB.Data();
@@ -713,10 +720,10 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const Vector<_TypeA>& _ValA, cons
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator-(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
 {
     if (_ValA.Size() != _ValB.Size())
-        DragonianLibStlThrow("Size MisMatch!");
+        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
     auto Temp = _ValA;
     auto Iter = Temp.Data();
     auto ValIter = _ValB.Data();
@@ -726,10 +733,10 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const Vector<_TypeA>& _ValA, cons
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator*(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
 {
     if (_ValA.Size() != _ValB.Size())
-        DragonianLibStlThrow("Size MisMatch!");
+        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
     auto Temp = _ValA;
     auto Iter = Temp.Data();
     auto ValIter = _ValB.Data();
@@ -739,10 +746,10 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const Vector<_TypeA>& _ValA, cons
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator/(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
 {
     if (_ValA.Size() != _ValB.Size())
-        DragonianLibStlThrow("Size MisMatch!");
+        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
     auto Temp = _ValA;
     auto Iter = Temp.Data();
     auto ValIter = _ValB.Data();
@@ -752,10 +759,10 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const Vector<_TypeA>& _ValA, cons
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator^(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
 {
     if (_ValA.Size() != _ValB.Size())
-        DragonianLibStlThrow("Size MisMatch!");
+        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
     auto Temp = _ValA;
     auto Iter = Temp.Data();
     auto ValIter = _ValB.Data();
@@ -765,7 +772,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const Vector<_TypeA>& _ValA, cons
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator+(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
 {
     Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
     auto IterA = Temp.Data();
@@ -776,7 +783,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator+(const _TypeA& _ValA, const Vector
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator-(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
 {
     Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
     auto IterA = Temp.Data();
@@ -787,7 +794,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator-(const _TypeA& _ValA, const Vector
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator*(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
 {
     Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
     auto IterA = Temp.Data();
@@ -798,7 +805,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator*(const _TypeA& _ValA, const Vector
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator/(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
 {
     Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
     auto IterA = Temp.Data();
@@ -809,7 +816,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator/(const _TypeA& _ValA, const Vector
 }
 
 template <typename _TypeA, typename _TypeB>
-DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
 {
     Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
     auto IterA = Temp.Data();
@@ -829,7 +836,7 @@ DRAGONIANLIBCONSTEXPR Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector
  * @return
  */
 template <typename Type>
-DRAGONIANLIBCONSTEXPR Vector<Type> Arange(Type Start, Type End, Type Step = Type(1.), Type NDiv = Type(1.))
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<Type> Arange(Type Start, Type End, Type Step = Type(1.), Type NDiv = Type(1.))
 {
     Vector<Type> OutPut(size_t((End - Start) / Step));
     auto OutPutPtr = OutPut.Begin();
@@ -850,7 +857,7 @@ DRAGONIANLIBCONSTEXPR Vector<Type> Arange(Type Start, Type End, Type Step = Type
  * @return Signal after mean filter.
  */
 template <typename _Type>
-DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
 {
     Vector<_Type> Result(_Signal.Size());
 
@@ -886,7 +893,7 @@ DRAGONIANLIBCONSTEXPR Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, siz
  * @return The average value of the elements in the range.
  */
 template<typename T>
-DRAGONIANLIBCONSTEXPR double Average(const T* Start, const T* End)
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline double Average(const T* Start, const T* End)
 {
     const auto Size = End - Start + 1;
     double Avg = (double)(*Start);
@@ -917,24 +924,24 @@ inline size_t CalculateResampledSize(size_t SrcSize, double SrcSamplingRate, dou
  * @param Div Division factor.
  */
 template<typename TypeInput, typename TypeOutput>
-DRAGONIANLIBCONSTEXPR void Resample(
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
     const TypeInput* SrcBuffer,
     size_t SrcSize,
     TypeOutput* DstBuffer,
     size_t DstSize,
     TypeOutput Div
 ) {
-    if (SrcSize == 0 || DstSize == 0) DragonianLibStlThrow("Invalid size!");
+    if (SrcSize == 0 || DstSize == 0) _D_Dragonian_Lib_Stl_Throw("Invalid size!");
     if (SrcSize == DstSize) {
         for (size_t i = 0; i < SrcSize; ++i)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[i]) / Div;
         return;
     }
-    const double scale = static_cast<double>(SrcSize - 1) / (DstSize - 1);
+    const double scale = static_cast<double>(SrcSize - 1) / static_cast<double>(DstSize - 1);
     for (size_t i = 0; i < DstSize; ++i) {
-        const double srcPos = i * scale;
+        const double srcPos = static_cast<double>(i) * scale;
         const size_t srcIndex = static_cast<size_t>(srcPos);
-        const double frac = srcPos - srcIndex;
+        const double frac = srcPos - static_cast<double>(srcIndex);
 
         if (srcIndex >= SrcSize - 1)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[SrcSize - 1] / Div);
@@ -964,23 +971,23 @@ DRAGONIANLIBCONSTEXPR void Resample(
  * @param DstSize Destination signal size.
  */
 template<typename TypeInput, typename TypeOutput>
-DRAGONIANLIBCONSTEXPR void Resample(
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
     const TypeInput* SrcBuffer,
     size_t SrcSize,
     TypeOutput* DstBuffer,
     size_t DstSize
 ) {
-    if (SrcSize == 0 || DstSize == 0) DragonianLibStlThrow("Invalid size!");
+    if (SrcSize == 0 || DstSize == 0) _D_Dragonian_Lib_Stl_Throw("Invalid size!");
     if (SrcSize == DstSize) {
         for (size_t i = 0; i < SrcSize; ++i)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[i]);
         return;
     }
-    const double scale = static_cast<double>(SrcSize - 1) / (DstSize - 1);
+    const double scale = static_cast<double>(SrcSize - 1) / static_cast<double>(DstSize - 1);
     for (size_t i = 0; i < DstSize; ++i) {
-        const double srcPos = i * scale;
+        const double srcPos = static_cast<double>(i) * scale;
         const size_t srcIndex = static_cast<size_t>(srcPos);
-        const double frac = srcPos - srcIndex;
+        const double frac = srcPos - double(srcIndex);
 
         if (srcIndex >= SrcSize - 1)
             DstBuffer[i] = static_cast<TypeOutput>(SrcBuffer[SrcSize - 1]);
@@ -1011,7 +1018,7 @@ DRAGONIANLIBCONSTEXPR void Resample(
  * @return Resampled signal.
  */
 template<typename TypeOutput, typename TypeInput>
-DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
     long SrcSamplingRate,
     long DstSamplingRate,
@@ -1033,7 +1040,7 @@ DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
  * @return Resampled signal.
  */
 template<typename TypeOutput, typename TypeInput>
-DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
     long SrcSamplingRate,
     long DstSamplingRate
@@ -1053,7 +1060,7 @@ DRAGONIANLIBCONSTEXPR Vector<TypeOutput> InterpResample(
  * @return Resampled signal.
  */
 template<typename T>
-DRAGONIANLIBCONSTEXPR Vector<T> InterpFunc(
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<T> InterpFunc(
     const Vector<T>& _Data,
     long _SrcSamplingRate,
     long _DstSamplingRate
@@ -1070,4 +1077,4 @@ DRAGONIANLIBCONSTEXPR Vector<T> InterpFunc(
     return Output;
 }
 
-DRAGONIANLIBSTLEND
+_D_Dragonian_Lib_Template_Library_Space_End

@@ -25,7 +25,7 @@
 #include "Models/ReflowSvc.hpp"
 #include "Stft/stft.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
  * @brief Sets up the kernel for the components
@@ -39,13 +39,13 @@ void SetupKernel();
  * @param _MelBins Number of Mel bins
  * @return Reference to the Mel operator
  */
-DlCodecStft::Mel& GetMelOperator(
+DragonianLib::FunctionTransform::Mel& GetMelOperator(
 	int32_t _SamplingRate,
 	int32_t _Hopsize,
 	int32_t _MelBins
 );
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
 
 namespace MoeVSRename
 {

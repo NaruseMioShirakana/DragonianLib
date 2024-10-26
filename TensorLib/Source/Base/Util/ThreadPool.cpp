@@ -5,7 +5,7 @@
 #include <Windows.h>
 #endif
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 ThreadPool::~ThreadPool() {
     Stoped_ = true;
     Condition_.release((ptrdiff_t)Threads_.size());
@@ -24,11 +24,11 @@ void ThreadPool::Init(int64 _ThreadCount) {
         _ThreadCount = std::thread::hardware_concurrency();
 
     if (!Stoped_)
-        DragonianLibThrow("Thread Pool Already Start!");
+        _D_Dragonian_Lib_Throw_Exception("Thread Pool Already Start!");
 
     std::unique_lock lock(Mx_);
     if (!Stoped_)
-        DragonianLibThrow("Thread Pool Already Start!");
+        _D_Dragonian_Lib_Throw_Exception("Thread Pool Already Start!");
     Stoped_ = false;
     Threads_.clear();
     for (int64 i = 0; i < _ThreadCount; i++)
@@ -82,4 +82,4 @@ void ThreadPool::Join()
         LogInfo(L"All Task Finished!");
 }
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

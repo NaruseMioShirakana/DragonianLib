@@ -23,7 +23,7 @@
 #include <functional>
 #include "BaseTensorExtractor.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 using TensorExtractor = std::shared_ptr<LibSvcTensorExtractor>;
 
@@ -60,4 +60,4 @@ TensorExtractor GetTensorExtractor(
 	const LibSvcTensorExtractor::Others& _other
 );
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

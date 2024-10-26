@@ -6,7 +6,7 @@
 #include "Util/StringPreprocess.h"
 #include "onnxruntime_cxx_api.h"
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 
 std::shared_ptr<Ort::Session> MelPEModel = nullptr;
 std::shared_ptr<Ort::Session> RmvPEModel = nullptr;
@@ -247,6 +247,6 @@ void UnloadRMVPEModel()
 	RmvPEModel.reset();
 }
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End
 
 #endif

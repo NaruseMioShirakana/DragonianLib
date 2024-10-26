@@ -25,7 +25,7 @@
 #include <memory>
 #include <string>
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 
 using F0Extractor = std::shared_ptr<BaseF0Extractor>;
 
@@ -66,4 +66,4 @@ F0Extractor GetF0Extractor(
  */
 std::vector<std::wstring> GetF0ExtractorList();
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End

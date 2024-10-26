@@ -82,7 +82,7 @@ namespace DragonianLib {
 			Indexs.emplace_back(std::make_shared<IndexClusterCore>(IndexPath.string().c_str()));
 		}
 		if (Indexs.empty())
-			DragonianLibThrow("Index Is Empty");
+			_D_Dragonian_Lib_Throw_Exception("Index Is Empty");
 	}
 
 	DragonianLibSTL::Vector<float> IndexCluster::Search(float* point, long sid, int64_t n_points)

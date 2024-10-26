@@ -8,8 +8,9 @@
 
 #include "Util/StringPreprocess.h"
 
-LibSvcHeader
-	VitsSvc::~VitsSvc()
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
+
+VitsSvc::~VitsSvc()
 {
 	LogInfo(L"Unloading VitsSvc Models");
 }
@@ -57,7 +58,7 @@ VitsSvc::VitsSvc(
 	}
 	catch (Ort::Exception& _exception)
 	{
-		DragonianLibThrow(_exception.what());
+		_D_Dragonian_Lib_Throw_Exception(_exception.what());
 	}
 
 	if (VitsSvcModel->GetInputCount() == 4 && VitsSvcVersion != L"SoVits3.0")
@@ -71,7 +72,7 @@ VitsSvc::VitsSvc(
 	}
 	catch (std::exception& e)
 	{
-		DragonianLibThrow(e.what());
+		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
 }
 
@@ -111,13 +112,13 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow((std::string("Locate: hubert\n") + e.what()));
+			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: hubert\n") + e.what()));
 		}
 		const auto HubertSize = HubertOutPuts[0].GetTensorTypeAndShapeInfo().GetElementCount();
 		const auto HubertOutPutData = HubertOutPuts[0].GetTensorMutableData<float>();
 		auto HubertOutPutShape = HubertOutPuts[0].GetTensorTypeAndShapeInfo().GetShape();
 		if (HubertOutPutShape[2] != HiddenUnitKDims)
-			DragonianLibThrow("HiddenUnitKDims UnMatch");
+			_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
 		DragonianLibSTL::Vector SrcHiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
 
@@ -183,7 +184,7 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow((std::string("Locate: VitsSvc\n") + e.what()));
+			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: VitsSvc\n") + e.what()));
 		}
 
 		auto VitsOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
@@ -251,14 +252,14 @@ DragonianLibSTL::Vector<float> VitsSvc::InferPCMData(
 	}
 	catch (Ort::Exception& e)
 	{
-		DragonianLibThrow((std::string("Locate: hubert\n") + e.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: hubert\n") + e.what()));
 	}
 	auto HubertSize = hubertOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
 	auto HubertOutPutData = hubertOut[0].GetTensorMutableData<float>();
 	auto HubertOutPutShape = hubertOut[0].GetTensorTypeAndShapeInfo().GetShape();
 	inputTensorshu.clear();
 	if (HubertOutPutShape[2] != HiddenUnitKDims)
-		DragonianLibThrow("HiddenUnitKDims UnMatch");
+		_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
 	DragonianLibSTL::Vector HiddenUnitsSrc(HubertOutPutData, HubertOutPutData + HubertSize);
 
@@ -430,4 +431,4 @@ DragonianLibSTL::Vector<float> VitsSvc::InferPCMData(
 	return TempVecWav;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

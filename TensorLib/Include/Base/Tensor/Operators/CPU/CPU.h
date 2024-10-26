@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Simd.h"
 
-DragonianLibOperatorSpaceBegin
+_D_Dragonian_Lib_Operator_Space_Begin
 
 template<typename _Type>
 class OperatorsBase<_Type, Device::CPU>
@@ -46,4 +46,4 @@ public:
 	);
 };
 
-DragonianLibOperatorSpaceEnd
+_D_Dragonian_Lib_Operator_Space_End

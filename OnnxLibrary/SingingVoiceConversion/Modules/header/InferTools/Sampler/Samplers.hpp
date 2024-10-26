@@ -22,7 +22,7 @@
 #pragma once
 #include "BaseSampler.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
  * @class PndmSampler
@@ -286,4 +286,4 @@ private:
     const std::vector<const char*> velocityOutput = { "o" };
 };
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

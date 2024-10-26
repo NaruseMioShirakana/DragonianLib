@@ -25,7 +25,7 @@
 
 #include "BaseF0Extractor.hpp"
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 
 class RMVPEF0Extractor : public BaseF0Extractor
 {
@@ -89,6 +89,6 @@ void UnloadFCPEModel();
  */
 void UnloadRMVPEModel();
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End
 
 #endif

@@ -38,17 +38,17 @@ void SysFreeString(BSTR _String)
 }
 #endif
 
-using Config = LibSvcSpace Hparams;
-using VitsSvc = LibSvcSpace VitsSvc;
-using DiffusionSvc = LibSvcSpace DiffusionSvc;
-using ReflowSvc = LibSvcSpace ReflowSvc;
+using Config = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams;
+using VitsSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VitsSvc;
+using DiffusionSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space DiffusionSvc;
+using ReflowSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ReflowSvc;
 using ClusterBase = DragonianLib::BaseCluster;
-using TensorExtractorBase = LibSvcSpace LibSvcTensorExtractor;
-using ProgressCallback = LibSvcSpace LibSvcModule::ProgressCallback;
-using ExecutionProvider = LibSvcSpace LibSvcModule::ExecutionProviders;
-using Slices = LibSvcSpace SingleAudio;
-using SingleSlice = LibSvcSpace SingleSlice;
-using Params = LibSvcSpace InferenceParams;
+using TensorExtractorBase = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcTensorExtractor;
+using ProgressCallback = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ProgressCallback;
+using ExecutionProvider = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders;
+using Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleAudio;
+using SingleSlice = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleSlice;
+using Params = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams;
 
 using DInt16Vector = DragonianLibSTL::Vector<int16_t>;
 using DFloat32Vector = DragonianLibSTL::Vector<float>;
@@ -59,7 +59,7 @@ using DataContainer = Slices;
 using OrtModelType = std::shared_ptr<Ort::Session>*;
 using SvcModelType = DragonianLib::SingingVoiceConversion::SingingVoiceConversion*;
 
-std::unordered_map<std::wstring, DlCodecStft::Mel*> MelOperators;
+std::unordered_map<std::wstring, DragonianLib::FunctionTransform::Mel*> MelOperators;
 
 void InitLibSvcHparams(
 	LibSvcHparams* _Input
@@ -454,7 +454,7 @@ void LibSvcSetLoggerFunction(
 
 void LibSvcInit()
 {
-	LibSvcSpace SetupKernel();
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SetupKernel();
 }
 
 void LibSvcFreeString(BSTR _String)
@@ -505,7 +505,7 @@ INT32 LibSvcSliceAudioI16(
 	}
 
 	auto& Ret = *(DUInt64Vector*)(_Output);
-	LibSvcSpace SlicerSettings SliSetting{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings SliSetting{
 		_Setting->SamplingRate,
 		_Setting->Threshold,
 		_Setting->MinLength,
@@ -515,7 +515,7 @@ INT32 LibSvcSliceAudioI16(
 
 	try
 	{
-		Ret = LibSvcSpace SliceAudio(
+		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SliceAudio(
 			InterpResample(
 				*(const DInt16Vector*)(_Audio),
 				1,
@@ -553,7 +553,7 @@ INT32 LibSvcSliceAudio(
 
 	auto& Ret = *(DUInt64Vector*)(_Output);
 
-	LibSvcSpace SlicerSettings SliSetting{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings SliSetting{
 		_Setting->SamplingRate,
 		_Setting->Threshold,
 		_Setting->MinLength,
@@ -563,7 +563,7 @@ INT32 LibSvcSliceAudio(
 
 	try
 	{
-		Ret = LibSvcSpace SliceAudio(
+		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SliceAudio(
 			*(const DFloat32Vector*)(_Audio),
 			SliSetting
 		);
@@ -586,7 +586,7 @@ INT32 LibSvcPreprocessI16(
 	LibSvcSlicesType _Output
 )
 {
-	LibSvcSpace SlicerSettings _Setting{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings _Setting{
 		.Threshold = _Threshold
 	};
 
@@ -611,7 +611,7 @@ INT32 LibSvcPreprocessI16(
 	Slices& Ret = *(Slices*)_Output;
 	try
 	{
-		Ret = LibSvcSpace SingingVoiceConversion::GetAudioSlice(
+		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
 			InterpResample(
 				*(const DInt16Vector*)(_Audio),
 				1,
@@ -622,7 +622,7 @@ INT32 LibSvcPreprocessI16(
 			_Setting
 		);
 
-		LibSvcSpace SingingVoiceConversion::PreProcessAudio(
+		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
 			Ret,
 			_SamplingRate,
 			_HopSize,
@@ -647,7 +647,7 @@ INT32 LibSvcPreprocess(
 	LibSvcSlicesType _Output
 )
 {
-	LibSvcSpace SlicerSettings _Setting{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings _Setting{
 		.Threshold = _Threshold
 	};
 
@@ -672,13 +672,13 @@ INT32 LibSvcPreprocess(
 	Slices& Ret = *(Slices*)_Output;
 	try
 	{
-		Ret = LibSvcSpace SingingVoiceConversion::GetAudioSlice(
+		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
 			*(const DFloat32Vector*)(_Audio),
 			*(const DUInt64Vector*)(_SlicePos),
 			_Setting
 		);
 
-		LibSvcSpace SingingVoiceConversion::PreProcessAudio(
+		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
 			Ret,
 			_SamplingRate,
 			_HopSize,
@@ -726,7 +726,7 @@ INT32 LibSvcStftI16(
 			L"H" + std::to_wstring(_Hopsize) +
 			L"M" + std::to_wstring(_MelBins);
 		if (!MelOperators.contains(_Name))
-			MelOperators[_Name] = new DlCodecStft::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
+			MelOperators[_Name] = new DragonianLib::FunctionTransform::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
 		auto _NormalizedAudio = InterpResample(
 			*(const DInt16Vector*)_Audio,
 			_SamplingRate,
@@ -777,7 +777,7 @@ INT32 LibSvcStft(
 			L"H" + std::to_wstring(_Hopsize) +
 			L"M" + std::to_wstring(_MelBins);
 		if (!MelOperators.contains(_Name))
-			MelOperators[_Name] = new DlCodecStft::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
+			MelOperators[_Name] = new DragonianLib::FunctionTransform::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
 		auto _NormalizedAudio = InterpResample<double>(
 			*(const DFloat32Vector*)_Audio,
 			_SamplingRate,
@@ -1206,7 +1206,7 @@ INT32 LibSvcVocoderEnhance(
 		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
 	try
 	{
-		*(DFloat32Vector*)(_Output) = LibSvcSpace VocoderInfer(
+		*(DFloat32Vector*)(_Output) = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VocoderInfer(
 			MelTemp.first,
 			Rf0,
 			_VocoderMelBins,
@@ -1241,7 +1241,7 @@ LibSvcModel LibSvcLoadModel(
 
 	//printf("%lld", (long long)(Config.DiffusionSvc.Encoder));
 
-	LibSvcSpace Hparams ModelConfig{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams ModelConfig{
 		LibSvcNullStrCheck(_Config->TensorExtractor),
 		LibSvcNullStrCheck(_Config->HubertPath),
 		{
@@ -1284,11 +1284,11 @@ LibSvcModel LibSvcLoadModel(
 	try
 	{
 		if (_T == 0)
-			return LibSvcModel(new VitsSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+			return LibSvcModel(new VitsSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
 		if (_T == 1)
-			return LibSvcModel(new DiffusionSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+			return LibSvcModel(new DiffusionSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
 		if (_T == 2)
-			return LibSvcModel(new ReflowSvc(ModelConfig, _ProgressCallback, static_cast<LibSvcSpace LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+			return LibSvcModel(new ReflowSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
 		return nullptr;
 	}
 	catch (std::exception& e)

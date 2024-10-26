@@ -22,7 +22,7 @@
 #pragma once
 #include "BaseF0Extractor.hpp"
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 class HarvestF0Extractor : public BaseF0Extractor
 {
 public:
@@ -40,4 +40,4 @@ public:
 private:
 	DragonianLibSTL::Vector<double> refined_f0;
 };
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End

@@ -23,10 +23,10 @@
 #include <cstdint>
 #include "MyTemplateLibrary/Vector.h"
 
-#define DragonianLibF0ExtractorHeader namespace DragonianLib{
-#define DragonianLibF0ExtractorEnd }
+#define _D_Dragonian_Lib_F0_Extractor_Header namespace DragonianLib{
+#define _D_Dragonian_Lib_F0_Extractor_End }
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 
 /**
  * @class BaseF0Extractor
@@ -77,4 +77,4 @@ protected:
     double f0_mel_max;
 };
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End

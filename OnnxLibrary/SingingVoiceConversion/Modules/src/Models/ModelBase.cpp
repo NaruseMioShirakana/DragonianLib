@@ -1,6 +1,6 @@
 ﻿#include "../../header/Models/ModelBase.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 LibSvcModule::LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_) :
 	OrtApiEnv(std::make_shared<DragonianLibOrtEnv>(ThreadCount_, DeviceID_, (unsigned)ExecutionProvider_))
@@ -137,4 +137,4 @@ int OnnxModule::InsertMessageToEmptyEditBox(std::wstring& _inputLens)
  }
   */
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

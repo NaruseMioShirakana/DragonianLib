@@ -20,20 +20,31 @@
 #pragma once
 #include "../OperatorBase.h"
 #include <immintrin.h>
+#define _D_Dragonian_Lib_Simd_Not_Implemented_Error _D_Dragonian_Lib_Throw_With_Inline_Function("SIMD Not Implemented Error!")
+#define _D_Dragonian_Lib_Simd_Not_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(0)))
+#define _D_Dragonian_Lib_Simd_Complement_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(-1)))
+_D_Dragonian_Lib_Operator_Space_Begin
+//*****************//
 
-DragonianLibSpaceBegin
-
+/**
+ * @class Vectorized
+ * @brief Warpper for SIMD
+ * @tparam Type Type of the data
+ * @tparam T TypeCheak
+ */
 template<typename Type, typename T = std::enable_if_t<!std::is_pointer_v<Type>, Type>>
 class Vectorized
 {
 public:
-	DRAGONIANLIBCONSTEXPR Vectorized() = default;
-	DRAGONIANLIBCONSTEXPR ~Vectorized() = default;
-	DRAGONIANLIBCONSTEXPR Vectorized(const Vectorized&) = default;
-	DRAGONIANLIBCONSTEXPR Vectorized(Vectorized&&) = default;
-	DRAGONIANLIBCONSTEXPR Vectorized& operator=(const Vectorized&) = default;
-	DRAGONIANLIBCONSTEXPR Vectorized& operator=(Vectorized&&) = default;
-	DRAGONIANLIBCONSTEXPR Vectorized(const Type* _Val)
+	static_assert(std::is_same_v<Type, T>);
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized() = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ~Vectorized() = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Vectorized&) = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(Vectorized&&) = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(const Vectorized&) = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Type* _Val)
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			_YMMX = _mm256_castps_si256(_mm256_loadu_ps(_Val));
@@ -48,13 +59,12 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			_YMMX = _mm256_loadu_epi64(_Val);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized(__m256i _Val) : _YMMX(_Val) {}
-	DRAGONIANLIBCONSTEXPR Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
-	DRAGONIANLIBCONSTEXPR Vectorized(__m256d _Val) : _YMMX(_mm256_castpd_si256(_Val)) {}
-
-	DRAGONIANLIBCONSTEXPR Vectorized(Type _Val)
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256i _Val) : _YMMX(_Val) {}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256d _Val) : _YMMX(_mm256_castpd_si256(_Val)) {}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(Type _Val)
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			_YMMX = _mm256_castps_si256(_mm256_set1_ps(_Val));
@@ -69,10 +79,10 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			_YMMX = _mm256_set1_epi64x(_Val);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
-	DRAGONIANLIBCONSTEXPR void Store(Type* _Dest) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			_mm256_storeu_ps(_Dest, *this);
@@ -87,9 +97,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			_mm256_storeu_epi64(_Dest, _YMMX);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR void Store(Type* _Dest, __mmask32 _Mask) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			_mm256_mask_storeu_ps(_Dest, _Mask >> 24, *this);
@@ -104,39 +114,47 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			_mm256_mask_storeu_epi64(_Dest, _Mask >> 24, _YMMX);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR void MaskedStore(void* _Dest, const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void MaskedStore(void* _Dest, const Vectorized& _Mask) const
 	{
 		_mm256_store_si256((__m256i*)_Dest, _mm256_and_si256(*this, _Mask));
 	}
-
-	DRAGONIANLIBCONSTEXPR operator __m256i() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void StoreBool(void* _Dest) const
 	{
+		if constexpr (std::is_same_v<Type, float>);
+
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256i() const
+	{
+		static_assert(std::is_same_v<Type, int8_t> || std::is_same_v<Type, int16_t> || std::is_same_v<Type, int32_t> || std::is_same_v<Type, int64_t>);
 		return _YMMX;
 	}
-	DRAGONIANLIBCONSTEXPR operator __m256() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256() const
 	{
+		static_assert(std::is_same_v<Type, float>);
 		return _mm256_castsi256_ps(_YMMX);
 	}
-	DRAGONIANLIBCONSTEXPR operator __m256d() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256d() const
 	{
+		static_assert(std::is_same_v<Type, double>);
 		return _mm256_castsi256_pd(_YMMX);
 	}
-	DRAGONIANLIBCONSTEXPR operator __mmask32() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask32() const
 	{
 		return _mm256_movemask_epi8(_YMMX);
 	}
-	DRAGONIANLIBCONSTEXPR operator __mmask16() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask16() const
 	{
 		return _mm256_movemask_epi8(_YMMX) >> 16;
 	}
-	DRAGONIANLIBCONSTEXPR operator __mmask8() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask8() const
 	{
 		return _mm256_movemask_epi8(_YMMX) >> 24;
 	}
 
-	DRAGONIANLIBCONSTEXPR Vectorized operator<(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LT_OQ);
@@ -151,9 +169,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cmpgt_epi64(_Right, *this);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator<=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LE_OQ);
@@ -162,7 +180,7 @@ public:
 		else
 			return *this < _Right || *this == _Right;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator>(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GT_OQ);
@@ -177,9 +195,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cmpgt_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator>=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GE_OQ);
@@ -188,7 +206,7 @@ public:
 		else
 			return *this > _Right || *this == _Right;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator==(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator==(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_EQ_OQ);
@@ -203,19 +221,19 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cmpeq_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator!=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized NotEqual(const Vectorized& _Right, const Vectorized& _Mask) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_NEQ_OQ);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_NEQ_OQ);
 		else
-			return !(*this == _Right);
+			return (*this == _Right).Not(_Mask);
 	}
 
-	DRAGONIANLIBCONSTEXPR Vectorized operator+(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator+(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_add_ps(*this, _Right);
@@ -230,9 +248,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_add_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator-(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator-(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sub_ps(*this, _Right);
@@ -247,9 +265,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_sub_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator*(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator*(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_mul_ps(*this, _Right);
@@ -262,9 +280,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_mullo_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator/(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator/(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_div_ps(*this, _Right);
@@ -279,132 +297,146 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_div_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator&(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator&(const Vectorized& _Right) const
 	{
 		return _mm256_and_si256(*this, _Right);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator|(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator|(const Vectorized& _Right) const
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator^(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator^(const Vectorized& _Right) const
 	{
 		return _mm256_xor_si256(*this, _Right);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator~() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Complement(const Vectorized& _Mask) const
 	{
-		return _mm256_xor_si256(*this, _mm256_set1_epi8(-1));
+		return _mm256_xor_si256(*this, _Mask);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator<<(const int _Count) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<<(const int _Count) const
 	{
-		if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+
+		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, int32_t>)
+			return _mm256_slli_epi32(*this, _Count);
+		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, int64_t>)
+			return _mm256_slli_epi64(*this, _Count);
+		else if constexpr (std::is_same_v<Type, int8_t>)
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
 			return _mm256_slli_epi16(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			return _mm256_slli_epi32(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			return _mm256_slli_epi64(*this, _Count);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator>>(const int _Count) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>>(const int _Count) const
 	{
-		if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, int32_t>)
+			return _mm256_srli_epi32(*this, _Count);
+		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, int64_t>)
+			return _mm256_srli_epi64(*this, _Count);
+		else if constexpr (std::is_same_v<Type, int8_t>)
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
 			return _mm256_srli_epi16(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			return _mm256_srli_epi32(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			return _mm256_srli_epi64(*this, _Count);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator&&(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator&&(const Vectorized& _Right) const
 	{
 		return _mm256_and_si256(*this, _Right);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator||(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator||(const Vectorized& _Right) const
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized operator!() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Not(const Vectorized& _Mask) const
 	{
-		return _mm256_xor_si256(*this, _mm256_set1_epi8(-1));
+		if constexpr (std::is_same_v<Type, float>)
+			return _mm256_cmp_ps(*this, _Mask, _CMP_EQ_OQ);
+		else if constexpr (std::is_same_v<Type, double>)
+			return _mm256_cmp_pd(*this, _Mask, _CMP_EQ_OQ);
+		else if constexpr (std::is_same_v<Type, int8_t>)
+			return _mm256_cmpeq_epi8(*this, _Mask);
+		else if constexpr (std::is_same_v<Type, int16_t>)
+			return _mm256_cmpeq_epi16(*this, _Mask);
+		else if constexpr (std::is_same_v<Type, int32_t>)
+			return _mm256_cmpeq_epi32(*this, _Mask);
+		else if constexpr (std::is_same_v<Type, int64_t>)
+			return _mm256_cmpeq_epi64(*this, _Mask);
+		else
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
-	DRAGONIANLIBCONSTEXPR Vectorized Pow(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Pow(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_pow_ps(*this, _Right);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_pow_pd(*this, _Right);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_pow_ps(_mm256_cvtepi32_ps(*this), _mm256_cvtepi32_ps(_Right)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_pow_pd(_mm256_cvtepi64_pd(*this), _mm256_cvtepi64_pd(_Right)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Sqrt() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sqrt() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sqrt_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_sqrt_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_sqrt_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_sqrt_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized RSqrt() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized RSqrt() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_rsqrt_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cvtps_pd(_mm256_castps256_ps128(_mm256_rsqrt_ps(_mm256_castps128_ps256(_mm256_cvtpd_ps(*this)))));
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Reciprocal() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Reciprocal() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_rcp_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cvtps_pd(_mm256_castps256_ps128(_mm256_rcp_ps(_mm256_castps128_ps256(_mm256_cvtpd_ps(*this)))));
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Abs(const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Abs(const Vectorized& _Mask) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_and_ps(*this, _Mask);
@@ -419,333 +451,333 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_abs_epi64(*this);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Sin() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sin() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sin_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_sin_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Cos() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Cos() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cos_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cos_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Tan() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Tan() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_tan_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_tan_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ASin() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ASin() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_asin_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_asin_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ACos() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ACos() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_acos_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_acos_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ATan() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATan() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_atan_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_atan_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ATan2(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATan2(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_atan2_ps(*this, _Right);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_atan2_pd(*this, _Right);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Sinh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sinh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sinh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_sinh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_sinh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_sinh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Cosh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Cosh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cosh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cosh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_cosh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_cosh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Tanh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Tanh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_tanh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_tanh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_tanh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_tanh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ASinh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ASinh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_asinh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_asinh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_asinh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_asinh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ACosh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ACosh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_acosh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_acosh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_acosh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_acosh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized ATanh() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATanh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_atanh_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_atanh_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_atanh_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_atanh_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Log() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_log_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_log_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_log_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Log2() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log2() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log2_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_log2_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_log2_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_log2_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Log10() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log10() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log10_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_log10_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_log10_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_log10_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Exp() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_exp_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_exp_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_exp_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Exp2() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp2() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp2_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_exp2_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_exp2_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_exp2_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Exp10() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp10() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp10_ps(*this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_exp10_pd(*this);
 		else if constexpr (std::is_same_v<Type, int8_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else if constexpr (std::is_same_v<Type, int32_t>)
 			return _mm256_cvtps_epi32(_mm256_exp10_ps(_mm256_cvtepi32_ps(*this)));
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_cvtpd_epi64(_mm256_exp10_pd(_mm256_cvtepi64_pd(*this)));
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Ceil() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Ceil() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_ceil_ps(*this);
@@ -754,7 +786,7 @@ public:
 		else
 			return *this;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Floor() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Floor() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_floor_ps(*this);
@@ -763,7 +795,7 @@ public:
 		else
 			return *this;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Round() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Round() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_NEAREST_INT);
@@ -772,7 +804,7 @@ public:
 		else
 			return *this;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Trunc() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Trunc() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_ZERO);
@@ -781,7 +813,7 @@ public:
 		else
 			return *this;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Frac() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Frac() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sub_ps(*this, _mm256_floor_ps(*this));
@@ -790,7 +822,7 @@ public:
 		else
 			return *this;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Min(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Min(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_min_ps(*this, _Right);
@@ -805,9 +837,9 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_min_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Max(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Max(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_max_ps(*this, _Right);
@@ -822,18 +854,18 @@ public:
 		else if constexpr (std::is_same_v<Type, int64_t>)
 			return _mm256_max_epi64(*this, _Right);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Lerp(const Vectorized& _Right, const Vectorized& _Alpha) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Lerp(const Vectorized& _Right, const Vectorized& _Alpha) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_add_ps(_mm256_mul_ps(_mm256_sub_ps(_Right, *this), _Alpha), *this);
 		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_add_pd(_mm256_mul_pd(_mm256_sub_pd(_Right, *this), _Alpha), *this);
 		else
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	DRAGONIANLIBCONSTEXPR Vectorized Clamp(const Vectorized& _Min, const Vectorized& _Max) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Clamp(const Vectorized& _Min, const Vectorized& _Max) const
 	{
 		return Max(_Min).Min(_Max);
 	}
@@ -841,8 +873,9 @@ public:
 private:
 	__m256i _YMMX;
 
+
 public:
-	static DRAGONIANLIBCONSTEXPR void DragonianLibMemcpy256(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -860,7 +893,7 @@ public:
 		_mm256_store_si256(_Dst + 6, m6);
 		_mm256_store_si256(_Dst + 7, m7);
 	}
-	static DRAGONIANLIBCONSTEXPR void DragonianLibMemcpy128(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy128(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -870,16 +903,16 @@ public:
 		_mm256_store_si256(_Dst + 2, m2);
 		_mm256_store_si256(_Dst + 3, m3);
 	}
-	static DRAGONIANLIBCONSTEXPR void DragonianLibMemcpy64(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy64(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		_mm256_store_si256(_Dst + 0, m0);
 		_mm256_store_si256(_Dst + 1, m1);
 	}
-	static DRAGONIANLIBCONSTEXPR void DragonianLibMemcpy32(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy32(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		_mm256_store_si256(_Dst + 0, m0);
 	}
 };
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Operator_Space_End

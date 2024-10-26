@@ -8,7 +8,7 @@ namespace DragonianLib
 	{
 		DragonianLib::Image& SuperResolution::Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const
 		{
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Not_Implemented_Error;
 		}
 
 		SuperResolution::SuperResolution(unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider, ProgressCallback _Callback)

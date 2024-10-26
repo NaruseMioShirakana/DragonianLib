@@ -1,7 +1,6 @@
 ﻿include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(DRAGONIANLIBDEMOEXE DragonianLibDemo)
-add_compile_options(/ZI)
 
 if(DRAGONIANLIB_SHARED_LIBS)
 	message("Build Shared Lib Demo")
@@ -9,11 +8,30 @@ if(DRAGONIANLIB_SHARED_LIBS)
 endif()
 
 if(DRAGONIANLIBORTDEMO)
-	message("Build Ort Demo")
+	#message("Build Ort Demo")
 	add_executable(${DRAGONIANLIBDEMOEXE} "mainort.cpp")
 else()
-	message("Build Lib Demo")
+	#message("Build Lib Demo")
 	add_executable(${DRAGONIANLIBDEMOEXE} "main.cpp")
+endif()
+
+#Build Type
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	target_compile_options(
+		${DRAGONIANLIBDEMOEXE} PRIVATE
+		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
+	)
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+	target_compile_options(
+		${DRAGONIANLIBDEMOEXE} PRIVATE
+		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
+	)
+else()
+	add_definitions(-DDRAGONIANLIB_DEBUG)
+	target_compile_options(
+		${DRAGONIANLIBDEMOEXE} PRIVATE
+		/Zi /Gy /experimental:module /openmp:experimental
+	)
 endif()
 
 message(${DRAGONIANLIB_LIBRARIES})

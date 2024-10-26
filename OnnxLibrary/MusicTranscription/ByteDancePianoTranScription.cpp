@@ -1,4 +1,4 @@
-#include "ByteDancePianoTranScription.hpp"
+﻿#include "ByteDancePianoTranScription.hpp"
 #include <algorithm>
 #include "Base.h"
 
@@ -18,7 +18,7 @@ namespace DragonianLib
 			catch (Ort::Exception& e)
 			{
 				Destory();
-				DragonianLibThrow(e.what());
+				_D_Dragonian_Lib_Throw_Exception(e.what());
 			}
 		}
 
@@ -74,7 +74,7 @@ namespace DragonianLib
 				}
 				catch (Ort::Exception& e)
 				{
-					DragonianLibThrow(e.what());
+					_D_Dragonian_Lib_Throw_Exception(e.what());
 				}
 				progress += _BatchSize;
 				for (size_t ita = 0; ita < 7; ++ita)

@@ -25,7 +25,7 @@
 #include <mutex>
 #include <semaphore>
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 
 class ThreadPool {
 public:
@@ -39,7 +39,7 @@ public:
         using RetType = decltype(_Function(_Args...));
 
         if (Stoped_)
-            DragonianLibThrow("Thread Pool Is Not Initialized!");
+            _D_Dragonian_Lib_Throw_Exception("Thread Pool Is Not Initialized!");
 
         std::lock_guard lg(JoinMx_);
 
@@ -99,4 +99,4 @@ private:
 	ThreadPool& operator=(ThreadPool&&) = delete;
 };
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

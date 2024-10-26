@@ -22,11 +22,11 @@
 #pragma once
 #include "MyTemplateLibrary/Vector.h"
 
-#define LibSvcHeader namespace DragonianLib { namespace SingingVoiceConversion { 
-#define LibSvcEnd } }
-#define LibSvcSpace ::DragonianLib::SingingVoiceConversion::
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header namespace DragonianLib { namespace SingingVoiceConversion { 
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End } }
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ::DragonianLib::SingingVoiceConversion::
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 struct SlicerSettings
 {
 	int32_t SamplingRate = 48000;
@@ -79,4 +79,4 @@ private:
 	size_t _data_size = 0;
 };
 #endif
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

@@ -15,115 +15,119 @@
 #include <memory>
 #include <vector>
 
-using point_t = std::vector<float>;
-using indexArr = std::vector< size_t >;
-using pointIndex = std::pair< std::vector< float >, size_t >;
+namespace DragonianLib {
 
-class KDNode {
-public:
+    using point_t = std::vector<float>;
+    using indexArr = std::vector< size_t >;
+    using pointIndex = std::pair< std::vector< float >, size_t >;
+
+    class KDNode {
+    public:
+        using KDNodePtr = std::shared_ptr< KDNode >;
+        size_t index;
+        point_t x;
+        KDNodePtr left;
+        KDNodePtr right;
+
+        // initializer
+        KDNode();
+        KDNode(const point_t&, const size_t&, const KDNodePtr&,
+            const KDNodePtr&);
+        KDNode(const pointIndex&, const KDNodePtr&, const KDNodePtr&);
+        ~KDNode();
+
+        // getter
+        float coord(const size_t&);
+
+        // conversions
+        explicit operator bool();
+        explicit operator point_t();
+        explicit operator size_t();
+        explicit operator pointIndex();
+    };
+
     using KDNodePtr = std::shared_ptr< KDNode >;
-    size_t index;
-    point_t x;
-    KDNodePtr left;
-    KDNodePtr right;
 
-    // initializer
-    KDNode();
-    KDNode(const point_t&, const size_t&, const KDNodePtr&,
-        const KDNodePtr&);
-    KDNode(const pointIndex&, const KDNodePtr&, const KDNodePtr&);
-    ~KDNode();
+    KDNodePtr NewKDNodePtr();
 
-    // getter
-    float coord(const size_t&);
+    // square euclidean distance
+    inline float dist2(const point_t&, const point_t&);
+    inline float dist2(const KDNodePtr&, const KDNodePtr&);
 
-    // conversions
-    explicit operator bool();
-    explicit operator point_t();
-    explicit operator size_t();
-    explicit operator pointIndex();
-};
+    // euclidean distance
+    inline float dist(const point_t&, const point_t&);
+    inline float dist(const KDNodePtr&, const KDNodePtr&);
 
-using KDNodePtr = std::shared_ptr< KDNode >;
+    // Need for sorting
+    class comparer {
+    public:
+        size_t idx;
+        explicit comparer(size_t idx_);
+        inline bool compare_idx(
+            const std::pair< std::vector< float >, size_t >&,  //
+            const std::pair< std::vector< float >, size_t >&   //
+        );
+    };
 
-KDNodePtr NewKDNodePtr();
+    using pointIndexArr = std::vector< pointIndex >;
 
-// square euclidean distance
-inline float dist2(const point_t&, const point_t&);
-inline float dist2(const KDNodePtr&, const KDNodePtr&);
+    inline void sort_on_idx(const pointIndexArr::iterator&,  //
+        const pointIndexArr::iterator&,  //
+        size_t idx);
 
-// euclidean distance
-inline float dist(const point_t&, const point_t&);
-inline float dist(const KDNodePtr&, const KDNodePtr&);
+    using pointVec = std::vector<point_t>;
 
-// Need for sorting
-class comparer {
-public:
-    size_t idx;
-    explicit comparer(size_t idx_);
-    inline bool compare_idx(
-        const std::pair< std::vector< float >, size_t >&,  //
-        const std::pair< std::vector< float >, size_t >&   //
-    );
-};
+    class KDTree {
+        KDNodePtr root;
+        KDNodePtr leaf;
 
-using pointIndexArr = std::vector< pointIndex >;
+        KDNodePtr make_tree(const pointIndexArr::iterator& begin,  //
+            const pointIndexArr::iterator& end,    //
+            const size_t& length,                  //
+            const size_t& level                    //
+        );
 
-inline void sort_on_idx(const pointIndexArr::iterator&,  //
-    const pointIndexArr::iterator&,  //
-    size_t idx);
+    public:
+        KDTree() = default;
+        explicit KDTree(pointVec point_array);
 
-using pointVec = std::vector<point_t>;
+    private:
+        KDNodePtr nearest_(           //
+            const KDNodePtr& branch,  //
+            const point_t& pt,        //
+            const size_t& level,      //
+            const KDNodePtr& best,    //
+            const float& best_dist   //
+        );
 
-class KDTree {
-    KDNodePtr root;
-    KDNodePtr leaf;
+        // default caller
+        KDNodePtr nearest_(const point_t& pt);
 
-    KDNodePtr make_tree(const pointIndexArr::iterator& begin,  //
-        const pointIndexArr::iterator& end,    //
-        const size_t& length,                  //
-        const size_t& level                    //
-    );
+    public:
+        point_t nearest_point(const point_t& pt);
+        size_t nearest_index(const point_t& pt);
+        pointIndex nearest_pointIndex(const point_t& pt);
 
-public:
-    KDTree() = default;
-    explicit KDTree(pointVec point_array);
+    private:
+        pointIndexArr neighborhood_(  //
+            const KDNodePtr& branch,  //
+            const point_t& pt,        //
+            const float& rad,        //
+            const size_t& level       //
+        );
 
-private:
-    KDNodePtr nearest_(           //
-        const KDNodePtr& branch,  //
-        const point_t& pt,        //
-        const size_t& level,      //
-        const KDNodePtr& best,    //
-        const float& best_dist   //
-    );
+    public:
+        pointIndexArr neighborhood(  //
+            const point_t& pt,       //
+            const float& rad);
 
-    // default caller
-    KDNodePtr nearest_(const point_t& pt);
+        pointVec neighborhood_points(  //
+            const point_t& pt,         //
+            const float& rad);
 
-public:
-    point_t nearest_point(const point_t& pt);
-    size_t nearest_index(const point_t& pt);
-    pointIndex nearest_pointIndex(const point_t& pt);
+        indexArr neighborhood_indices(  //
+            const point_t& pt,          //
+            const float& rad);
+    };
 
-private:
-    pointIndexArr neighborhood_(  //
-        const KDNodePtr& branch,  //
-        const point_t& pt,        //
-        const float& rad,        //
-        const size_t& level       //
-    );
-
-public:
-    pointIndexArr neighborhood(  //
-        const point_t& pt,       //
-        const float& rad);
-
-    pointVec neighborhood_points(  //
-        const point_t& pt,         //
-        const float& rad);
-
-    indexArr neighborhood_indices(  //
-        const point_t& pt,          //
-        const float& rad);
-};
+}

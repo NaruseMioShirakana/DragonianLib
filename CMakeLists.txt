@@ -177,6 +177,16 @@ if(NOT faiss_FOUND)
 	endif()
 endif()
 
+find_package(yyjson)
+if(NOT yyjson_FOUND)
+	if(NOT DEFINED YYJSON_LIBRARIES)
+		set(YYJSON_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/out/install/x64-Release/lib/yyjson.lib)
+	endif()
+	if(NOT DEFINED YYJSON_INCLUDE_DIRS)
+		set(YYJSON_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/out/install/x64-Release/include)
+	endif()
+endif()
+
 #Set OnnxRuntime Libraries And Include Directories
 if(DRAGONIANLIB_ONNXRUNTIME)
 	if(NOT DEFINED ONNXRUNTIME_LIBRARIES)
@@ -226,18 +236,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/OutPuts/${DRAGONIANLIB
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/OutPuts/${DRAGONIANLIB_TYPE_DIR}/${CMAKE_BUILD_TYPE}/Runtime)
 set(LIBRARY_OUTPUT_PATH             ${PROJECT_SOURCE_DIR}/OutPuts/${DRAGONIANLIB_TYPE_DIR}/${CMAKE_BUILD_TYPE}/OLibrary)
 
-#Build Type
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-	message("Build Release")
-	add_compile_options(/GS- /arch:AVX2 /O2 /Ot /experimental:module /openmp:experimental)
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-	add_compile_options(/Zi /Gy /arch:AVX2 /O2 /Ot /experimental:module /openmp:experimental)
-else()
-	message("Build Debug")
-	add_definitions(-DDRAGONIANLIB_DEBUG)
-	add_compile_options(/Zi /Gy /experimental:module /openmp:experimental)
-endif()
-
 if(MSVC)
 	if (POLICY CMP0141)
 		cmake_policy(SET CMP0141 NEW)
@@ -265,6 +263,28 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
+
+#Build Type
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	message("Build Release")
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
+	)
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+	message("Build RelWithDebInfo")
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
+	)
+else()
+	message("Build Debug")
+	add_definitions(-DDRAGONIANLIB_DEBUG)
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/Zi /Gy /experimental:module /openmp:experimental
+	)
+endif()
 
 #Link Libraries
 if(DEFINED FFMPEG_LIBRARIES)
@@ -314,14 +334,18 @@ else()
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:OpenBLAS::OpenBLAS,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
+if(DEFINED YYJSON_LIBRARIES)
+	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${YYJSON_LIBRARIES})
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${YYJSON_INCLUDE_DIRS})
+else()
+	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC yyjson::yyjson)
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:yyjson::yyjson,INTERFACE_INCLUDE_DIRECTORIES>)
+endif()
+
 if(DRAGONIANLIB_CUDA)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${_libcudacxx_INCLUDE_DIR})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${CUDA_LIBRARIES})
 endif()
-
-add_subdirectory(Third-Party-Libraries/yyjson)
-target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC yyjson)
-target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/src)
 
 #project include
 set(DRAGONIANLIB_TENSORLIB_BASE_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/TensorLib/Include/Base)

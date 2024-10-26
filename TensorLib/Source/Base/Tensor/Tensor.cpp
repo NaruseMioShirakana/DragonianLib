@@ -1,7 +1,7 @@
 ﻿#include <random>
 #include "Tensor/Tensor.h"
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 
 SizeType VectorMul(const Dimensions& _Input)
 {
@@ -41,4 +41,4 @@ void SetRandomSeed(SizeType _Seed)
 	Operators::RandomEngine.seed(_Seed);
 }
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

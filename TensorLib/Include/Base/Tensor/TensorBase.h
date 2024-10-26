@@ -25,7 +25,7 @@
 #include "Value.h"
 #include "MyTemplateLibrary/Vector.h"
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 
 using namespace DragonianLibSTL;
 
@@ -37,4 +37,4 @@ using UnorderedMap = std::unordered_map<_TyA, _TyB>;
 template <typename _TyA, typename _TyB>
 using ContainerMap = std::unordered_map<_TyA, _TyB>;
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

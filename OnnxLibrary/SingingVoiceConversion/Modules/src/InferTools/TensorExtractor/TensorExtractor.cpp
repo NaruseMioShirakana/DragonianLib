@@ -1,7 +1,7 @@
 ﻿#include "../../../header/InferTools/TensorExtractor/TensorExtractor.hpp"
 #include <random>
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 LibSvcTensorExtractor::Inputs SoVits2TensorExtractor::Extract(const DragonianLibSTL::Vector<float>& HiddenUnit, const DragonianLibSTL::Vector<float>& F0, const DragonianLibSTL::Vector<float>& Volume, const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap, Params params)
 {
@@ -586,4 +586,4 @@ LibSvcTensorExtractor::Inputs DiffusionSvcTensorExtractor::Extract(const Dragoni
 	return SvcTensors;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

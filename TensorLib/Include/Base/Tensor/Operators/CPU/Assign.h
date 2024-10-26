@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "CPU.h"
 
-DragonianLibOperatorSpaceBegin
+_D_Dragonian_Lib_Operator_Space_Begin
 
 template<typename _Type>
 void OperatorsBase<_Type, Device::CPU>::ImplAssign(
@@ -141,12 +141,13 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssign(
 		const int64_t Remainder = _DestInfo.Shape[0] % LoopStride;
 		const auto DestSize = _DestInfo.Shape[0] * _DestInfo.Shape[1] * _DestInfo.Shape[2] *
 			_DestInfo.Shape[3] * _DestInfo.Shape[4] * _DestInfo.Shape[5];
-		auto _VectorizedValue = Vectorized<_Type>(_Value);
+		auto _VectorizedValue1 = Vectorized<_Type>(_Value);
+		auto _VectorizedValue2 = Vectorized<_Type>(_Value);
 
 		for (SizeType i = 0; i < DestSize - LoopStride; i += LoopStride)
 		{
-			_VectorizedValue.Store(_Dest);
-			_VectorizedValue.Store(_Dest + Stride * 1);
+			_VectorizedValue1.Store(_Dest);
+			_VectorizedValue2.Store(_Dest + Stride);
 			_Dest += LoopStride;
 		}
 
@@ -299,7 +300,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 				_Dest[i + 7] = (uint8_t)RandomInt16Distribution(RandomEngine);
 			}
 			else
-				DragonianLibNotImplementedError;
+				_D_Dragonian_Lib_Not_Implemented_Error;
 		}
 		for (SizeType i = Front; i < DestSize; ++i)
 		{
@@ -316,9 +317,9 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 			else if constexpr (std::is_same_v<_Type, int8_t>)
 				_Dest[i] = (uint8_t)RandomInt16Distribution(RandomEngine);
 			else
-				DragonianLibNotImplementedError;
+				_D_Dragonian_Lib_Not_Implemented_Error;
 		}
 	}
 }
 
-DragonianLibOperatorSpaceEnd
+_D_Dragonian_Lib_Operator_Space_End

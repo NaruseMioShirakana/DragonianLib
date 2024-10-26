@@ -2,7 +2,7 @@
 #include "Base.h"
 #include "F0Extractor/F0ExtractorManager.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 SingingVoiceConversion::SingingVoiceConversion(
 	const std::wstring& HubertPath_,
@@ -22,7 +22,7 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::InferPCMData(
 	const InferenceParams& _Params
 ) const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> SingingVoiceConversion::ShallowDiffusionInference(
@@ -37,7 +37,7 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::ShallowDiffusionInference
 	int64_t SrcSize
 ) const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> SingingVoiceConversion::SliceInference(
@@ -46,7 +46,7 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::SliceInference(
 	size_t& _Process
 ) const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> SingingVoiceConversion::ExtractVolume(
@@ -165,24 +165,24 @@ bool SingingVoiceConversion::SpeakerMixEnabled() const
 
 const std::wstring& SingingVoiceConversion::GetUnionSvcVer() const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 int64_t SingingVoiceConversion::GetMaxStep() const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 int64_t SingingVoiceConversion::GetMelBins() const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 void SingingVoiceConversion::NormMel(
 	DragonianLibSTL::Vector<float>& MelSpec
 ) const
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> VocoderInfer(
@@ -195,7 +195,7 @@ DragonianLibSTL::Vector<float> VocoderInfer(
 )
 {
 	if (!_VocoderModel)
-		DragonianLibThrow("Missing Vocoder Model!");
+		_D_Dragonian_Lib_Throw_Exception("Missing Vocoder Model!");
 
 	const int64_t MelShape[] = { 1i64,MelBins,MelSize };
 	const int64_t FrameShape[] = { 1,MelSize };
@@ -228,4 +228,4 @@ DragonianLibSTL::Vector<float> VocoderInfer(
 	return { OutputData , OutputData + AudioSize };
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

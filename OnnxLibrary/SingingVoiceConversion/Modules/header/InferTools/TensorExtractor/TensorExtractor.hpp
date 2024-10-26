@@ -22,7 +22,7 @@
 #pragma once
 #include "BaseTensorExtractor.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 class SoVits2TensorExtractor : public LibSvcTensorExtractor
 {
@@ -172,4 +172,4 @@ public:
 	const std::vector<const char*> OutputNames = { "mel_pred", "f0_pred", "init_noise" };
 };
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

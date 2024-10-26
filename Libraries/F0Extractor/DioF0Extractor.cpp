@@ -2,7 +2,7 @@
 #include "world/dio.h"
 #include "world/stonemask.h"
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 DioF0Extractor::DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins, double max_f0, double min_f0) :
     BaseF0Extractor(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0)
 {
@@ -62,4 +62,4 @@ void DioF0Extractor::compute_f0(const double* PCMData, size_t PCMLen)
     StoneMask(PCMData, (int)PCMLen, int(fs), temporal_positions.Data(), raw_f0.Data(), (int)f0Length, refined_f0.Data());
 }
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End

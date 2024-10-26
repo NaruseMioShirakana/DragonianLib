@@ -18,15 +18,15 @@
 */
 
 #pragma once
-#define DRAGONIANLIBSTLBEGIN namespace DragonianLibSTL {
-#define DRAGONIANLIBSTLEND }
+#define _D_Dragonian_Lib_Template_Library_Space_Begin namespace DragonianLibSTL {
+#define _D_Dragonian_Lib_Template_Library_Space_End }
 
-DRAGONIANLIBSTLBEGIN
+_D_Dragonian_Lib_Template_Library_Space_Begin
 
 class BaseAllocator;
 using Allocator = BaseAllocator*;
 
-DRAGONIANLIBSTLEND
+_D_Dragonian_Lib_Template_Library_Space_End
 
 namespace DragonianLib
 {
@@ -58,7 +58,7 @@ namespace DragonianLib
 	Allocator GetMemoryProvider(Device _Device);
 }
 
-DRAGONIANLIBSTLBEGIN
+_D_Dragonian_Lib_Template_Library_Space_Begin
 using DragonianLib::Device;
 using DragonianLib::MemoryProvider;
 using DragonianLib::GetMemoryProvider;
@@ -96,4 +96,4 @@ protected:
 	CPUAllocator() : BaseAllocator(Device::CPU) {}
 };
 
-DRAGONIANLIBSTLEND
+_D_Dragonian_Lib_Template_Library_Space_End

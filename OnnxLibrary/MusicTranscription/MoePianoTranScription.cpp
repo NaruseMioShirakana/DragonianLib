@@ -1,4 +1,4 @@
-#include "MoePianoTranScription.hpp"
+﻿#include "MoePianoTranScription.hpp"
 #include "Base.h"
 
 namespace DragonianLib
@@ -21,7 +21,7 @@ namespace DragonianLib
 			catch (Ort::Exception& e)
 			{
 				Destory();
-				DragonianLibThrow(e.what());
+				_D_Dragonian_Lib_Throw_Exception(e.what());
 			}
 		}
 

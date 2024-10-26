@@ -3,5 +3,5 @@
 
 DragonianLibSTL::Vector<float> DragonianLib::BaseCluster::Search(float*, long, int64_t)
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }

@@ -18,7 +18,7 @@
 #endif
 #include <stdexcept>
 
-IMAGEVIDEOCLASSHEADER
+_D_Dragonian_Lib_Image_Video_Header
 
 #ifdef _WIN32
 
@@ -712,4 +712,4 @@ void GdiClose()
 #endif
 }
 
-IMAGEVIDEOCLASSEND
+_D_Dragonian_Lib_Image_Video_End

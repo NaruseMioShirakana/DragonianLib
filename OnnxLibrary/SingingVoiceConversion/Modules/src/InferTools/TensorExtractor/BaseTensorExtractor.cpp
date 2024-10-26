@@ -1,7 +1,7 @@
 ﻿#include "../../../header/InferTools/TensorExtractor/BaseTensorExtractor.hpp"
 #include "Base.h"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 LibSvcTensorExtractor::LibSvcTensorExtractor(
 	uint64_t _srcsr,
@@ -37,7 +37,7 @@ LibSvcTensorExtractor::Inputs LibSvcTensorExtractor::Extract(
 	Params params
 )
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetCurrectSpkMixData(
@@ -324,4 +324,4 @@ DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0log(
 	return Of0;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

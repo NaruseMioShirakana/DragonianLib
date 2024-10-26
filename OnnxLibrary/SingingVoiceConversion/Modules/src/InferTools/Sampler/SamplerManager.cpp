@@ -4,7 +4,7 @@
 #include "Util/Logger.h"
 #include <ranges>
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 std::map<std::wstring, GetSamplerFn> RegisteredSamplers;
 std::map<std::wstring, GetReflowSamplerFn> RegisteredReflowSamplers;
@@ -75,4 +75,4 @@ std::vector<std::wstring> GetReflowSamplerList()
 	return SamplersVec;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

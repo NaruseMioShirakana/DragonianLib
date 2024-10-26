@@ -18,14 +18,14 @@
 		return std::make_shared<DragonianLib::__ClassName>(sampling_rate, hop_size, n_f0_bins, max_f0, min_f0);					\
 	})
 
-#define RegisterTensorConstructorImp(__RegisterName, __ClassName) LibSvcSpace RegisterTensorExtractor(__RegisterName,\
+#define RegisterTensorConstructorImp(__RegisterName, __ClassName) _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space RegisterTensorExtractor(__RegisterName,\
 	[](uint64_t _srcsr, uint64_t _sr, uint64_t _hop,													        \
 		bool _smix, bool _volume, uint64_t _hidden_size,													    \
 		uint64_t _nspeaker,																	                    \
-		const LibSvcSpace LibSvcTensorExtractor::Others& _other)                             \
-		->LibSvcSpace TensorExtractor													            \
+		const _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcTensorExtractor::Others& _other)                             \
+		->_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space TensorExtractor													            \
 	{																										    \
-		return std::make_shared<LibSvcSpace __ClassName>(_srcsr, _sr, _hop, _smix, _volume,						\
+		return std::make_shared<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space __ClassName>(_srcsr, _sr, _hop, _smix, _volume,						\
 			_hidden_size, _nspeaker, _other);													                \
 	})
 
@@ -36,26 +36,26 @@
 		return std::make_shared<DragonianLib::__ClassName>(_path, hidden_size, KmeansLen);								 \
 	})
 
-#define RegisterSamplerImp(__RegisterName, __ClassName) LibSvcSpace RegisterSampler(__RegisterName,		 \
+#define RegisterSamplerImp(__RegisterName, __ClassName) _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space RegisterSampler(__RegisterName,		 \
 	[](Ort::Session* alpha, Ort::Session* dfn, Ort::Session* pred, int64_t Mel_Bins,								 \
-		const LibSvcSpace BaseSampler::ProgressCallback& _ProgressCallback,								 	 \
-		Ort::MemoryInfo* memory) -> LibSvcSpace SamplerWrp														 \
+		const _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space BaseSampler::ProgressCallback& _ProgressCallback,								 	 \
+		Ort::MemoryInfo* memory) -> _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SamplerWrp														 \
 	{																												 \
-		return std::make_shared<LibSvcSpace __ClassName>(alpha, dfn, pred, Mel_Bins, _ProgressCallback, memory);				 \
+		return std::make_shared<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space __ClassName>(alpha, dfn, pred, Mel_Bins, _ProgressCallback, memory);				 \
 	})
 
-#define RegisterReflowSamplerImp(__RegisterName, __ClassName) LibSvcSpace RegisterReflowSampler(__RegisterName,		 \
+#define RegisterReflowSamplerImp(__RegisterName, __ClassName) _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space RegisterReflowSampler(__RegisterName,		 \
 	[](Ort::Session* velocity, int64_t Mel_Bins,								 \
-		const LibSvcSpace BaseSampler::ProgressCallback& _ProgressCallback,								 	 \
-		Ort::MemoryInfo* memory) -> LibSvcSpace ReflowSamplerWrp														 \
+		const _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space BaseSampler::ProgressCallback& _ProgressCallback,								 	 \
+		Ort::MemoryInfo* memory) -> _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ReflowSamplerWrp														 \
 	{																												 \
-		return std::make_shared<LibSvcSpace __ClassName>(velocity, Mel_Bins, _ProgressCallback, memory);				 \
+		return std::make_shared<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space __ClassName>(velocity, Mel_Bins, _ProgressCallback, memory);				 \
 	})
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 bool KernelSetup = false;
-std::unordered_map<std::wstring, DlCodecStft::Mel*> MelOperators;
+std::unordered_map<std::wstring, DragonianLib::FunctionTransform::Mel*> MelOperators;
 
 void SetupKernel()
 {
@@ -85,7 +85,7 @@ void SetupKernel()
 	KernelSetup = true;
 }
 
-DlCodecStft::Mel& GetMelOperator(
+DragonianLib::FunctionTransform::Mel& GetMelOperator(
 	int32_t _SamplingRate,
 	int32_t _Hopsize,
 	int32_t _MelBins
@@ -102,9 +102,9 @@ DlCodecStft::Mel& GetMelOperator(
 			delete MelOperators.begin()->second;
 			MelOperators.erase(MelOperators.begin());
 		}
-		MelOperators[_Name] = new DlCodecStft::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
+		MelOperators[_Name] = new DragonianLib::FunctionTransform::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
 	}
 	return *MelOperators[_Name];
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

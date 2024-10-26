@@ -18,7 +18,7 @@ namespace DragonianLib
 			catch (Ort::Exception& e)
 			{
 				Destory();
-				DragonianLibThrow(e.what());
+				_D_Dragonian_Lib_Throw_Exception(e.what());
 			}
 
 			Names.emplace_back(model->GetInputNameAllocated(0, allocator));
@@ -79,7 +79,7 @@ namespace DragonianLib
 				}
 				catch (Ort::Exception& e)
 				{
-					DragonianLibThrow(e.what());
+					_D_Dragonian_Lib_Throw_Exception(e.what());
 				}
 				//printf("Cost Time(Sec): %lf\n", (double(clock()) - double(BeginTime)) / 1000.);
 				const auto outShape = outTensors[0].GetTensorTypeAndShapeInfo().GetShape();
@@ -106,7 +106,7 @@ namespace DragonianLib
 				}
 				catch (Ort::Exception& e)
 				{
-					DragonianLibThrow(e.what());
+					_D_Dragonian_Lib_Throw_Exception(e.what());
 				}
 				const auto outShapeAlpha = outTensors[0].GetTensorTypeAndShapeInfo().GetShape();
 				const auto outDataAlpha = outTensors[0].GetTensorData<float>();

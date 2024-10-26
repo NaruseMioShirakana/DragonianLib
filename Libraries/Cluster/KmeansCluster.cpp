@@ -23,7 +23,7 @@ DragonianLib::KMeansCluster::KMeansCluster(const std::wstring& _path, size_t hid
 	FILE* file = nullptr;
 	_wfopen_s(&file, (_path + L"/KMeans.npy").c_str(), L"rb");
 	if (!file)
-		DragonianLibThrow("KMeansFileNotExist");
+		_D_Dragonian_Lib_Throw_Exception("KMeansFileNotExist");
 	constexpr long idx = 128;
 	fseek(file, idx, SEEK_SET);
 	std::vector<float> tmpData(hidden_size);

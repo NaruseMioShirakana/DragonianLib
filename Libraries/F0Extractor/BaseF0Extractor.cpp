@@ -14,7 +14,7 @@ DragonianLib::BaseF0Extractor::BaseF0Extractor(int sampling_rate, int hop_size, 
 
 DragonianLibSTL::Vector<float> DragonianLib::BaseF0Extractor::ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength)
 {
-	DragonianLibNotImplementedError;
+	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 DragonianLibSTL::Vector<float> DragonianLib::BaseF0Extractor::ExtractF0(const DragonianLibSTL::Vector<float>& PCMData, size_t TargetLength)

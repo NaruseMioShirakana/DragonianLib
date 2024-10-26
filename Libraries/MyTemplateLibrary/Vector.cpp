@@ -2,9 +2,9 @@
 #include <string>
 #include <filesystem>
 
-DRAGONIANLIBSTLBEGIN
+_D_Dragonian_Lib_Template_Library_Space_Begin
 
-void ThrowException(const char* Message, const char* FILE, const char* FUN, int LINE)
+void _Impl_Dragonian_Lib_Template_Library_Throw_Exception(const char* Message, const char* FILE, const char* FUN, int LINE)
 {
 	const std::string __DragonianLib__Message__ = Message;
 	const std::string __DragonianLib__Message__Prefix__ =
@@ -16,4 +16,4 @@ void ThrowException(const char* Message, const char* FILE, const char* FUN, int 
 	throw std::exception(__DragonianLib__Message__.c_str());
 }
 
-DRAGONIANLIBSTLEND
+_D_Dragonian_Lib_Template_Library_Space_End

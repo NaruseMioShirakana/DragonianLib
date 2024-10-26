@@ -20,7 +20,7 @@
 #pragma once
 #include "Base.h"
 
-DragonianLibSpaceBegin
+_D_Dragonian_Lib_Space_Begin
 
 class Value
 {
@@ -42,4 +42,4 @@ public:
     virtual void SaveData(FileGuard& _File);
 };
 
-DragonianLibSpaceEnd
+_D_Dragonian_Lib_Space_End

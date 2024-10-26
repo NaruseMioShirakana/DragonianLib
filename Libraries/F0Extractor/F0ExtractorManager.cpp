@@ -5,7 +5,7 @@
 #include "Base.h"
 #include "Util/Logger.h"
 
-DragonianLibF0ExtractorHeader
+_D_Dragonian_Lib_F0_Extractor_Header
 
 std::map<std::wstring, GetF0ExtractorFn> RegisteredF0Extractors;
 
@@ -42,4 +42,4 @@ std::vector<std::wstring> GetF0ExtractorList()
     return F0ExtractorsVec;
 }
 
-DragonianLibF0ExtractorEnd
+_D_Dragonian_Lib_F0_Extractor_End

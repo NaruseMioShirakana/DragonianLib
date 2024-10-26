@@ -63,7 +63,7 @@ namespace DragonianLib
 				}
 				catch (Ort::Exception& e)
 				{
-					DragonianLibThrow(e.what());
+					_D_Dragonian_Lib_Throw_Exception(e.what());
 				}
 
 				const auto outData = outTensors[0].GetTensorData<float>();
@@ -90,7 +90,7 @@ namespace DragonianLib
 			catch (Ort::Exception& e)
 			{
 				Destory();
-				DragonianLibThrow(e.what());
+				_D_Dragonian_Lib_Throw_Exception(e.what());
 			}
 
 			const auto allocator = Ort::AllocatorWithDefaultOptions();

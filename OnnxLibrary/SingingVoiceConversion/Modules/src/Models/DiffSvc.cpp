@@ -7,8 +7,9 @@
 #include "Util/Logger.h"
 #include "Util/StringPreprocess.h"
 
-LibSvcHeader
-	DiffusionSvc::~DiffusionSvc()
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
+
+DiffusionSvc::~DiffusionSvc()
 {
 	LogInfo(L"Unloading DiffSvc Models");
 }
@@ -75,7 +76,7 @@ DiffusionSvc::DiffusionSvc(
 	}
 	catch (Ort::Exception& _exception)
 	{
-		DragonianLibThrow(_exception.what());
+		_D_Dragonian_Lib_Throw_Exception(_exception.what());
 	}
 
 	LibSvcTensorExtractor::Others _others_param;
@@ -87,7 +88,7 @@ DiffusionSvc::DiffusionSvc(
 	}
 	catch (std::exception& e)
 	{
-		DragonianLibThrow(e.what());
+		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
 }
 
@@ -98,7 +99,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 ) const
 {
 	if (!_Params.VocoderModel)
-		DragonianLibThrow("Missing Vocoder Model!");
+		_D_Dragonian_Lib_Throw_Exception("Missing Vocoder Model!");
 	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
 	std::mt19937 gen(int(_Params.Seed));
 	std::normal_distribution<float> normal(0, 1);
@@ -136,14 +137,14 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow((std::string("Locate: hubert\n") + e.what()));
+			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: hubert\n") + e.what()));
 		}
 		const auto HubertSize = HubertOutPuts[0].GetTensorTypeAndShapeInfo().GetElementCount();
 		const auto HubertOutPutData = HubertOutPuts[0].GetTensorMutableData<float>();
 		auto HubertOutPutShape = HubertOutPuts[0].GetTensorTypeAndShapeInfo().GetShape();
 		HubertInputTensors.clear();
 		if (HubertOutPutShape[2] != HiddenUnitKDims)
-			DragonianLibThrow("HiddenUnitKDims UnMatch");
+			_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
 		DragonianLibSTL::Vector srcHiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
 		int64_t SpeakerIdx = _Params.SpeakerId;
@@ -191,7 +192,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 				TensorsInp.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
 			}
 			else
-				DragonianLibNotImplementedError;
+				_D_Dragonian_Lib_Not_Implemented_Error;
 
 			TensorsInp.emplace_back(Ort::Value::CreateTensor<long long>(*MemoryInfo, speedData, 1, CharaEmbShape, 1));
 			try
@@ -205,7 +206,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 			}
 			catch (Ort::Exception& e2)
 			{
-				DragonianLibThrow((std::string("Locate: Diff\n") + e2.what()));
+				_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Diff\n") + e2.what()));
 			}
 			try
 			{
@@ -218,7 +219,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 			}
 			catch (Ort::Exception& e3)
 			{
-				DragonianLibThrow((std::string("Locate: Nsf\n") + e3.what()));
+				_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Nsf\n") + e3.what()));
 			}
 		}
 		else
@@ -270,7 +271,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow((std::string("Locate: encoder\n") + e1.what()));
+				_D_Dragonian_Lib_Throw_Exception((std::string("Locate: encoder\n") + e1.what()));
 			}
 			if (EncoderOut.size() == 1)
 				EncoderOut.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, InputTensors.Data.F0.Data(), InputTensors.Data.FrameShape[1], InputTensors.Data.FrameShape.Data(), 2));
@@ -301,7 +302,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 				}
 				catch (Ort::Exception& e1)
 				{
-					DragonianLibThrow((std::string("Locate: naive\n") + e1.what()));
+					_D_Dragonian_Lib_Throw_Exception((std::string("Locate: naive\n") + e1.what()));
 				}
 				DenoiseInTensors.emplace_back(std::move(NaiveOut[0]));
 			}
@@ -319,7 +320,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
+				_D_Dragonian_Lib_Throw_Exception((std::string("Locate: pred\n") + e1.what()));
 			}
 			DiffOut.emplace_back(std::move(EncoderOut[1]));
 			try
@@ -333,7 +334,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 			}
 			catch (Ort::Exception& e3)
 			{
-				DragonianLibThrow((std::string("Locate: Nsf\n") + e3.what()));
+				_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Nsf\n") + e3.what()));
 			}
 		}
 
@@ -357,7 +358,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 ) const
 {
 	if (!_Params.VocoderModel)
-		DragonianLibThrow("Missing Vocoder Model!");
+		_D_Dragonian_Lib_Throw_Exception("Missing Vocoder Model!");
 	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
 	if (OldDiffSvc || DiffSvcVersion != L"DiffusionSvc")
 		return _PCMData;
@@ -395,14 +396,14 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 	}
 	catch (Ort::Exception& e)
 	{
-		DragonianLibThrow((std::string("Locate: hubert\n") + e.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: hubert\n") + e.what()));
 	}
 	const auto HubertSize = hubertOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
 	const auto HubertOutPutData = hubertOut[0].GetTensorMutableData<float>();
 	const auto HubertOutPutShape = hubertOut[0].GetTensorTypeAndShapeInfo().GetShape();
 	inputTensorshu.clear();
 	if (HubertOutPutShape[2] != HiddenUnitKDims)
-		DragonianLibThrow("HiddenUnitKDims UnMatch");
+		_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
 	DragonianLibSTL::Vector HiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
 
@@ -511,7 +512,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 	}
 	catch (Ort::Exception& e1)
 	{
-		DragonianLibThrow((std::string("Locate: encoder\n") + e1.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: encoder\n") + e1.what()));
 	}
 	if (EncoderOut.size() == 1)
 		EncoderOut.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, F0Data.Data(), F0Shape[1], F0Shape, 2));
@@ -542,7 +543,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 		}
 		catch (Ort::Exception& e1)
 		{
-			DragonianLibThrow((std::string("Locate: naive\n") + e1.what()));
+			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: naive\n") + e1.what()));
 		}
 		DenoiseInTensors.emplace_back(std::move(NaiveOut[0]));
 	}
@@ -564,7 +565,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 	}
 	catch (Ort::Exception& e1)
 	{
-		DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: pred\n") + e1.what()));
 	}
 	DiffOut.emplace_back(std::move(EncoderOut[1]));
 
@@ -579,7 +580,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(
 	}
 	catch (Ort::Exception& e3)
 	{
-		DragonianLibThrow((std::string("Locate: Nsf\n") + e3.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Nsf\n") + e3.what()));
 	}
 
 	auto DiffOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
@@ -615,10 +616,10 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 
 {
 	if (!_Params.VocoderModel)
-		DragonianLibThrow("Missing Vocoder Model!");
+		_D_Dragonian_Lib_Throw_Exception("Missing Vocoder Model!");
 	//Preprocessor->SetSrcSamplingRates(_Slice.SamplingRate);
 	if (OldDiffSvc || DiffSvcVersion != L"DiffusionSvc")
-		DragonianLibThrow("ShallowDiffusion Only Support DiffusionSvc Model");
+		_D_Dragonian_Lib_Throw_Exception("ShallowDiffusion Only Support DiffusionSvc Model");
 
 	auto speedup = (int64_t)_Params.Pndm;
 	auto step = (int64_t)_Params.Step;
@@ -642,7 +643,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	}
 	catch (Ort::Exception& e)
 	{
-		DragonianLibThrow((std::string("Locate: hubert\n") + e.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: hubert\n") + e.what()));
 	}
 
 	int64_t SpeakerIdx = _Params.SpeakerId;
@@ -730,7 +731,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	}
 	catch (Ort::Exception& e1)
 	{
-		DragonianLibThrow((std::string("Locate: encoder\n") + e1.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: encoder\n") + e1.what()));
 	}
 
 	OrtTensors DenoiseInTensors;
@@ -763,7 +764,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	}
 	catch (Ort::Exception& e1)
 	{
-		DragonianLibThrow((std::string("Locate: pred\n") + e1.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: pred\n") + e1.what()));
 	}
 	DiffOut.emplace_back(std::move(EncoderTensors[2]));
 	try
@@ -777,7 +778,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::ShallowDiffusionInference(
 	}
 	catch (Ort::Exception& e3)
 	{
-		DragonianLibThrow((std::string("Locate: Nsf\n") + e3.what()));
+		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Nsf\n") + e3.what()));
 	}
 
 	auto DiffOutputAudioSize = finaOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
@@ -799,4 +800,4 @@ void StaticNormMel(
 		it = (it - SpecMin) / (SpecMax - SpecMin) * 2 - 1;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

@@ -4,7 +4,7 @@
 
 #include "Base.h"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 PndmSampler::PndmSampler(Ort::Session* alpha, Ort::Session* dfn, Ort::Session* pred, int64_t Mel_Bins, const ProgressCallback& _ProgressCallback, Ort::MemoryInfo* memory) :
 	BaseSampler(alpha, dfn, pred, Mel_Bins, _ProgressCallback, memory) {}
@@ -49,7 +49,7 @@ std::vector<Ort::Value> PndmSampler::Sample(std::vector<Ort::Value>& Tensors, in
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow(std::string("Locate: denoise\n") + e1.what());
+				_D_Dragonian_Lib_Throw_Exception(std::string("Locate: denoise\n") + e1.what());
 			}
 
 			noiseList.emplace_back(DenoiseOut[0].GetTensorData<float>(),
@@ -72,7 +72,7 @@ std::vector<Ort::Value> PndmSampler::Sample(std::vector<Ort::Value>& Tensors, in
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow(std::string("Locate: pred\n") + e1.what());
+				_D_Dragonian_Lib_Throw_Exception(std::string("Locate: pred\n") + e1.what());
 			}
 			DenoiseIn[0] = std::move(PredOut[0]); // x_pred
 			DenoiseIn[1] = std::move(PredIn[3]); // time_prev
@@ -88,7 +88,7 @@ std::vector<Ort::Value> PndmSampler::Sample(std::vector<Ort::Value>& Tensors, in
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow(std::string("Locate: denoise\n") + e1.what());
+				_D_Dragonian_Lib_Throw_Exception(std::string("Locate: denoise\n") + e1.what());
 			}
 			auto noise_pred_prev = DenoiseOut[0].GetTensorMutableData<float>();
 			for (const auto it : noiseList[0])
@@ -115,7 +115,7 @@ std::vector<Ort::Value> PndmSampler::Sample(std::vector<Ort::Value>& Tensors, in
 			}
 			catch (Ort::Exception& e1)
 			{
-				DragonianLibThrow(std::string("Locate: denoise\n") + e1.what());
+				_D_Dragonian_Lib_Throw_Exception(std::string("Locate: denoise\n") + e1.what());
 			}
 			if (noiseList.size() < 4)
 				noiseList.emplace_back(DenoiseOut[0].GetTensorData<float>(), DenoiseOut[0].GetTensorData<float>() + DenoiseOut[0].GetTensorTypeAndShapeInfo().GetElementCount());
@@ -150,7 +150,7 @@ std::vector<Ort::Value> PndmSampler::Sample(std::vector<Ort::Value>& Tensors, in
 		}
 		catch (Ort::Exception& e1)
 		{
-			DragonianLibThrow(std::string("Locate: pred\n") + e1.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: pred\n") + e1.what());
 		}
 		_callback(++Process, 1);
 	}
@@ -197,7 +197,7 @@ std::vector<Ort::Value> DDimSampler::Sample(std::vector<Ort::Value>& Tensors, in
 		}
 		catch (Ort::Exception& e1)
 		{
-			DragonianLibThrow(std::string("Locate: alphas\n") + e1.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: alphas\n") + e1.what());
 		}
 		try
 		{
@@ -210,7 +210,7 @@ std::vector<Ort::Value> DDimSampler::Sample(std::vector<Ort::Value>& Tensors, in
 		}
 		catch (Ort::Exception& e1)
 		{
-			DragonianLibThrow(std::string("Locate: denoise\n") + e1.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: denoise\n") + e1.what());
 		}
 		const auto x = DenoiseIn[0].GetTensorMutableData<float>();
 		const auto noise_pred = DenoiseOut[0].GetTensorMutableData<float>();
@@ -268,7 +268,7 @@ std::vector<Ort::Value> ReflowEularSampler::Sample(std::vector<Ort::Value>& Tens
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		auto x_it = Spec[0].GetTensorMutableData<float>();
 		auto k_it = TensorsOut[0].GetTensorMutableData<float>();
@@ -316,7 +316,7 @@ std::vector<Ort::Value> ReflowHeunSampler::Sample(std::vector<Ort::Value>& Tenso
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K2
 		auto k_it = K1[0].GetTensorData<float>();
@@ -337,7 +337,7 @@ std::vector<Ort::Value> ReflowHeunSampler::Sample(std::vector<Ort::Value>& Tenso
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 
 		auto x_it = X1[0].GetTensorMutableData<float>();
@@ -391,7 +391,7 @@ std::vector<Ort::Value> ReflowPececeSampler::Sample(std::vector<Ort::Value>& Ten
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K2
 		auto k_it = K1[0].GetTensorData<float>();
@@ -412,7 +412,7 @@ std::vector<Ort::Value> ReflowPececeSampler::Sample(std::vector<Ort::Value>& Ten
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K3
 		auto k_it1 = K1[0].GetTensorData<float>();
@@ -434,7 +434,7 @@ std::vector<Ort::Value> ReflowPececeSampler::Sample(std::vector<Ort::Value>& Ten
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K4
 		k_it = K3[0].GetTensorData<float>();
@@ -456,7 +456,7 @@ std::vector<Ort::Value> ReflowPececeSampler::Sample(std::vector<Ort::Value>& Ten
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 
 		auto x_it = X1[0].GetTensorMutableData<float>();
@@ -510,7 +510,7 @@ std::vector<Ort::Value> ReflowRk4Sampler::Sample(std::vector<Ort::Value>& Tensor
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K2
 		auto k_it = K1[0].GetTensorData<float>();
@@ -531,7 +531,7 @@ std::vector<Ort::Value> ReflowRk4Sampler::Sample(std::vector<Ort::Value>& Tensor
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K3
 		k_it = K2[0].GetTensorData<float>();
@@ -552,7 +552,7 @@ std::vector<Ort::Value> ReflowRk4Sampler::Sample(std::vector<Ort::Value>& Tensor
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 		//K4
 		k_it = K3[0].GetTensorData<float>();
@@ -573,7 +573,7 @@ std::vector<Ort::Value> ReflowRk4Sampler::Sample(std::vector<Ort::Value>& Tensor
 		}
 		catch (Ort::Exception& e)
 		{
-			DragonianLibThrow(std::string("Locate: Velocity\n") + e.what());
+			_D_Dragonian_Lib_Throw_Exception(std::string("Locate: Velocity\n") + e.what());
 		}
 
 		auto x_it = X1[0].GetTensorMutableData<float>();
@@ -603,4 +603,4 @@ std::vector<Ort::Value> ReflowRk4Sampler::Sample(std::vector<Ort::Value>& Tensor
 	return X1;
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

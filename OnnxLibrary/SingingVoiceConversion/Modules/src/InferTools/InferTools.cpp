@@ -4,7 +4,7 @@
 #include <immintrin.h>
 #endif
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 DragonianLibSTL::Vector<size_t> SliceAudio(
     const DragonianLibSTL::Vector<float>& _PcmData,
@@ -180,4 +180,4 @@ FloatTensorWrapper& FloatTensorWrapper::operator/=(float _right)
 }
 #endif
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

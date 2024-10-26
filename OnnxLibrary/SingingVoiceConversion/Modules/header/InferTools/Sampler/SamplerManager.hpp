@@ -22,7 +22,7 @@
 #pragma once
 #include "BaseSampler.hpp"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 using SamplerWrp = std::shared_ptr<BaseSampler>;
 
@@ -103,4 +103,4 @@ ReflowSamplerWrp GetReflowSampler(
  */
 std::vector<std::wstring> GetReflowSamplerList();
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

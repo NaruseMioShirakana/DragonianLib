@@ -3,7 +3,7 @@
 #include "Base.h"
 #include "Util/Logger.h"
 
-LibSvcHeader
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 std::map<std::wstring, GetTensorExtractorFn> RegisteredTensorExtractors;
 
@@ -25,4 +25,4 @@ TensorExtractor GetTensorExtractor(const std::wstring& _name, uint64_t _srcsr, u
 	throw std::runtime_error("Unable To Find An Available Tensor Extractor");
 }
 
-LibSvcEnd
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

@@ -7,11 +7,11 @@
 * date: 2023-3-4 Create.
 */
 #pragma once
-#define IMAGEVIDEOCLASSHEADER namespace DragonianLib {
-#define IMAGEVIDEOCLASSEND }
+#define _D_Dragonian_Lib_Image_Video_Header namespace DragonianLib {
+#define _D_Dragonian_Lib_Image_Video_End }
 #include "MyTemplateLibrary/Vector.h"
 
-IMAGEVIDEOCLASSHEADER
+_D_Dragonian_Lib_Image_Video_Header
 
 /**
  * @class Image
@@ -100,4 +100,4 @@ void GdiInit();
  */
 void GdiClose();
 
-IMAGEVIDEOCLASSEND
+_D_Dragonian_Lib_Image_Video_End

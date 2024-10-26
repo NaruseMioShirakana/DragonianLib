@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+﻿cmake_minimum_required (VERSION 3.13)
 
 set(DRAGONIANLIB_TRT_LIB ${DRAGONIANLIB_LIB}TRTLib)
 
@@ -20,6 +20,25 @@ if(DRAGONIANLIB_SHARED_LIBS)
     add_library(${DRAGONIANLIB_TRT_LIB} SHARED ${DRAGONIANLIB_TRTLIB_SRC})
 else()
     add_library(${DRAGONIANLIB_TRT_LIB} STATIC ${DRAGONIANLIB_TRTLIB_SRC})
+endif()
+
+#Build Type
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
+	)
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
+	)
+else()
+	add_definitions(-DDRAGONIANLIB_DEBUG)
+	target_compile_options(
+		${DRAGONIANLIB_LIB} PRIVATE
+		/Zi /Gy /experimental:module /openmp:experimental
+	)
 endif()
 
 if(MSVC)

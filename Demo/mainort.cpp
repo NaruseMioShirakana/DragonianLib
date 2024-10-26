@@ -81,9 +81,9 @@ std::string WideStringToUTF8(const std::wstring& input)
 }
 
 #ifndef DRAGONIANLIB_IMPORT
-[[noreturn]] void exceptionfn1() { DragonianLibFatalError; }
-[[noreturn]] void exceptionfn2() { try { exceptionfn1(); } catch (std::exception& e) { DragonianLibThrow(e.what()); } }
-[[noreturn]] void exceptionfn3() { try { exceptionfn2(); } catch (std::exception& e) { DragonianLibThrow(e.what()); } }
+[[noreturn]] void exceptionfn1() { _D_Dragonian_Lib_Fatal_Error; }
+[[noreturn]] void exceptionfn2() { try { exceptionfn1(); } catch (std::exception& e) { _D_Dragonian_Lib_Throw_Exception(e.what()); } }
+[[noreturn]] void exceptionfn3() { try { exceptionfn2(); } catch (std::exception& e) { _D_Dragonian_Lib_Throw_Exception(e.what()); } }
 
 template<typename _T = float>
 void PrintTensor(DragonianLib::Tensor<_T>& _Tensor)
@@ -140,7 +140,7 @@ void LibSvcTest()
 #ifdef DRAGONIANLIB_IMPORT
 	LibSvcInit();
 #else
-	LibSvcSpace SetupKernel();
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SetupKernel();
 	try 
 	{
 		exceptionfn3();
@@ -157,7 +157,7 @@ void LibSvcTest()
 	auto GlobalEnv = LibSvcCreateEnv(NumThread, DeviceId, EProvider);
 	if (!GlobalEnv)
 		return;
-	LibSvcSpace Hparams Config;
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams Config;
 	Config.TensorExtractor = L"DiffusionSvc";
 	Config.SamplingRate = 44100;
 	Config.HopSize = 512;
@@ -239,7 +239,7 @@ void LibSvcTest()
 	if (Error)
 		return;
 #else
-	auto Model = LibSvcSpace DiffusionSvc(
+	auto Model = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space DiffusionSvc(
 		Config,
 		ProgressCb,
 		DragonianLib::SingingVoiceConversion::LibSvcModule::ExecutionProviders(EProvider),
@@ -252,7 +252,7 @@ void LibSvcTest()
 	);
 #endif
 
-	LibSvcSpace SlicerSettings SlicerConfig{
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings SlicerConfig{
 		SrcSr,
 		40. / 32768.,
 		5.,
@@ -271,7 +271,7 @@ void LibSvcTest()
 #endif
 
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
-	LibSvcSpace InferenceParams Params;
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams Params;
 	Params.VocoderSamplingRate = Config.SamplingRate;
 	Params.VocoderHopSize = Config.HopSize;
 	Params.VocoderMelBins = static_cast<int>(Config.MelBins);
@@ -307,8 +307,8 @@ void LibSvcTest()
 		return;
 #else
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
-	auto Slices = LibSvcSpace SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
-	LibSvcSpace SingingVoiceConversion::PreProcessAudio(Slices, SrcSr, 512, L"Dio");
+	auto Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(Slices, SrcSr, 512, L"Dio");
 #endif
 
 	size_t Proc = 0;
@@ -440,11 +440,27 @@ void LibSvcTest()
 void OperatorTest()
 {
 	using namespace DragonianLib;
-	std::vector<float> _Dest(1145140 * 8ll);
-	int aaaa = 20;
-	static std::mt19937_64 RandomEngine(std::random_device{}());
-	std::normal_distribution<float> Distribution;
-	while (aaaa--)
+	std::vector<int64_t> Dest(1145140 * 8ll, 0);
+	std::vector<int64_t> Src(1145140 * 8ll, 1);
+	std::vector<char> Cond(1145140 * 8ll, 0);
+	auto DestData = Dest.data();
+	auto SrcData = Src.data();
+	auto CondData = Cond.data();
+	int LoopCount = 20;
+
+	auto Mask = _D_Dragonian_Lib_Simd_Not_Mask(int64_t);
+	for (size_t i = 0; i < Dest.size() - 16; i += 16)
+	{
+		Dest[i] = 0;
+		Operators::Vectorized VecA(DestData + i);
+		Operators::Vectorized VecB(DestData + i + 8);
+		Operators::Vectorized VecC(SrcData + i);
+		Operators::Vectorized VecD(SrcData + i + 8);
+		VecA.NotEqual(VecC, Mask).Store(DestData + i);
+		VecB.NotEqual(VecD, Mask).Store(DestData + i + 8);
+	}
+	
+	while (LoopCount--)
 	{
 		WithTimer(
 			[&]()

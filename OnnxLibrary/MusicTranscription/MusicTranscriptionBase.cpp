@@ -1,4 +1,4 @@
-#include "MusicTranscriptionBase.hpp"
+﻿#include "MusicTranscriptionBase.hpp"
 #include "Base.h"
 #include <fstream>
 
@@ -56,7 +56,7 @@ namespace DragonianLib
 
 		MidiTrack MusicTranscription::Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize) const
 		{
-			DragonianLibNotImplementedError;
+			_D_Dragonian_Lib_Not_Implemented_Error;
 		}
 
 	}
