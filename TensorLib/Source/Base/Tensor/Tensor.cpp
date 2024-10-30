@@ -39,6 +39,7 @@ bool RangeIsAllNone(const Vector<Range>& _Input)
 void SetRandomSeed(SizeType _Seed)
 {
 	Operators::RandomEngine.seed(_Seed);
+	Operators::_Impl_Global_Seed = _Seed;
 }
 
 _D_Dragonian_Lib_Space_End

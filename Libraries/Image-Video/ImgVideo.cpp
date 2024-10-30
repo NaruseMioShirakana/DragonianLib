@@ -547,7 +547,7 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 						{
 							const int offset = blockOffsetRGB + ((srcy + _y) * newClipW + (srcx + _x)) * 3;
 							auto val = data.rgb[offset + index] * 255.f;
-							return static_cast<BYTE>(val > 255.f ? 255.f : val);
+							return static_cast<BYTE>(val > 255.f ? 255.f : (val < 0.f ? 0.f : val));
 						};
 					if (y + _y >= srcHeight || x + _x >= srcWidth) break;
 

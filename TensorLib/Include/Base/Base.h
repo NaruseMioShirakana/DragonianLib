@@ -68,6 +68,15 @@
 
 _D_Dragonian_Lib_Space_Begin
 
+template <bool _Test, typename _Tyt = void, typename _Tyf = void>
+struct _Impl_Dragonian_Lib_Constexpr_Decltype {};
+template <typename _Tyt, typename _Tyf>
+struct _Impl_Dragonian_Lib_Constexpr_Decltype<true, _Tyt, _Tyf> { using _Decltype = _Tyt; };
+template <typename _Tyt, typename _Tyf>
+struct _Impl_Dragonian_Lib_Constexpr_Decltype<false, _Tyt, _Tyf> { using _Decltype = _Tyf; };
+template <bool _Test, typename _Tyt = void, typename _Tyf = void>
+using _Impl_Dragonian_Lib_Constexpr_Decltype_t = typename _Impl_Dragonian_Lib_Constexpr_Decltype<_Test, _Tyt, _Tyf>::_Decltype;
+
 _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Impl(const std::string& Message, const char* Path, const char* Function, int Line)
 {
 	const std::string Prefix =

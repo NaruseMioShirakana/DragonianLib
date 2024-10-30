@@ -191,17 +191,18 @@ public:
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
 
+	static constexpr auto _Device = _MyDevice;
+	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
+
 protected:
 	Allocator _MyAllocator = nullptr;
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr, _MyData = nullptr;
-
+	
 	Dimensions _MyShape;
 	Dimensions _MyViewStep;
 	Dimensions _MyViewLeft;
 	Dimensions _MyViewStride;
-
-	//SliceOptions _MyOpSlice;
 
 	bool IsBroadCasted_ = false;
 
@@ -210,15 +211,26 @@ public:
 	Tensor(const Tensor& Left) = default;
 	Tensor(Tensor&& Right) noexcept = default;
 
-	Tensor& operator=(const Tensor& _Left) = default;
-	Tensor& operator=(Tensor&& _Right) noexcept = default;
+	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
+
+	/**
+	 * @brief Copy the data of a tensor
+	 * @param _Left Source tensor
+	 * @return Reference of this
+	 */
+	constexpr Tensor& operator=(const Tensor& _Left)
+	{
+		if(this != &_Left)
+			Assign(_Left);
+		return *this;
+	}
 
 	/**
 	 * @brief Get an element tensor of the tensor. for example, if the tensor is a 2D tensor, then tensor[0] will return the 1st row of the tensor.
 	 * @param _Index The index of the element tensor.
 	 * @return The element tensor.
 	 */
-	Tensor operator[](SizeType _Index) const
+	constexpr Tensor operator[](SizeType _Index) const
 	{
 		return GatherRef(_Index);
 	}
@@ -228,7 +240,7 @@ public:
 	 * @param _SliceOptions The slice options of the tensor.
 	 * @return The sliced tensor.
 	 */
-	Tensor operator[](const SliceOptions& _SliceOptions) const
+	constexpr Tensor operator[](const SliceOptions& _SliceOptions) const
 	{
 		return Slice(_SliceOptions);
 	}
@@ -238,7 +250,7 @@ public:
 	 * @param _Indice 
 	 * @return 
 	 */
-	Tensor operator[](const Dimensions& _Indice) const
+	constexpr Tensor operator[](const Dimensions& _Indice) const
 	{
 		Tensor Ret = CreateView();
 		for (auto i : _Indice)
@@ -255,10 +267,9 @@ public:
 	 * @param MyShape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> New(const Dimensions& MyShape)
+	static constexpr Tensor New(const Dimensions& MyShape)
 	{
-		return Tensor<_Type, _Device>(MyShape);
+		return Tensor(MyShape);
 	}
 
 	/**
@@ -267,10 +278,9 @@ public:
 	 * @tparam _Device Device of the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> New()
+	static constexpr Tensor New()
 	{
-		return Tensor<_Type, _Device>();
+		return Tensor();
 	}
 
 	/**
@@ -280,11 +290,10 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> Ones(const Dimensions& _Shape)
+	static constexpr Tensor Ones(const Dimensions& _Shape)
 	{
-		Tensor<_Type, _Device> Ret(_Shape);
-		Ret.Assign(_Type(1));
+		Tensor Ret(_Shape);
+		Ret.Assign(ValueType(1));
 		return Ret;
 	}
 
@@ -295,11 +304,10 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> Zeros(const Dimensions& _Shape)
+	static constexpr Tensor Zeros(const Dimensions& _Shape)
 	{
-		Tensor<_Type, _Device> Ret(_Shape);
-		Ret.Assign(_Type(0));
+		Tensor Ret(_Shape);
+		Ret.Assign(ValueType(0));
 		return Ret;
 	}
 
@@ -311,10 +319,9 @@ public:
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> ConstantOf(const Dimensions& _Shape, _Type _Val)
+	static constexpr Tensor ConstantOf(const Dimensions& _Shape, ValueType _Val)
 	{
-		Tensor<_Type, _Device> Ret(_Shape);
+		Tensor Ret(_Shape);
 		Ret.Assign(_Val);
 		return Ret;
 	}
@@ -326,11 +333,10 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> Rand(const Dimensions& _Shape)
+	static constexpr Tensor Rand(const Dimensions& _Shape)
 	{
-		Tensor<_Type, _Device> Ret(_Shape);
-		Ret.RandFix();
+		Tensor Ret(_Shape);
+		Ret.AssignRand();
 		return Ret;
 	}
 
@@ -343,11 +349,10 @@ public:
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> Randn(const Dimensions& _Shape, double _Mean = 0., double _Sigma = 1.)
+	static constexpr Tensor Randn(const Dimensions& _Shape, double _Mean = 0., double _Sigma = 1.)
 	{
-		Tensor<_Type, _Device> Ret(_Shape);
-		Ret.RandnFix(_Mean, _Sigma);
+		Tensor Ret(_Shape);
+		Ret.AssignRandn(_Mean, _Sigma);
 		return Ret;
 	}
 
@@ -358,10 +363,9 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> OnesLike(const Tensor& _ShapeReference)
+	static constexpr Tensor OnesLike(const Tensor& _ShapeReference)
 	{
-		return Ones<_Type, _Device>(_ShapeReference.Shape());
+		return Ones(_ShapeReference.Shape());
 	}
 
 	/**
@@ -371,10 +375,9 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> ZerosLike(const Tensor& _ShapeReference)
+	static constexpr Tensor ZerosLike(const Tensor& _ShapeReference)
 	{
-		return Zeros<_Type, _Device>(_ShapeReference.Shape());
+		return Zeros(_ShapeReference.Shape());
 	}
 
 	/**
@@ -385,10 +388,9 @@ public:
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> ConstantLike(const Tensor& _ShapeReference, _Type _Val)
+	static constexpr Tensor ConstantLike(const Tensor& _ShapeReference, ValueType _Val)
 	{
-		return ConstantOf<_Type, _Device>(_ShapeReference.Shape(), _Val);
+		return ConstantOf(_ShapeReference.Shape(), _Val);
 	}
 
 	/**
@@ -398,10 +400,9 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> RandLike(const Tensor& _ShapeReference)
+	static constexpr Tensor RandLike(const Tensor& _ShapeReference)
 	{
-		return Rand<_Type, _Device>(_ShapeReference.Shape());
+		return Rand(_ShapeReference.Shape());
 	}
 
 	/**
@@ -413,17 +414,35 @@ public:
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> RandnLike(const Tensor& _ShapeReference,  double _Mean = 0., double _Sigma = 1.)
+	static constexpr Tensor RandnLike(const Tensor& _ShapeReference,  double _Mean = 0., double _Sigma = 1.)
 	{
-		return Randn<_Type, _Device>(_ShapeReference.Shape(), _Mean, _Sigma);
+		return Randn(_ShapeReference.Shape(), _Mean, _Sigma);
 	}
 
-	template<typename _Type = float32, Device _Device = Device::CPU>
-	static Tensor<_Type, _Device> Arange(float64 _Begin, float64 _End, float64 _Step);
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @return The new tensor.
+	 */
+	static constexpr Tensor Empty(const Dimensions& _Shape)
+	{
+		return Tensor(_Shape);
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	static constexpr Tensor EmptyLike(const Tensor& _ShapeReference)
+	{
+		return Tensor(_ShapeReference._MyShape);
+	}
+
+	static constexpr Tensor Arange(float64 _Begin, float64 _End, float64 _Step);
 
 private:
-	bool AllocateMemory(const Dimensions& MyShape, Allocator MyAlloc)
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool AllocateMemory(const Dimensions& MyShape, Allocator MyAlloc)
 	{
 		if (MyShape.Empty())
 			return false;
@@ -432,7 +451,7 @@ private:
 		const auto Size = VectorMul(MyShape);
 		_MyFirst = Pointer(
 			(RawPointer)MyAlloc->Allocate(Size * sizeof(ValueType)),
-			[=](void* _Pointer)
+			[&](void* _Pointer)
 			{
 				_MyAllocator->Free(_Pointer);
 			}
@@ -454,10 +473,66 @@ private:
 			auto _End = _MyViewStep.ReversedEnd();
 			auto _Iter = _MyShape.ReversedBegin();
 			*_Begin-- = 1;
-			while (_Begin != _End) *_Begin-- = *_Iter--;
+			while (_Begin != _End)
+			{
+				*_Begin = *(_Begin + 1) * *_Iter--;
+				--_Begin;
+			}
 			_MyViewLeft = { _MyShape.Size(), 0ll, _MyShape.GetAllocator() };
 			_MyViewStride = { _MyShape.Size(), 1ll, _MyShape.GetAllocator() };
 		}
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(ValueType _Value) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Value,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const ValueType* _Buffer, SizeType _Count) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Buffer,
+			_Count,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const Tensor& _Val) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+			_MyData,
+			GetShapeInfo(),
+			_Val.Data(),
+			_Val.GetShapeInfo(),
+			!IsBroadCasted() && !_Val.IsBroadCasted() && IsContinuous() && _Val.IsContinuous()
+		);
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRand() const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
+			_MyData,
+			GetShapeInfo(),
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRandn(double _Mean = 0., double _Sigma = 1.) const
+	{
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
+			_MyData,
+			GetShapeInfo(),
+			_Mean,
+			_Sigma,
+			!IsBroadCasted() && IsContinuous()
+		);
 	}
 
 public:
@@ -526,13 +601,13 @@ public:
 	}
 
 	/**
-	 * @brief Get a val of the tensor with the specified indices.
-	 * @param Index The indices.
+	 * @brief Get a val of the tensor with the specified index.
+	 * @param Index The index.
 	 * @return The val.
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Get(SizeType Index) const
 	{
-		return *(_MyFirst.get() + Index);
+		return *(_MyData + Index);
 	}
 
 	/**
@@ -551,94 +626,85 @@ public:
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Item() const
 	{
-		return *(Data());
+		return *(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
 	}
 
 	//******************************************************Operator******************************************************//
 
-	void Assign(ValueType _Value) const
-	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
-			_MyData,
-			GetShapeInfo(),
-			_Value,
-			!IsBroadCasted() && IsContinuous()
-		);
-	}
-
-	void Assign(const ValueType* _Buffer, SizeType _Count) const
-	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
-			_MyData,
-			GetShapeInfo(),
-			_Buffer,
-			_Count,
-			!IsBroadCasted() && IsContinuous()
-		);
-	}
-
-	void Assign(const Tensor& _Val) const
-	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
-			_MyData,
-			GetShapeInfo(),
-			_Val.Data(),
-			_Val.GetShapeInfo(),
-			!IsBroadCasted() && !_Val.IsBroadCasted() && IsContinuous() && _Val.IsContinuous()
-		);
-	}
-
 	/**
 	 * @brief Assign the tensor with ones.
+	 * @return Reference of this.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void FixOnes() const
+	Tensor& FixOnes()
 	{
 		Assign(ValueType(1));
+		return *this;
 	}
 
 	/**
 	 * @brief Assign the tensor with zeros.
+	 * @return Reference of this.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void FixZeros() const
+	Tensor& FixZeros()
 	{
 		Assign(ValueType(0));
+		return *this;
 	}
 
 	/**
 	 * @brief Assign the tensor with a constant value.
 	 * @param _Val The constant value.
+	 * @return Reference of this.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Fix(ValueType _Val) const
+	Tensor& Fix(ValueType _Val)
 	{
 		Assign(_Val);
+		return *this;
+	}
+
+	/**
+	 * @brief Fix the tensor with a buffer.
+	 * @param _Buffer The buffer.
+	 * @param _Count Data count of the buffer.
+	 * @return Reference of this.
+	 */
+	Tensor& Fix(const ValueType* _Buffer, SizeType _Count)
+	{
+		Assign(_Buffer, _Count);
+		return *this;
+	}
+
+	/**
+	 * @brief Fix the tensor with a buffer.
+	 * @param _Vector The vector.
+	 * @return Reference of this.
+	 */
+	Tensor& Fix(const Vector<ValueType>& _Vector)
+	{
+		Assign(_Vector.Data(), _Vector.Size());
+		return *this;
 	}
 
 	/**
 	 * @brief Assign the tensor with random values.
+	 * @return Reference of this.
 	 */
-	void RandFix() const
+	Tensor& RandFix()
 	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
-			_MyData,
-			GetShapeInfo(),
-			!IsBroadCasted() && IsContinuous()
-		);
+		AssignRand();
+		return *this;
 	}
 
 	/**
 	 * @brief Assign the tensor with random values.
 	 * @param _Mean The mean value of the random values.
 	 * @param _Sigma The sigma value of the random values.
+	 * @return Reference of this.
 	 */
-	void RandnFix(double _Mean = 0., double _Sigma = 1.) const
+	Tensor& RandnFix(double _Mean = 0., double _Sigma = 1.)
 	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
-			_MyData,
-			GetShapeInfo(),
-			_Mean,
-			_Sigma,
-			!IsBroadCasted() && IsContinuous()
-		);
+		AssignRandn(_Mean, _Sigma);
+		return *this;
 	}
 
 	Tensor operator+(const Tensor& _Right) const;
@@ -676,19 +742,35 @@ public:
 
 	/**
 	 * @brief Get the shape info of the tensor.
-	 * @param CurrentRank The current rank of the tensor.
+	 * @tparam _TargetRank The target rank of the info.
+	 * @param _Begin The start axis.
+	 * @param _End The end axis.
 	 * @return The shape info of the tensor.
 	 */
-	Operators::TensorShapeInfo GetShapeInfo(SizeType CurrentRank = INT64_MAX) const
+	template <SizeType _TargetRank = 6>
+	Operators::TensorShapeInfoND<_TargetRank> GetShapeInfo(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
 	{
-		if (CurrentRank == INT64_MAX)
-			CurrentRank = Rank();
-
-		if (CurrentRank > 6)
+		if constexpr (_TargetRank > 6)
 			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Tensor Is Too High! In General, Axis Which Greater Than 6 Is A Batch Axis, You Can Use Invoke() Or Write A Loop.");
-		Operators::TensorShapeInfo Ret;
+
+		const auto TensorRank = Rank();
+		_Begin = CalcIndex(_Begin, TensorRank);
+
+		if (_End == INT64_MAX)
+			_End = TensorRank;
+		_End = CalcRange(_End, TensorRank);
+
+		auto CurrentRank = _End - _Begin;
+
+		if (CurrentRank <= 0)
+			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Tensor Is Too Low!");
+
+		if (CurrentRank > _TargetRank)
+			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Info Is Too High!");
+		
+		Operators::TensorShapeInfoND<_TargetRank> Ret;
 		SizeType i = 0;
-		SizeType Count = 6 - CurrentRank;
+		SizeType Count = _TargetRank - CurrentRank;
 		while (i < Count)
 		{
 			Ret.Shape[i] = 1;
@@ -697,14 +779,15 @@ public:
 			Ret.ViewStride[i] = 1;
 			++i;
 		}
-		for (; i < 6; ++i)
+		for (; i < _TargetRank; ++i)
 		{
-			const auto CurIndex = i - Count;
+			const auto CurIndex = i - Count + _Begin;
 			Ret.Shape[i] = _MyShape[CurIndex];
 			Ret.ViewStep[i] = _MyViewStep[CurIndex];
 			Ret.ViewLeft[i] = _MyViewLeft[CurIndex];
 			Ret.ViewStride[i] = _MyViewStride[CurIndex];
 		}
+		Ret.ViewRank = CurrentRank;
 		return Ret;
 	}
 
@@ -734,6 +817,15 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions& Size() const
 	{
 		return _MyShape;
+	}
+
+	/**
+	 * @brief Get the total size of the tensor.
+	 * @return The total size of the tensor.
+	 */
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType TotalSize() const
+	{
+		return VectorMul(_MyShape);
 	}
 
 	/**
@@ -851,7 +943,7 @@ public:
 	 * @param _End end axis
 	 * @return True if the tensor is continuous, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
+	bool IsContinuous(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
 	{
 		if (_End == INT64_MAX)
 			_End = Rank();
@@ -859,8 +951,12 @@ public:
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcRange(_End, Rank());
 
-		for (size_t i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0 || (Rank() > 1 && _MyViewStep[i - 1] / _MyViewStep[i] != _MyViewStep[i]))
+		for (SizeType i = _Begin; i < _End; ++i)
+			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
+				return false;
+
+		for (SizeType i = _Begin + 1; i < _End; ++i)
+			if (_MyViewStep[i - 1] / _MyShape[i] != _MyViewStep[i])
 				return false;
 
 		return true;
@@ -898,8 +994,9 @@ public:
 	/**
 	 * @brief Add 1 to the indices of a loop iterator.
 	 * @param _Indices The indices of the loop iterator.
+	 * @return Reference of _Indices
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void IteratorAdd(Dimensions& _Indices) const
+	Dimensions& IteratorAdd(Dimensions& _Indices) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -909,20 +1006,22 @@ public:
 			if (Ret < *(ShapePtr + i))
 			{
 				*Val = Ret;
-				return;
+				return _Indices;
 			}
 			if (i == 0)
-				return;
+				return _Indices;
 			*Val = 0;
 			--Val;
 		}
+		return _Indices;
 	}
 
 	/**
 	 * @brief Sub 1 to the indices of a loop iterator.
 	 * @param _Indices The indices of the loop iterator.
+	 * @return Reference of _Indices
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void IteratorSub(Dimensions& _Indices) const
+	Dimensions& IteratorSub(Dimensions& _Indices) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -933,13 +1032,14 @@ public:
 			if (Ret >= 0)
 			{
 				*Val = Ret;
-				return;
+				return _Indices;
 			}
 			if (i == 0)
-				return;
+				return _Indices;
 			*Val = (*(ShapePtr + i) - 1);
 			--Val;
 		}
+		return _Indices;
 	}
 
 	/**
@@ -994,7 +1094,7 @@ public:
 	 */
 	Tensor CreateView() const
 	{
-		return *this;
+		return Tensor(*this);
 	}
 
 	/**
@@ -1016,13 +1116,7 @@ public:
 			if (_SliceOptions[i].IsNone)
 				continue;
 			const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
-			auto SliceEndPos = _SliceOptions[i].End;
-			if (SliceEndPos > _MyShape[i] || SliceEndPos < -(_MyShape[i] + 1))
-				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
-			if (SliceEndPos == -(_MyShape[i] + 1))
-				SliceEndPos = -1;
-			else if (SliceEndPos < 0)
-				SliceEndPos += _MyShape[i] + 1;
+			auto SliceEndPos = CalcRange(_SliceOptions[i].Begin, _MyShape[i]);
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
 				_D_Dragonian_Lib_Throw_Exception("Slice Length Must > 0");
@@ -1066,7 +1160,7 @@ public:
 		if (_MyShape.Empty() || _PremuteOrder.Size() != _MyShape.Size())
 			_D_Dragonian_Lib_Throw_Exception("N_DIMS MisMatch!");
 		Tensor Ret = CreateView();
-		auto TransposedDims = _PremuteOrder;
+		Dimensions TransposedDims = _PremuteOrder;
 		std::ranges::sort(TransposedDims);
 		if (TransposedDims[0] != 0)
 			_D_Dragonian_Lib_Throw_Exception("DPremute Must Have [0, 1, ... , N_DIMS - 1]!");
@@ -1119,10 +1213,7 @@ public:
 		Tensor Ret = CreateView();
 		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size() + 1));
 		Ret._MyShape.Insert(Ret._MyShape.begin() + _Dim, 1);
-		if (_Dim == SizeType(Ret._MyViewStep.Size()))
-			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, 1);
-		else
-			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, *(Ret._MyViewStep.begin() + _Dim));
+		Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, 1);
 		Ret._MyViewLeft.Insert(Ret._MyViewLeft.begin() + _Dim, 0);
 		Ret._MyViewStride.Insert(Ret._MyViewStride.begin() + _Dim, 1);
 		return Ret;
@@ -1214,8 +1305,27 @@ public:
 		return Ret;
 	}
 
-	Tensor Clone() const;
-	Tensor& MakeContinuous();
+	/**
+	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
+	 * @return New tensor.
+	 */
+	Tensor Clone() const
+	{
+		Tensor Ret{ this->_MyShape };
+		Ret = *this;
+		return Ret;
+	}
+
+	/**
+	 * @brief Make this tensor continuous.
+	 * @return Reference of this.
+	 */
+	Tensor& MakeContinuous()
+	{
+		if (IsContinuous())
+			return *this;
+		return *this = Clone();
+	}
 
 	//********************************************************Operation********************************************************//
 
@@ -1375,7 +1485,7 @@ protected:
 	{
 		decltype(auto) Bd = BroadCast(*this, _Other);
 		if (Bd.first.IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("TensorA & TensorB Can Not  Be BroadCast At The Same Time In This Operator!");
+			_D_Dragonian_Lib_Throw_Exception("TensorA & TensorB Can Not Be BroadCast At The Same Time In This Operator!");
 		return std::move(Bd.second);
 	}
 
@@ -1389,8 +1499,7 @@ protected:
 		Ret._MyViewLeft = { _MyViewLeft.begin() + 1,_MyViewLeft.end(), _MyShape.GetAllocator() };
 		Ret._MyViewStride = { _MyViewStride.begin() + 1,_MyViewStride.end(), _MyShape.GetAllocator() };
 
-		auto Index = _MyViewLeft.Front() + (Idx * _MyViewStride.Front());
-		Index = ((Index * _MyViewStride.Front()) + _MyViewLeft.Front()) * _MyViewStep.Front();
+		auto Index = (_MyViewLeft.Front() + (Idx * _MyViewStride.Front())) * _MyViewStep.Front();
 		Ret._MyData = _MyData + Index;
 		Ret._MyFirst = _MyFirst;
 		Ret._MyLast = _MyLast;
@@ -1439,5 +1548,9 @@ public:
 	DragonianLibTensorFnDef(Ceil);
 	DragonianLibTensorFnDef(Round);*/
 };
+
+using FloatTensor = Tensor<float32>;
+using LongTensor = Tensor<int64>;
+using BoolTensor = Tensor<bool>;
 
 _D_Dragonian_Lib_Space_End

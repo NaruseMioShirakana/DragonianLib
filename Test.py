@@ -3,22 +3,51 @@ import time
 
 for i in range(20):
     begin = time.time()
-    tensora = torch.ones(11451400*8)
+    tensora = torch.randn(11451400*8)
     print(time.time() - begin)
     print(tensora)
 
 
-print(
-    torch.sqrt(
-        torch.nn.functional.conv1d(
-            torch.FloatTensor([[[1., 2., 3., 4., 5.]]]) ** 2,
-            torch.ones(1, 1, 2)
-        ) + 1e-8
-    )
-)
-print(
-    torch.nn.functional.conv1d(
-        torch.FloatTensor([[[1., 2., 3., 4., 5.]]]),
-        torch.FloatTensor([[[0.3, 0.7]]])
-    )
-)
+'''
+<Type Name="DragonianLib::Tensor&lt;*,*&gt;">
+	<DisplayString>
+		Shape: {_MyShape}, Data: {_MyData}
+	</DisplayString>
+	<Expand>
+		<Item Name="Allocator">_MyAllocator</Item>
+		<Item Name="First Element">_MyFirst</Item>
+		<Item Name="Last Element">_MyLast</Item>
+		<Item Name="Data">_MyData</Item>
+		<Item Name="Shape">_MyShape</Item>
+		<Item Name="View Step">_MyViewStep</Item>
+		<Item Name="View Left">_MyViewLeft</Item>
+		<Item Name="View Stride">_MyViewStride</Item>
+		<Item Name="Is BroadCasted">IsBroadCasted_</Item>
+	</Expand>
+</Type>
+
+<Type Name="DragonianLib::Tensor&lt;*&gt;">
+	<DisplayString>{{ Type={ float }, Shape={ _MyShape }, Device={ _MyAllocator->Type_ } }}</DisplayString>
+	<Expand>
+		<Synthetic Name="[ViewAttribute]">
+			<DisplayString>{{ ViewShape={ _MyShape }, ViewStep={ _MyViewStep }, ViewLeftRange={ _MyViewLeft }, ViewStride={ _MyViewStride } }}</DisplayString>
+			<Expand>
+				<Item Name="[ViewShape]" ExcludeView="simple">_MyShape</Item>
+				<Item Name="[ViewStep]" ExcludeView="simple">_MyViewStep</Item>
+				<Item Name="[ViewLeft]" ExcludeView="simple">_MyViewLeft</Item>
+				<Item Name="[ViewStride]" ExcludeView="simple">_MyViewStride</Item>
+			</Expand>
+		</Synthetic>
+		<Synthetic Name="[Data]">
+			<DisplayString Condition="(bool)_MyData">{{ Shape = { _MyShape } }}</DisplayString>
+			<DisplayString Condition="!(bool)_MyData">{{ This = { _MyData } }}</DisplayString>
+			<Expand>
+				<Synthetic Name="[Type]">
+					<DisplayString Condition="(bool)_MyData">{{ Type = { float } }}</DisplayString>
+				</Synthetic>
+				<Item Name="[Buffer]" Condition="!(bool)_MyData">_MyFirst</Item>
+			</Expand>
+		</Synthetic>
+	</Expand>
+</Type>
+'''

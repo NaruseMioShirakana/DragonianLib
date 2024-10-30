@@ -37,4 +37,59 @@ using UnorderedMap = std::unordered_map<_TyA, _TyB>;
 template <typename _TyA, typename _TyB>
 using ContainerMap = std::unordered_map<_TyA, _TyB>;
 
+enum class DType
+{
+	Bool,
+	Int8,
+	Int16,
+	Int32,
+	Int64,
+	UInt8,
+	UInt16,
+	UInt32,
+	UInt64,
+	Float16,
+	Float32,
+	Float64,
+	Complex32,
+	Complex64,
+	BFloat16,
+	Unknown
+};
+
+template<typename _Type>
+struct _Impl_Dragonian_Lib_Decldtype { static constexpr auto _DType = DType::Unknown; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<bool> { static constexpr auto _DType = DType::Bool; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<int8> { static constexpr auto _DType = DType::Int8; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<int16> { static constexpr auto _DType = DType::Int16; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<int32> { static constexpr auto _DType = DType::Int32; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<int64> { static constexpr auto _DType = DType::Int64; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<uint8> { static constexpr auto _DType = DType::UInt8; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<uint16> { static constexpr auto _DType = DType::UInt16; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<uint32> { static constexpr auto _DType = DType::UInt32; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<uint64> { static constexpr auto _DType = DType::UInt64; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<float16> { static constexpr auto _DType = DType::Float16; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<float32> { static constexpr auto _DType = DType::Float32; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<float64> { static constexpr auto _DType = DType::Float64; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<std::complex<float32>> { static constexpr auto _DType = DType::Complex32; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<std::complex<float64>> { static constexpr auto _DType = DType::Complex64; };
+template<>
+struct _Impl_Dragonian_Lib_Decldtype<bfloat16> { static constexpr auto _DType = DType::BFloat16; };
+template<typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Decldtype_v = _Impl_Dragonian_Lib_Decldtype<_Type>::_DType;
+
 _D_Dragonian_Lib_Space_End

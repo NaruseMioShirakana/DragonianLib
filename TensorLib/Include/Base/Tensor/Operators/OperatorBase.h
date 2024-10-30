@@ -1,22 +1,39 @@
 ﻿#pragma once
 #include <random>
 #include "Tensor/TensorBase.h"
+#include "OperatorMarco.h"
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
 
 _D_Dragonian_Lib_Operator_Space_Begin
 
-static inline std::mt19937_64 RandomEngine(std::random_device{}());
+static inline SizeType _Impl_Global_Seed = 114;
+static inline std::mt19937_64 RandomEngine(114);
 static inline std::uniform_int_distribution RandomInt64Distribution(INT64_MIN, INT64_MAX);
 static inline std::uniform_int_distribution RandomInt32Distribution(INT32_MIN, INT32_MAX);
 static inline std::uniform_int_distribution<int16_t> RandomInt16Distribution(INT16_MIN, INT16_MAX);
 static inline std::uniform_real_distribution RandomDoubleDistribution(-DBL_MAX, DBL_MAX);
 static inline std::uniform_real_distribution RandomFloatDistribution(-FLT_MAX, FLT_MAX);
 
-struct TensorShapeInfo
+template<size_t Rank>
+struct TensorShapeInfoND
 {
-	SizeType Shape[6], ViewStep[6], ViewLeft[6], ViewStride[6];
+	SizeType Shape[Rank], ViewStep[Rank], ViewLeft[Rank], ViewStride[Rank];
+	bool IsContinuousND[Rank];
+	SizeType ViewRank = 1;
+	TensorShapeInfoND()
+	{
+		for (size_t i = 0; i < Rank; i++)
+		{
+			Shape[i] = 0;
+			ViewStep[i] = 0;
+			ViewLeft[i] = 0;
+			ViewStride[i] = 0;
+			IsContinuousND[i] = false;
+		}
+	}
 };
+using TensorShapeInfo = TensorShapeInfoND<6>;
 
 template<typename _Type, Device _Device>
 class OperatorsBase

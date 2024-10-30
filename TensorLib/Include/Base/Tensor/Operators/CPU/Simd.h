@@ -44,22 +44,14 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(Vectorized&&) = default;
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(const Vectorized&) = default;
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Type* _Val)
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Type* _ValPtr)
 	{
 		if constexpr (std::is_same_v<Type, float>)
-			_YMMX = _mm256_castps_si256(_mm256_loadu_ps(_Val));
+			_YMMX = _mm256_castps_si256(_mm256_load_ps(_ValPtr));
 		else if constexpr (std::is_same_v<Type, double>)
-			_YMMX = _mm256_castpd_si256(_mm256_loadu_pd(_Val));
-		else if constexpr (std::is_same_v<Type, int8_t>)
-			_YMMX = _mm256_loadu_epi8(_Val);
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_YMMX = _mm256_loadu_epi16(_Val);
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_YMMX = _mm256_loadu_epi32(_Val);
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_YMMX = _mm256_loadu_epi64(_Val);
+			_YMMX = _mm256_castpd_si256(_mm256_load_pd(_ValPtr));
 		else
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+			_YMMX = _mm256_load_si256((const __m256i*)_ValPtr);
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256i _Val) : _YMMX(_Val) {}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
@@ -85,19 +77,11 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
-			_mm256_storeu_ps(_Dest, *this);
+			_mm256_store_ps(_Dest, *this);
 		else if constexpr (std::is_same_v<Type, double>)
-			_mm256_storeu_pd(_Dest, *this);
-		else if constexpr (std::is_same_v<Type, int8_t>)
-			_mm256_storeu_epi8(_Dest, _YMMX);
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_mm256_storeu_epi16(_Dest, _YMMX);
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_mm256_storeu_epi32(_Dest, _YMMX);
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_mm256_storeu_epi64(_Dest, _YMMX);
+			_mm256_store_pd(_Dest, *this);
 		else
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+			_mm256_store_si256((const __m256i*)_Dest, _YMMX);
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
 	{
@@ -122,8 +106,50 @@ public:
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void StoreBool(void* _Dest) const
 	{
-		if constexpr (std::is_same_v<Type, float>);
-
+		if constexpr (std::is_same_v<Type, float>)
+		{
+			const auto Mask = _mm256_movemask_ps(*this);
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 8; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else if constexpr (std::is_same_v<Type, double>)
+		{
+			const auto Mask = _mm256_movemask_pd(*this);
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 4; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else if constexpr (std::is_same_v<Type, int8_t>)
+		{
+			const auto Mask = _mm256_movemask_epi8(*this);
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 32; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else if constexpr (std::is_same_v<Type, int16_t>)
+		{
+			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi16_epi8(*this)));
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 16; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else if constexpr (std::is_same_v<Type, int32_t>)
+		{
+			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi32_epi8(*this)));
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 8; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else if constexpr (std::is_same_v<Type, int64_t>)
+		{
+			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi64_epi8(*this)));
+			auto Dest = (bool*)_Dest;
+			for (int i = 0; i < 4; ++i)
+				Dest[i] = Mask & (1 << i);
+		}
+		else
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256i() const
@@ -875,7 +901,7 @@ private:
 
 
 public:
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -893,7 +919,7 @@ public:
 		_mm256_store_si256(_Dst + 6, m6);
 		_mm256_store_si256(_Dst + 7, m7);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy128(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_4(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -903,15 +929,53 @@ public:
 		_mm256_store_si256(_Dst + 2, m2);
 		_mm256_store_si256(_Dst + 3, m3);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy64(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_2(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		_mm256_store_si256(_Dst + 0, m0);
 		_mm256_store_si256(_Dst + 1, m1);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy32(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_1(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		_mm256_store_si256(_Dst + 0, m0);
+	}
+
+	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
+	{
+		__m256i* __restrict _Dst_Ptr = (__m256i*)_Dst;
+		const __m256i* __restrict _Src_Ptr = (const __m256i*)_Src;
+		while (true)
+		{
+			if (!(_Size >> 11))
+				break;
+			DragonianLibMemcpy256_8(_Dst_Ptr, _Src_Ptr);
+			_Dst_Ptr += 8;
+			_Src_Ptr += 8;
+			_Size -= 0b100000000000;
+		}
+		if (_Size >> 10)
+		{
+			DragonianLibMemcpy256_4(_Dst_Ptr, _Src_Ptr);
+			_Dst_Ptr += 4;
+			_Src_Ptr += 4;
+			_Size -= 0b10000000000;
+		}
+		if (_Size >> 9)
+		{
+			DragonianLibMemcpy256_2(_Dst_Ptr, _Src_Ptr);
+			_Dst_Ptr += 2;
+			_Src_Ptr += 2;
+			_Size -= 0b1000000000;
+		}
+		if (_Size >> 8)
+		{
+			DragonianLibMemcpy256_1(_Dst_Ptr, _Src_Ptr);
+			++_Dst_Ptr;
+			++_Src_Ptr;
+			_Size -= 0b100000000;
+		}
+		if (_Size)
+			memcpy(_Dst_Ptr, _Src_Ptr, _Size);
 	}
 };
 

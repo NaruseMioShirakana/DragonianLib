@@ -23,11 +23,11 @@
 
 //Force Inline
 #ifdef _MSC_VER
-#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline __forceinline
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline constexpr __forceinline
 #elif defined(__GNUC__) || defined(__clang__)
-#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline __attribute__((always_inline)) inline
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline constexpr __attribute__((always_inline)) inline
 #else
-#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline inline
+#define _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline constexpr inline
 #endif
 #define _D_Dragonian_Lib_Stl_Throw(message) _Impl_Dragonian_Lib_Template_Library_Throw_Exception(message, __FILE__, __FUNCSIG__, __LINE__)
 
@@ -242,12 +242,12 @@ public:
         return _MyLast;
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size() const
     {
         return _MyLast - _MyFirst;
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Capacity() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Capacity() const
     {
         return _MyEnd - _MyFirst;
     }

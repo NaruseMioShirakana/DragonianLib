@@ -375,10 +375,11 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 #Natvis File
+set(DragonianLibNatvisFile ${PROJECT_SOURCE_DIR}/NatvisFile.natvis)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 else()
-	target_link_options(${DRAGONIANLIB_LIB} PRIVATE 
-		/NATVIS:${PROJECT_SOURCE_DIR}/NatvisFile.natvis
+	add_link_options(
+		/NATVIS:${DragonianLibNatvisFile}
 	)
 endif()
 

@@ -1,12 +1,32 @@
-<?xml version="1.0" encoding="utf-8"?> 
+﻿<?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 	<Type Name="DragonianLibSTL::Vector&lt;*&gt;">
-		<DisplayString>{{ size={_MyLast - _MyFirst}, capacity={_MyEnd - _MyFirst}, _MyFirst={_MyFirst} }}</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 1">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 2">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 3">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 4">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]}, {_MyFirst[3]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 5">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]}, {_MyFirst[3]}, {_MyFirst[4]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst == 6">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]}, {_MyFirst[3]}, {_MyFirst[4]}, {_MyFirst[5]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyLast - _MyFirst > 6">
+			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]}, ..., {*(_MyLast - 3)}, {*(_MyLast - 2)}, {*(_MyLast - 1)} ] }}
+		</DisplayString>
 		<Expand>
-			<Item Name="[size]" ExcludeView="simple">_MyLast - _MyFirst</Item>
-			<Item Name="[capacity]" ExcludeView="simple">_MyEnd - _MyFirst</Item>
-			<Synthetic Name="[data]">
-				<DisplayString>{{ size={_MyLast - _MyFirst} }}</DisplayString>
+			<Item Name="[Size]" ExcludeView="simple">_MyLast - _MyFirst</Item>
+			<Item Name="[Capacity]" ExcludeView="simple">_MyEnd - _MyFirst</Item>
+			<Synthetic Name="[Data]">
+				<DisplayString>{{ Size={_MyLast - _MyFirst} }}</DisplayString>
 				<Expand>
 					<ArrayItems>
 						<Size>_MyLast - _MyFirst</Size>
@@ -14,8 +34,8 @@
 					</ArrayItems>
 				</Expand>
 			</Synthetic>
-			<Synthetic Name="[container]">
-				<DisplayString>{{ capacity={_MyEnd - _MyFirst} }}</DisplayString>
+			<Synthetic Name="[Container]">
+				<DisplayString>{{ Capacity={_MyEnd - _MyFirst} }}</DisplayString>
 				<Expand>
 					<ArrayItems>
 						<Size>_MyEnd - _MyFirst</Size>
@@ -25,94 +45,72 @@
 			</Synthetic>
 		</Expand>
 	</Type>
-	<Type Name="DragonianLib::Tensor">
-		<DisplayString>{{ Shape = { ShapeBack_ }, Type = { DType_ }, Device = { Device_->Type_ }, Buffer = { DataPtr_ } }}</DisplayString>
+
+	<Type Name="DragonianLib::Tensor&lt;*,*&gt;">
+		<DisplayString>
+			{{ Rank: { _MyShape._MyLast - _MyShape._MyFirst }, ValueType: { _DType }, Device: { _Device } }}
+		</DisplayString>
 		<Expand>
-			<Synthetic Name="[AxisAttribute]">
-				<DisplayString>{{ Shape = { ShapeBack_ }, Step = { StepBack_ }, SliceBegin = { SliceBegin_ }, SliceStride = { DimStride_ } }}</DisplayString>
+			<Item Name="[Type]" ExcludeView="simple">_DType</Item>
+			<Item Name="[Device]" ExcludeView="simple">_Device</Item>
+			<Item Name="[Capacity]" ExcludeView="simple">_MyLast - _MyFirst._Ptr</Item>
+			<Item Name="[IsTensorView]">_MyData!=_MyFirst._Ptr</Item>
+			<Synthetic Name="[ViewAttribute]">
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 1">
+					{{ Shape: [ {_MyShape._MyFirst[0]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 2">
+					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 3">
+					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 4">
+					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 5">
+					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]}, {_MyShape._MyFirst[4]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst >= 6">
+					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]}, {_MyShape._MyFirst[4]}, {_MyShape._MyFirst[5]} ] }}
+				</DisplayString>
 				<Expand>
-					<Item Name="[Shape]" ExcludeView="simple">ShapeBack_</Item>
-					<Item Name="[Step]" ExcludeView="simple">StepBack_</Item>
-					<Item Name="[SliceBegin]" ExcludeView="simple">SliceBegin_</Item>
-					<Item Name="[SliceStride]" ExcludeView="simple">DimStride_</Item>
+					<Item Name="[ViewShape]" ExcludeView="simple">_MyShape</Item>
+					<Item Name="[ViewStep]" ExcludeView="simple">_MyViewStep</Item>
+					<Item Name="[ViewLeft]" ExcludeView="simple">_MyViewLeft</Item>
+					<Item Name="[ViewStride]" ExcludeView="simple">_MyViewStride</Item>
 				</Expand>
 			</Synthetic>
 			<Synthetic Name="[Data]">
-				<DisplayString Condition="(bool)DataPtr_">{{ Shape = { ShapeBack_ } }}</DisplayString>
-				<DisplayString Condition="!(bool)DataPtr_">{{ Buffer = { DataPtr_ } }}</DisplayString>
+				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 1">
+					{{ Capacity: {_MyLast - _MyFirst._Ptr}, Buffer: {_MyFirst._Ptr}, Data: {_MyData} }}
+				</DisplayString>
 				<Expand>
-					<Synthetic Name="[Type]">
-						<DisplayString Condition="(bool)DataPtr_">{{ Type = { DType_ } }}</DisplayString>
-					</Synthetic>
-					<Item Name="[Buffer]" Condition="!(bool)DataPtr_">DataPtr_</Item>
-					<Synthetic Name="[ContinuousView]" Condition="(bool)DataPtr_">
-						<DisplayString>{{ Step = { StepBack_ } }}</DisplayString>
+					<Item Name="[Type]" ExcludeView="simple">_DType</Item>
+					<Item Name="[Device]" ExcludeView="simple">_Device</Item>
+					<Item Name="[Capacity]" ExcludeView="simple">_MyLast - _MyFirst._Ptr</Item>
+					<Synthetic Name="[NormalView]" Condition="(bool)_MyData">
+						<DisplayString>{{ Shape: { _MyShape } }}</DisplayString>
 						<Expand>
-							<ArrayItems Condition="DType_ == 0">
+							
+						</Expand>
+					</Synthetic>
+					<Synthetic Name="[ContinuousView]" Condition="(bool)_MyData">
+						<DisplayString>{{ Step: { _MyViewStep }  }}</DisplayString>
+						<Expand>
+							<ArrayItems>
 								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(bool*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 1">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(float*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 2">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(unsigned short*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 3">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(float*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 4">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(double*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 5">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(int8_t*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 6">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(int16_t*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 7">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(int32_t*)DataPtr_</ValuePointer>
-							</ArrayItems>
-							<ArrayItems Condition="DType_ == 8">
-								<Direction>Forward</Direction>
-								<Rank>ShapeBack_.size()</Rank>
-								<Size>ShapeBack_[$i]</Size>
-								<ValuePointer>(int64_t*)DataPtr_</ValuePointer>
+								<Rank>_MyShape._MyLast - _MyShape._MyFirst</Rank>
+								<Size>_MyShape._MyFirst[$i]</Size>
+								<ValuePointer>_MyData</ValuePointer>
 							</ArrayItems>
 						</Expand>
 					</Synthetic>
 				</Expand>
 			</Synthetic>
-			<Synthetic Name="[View]">
-				<DisplayString>{{ IsView = { (bool)ViewParent_ } }}</DisplayString>
-				<Expand>
-					<Item Name="Parent" Condition="ViewParent_ != 0">ViewParent_</Item>
-					<Item Name="Child" Condition="(bool)ViewChild_._Mypair._Myval2._Map">ViewChild_</Item>
-				</Expand>
-			</Synthetic>
+			<Item Name="[Allocator]">_MyAllocator</Item>
 		</Expand>
 	</Type>
+
+	
 </AutoVisualizer>

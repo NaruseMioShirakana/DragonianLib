@@ -17,6 +17,7 @@
 #include "SingingVoiceConversion/Modules/header/Models/Params.hpp"
 #endif
 #include "SingingVoiceConversion/Api/header/NativeApi.h"
+#include "SuperResolution/Real-ESRGan.hpp"
 
 class WithTimer
 {
@@ -437,35 +438,71 @@ void LibSvcTest()
 
 #ifndef DRAGONIANLIB_IMPORT
 //#include "tlibsr/MoeSuperResolution.hpp"
+#define DEMOTESTOPERATOR >=
 void OperatorTest()
 {
 	using namespace DragonianLib;
-	std::vector<int64_t> Dest(1145140 * 8ll, 0);
-	std::vector<int64_t> Src(1145140 * 8ll, 1);
-	std::vector<char> Cond(1145140 * 8ll, 0);
-	auto DestData = Dest.data();
-	auto SrcData = Src.data();
-	auto CondData = Cond.data();
+
+	/*auto TestTensor = FloatTensor::New({ 114, 514, 810 });
+	auto DimInfo = TestTensor.GetShapeInfo();
+	auto Dim3 = TestTensor.GetShapeInfo(0, 3);
+	auto Dim1 = TestTensor.GetShapeInfo(0, 1);
+	auto Dim2 = TestTensor.GetShapeInfo(1, 3);
+	auto TestData = TestTensor.Data();
+
+	WithTimer(
+		[&]()
+		{
+			_D_Dragonian_Lib_Operator_Loop_S_2(DimInfo, 3, 0, 0, 0, 0, 0, TestData[IndexAxis20A] = 1.f;);
+			//_D_Dragonian_Lib_Operator_Loop_D_5(DimInfo, DimInfo, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, printf("%lld\n", IndexAxis50A););
+		}
+	);
+
+	WithTimer(
+		[&]()
+		{
+			for (size_t i = 0; i < TestTensor.TotalSize(); ++i)
+				TestData[i] = 1.f;
+		}
+	);*/
+
+	using Type = int64_t;
+	constexpr auto OperatorThroughput = 2;
+
+	constexpr auto Stride = sizeof(__m256) / sizeof(Type);
+	constexpr auto LoopStride = Stride * OperatorThroughput;
+
+	auto Dest = Tensor<Type>::Randn({ 1145140 , 8ll });
+	auto Src = Tensor<Type>::Rand({ 1145140 * 8ll });
+	Vector Cond(1145140 * 8ll, false);
+	auto DestData = Dest.Data();
+	auto SrcData = Src.Data();
+	auto CondData = Cond.Data();
 	int LoopCount = 20;
+	Tensor TensorTest = Dest.MakeContinuous();
+	std::cout << TensorTest.Item() << '\n';
 
 	auto Mask = _D_Dragonian_Lib_Simd_Not_Mask(int64_t);
-	for (size_t i = 0; i < Dest.size() - 16; i += 16)
+	for (size_t i = 0; i < Dest.TotalSize() - LoopStride; i += LoopStride)
 	{
-		Dest[i] = 0;
 		Operators::Vectorized VecA(DestData + i);
-		Operators::Vectorized VecB(DestData + i + 8);
+		Operators::Vectorized VecB(DestData + i + Stride);
 		Operators::Vectorized VecC(SrcData + i);
-		Operators::Vectorized VecD(SrcData + i + 8);
-		VecA.NotEqual(VecC, Mask).Store(DestData + i);
-		VecB.NotEqual(VecD, Mask).Store(DestData + i + 8);
+		Operators::Vectorized VecD(SrcData + i + Stride);
+		(VecA DEMOTESTOPERATOR VecC).StoreBool(CondData + i);
+		(VecB DEMOTESTOPERATOR VecD).StoreBool(CondData + i + Stride);
+		for(size_t idx = 0; idx < LoopStride; ++idx)
+			if(CondData[i + idx] != (DestData[i + idx] DEMOTESTOPERATOR SrcData[i + idx]))
+				std::cout << "Error\n";
 	}
-	
+
+	auto TensorA = FloatTensor::Ones({ 11451400 * 8ll });
 	while (LoopCount--)
 	{
 		WithTimer(
 			[&]()
 			{
-				auto TensorA = Tensor<>::Ones({ 11451400 * 8ll });
+				TensorA.RandnFix();
 			}
 		);
 	}
@@ -675,13 +712,13 @@ void TensorLibDemo()
 
 void LibSrTest()
 {
-	DragonianLib::LibSuperResolution::MoeSR Model(
+	DragonianLib::LibSuperResolution::RealESRGan Model(
 		{
-			LR"(D:\VSGIT\白叶的AI工具箱\Models\real-hatgan\x2\x2_universal-fix1.onnx)",
-			LR"(None)",
-			0,
-			0,
-			2
+			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model.onnx)",
+			LR"(D:\VSGIT\白叶的AI工具箱\Models\RealESRGAN_x4plus\model_alpha.onnx)",
+			64,
+			64,
+			2,
 		},
 		ProgressCbS,
 		8,
@@ -692,9 +729,9 @@ void LibSrTest()
 	DragonianLib::GdiInit();
 
 	DragonianLib::Image Image(
-		LR"(C:\DataSpace\MediaProj\PlayList\a.jpg)",
-		192,
-		192,
+		LR"(C:\Users\17518\Downloads\281115d73f2c31c1912766223c79b240.jpg)",
+		64,
+		64,
 		16,
 		0.f,
 		false/*,
@@ -707,9 +744,9 @@ void LibSrTest()
 	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TNN.png)", 1, 100))
 		std::cout << "2-Complete!\n";*/
 
-	Model.Infer(Image, 50);
+	Model.Infer(Image, 10);
 
-	if (Image.MergeWrite(LR"(C:\DataSpace\MediaProj\PlayList\CG.png)", 2, 100))
+	if (Image.MergeWrite(LR"(C:\Users\17518\Downloads\281115d73f2c31c1912766223c79b240.png)", 4, 100))
 		std::cout << "Complete!\n";
 
 	DragonianLib::GdiClose();
