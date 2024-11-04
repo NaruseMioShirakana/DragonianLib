@@ -46,7 +46,7 @@ struct Range
 	 * @brief Constructor for a value range.
 	 * @param _Val The value to initialize the range.
 	 */
-	Range(SizeType _Val) :Begin(_Val), Step(_Val), End(_Val), IsVal(true) {}
+	Range(SizeType _Val) :Begin(_Val), End(_Val + 1), IsVal(true) {}
 
 	/**
 	 * @brief Constructor for a none range.
@@ -175,6 +175,24 @@ bool RangeIsAllNone(const Vector<Range>& _Input);
 void SetRandomSeed(SizeType _Seed);
 
 /**
+ * @brief Set the number of worker threads.
+ * @param _ThreadCount The number of worker threads.
+ */
+void SetWorkerCount(SizeType _ThreadCount);
+
+/**
+ * @brief Set the maximum task count per operator.
+ * @param _MaxTaskCount The maximum task count per operator.
+ */
+void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount);
+
+/**
+ * @brief Enable the time logger in thread pool.
+ * @param _Enable True to enable, false to disable.
+ */
+void EnableTimeLogger(bool _Enable);
+
+/**
  * @class Tensor
  * @brief Tensor with a specified value type and device.
  * @tparam _TensorType The value type of the tensor.
@@ -186,13 +204,37 @@ class Tensor : public Value
 public:
 	using InvokeFnType = void(*)(Tensor&);
 	using ValueType = std::remove_reference_t<_TensorType>;
-	using Pointer = std::shared_ptr<ValueType>;
+	using Pointer = std::shared_ptr<void>;
 	using RawPointer = ValueType*;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
 
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
+
+	void Eval() const
+	{
+		if (_MyFutures)
+		{
+			while (!_MyFutures->empty())
+			{
+				_MyFutures->front().get();
+				_MyFutures->pop_front();
+			}
+		}
+	}
+	Tensor& Eval()
+	{
+		if (_MyFutures)
+		{
+			while (!_MyFutures->empty())
+			{
+				_MyFutures->front().get();
+				_MyFutures->pop_front();
+			}
+		}
+		return *this;
+	}
 
 protected:
 	Allocator _MyAllocator = nullptr;
@@ -203,6 +245,7 @@ protected:
 	Dimensions _MyViewStep;
 	Dimensions _MyViewLeft;
 	Dimensions _MyViewStride;
+	std::shared_ptr<std::deque<std::future<void>>> _MyFutures = nullptr;
 
 	bool IsBroadCasted_ = false;
 
@@ -258,6 +301,27 @@ public:
 		return Ret;
 	}
 
+	template <typename _First, int64_t _CurIndex = 0, typename... _Rest>
+	constexpr void GatherAndSlice(Tensor& _Tensor, _First _FirstOption, _Rest... _RestOptions) const
+	{
+		if constexpr (std::is_integral_v<_First>)
+		{
+			if constexpr (_CurIndex)
+				_Tensor = _Tensor.Transpose(0, _CurIndex);
+			_Tensor = GatherRef(_FirstOption);
+			if constexpr (_CurIndex)
+				_Tensor = _Tensor.Transpose(0, _CurIndex);
+			GatherAndSlice<_First, _CurIndex, _Rest...>(_Tensor, _RestOptions...);
+		}
+		else if constexpr (std::is_same_v<Range, _First>)
+		{
+			_Tensor = Slice({ _FirstOption });
+			GatherAndSlice<_First, _CurIndex + 1, _Rest...>(_Tensor, _RestOptions...);
+		}
+		else
+			_D_Dragonian_Lib_Fatal_Error;
+	}
+
 	//****************************************************Constructor****************************************************//
 
 	/**
@@ -294,6 +358,7 @@ public:
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(ValueType(1));
+		Ret.Eval();
 		return Ret;
 	}
 
@@ -308,6 +373,7 @@ public:
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(ValueType(0));
+		Ret.Eval();
 		return Ret;
 	}
 
@@ -323,6 +389,7 @@ public:
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(_Val);
+		Ret.Eval();
 		return Ret;
 	}
 
@@ -337,6 +404,7 @@ public:
 	{
 		Tensor Ret(_Shape);
 		Ret.AssignRand();
+		Ret.Eval();
 		return Ret;
 	}
 
@@ -353,6 +421,7 @@ public:
 	{
 		Tensor Ret(_Shape);
 		Ret.AssignRandn(_Mean, _Sigma);
+		Ret.Eval();
 		return Ret;
 	}
 
@@ -450,20 +519,17 @@ private:
 		_MyAllocator = MyAlloc;
 		const auto Size = VectorMul(MyShape);
 		_MyFirst = Pointer(
-			(RawPointer)MyAlloc->Allocate(Size * sizeof(ValueType)),
-			[&](void* _Pointer)
-			{
-				_MyAllocator->Free(_Pointer);
-			}
+			MyAlloc->Allocate(Size * sizeof(ValueType)),
+			[&](void* _Pointer) { _MyAllocator->Free(_Pointer); }
 		);
-		_MyData = _MyFirst.get();
+		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + Size;
 		return true;
 	}
 
 	Tensor() = default;
 
-	Tensor(const Dimensions& MyShape)
+	Tensor(const Dimensions& MyShape) : _MyFutures(new std::deque<std::future<void>>)
 	{
 		if(AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
 		{
@@ -483,52 +549,67 @@ private:
 		}
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(ValueType _Value) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(ValueType _Value)
 	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+		Eval();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignScalar(
 			_MyData,
-			GetShapeInfo(),
+			GetDefaultOperatorParameter(),
 			_Value,
 			!IsBroadCasted() && IsContinuous()
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const ValueType* _Buffer, SizeType _Count) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const ValueType* _Buffer, SizeType _Count)
 	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+		Eval();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignBuffer(
 			_MyData,
-			GetShapeInfo(),
+			GetDefaultOperatorParameter(),
 			_Buffer,
 			_Count,
 			!IsBroadCasted() && IsContinuous()
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const Tensor& _Val) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const Tensor& _Val)
 	{
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssign(
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		if (_Val.IsScalar())
+		{
+			_Val.Eval();
+			Assign(_Val.Item());
+			return;
+		}
+		Tensor BroadCasted = BroadCast(_Val);
+		BroadCasted.Eval();
+		Eval();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignTensor(
 			_MyData,
-			GetShapeInfo(),
-			_Val.Data(),
-			_Val.GetShapeInfo(),
-			!IsBroadCasted() && !_Val.IsBroadCasted() && IsContinuous() && _Val.IsContinuous()
+			GetDefaultOperatorParameter(),
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			!IsBroadCasted() && !BroadCasted.IsBroadCasted() && IsContinuous() && BroadCasted.IsContinuous()
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRand() const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRand()
 	{
+		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
 			_MyData,
-			GetShapeInfo(),
+			GetDefaultOperatorParameter(),
 			!IsBroadCasted() && IsContinuous()
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRandn(double _Mean = 0., double _Sigma = 1.) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRandn(double _Mean = 0., double _Sigma = 1.)
 	{
+		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
 			_MyData,
-			GetShapeInfo(),
+			GetDefaultOperatorParameter(),
 			_Mean,
 			_Sigma,
 			!IsBroadCasted() && IsContinuous()
@@ -742,16 +823,12 @@ public:
 
 	/**
 	 * @brief Get the shape info of the tensor.
-	 * @tparam _TargetRank The target rank of the info.
 	 * @param _Begin The start axis.
 	 * @param _End The end axis.
 	 * @return The shape info of the tensor.
 	 */
-	template <SizeType _TargetRank = 6>
-	Operators::TensorShapeInfoND<_TargetRank> GetShapeInfo(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
+	Operators::OperatorParameter GetDefaultOperatorParameter(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
 	{
-		if constexpr (_TargetRank > 6)
-			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Tensor Is Too High! In General, Axis Which Greater Than 6 Is A Batch Axis, You Can Use Invoke() Or Write A Loop.");
 
 		const auto TensorRank = Rank();
 		_Begin = CalcIndex(_Begin, TensorRank);
@@ -765,29 +842,18 @@ public:
 		if (CurrentRank <= 0)
 			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Tensor Is Too Low!");
 
-		if (CurrentRank > _TargetRank)
+		if (CurrentRank > Rank())
 			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Info Is Too High!");
 		
-		Operators::TensorShapeInfoND<_TargetRank> Ret;
-		SizeType i = 0;
-		SizeType Count = _TargetRank - CurrentRank;
-		while (i < Count)
-		{
-			Ret.Shape[i] = 1;
-			Ret.ViewStep[i] = 1;
-			Ret.ViewLeft[i] = 0;
-			Ret.ViewStride[i] = 1;
-			++i;
-		}
-		for (; i < _TargetRank; ++i)
-		{
-			const auto CurIndex = i - Count + _Begin;
-			Ret.Shape[i] = _MyShape[CurIndex];
-			Ret.ViewStep[i] = _MyViewStep[CurIndex];
-			Ret.ViewLeft[i] = _MyViewLeft[CurIndex];
-			Ret.ViewStride[i] = _MyViewStride[CurIndex];
-		}
-		Ret.ViewRank = CurrentRank;
+		Operators::OperatorParameter Ret{
+			{ _MyShape.Begin() + _Begin, _MyShape.Begin() + _End, _MyShape.GetAllocator() },
+			{ (size_t)CurrentRank, 0ll, _MyShape.GetAllocator() },
+			{ _MyViewStep.Begin() + _Begin, _MyViewStep.Begin() + _End, _MyViewStep.GetAllocator() },
+			{ _MyViewLeft.Begin() + _Begin, _MyViewLeft.Begin() + _End, _MyViewLeft.GetAllocator() },
+			{ _MyViewStride.Begin() + _Begin, _MyViewStride.Begin() + _End, _MyViewStride.GetAllocator() }
+		};
+		Ret.ThreadPool = _MyFutures;
+		Ret.Data = _MyFirst;
 		return Ret;
 	}
 
@@ -963,12 +1029,33 @@ public:
 	}
 
 	/**
+	 * @brief Check if the tensor is not sliced in the specified range.
+	 * @param _Begin start axis
+	 * @param _End end axis
+	 * @return True if the tensor is not sliced, false otherwise.
+	 */
+	bool IsNotSliced(SizeType _Begin = 0, SizeType _End = INT64_MAX) const
+	{
+		if (_End == INT64_MAX)
+			_End = Rank();
+
+		_Begin = CalcIndex(_Begin, Rank());
+		_End = CalcRange(_End, Rank());
+
+		for (SizeType i = _Begin; i < _End; ++i)
+			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
+				return false;
+
+		return true;
+	}
+
+	/**
 	 * @brief Check if the tensor is view.
 	 * @return True if the tensor is view, false otherwise.
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsView() const
 	{
-		return _MyData != _MyFirst.get();
+		return _MyData != (RawPointer)_MyFirst.get();
 	}
 
 	/**
@@ -1013,7 +1100,6 @@ public:
 			*Val = 0;
 			--Val;
 		}
-		return _Indices;
 	}
 
 	/**
@@ -1039,7 +1125,6 @@ public:
 			*Val = (*(ShapePtr + i) - 1);
 			--Val;
 		}
-		return _Indices;
 	}
 
 	/**
@@ -1116,7 +1201,7 @@ public:
 			if (_SliceOptions[i].IsNone)
 				continue;
 			const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
-			auto SliceEndPos = CalcRange(_SliceOptions[i].Begin, _MyShape[i]);
+			auto SliceEndPos = CalcRange(_SliceOptions[i].End, _MyShape[i]);
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
 				_D_Dragonian_Lib_Throw_Exception("Slice Length Must > 0");
@@ -1179,26 +1264,28 @@ public:
 	}
 
 	/**
-	 * @brief Swap the last axis with the specified axis. for example, we have a tensor with [N, H, W, C] shape, we can swap the last axis with the second axis with SwapLastDim(1) to get a tensor with [N, C, W, H] shape.
-	 * @param _Dim The specified axis.
-	 * @return A swapped tensor(view).
+	 * @brief Transpose the tensor, swap the axes at the specified positions. for example, we have a tensor with [N, C, H] shape, we can transpose it with Transpose(1, 2) to get a tensor with [N, H, C] shape.
+	 * @param _Axis1 The first axis.
+	 * @param _Axis2 The second axis.
+	 * @return A transposed tensor(view).
 	 */
-	Tensor SwapLastDim(SizeType _Dim) const
+	Tensor Transpose(SizeType _Axis1, SizeType _Axis2) const
 	{
 		ThrowOnNotEnabled();
 		const auto AxisCount = (SizeType)_MyShape.Size();
-		_Dim = CalcIndex(_Dim, AxisCount);
+		_Axis1 = CalcIndex(_Axis1, AxisCount);
+		_Axis2 = CalcIndex(_Axis2, AxisCount);
 		Tensor Ret = CreateView();
-		if (_Dim == AxisCount - 1)
+		if (_Axis1 == _Axis2)
 			return Ret;
-		Ret._MyShape.Back() = _MyShape[_Dim];
-		Ret._MyViewStep.Back() = _MyViewStep[_Dim];
-		Ret._MyViewLeft.Back() = _MyViewLeft[_Dim];
-		Ret._MyViewStride.Back() = _MyViewStride[_Dim];
-		Ret._MyShape[_Dim] = _MyShape.Back();
-		Ret._MyViewStep[_Dim] = _MyViewStep.Back();
-		Ret._MyViewLeft[_Dim] = _MyViewLeft.Back();
-		Ret._MyViewStride[_Dim] = _MyViewStride.Back();
+		Ret._MyShape[_Axis2] = _MyShape[_Axis1];
+		Ret._MyViewStep[_Axis2] = _MyViewStep[_Axis1];
+		Ret._MyViewLeft[_Axis2] = _MyViewLeft[_Axis1];
+		Ret._MyViewStride[_Axis2] = _MyViewStride[_Axis1];
+		Ret._MyShape[_Axis1] = _MyShape[_Axis2];
+		Ret._MyViewStep[_Axis1] = _MyViewStep[_Axis2];
+		Ret._MyViewLeft[_Axis1] = _MyViewLeft[_Axis2];
+		Ret._MyViewStride[_Axis1] = _MyViewStride[_Axis2];
 		return Ret;
 	}
 
@@ -1211,9 +1298,12 @@ public:
 	{
 		ThrowOnNotEnabled();
 		Tensor Ret = CreateView();
-		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size() + 1));
+		_Dim = CalcRange(_Dim, Rank());
 		Ret._MyShape.Insert(Ret._MyShape.begin() + _Dim, 1);
-		Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, 1);
+		if (_Dim == Rank())
+			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, 1);
+		else
+			Ret._MyViewStep.Insert(Ret._MyViewStep.begin() + _Dim, _MyViewStep[_Dim] * _MyShape[_Dim]);
 		Ret._MyViewLeft.Insert(Ret._MyViewLeft.begin() + _Dim, 0);
 		Ret._MyViewStride.Insert(Ret._MyViewStride.begin() + _Dim, 1);
 		return Ret;
@@ -1267,11 +1357,20 @@ public:
 	}
 
 	/**
+	 * @brief Create a view of the tensor.
+	 * @return A viewed tensor(view).
+	 */
+	Tensor View() const
+	{
+		return CreateView();
+	}
+
+	/**
 	 * @brief View the tensor with the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can view it with View([N, -1]) to get a tensor with [N, C * H * W] shape.
 	 * @param _ViewShape The specified shape.
 	 * @return A viewed tensor(view).
 	 */
-	Tensor View(const Dimensions& _ViewShape)
+	Tensor View(const Dimensions& _ViewShape) const
 	{
 		if (!IsContinuous())
 			_D_Dragonian_Lib_Throw_Exception("View Should Be Continuous!");
@@ -1303,6 +1402,20 @@ public:
 		Ret._MyViewLeft = { Ret._MyShape.Size(), 0ll, Ret._MyShape.GetAllocator() };
 		Ret._MyViewStride = { Ret._MyShape.Size(), 1ll, Ret._MyShape.GetAllocator() };
 		return Ret;
+	}
+
+	/**
+	 * @brief View the tensor with the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can view it with View(N, -1) to get a tensor with [N, C * H * W] shape.
+	 * @tparam _Args The specified shape.
+	 * @param _Shape0 The first shape.
+	 * @param _Shape The rest shapes.
+	 * @return A viewed tensor(view).
+	 */
+	template <typename... _Args>
+	Tensor View(SizeType _Shape0, _Args... _Shape) const
+	{
+		Dimensions _ViewShape{ _Shape0, _Shape... };
+		return View(_ViewShape);
 	}
 
 	/**
@@ -1345,7 +1458,21 @@ public:
 		return Gather(_Indices, 0);
 	}
 
-	Tensor Cast() const;
+	template <typename _Type>
+	Tensor<_Type> Cast() const
+	{
+		Eval();
+		Tensor<_Type> Ret = Tensor<_Type>::New(_MyShape);
+		Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
+			(
+				Ret.Data(),
+				Ret.GetDefaultOperatorParameter(),
+				Data(),
+				GetDefaultOperatorParameter(),
+				IsContinuous() && !IsBroadCasted()
+			);
+		return Ret;
+	}
 
 	static Tensor Padding(
 		const Tensor& _Input,
@@ -1504,6 +1631,7 @@ protected:
 		Ret._MyFirst = _MyFirst;
 		Ret._MyLast = _MyLast;
 		Ret._MyAllocator = _MyAllocator;
+		Ret._MyFutures = _MyFutures;
 		Ret.IsBroadCasted_ = IsBroadCasted_;
 
 		if (Ret._MyShape.Empty())

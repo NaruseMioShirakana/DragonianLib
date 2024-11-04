@@ -261,4 +261,3 @@ for (SizeType _Loop_Value_##_NDim = (_Info_1).Shape[_Dim]; _Loop_Value_##_NDim >
 		_D_Dragonian_Lib_Operator_Loop_Quad(_I1, _I2, _I3, _I4, (_D) + 4, 4##_DN, _B4, IndexAxis3##_DN##A, IndexAxis3##_DN##B, IndexAxis3##_DN##C, IndexAxis3##_DN##D,	\
 		_D_Dragonian_Lib_Operator_Loop_Quad(_I1, _I2, _I3, _I4, (_D) + 5, 5##_DN, _B5, IndexAxis4##_DN##A, IndexAxis4##_DN##B, IndexAxis4##_DN##C, IndexAxis4##_DN##D, _F))))))	\
  	} while (0)
-

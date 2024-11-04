@@ -38,8 +38,23 @@ bool RangeIsAllNone(const Vector<Range>& _Input)
 
 void SetRandomSeed(SizeType _Seed)
 {
-	Operators::RandomEngine.seed(_Seed);
 	Operators::_Impl_Global_Seed = _Seed;
+}
+
+void SetWorkerCount(SizeType _ThreadCount)
+{
+	Operators::_Valdef_My_Thread_Pool.Init(std::max(_ThreadCount, static_cast<SizeType>(0)));
+	SetMaxTaskCountPerOperator(Operators::_Valdef_My_Thread_Pool.GetThreadCount() / 2);
+}
+
+void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount)
+{
+	Operators::_Valdef_Global_Max_Task_Count_Per_Operator = std::max(_MaxTaskCount, static_cast<SizeType>(1));
+}
+
+void EnableTimeLogger(bool _Enable)
+{
+	Operators::_Valdef_My_Thread_Pool.EnableTimeLogger(_Enable);
 }
 
 _D_Dragonian_Lib_Space_End

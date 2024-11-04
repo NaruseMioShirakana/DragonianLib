@@ -19,20 +19,16 @@
 #include "SingingVoiceConversion/Api/header/NativeApi.h"
 #include "SuperResolution/Real-ESRGan.hpp"
 
-class WithTimer
+template<typename Callable>
+_D_Dragonian_Lib_Force_Inline std::enable_if_t<DragonianLib::_Impl_Dragonian_Lib_Is_Callable_v<Callable>> WithTimer(Callable _Fn)
 {
-public:
-	template<typename Callable>
-	WithTimer(const Callable& _Fn)
-	{
-		LARGE_INTEGER Time1, Time2, Freq;
-		QueryPerformanceFrequency(&Freq);
-		QueryPerformanceCounter(&Time1);
-		_Fn();
-		QueryPerformanceCounter(&Time2);
-		std::cout << " CostTime:" << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << "ms\n";
-	}
-};
+	LARGE_INTEGER Time1, Time2, Freq;
+	QueryPerformanceFrequency(&Freq);
+	QueryPerformanceCounter(&Time1);
+	_Fn();
+	QueryPerformanceCounter(&Time2);
+	std::cout << " CostTime:" << double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart << "ms\n";
+}
 
 void ShowProgressBar(size_t progress, size_t total) {
 	int barWidth = 70;
@@ -438,11 +434,14 @@ void LibSvcTest()
 
 #ifndef DRAGONIANLIB_IMPORT
 //#include "tlibsr/MoeSuperResolution.hpp"
-#define DEMOTESTOPERATOR >=
+
 void OperatorTest()
 {
+	std::normal_distribution<float> NormalDist(0.f, 1.f);
+	std::mt19937_64 Gen;
 	using namespace DragonianLib;
-
+	ThreadPool Thp {8};
+	Thp.Join();
 	/*auto TestTensor = FloatTensor::New({ 114, 514, 810 });
 	auto DimInfo = TestTensor.GetShapeInfo();
 	auto Dim3 = TestTensor.GetShapeInfo(0, 3);
@@ -465,45 +464,36 @@ void OperatorTest()
 				TestData[i] = 1.f;
 		}
 	);*/
-
-	using Type = int64_t;
-	constexpr auto OperatorThroughput = 2;
-
-	constexpr auto Stride = sizeof(__m256) / sizeof(Type);
-	constexpr auto LoopStride = Stride * OperatorThroughput;
-
-	auto Dest = Tensor<Type>::Randn({ 1145140 , 8ll });
-	auto Src = Tensor<Type>::Rand({ 1145140 * 8ll });
-	Vector Cond(1145140 * 8ll, false);
-	auto DestData = Dest.Data();
-	auto SrcData = Src.Data();
-	auto CondData = Cond.Data();
+	SetWorkerCount(8);
+	SetMaxTaskCountPerOperator(8);
 	int LoopCount = 20;
-	Tensor TensorTest = Dest.MakeContinuous();
-	std::cout << TensorTest.Item() << '\n';
+	auto TensorA = FloatTensor::Zeros({ 500, 100, 400 });
+	auto TensorB = FloatTensor::Ones({ 500, 100, 400 });
+	TensorA = TensorA.Transpose(1, 2);
+	std::vector DataB(500ll * 100 * 400, 0.f);
+	for (auto& i : DataB)
+		i = NormalDist(Gen);
+	const auto BSize = (SizeType)DataB.size();
+	TensorA.Fix(DataB.data(), BSize);
+	TensorA.MakeContinuous();
+	auto TensorC = TensorA.Cast<int64_t>().Eval();
+	auto TensorD = TensorA.Clone();
+	TensorD.Eval();
+	auto DataPtrA = TensorA.Data();
+	auto DataPtrB = DataB.data();
+	auto DataPtrC = TensorC.Data();
+	auto DataPtrD = TensorD.Data();
 
-	auto Mask = _D_Dragonian_Lib_Simd_Not_Mask(int64_t);
-	for (size_t i = 0; i < Dest.TotalSize() - LoopStride; i += LoopStride)
+	for (SizeType i = 0; i < BSize; ++i)
 	{
-		Operators::Vectorized VecA(DestData + i);
-		Operators::Vectorized VecB(DestData + i + Stride);
-		Operators::Vectorized VecC(SrcData + i);
-		Operators::Vectorized VecD(SrcData + i + Stride);
-		(VecA DEMOTESTOPERATOR VecC).StoreBool(CondData + i);
-		(VecB DEMOTESTOPERATOR VecD).StoreBool(CondData + i + Stride);
-		for(size_t idx = 0; idx < LoopStride; ++idx)
-			if(CondData[i + idx] != (DestData[i + idx] DEMOTESTOPERATOR SrcData[i + idx]))
-				std::cout << "Error\n";
+		if (abs(DataPtrA[i] - DataPtrB[i]) > 0.001f || int64_t(DataPtrA[i]) != DataPtrC[i] || abs(DataPtrA[i] - DataPtrD[i]) > 0.001f)
+			std::cout << "Error " << i << ' ' << DataPtrA[i] << ' ' << DataPtrB[i] << ' ' << DataPtrC[i] << ' ' << DataPtrD[i] << '\n';
 	}
-
-	auto TensorA = FloatTensor::Ones({ 11451400 * 8ll });
+	
 	while (LoopCount--)
 	{
 		WithTimer(
-			[&]()
-			{
-				TensorA.RandnFix();
-			}
+			[&] { TensorA.RandnFix().Eval(); }
 		);
 	}
 	/*tlibsvc::VitsSvcConfig Config{
@@ -729,7 +719,7 @@ void LibSrTest()
 	DragonianLib::GdiInit();
 
 	DragonianLib::Image Image(
-		LR"(C:\Users\17518\Downloads\281115d73f2c31c1912766223c79b240.jpg)",
+		LR"(C:\Users\17518\Downloads\xjpic.jpg)",
 		64,
 		64,
 		16,
@@ -746,7 +736,7 @@ void LibSrTest()
 
 	Model.Infer(Image, 10);
 
-	if (Image.MergeWrite(LR"(C:\Users\17518\Downloads\281115d73f2c31c1912766223c79b240.png)", 4, 100))
+	if (Image.MergeWrite(LR"(C:\Users\17518\Downloads\xjpic.png)", 4, 100))
 		std::cout << "Complete!\n";
 
 	DragonianLib::GdiClose();

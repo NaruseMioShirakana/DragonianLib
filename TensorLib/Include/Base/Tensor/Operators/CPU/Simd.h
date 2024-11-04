@@ -946,33 +946,33 @@ public:
 		const __m256i* __restrict _Src_Ptr = (const __m256i*)_Src;
 		while (true)
 		{
-			if (!(_Size >> 11))
+			if (!(_Size >> 8))
 				break;
 			DragonianLibMemcpy256_8(_Dst_Ptr, _Src_Ptr);
 			_Dst_Ptr += 8;
 			_Src_Ptr += 8;
-			_Size -= 0b100000000000;
+			_Size -= alignof(__m256i) * 8;
 		}
-		if (_Size >> 10)
+		if (_Size >> 7)
 		{
 			DragonianLibMemcpy256_4(_Dst_Ptr, _Src_Ptr);
 			_Dst_Ptr += 4;
 			_Src_Ptr += 4;
-			_Size -= 0b10000000000;
+			_Size -= alignof(__m256i) * 4;
 		}
-		if (_Size >> 9)
+		if (_Size >> 6)
 		{
 			DragonianLibMemcpy256_2(_Dst_Ptr, _Src_Ptr);
 			_Dst_Ptr += 2;
 			_Src_Ptr += 2;
-			_Size -= 0b1000000000;
+			_Size -= alignof(__m256i) * 2;
 		}
-		if (_Size >> 8)
+		if (_Size >> 5)
 		{
 			DragonianLibMemcpy256_1(_Dst_Ptr, _Src_Ptr);
 			++_Dst_Ptr;
 			++_Src_Ptr;
-			_Size -= 0b100000000;
+			_Size -= alignof(__m256i);
 		}
 		if (_Size)
 			memcpy(_Dst_Ptr, _Src_Ptr, _Size);

@@ -201,7 +201,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (size_t(_Index) >= Size())
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         return _MyFirst[_Index];
     }
@@ -480,7 +480,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         auto Idx = _Where - _MyFirst;
         if (_MyLast + 1 > _MyEnd)
@@ -500,7 +500,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         auto Idx = _Where - _MyFirst;
         if (_MyLast + 1 > _MyEnd)
@@ -519,7 +519,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         auto Idx = _Where - _MyFirst;
         if (_MyLast + 1 > _MyEnd)
@@ -538,7 +538,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         auto Idx = _Where - _MyFirst;
         if (_MyLast + _Count > _MyEnd)
@@ -558,7 +558,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
-            DragonianLibStlThrow("Out Of Range!");
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
         auto Idx = _Where - _MyFirst;
         SizeType _Count = _Last - _First;
@@ -582,7 +582,7 @@ public:
     {
 #ifdef DRAGONIANLIB_DEBUG
 		if (_Where >= _MyLast || _Where < _MyFirst)
-			DragonianLibStlThrow("Out Of Range!");
+			_D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
 		auto Idx = _Where - _MyFirst;
 		ValueType _Value = std::move(*_Where);

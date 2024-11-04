@@ -6,11 +6,13 @@
 #endif
 
 _D_Dragonian_Lib_Space_Begin
+
+ThreadPool::ThreadPool(int64 _ThreadCount) : Stoped_(true), ThreadCount_(_ThreadCount) {
+    Init(_ThreadCount);
+}
+
 ThreadPool::~ThreadPool() {
-    Stoped_ = true;
-    Condition_.release((ptrdiff_t)Threads_.size());
-    for (auto& CurTask : Threads_)
-        if (CurTask.joinable()) CurTask.join();
+    Join();
 }
 
 void ThreadPool::Init(int64 _ThreadCount) {
@@ -18,22 +20,13 @@ void ThreadPool::Init(int64 _ThreadCount) {
     if (GetPriorityClass(GetCurrentProcess()) != REALTIME_PRIORITY_CLASS)
         SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
-    if (_ThreadCount == 0)
-        _ThreadCount = ThreadCount_;
-    if (_ThreadCount == 0)
-        _ThreadCount = std::thread::hardware_concurrency();
-
-    if (!Stoped_)
-        _D_Dragonian_Lib_Throw_Exception("Thread Pool Already Start!");
-
-    std::unique_lock lock(Mx_);
-    if (!Stoped_)
-        _D_Dragonian_Lib_Throw_Exception("Thread Pool Already Start!");
+    if (_ThreadCount == 0) _ThreadCount = ThreadCount_;
+    if (_ThreadCount == 0) _ThreadCount = std::thread::hardware_concurrency();
+    if (!Stoped_) Join();
     Stoped_ = false;
     Threads_.clear();
     for (int64 i = 0; i < _ThreadCount; i++)
         Threads_.emplace_back(&ThreadPool::Run, this);
-
     ThreadCount_ = _ThreadCount;
 }
 
@@ -46,16 +39,15 @@ void ThreadPool::Run() {
         Task task;
         {
             Condition_.acquire();
-            std::unique_lock lock(Mx_);
-            if (Tasks_.empty())
-                continue;
+            std::lock_guard lock(TaskMx_);
+            if (Tasks_.empty()) continue;
             task = std::move(Tasks_.front());
-            ++TaskProcessing_;
             Tasks_.pop();
         }
 #ifdef WIN32
-        if (LogTime_)
-            QueryPerformanceCounter(&Time1);
+        if (GetThreadPriority(GetCurrentThread()) != THREAD_PRIORITY_TIME_CRITICAL)
+            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+        if (LogTime_) QueryPerformanceCounter(&Time1);
 #endif
         task();
 #ifdef WIN32
@@ -65,21 +57,16 @@ void ThreadPool::Run() {
             LogInfo(L"Task Cost Time:" + std::to_wstring(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + L"ms");
         }
 #endif
-        --TaskProcessing_;
-        if (Tasks_.empty() && !TaskProcessing_ && Joinable)
-            JoinCondition_.release();
     }
 }
 
 void ThreadPool::Join()
 {
-    std::lock_guard lg(JoinMx_);
-    //Condition_.release();
-    Joinable = true;
-    JoinCondition_.acquire();
-    Joinable = false;
-    if (LogTime_)
-        LogInfo(L"All Task Finished!");
+    Stoped_ = true;
+    Condition_.release((ptrdiff_t)Threads_.size());
+    for (auto& CurTask : Threads_) if (CurTask.joinable()) CurTask.join();
+	while (Condition_.try_acquire()) {}
+    if (LogTime_) LogInfo(L"All Task Finished!");
 }
 
 _D_Dragonian_Lib_Space_End
