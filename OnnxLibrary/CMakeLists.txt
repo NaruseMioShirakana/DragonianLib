@@ -47,10 +47,6 @@ else()
 		${DRAGONIANLIB_ORT_LIB} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
-	target_link_options(
-        ${DRAGONIANLIB_ORT_LIB} PRIVATE
-        /LTCG
-    )
 endif()
 
 target_include_directories(

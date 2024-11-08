@@ -292,10 +292,6 @@ else()
 		${DRAGONIANLIB_LIB} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
-	target_link_options(
-        ${DRAGONIANLIB_LIB} PRIVATE
-        /LTCG
-    )
 endif()
 
 #Link Libraries

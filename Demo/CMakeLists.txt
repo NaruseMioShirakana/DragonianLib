@@ -40,10 +40,6 @@ else()
 		${DRAGONIANLIBDEMOEXE} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
-	target_link_options(
-        ${DRAGONIANLIBDEMOEXE} PRIVATE
-        /LTCG
-    )
 endif()
 
 message(${DRAGONIANLIB_LIBRARIES})
