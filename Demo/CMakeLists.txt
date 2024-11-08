@@ -21,17 +21,29 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 		${DRAGONIANLIBDEMOEXE} PRIVATE
 		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
 	)
+	target_link_options(
+        ${DRAGONIANLIBDEMOEXE} PRIVATE
+        /LTCG
+    )
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	target_compile_options(
 		${DRAGONIANLIBDEMOEXE} PRIVATE
 		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
 	)
+	target_link_options(
+        ${DRAGONIANLIBDEMOEXE} PRIVATE
+        /LTCG
+    )
 else()
 	add_definitions(-DDRAGONIANLIB_DEBUG)
 	target_compile_options(
 		${DRAGONIANLIBDEMOEXE} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
+	target_link_options(
+        ${DRAGONIANLIBDEMOEXE} PRIVATE
+        /LTCG
+    )
 endif()
 
 message(${DRAGONIANLIB_LIBRARIES})

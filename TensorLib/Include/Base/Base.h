@@ -18,6 +18,7 @@
 */
 
 #pragma once
+#include <complex>
 #include <cstdint>
 #include <filesystem>
 #include <unordered_map>
@@ -75,6 +76,72 @@
 
 _D_Dragonian_Lib_Space_Begin
 
+//*****************************************************Types********************************************************//
+/**
+ * @struct float16_t
+ * @brief Half precision floating point struct
+ */
+struct float16_t {
+	float16_t(float _Val);
+	float16_t& operator=(float _Val);
+	operator float() const;
+private:
+	unsigned char Val[2];
+	static uint16_t float32_to_float16(uint32_t f32);
+	static uint32_t float16_to_float32(uint16_t f16);
+};
+
+/**
+ * @struct float8_t
+ * @brief 8-bit floating point struct
+ */
+struct float8_t
+{
+	float8_t(float _Val);
+	float8_t& operator=(float _Val);
+	operator float() const;
+private:
+	unsigned char Val;
+};
+
+/**
+ * @struct bfloat16_t
+ * @brief bfloat16 struct
+ */
+struct bfloat16_t
+{
+	bfloat16_t(float _Val);
+	bfloat16_t& operator=(float _Val);
+	operator float() const;
+private:
+	unsigned char Val[2];
+};
+
+using Int8 = int8_t; ///< 8-bit integer
+using Int16 = int16_t; ///< 16-bit integer
+using Int32 = int32_t; ///< 32-bit integer
+using Int64 = int64_t; ///< 64-bit integer
+using Float8 = float8_t; ///< 8-bit floating point
+using BFloat16 = bfloat16_t; ///< bfloat16
+using Float16 = float16_t; ///< Half precision floating point
+using Float32 = float; ///< 32-bit floating point
+using Float64 = double; ///< 64-bit floating point
+using Byte = unsigned char; ///< Byte
+using LPVoid = void*; ///< Pointer to void
+using CPVoid = const void*; ///< Constant pointer to void
+using UInt8 = uint8_t; ///< 8-bit unsigned integer
+using UInt16 = uint16_t; ///< 16-bit unsigned integer
+using UInt32 = uint32_t; ///< 32-bit unsigned integer
+using UInt64 = uint64_t; ///< 64-bit unsigned integer
+using Complex32 = std::complex<float>; ///< 32-bit complex
+using Complex64 = std::complex<double>; ///< 64-bit complex
+struct NoneType {}; ///< None type
+static constexpr NoneType None; ///< None constant
+
+//**************************************************Va List********************************************************//
+template<typename ..._ArgTypes>
+struct _Impl_Dragonian_Lib_Va_List { constexpr static int64_t _Size = sizeof...(_ArgTypes); };
+
 //***********************************************Constexpr Decltype************************************************//
 template <bool _Test, typename _Tyt = void, typename _Tyf = void>
 struct _Impl_Dragonian_Lib_Constexpr_Decltype;
@@ -84,6 +151,8 @@ template <typename _Tyt, typename _Tyf>
 struct _Impl_Dragonian_Lib_Constexpr_Decltype<false, _Tyt, _Tyf> { using _Decltype = _Tyf; };
 template <bool _Test, typename _Tyt = void, typename _Tyf = void>
 using _Impl_Dragonian_Lib_Constexpr_Decltype_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Decltype<_Test, _Tyt, _Tyf>::_Decltype;
+template <bool _Test, typename _Tyt = void, typename _Tyf = void>
+using _Impl_Dragonian_Lib_Conditional_t = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Decltype_t<_Test, _Tyt, _Tyf>;
 
 template <typename _Ty1, typename _Ty2>
 struct _Impl_Dragonian_Lib_Constexpr_Is_Same_Type { constexpr static bool _IsSame = false; };
@@ -92,7 +161,56 @@ struct _Impl_Dragonian_Lib_Constexpr_Is_Same_Type<_Ty1, _Ty1> { constexpr static
 template <typename _Ty1, typename _Ty2>
 constexpr bool _Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Is_Same_Type<_Ty1, _Ty2>::_IsSame;
 
-//***********************************************Always False******************************************************//
+template <typename _Ty1, typename ..._Types>
+struct _Impl_Dragonian_Lib_Is_Any_Of { constexpr static bool _IsAnyOf = false; };
+template <typename _Ty1, typename _Ty2, typename ..._Types>
+struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Ty2, _Types...> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Ty1, _Ty2> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf; };
+template <typename _Ty1, typename ..._Types>
+struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Impl_Dragonian_Lib_Va_List<_Types...>> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf; };
+template <typename _Ty1>
+struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1> { constexpr static bool _IsAnyOf = false; };
+template <typename _Ty1, typename ..._Types>
+constexpr bool _Impl_Dragonian_Lib_Is_Any_Of_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf;
+
+template <bool _Condition, typename _Type>
+struct _Impl_Dragonian_Lib_Enable_If {};
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Enable_If<true, _Type> { using _DeclType = _Type; };
+template <bool _Condition, typename _Type = void>
+using _Impl_Dragonian_Lib_Enable_If_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Enable_If<_Condition, _Type>::_DeclType;
+
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_LValue_Reference { constexpr static bool _IsLValueReference = false; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_LValue_Reference<_Type&> { constexpr static bool _IsLValueReference = true; };
+template <typename _Type>
+constexpr bool _Impl_Dragonian_Lib_Is_LValue_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_LValue_Reference<_Type>::_IsLValueReference;
+
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_RValue_Reference { constexpr static bool _IsRValueReference = false; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_RValue_Reference<_Type&&> { constexpr static bool _IsRValueReference = true; };
+template <typename _Type>
+constexpr bool _Impl_Dragonian_Lib_Is_RValue_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_RValue_Reference<_Type>::_IsRValueReference;
+
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Reference { constexpr static bool _IsReference = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_LValue_Reference_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_RValue_Reference_v<_Type>; };
+template <typename _Type>
+constexpr bool _Impl_Dragonian_Lib_Is_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Reference<_Type>::_IsReference;
+
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Pointer { constexpr static bool _IsPointer = false; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Pointer<_Type*> { constexpr static bool _IsPointer = true; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Pointer<_Type* const> { constexpr static bool _IsPointer = true; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Pointer<_Type* volatile> { constexpr static bool _IsPointer = true; };
+template <typename _Type>
+struct _Impl_Dragonian_Lib_Is_Pointer<_Type* const volatile> { constexpr static bool _IsPointer = true; };
+template <typename _Type>
+constexpr bool _Impl_Dragonian_Lib_Is_Pointer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Pointer<_Type>::_IsPointer;
+
 struct _Impl_Dragonian_Lib_Always_False_Struct;
 template <typename _Type>
 struct _Impl_Dragonian_Lib_Always_False
@@ -102,18 +220,31 @@ struct _Impl_Dragonian_Lib_Always_False
 template <typename _Type>
 constexpr bool _Impl_Dragonian_Lib_Always_False_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Always_False<_Type>::value;
 
-//***********************************************Instance Of*******************************************************//
 template <typename _Type>
 constexpr _Type _Impl_Dragonian_Lib_Instance_Of()
 {
 	throw std::exception("Invalid Instance Of!");
 }
 
-//**************************************************Va List********************************************************//
-template<typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Va_List { constexpr static int64_t _Size = sizeof...(_ArgTypes); };
+template <typename _TypeDst, typename _TypeSrc>
+class _Impl_Dragonian_Lib_Could_Be_Converted_From_Class
+{
+	template <typename _SrcT>
+	static constexpr auto Check(int) -> decltype(_TypeDst(_Impl_Dragonian_Lib_Instance_Of<_SrcT>()), std::true_type()) { return{}; }
+	template <typename>
+	static constexpr std::false_type Check(...) { return{}; }
+public:
+	static constexpr bool _Condition = decltype(Check<_TypeSrc>(0))::value;
+};
+template <typename _TypeDst, typename _TypeSrc>
+constexpr auto _Impl_Dragonian_Lib_Could_Be_Converted_From_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Could_Be_Converted_From_Class<_TypeDst, _TypeSrc>::_Condition;
+template <typename _TypeSrc, typename _TypeDst>
+constexpr auto _Impl_Dragonian_Lib_Could_Be_Converted_To_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Could_Be_Converted_From_v<_TypeDst, _TypeSrc>;
 
-//***********************************************Callable Return***************************************************//
+template<bool _Condition1, bool _Condition2>
+constexpr auto _Impl_Dragonian_Lib_And_v = _Condition1 && _Condition2;
+
+//***********************************************Callable TypeDecl***************************************************//
 template<typename _Callable, typename ..._ArgTypes>
 struct _Impl_Dragonian_Lib_Callable_Return
 {
@@ -214,6 +345,13 @@ template <typename _Type>
 using _Impl_Dragonian_Lib_Volatile_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Add_Volatile<_Type>::_Volatile;
 
 template <typename _Type>
+struct _Impl_Dragonian_Lib_Remove_CV
+{
+	using _DeclType = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Const_t<_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Volatile_t<_Type>>;
+};
+template <typename _Type>
+using _Impl_Dragonian_Lib_Remove_CV_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_CV<_Type>::_DeclType;
+template <typename _Type>
 struct _Impl_Dragonian_Lib_Remove_ARPCV { using _DeclType = _Type; };
 template <typename _Type>
 struct _Impl_Dragonian_Lib_Remove_ARPCV <const _Type>;
@@ -257,7 +395,6 @@ using _Impl_Dragonian_Lib_Remove_ARPCV_t = typename _D_Dragonian_Lib_Namespace _
 template <typename Type>
 class _Impl_Dragonian_Lib_Is_Callable_Object
 {
-public:
 	template <typename Objty>
 	static constexpr auto Check(int) -> decltype(&Objty::operator(), std::true_type()) { return{}; }
 	template <typename>
@@ -383,6 +520,40 @@ constexpr auto _Impl_Dragonian_Lib_Get_Value_At_Index_v(Types... args) {
 	return _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Value_At_Index<Idx, Types...>::Get(args...);
 }
 
+//***********************************************Is Arithmetic Type************************************************//
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Floating_Point_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, float, double, long double, Float16, Float8, BFloat16>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Signed_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Int8, Int16, Int32, Int64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Unsigned_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, UInt8, UInt16, UInt32, UInt64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Complex_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Complex32, Complex64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Bool_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, bool>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Arithmetic_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Floating_Point_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Integer_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Complex_v<_Type> || _Impl_Dragonian_Lib_Is_Bool_v<_Type>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_Floating_Point_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Float32, Float64>;
+
+template <typename _Type>
+constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+
+//***************************************************Base*********************************************************//
+
 /**
  * @brief Get error message with file path, function name and line number
  * @param Message Error message
@@ -406,66 +577,6 @@ _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Imp
 	return Prefix + ' ' + Message;
 }
 
-/**
- * @struct float16_t
- * @brief Half precision floating point struct
- */
-struct float16_t {
-	float16_t(float _Val);
-	float16_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val[2];
-	static uint16_t float32_to_float16(uint32_t f32);
-	static uint32_t float16_to_float32(uint16_t f16);
-};
-
-/**
- * @struct float8_t
- * @brief 8-bit floating point struct
- */
-struct float8_t
-{
-	float8_t(float _Val);
-	float8_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val;
-};
-
-/**
- * @struct bfloat16_t
- * @brief bfloat16 struct
- */
-struct bfloat16_t
-{
-	bfloat16_t(float _Val);
-	bfloat16_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val[2];
-};
-
-// Type aliases
-using int8 = int8_t;
-using int16 = int16_t;
-using int32 = int32_t;
-using int64 = int64_t;
-using float8 = float8_t;
-using bfloat16 = bfloat16_t;
-using float16 = float16_t;
-using float32 = float;
-using float64 = double;
-using byte = unsigned char;
-using lpvoid = void*;
-using cpvoid = const void*;
-using uint8 = uint8_t;
-using uint16 = uint16_t;
-using uint32 = uint32_t;
-using uint64 = uint64_t;
-struct NoneType {};
-static constexpr NoneType None;
-
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #else
@@ -474,7 +585,7 @@ static constexpr NoneType None;
 // Define WeightHeader struct
 struct WeightHeader
 {
-	int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
+	Int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
 	char LayerName[DRAGONIANLIB_NAME_MAX_SIZE];
 	char Type[16];
 };
@@ -488,8 +599,8 @@ struct WeightHeader
 struct WeightData
 {
 	WeightHeader Header_;
-	std::vector<byte> Data_;
-	std::vector<int64> Shape_;
+	std::vector<Byte> Data_;
+	std::vector<Int64> Shape_;
 	std::string Type_, LayerName_;
 };
 

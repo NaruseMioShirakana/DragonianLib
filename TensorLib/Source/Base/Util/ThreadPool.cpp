@@ -7,7 +7,7 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-ThreadPool::ThreadPool(int64 _ThreadCount) : Stoped_(true), ThreadCount_(_ThreadCount) {
+ThreadPool::ThreadPool(Int64 _ThreadCount) : Stoped_(true), ThreadCount_(_ThreadCount) {
     Init(_ThreadCount);
 }
 
@@ -15,7 +15,7 @@ ThreadPool::~ThreadPool() {
     Join();
 }
 
-void ThreadPool::Init(int64 _ThreadCount) {
+void ThreadPool::Init(Int64 _ThreadCount) {
 #ifdef _WIN32
     if (GetPriorityClass(GetCurrentProcess()) != REALTIME_PRIORITY_CLASS)
         SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
@@ -25,16 +25,13 @@ void ThreadPool::Init(int64 _ThreadCount) {
     if (!Stoped_) Join();
     Stoped_ = false;
     Threads_.clear();
-    for (int64 i = 0; i < _ThreadCount; i++)
-        Threads_.emplace_back(&ThreadPool::Run, this);
+    for (Int64 i = 0; i < _ThreadCount; i++)
+	    Threads_.emplace_back(&ThreadPool::Run, this);
     ThreadCount_ = _ThreadCount;
 }
 
 void ThreadPool::Run() {
-#ifdef _WIN32
-    LARGE_INTEGER Time1, Time2, Freq;
-    QueryPerformanceFrequency(&Freq);
-#endif
+    auto Start = std::chrono::high_resolution_clock::now();
     while (!Stoped_) {
         Task task;
         {
@@ -47,16 +44,14 @@ void ThreadPool::Run() {
 #ifdef WIN32
         if (GetThreadPriority(GetCurrentThread()) != THREAD_PRIORITY_TIME_CRITICAL)
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
-        if (LogTime_) QueryPerformanceCounter(&Time1);
 #endif
+        if (LogTime_) Start = std::chrono::high_resolution_clock::now();
         task();
-#ifdef WIN32
         if (LogTime_)
         {
-            QueryPerformanceCounter(&Time2);
-            LogInfo(L"Task Cost Time:" + std::to_wstring(double(Time2.QuadPart - Time1.QuadPart) * 1000. / (double)Freq.QuadPart) + L"ms");
+            std::chrono::duration<double, std::milli> CostTime = std::chrono::high_resolution_clock::now() - Start;
+            LogInfo(L"Task Cost Time:" + std::to_wstring(CostTime.count()) + L"ms");
         }
-#endif
     }
 }
 

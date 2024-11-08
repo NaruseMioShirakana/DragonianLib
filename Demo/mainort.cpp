@@ -19,6 +19,13 @@
 #include "SingingVoiceConversion/Api/header/NativeApi.h"
 #include "SuperResolution/Real-ESRGan.hpp"
 
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 template<typename Callable>
 _D_Dragonian_Lib_Force_Inline std::enable_if_t<DragonianLib::_Impl_Dragonian_Lib_Is_Callable_v<Callable>> WithTimer(Callable _Fn)
 {
@@ -266,7 +273,6 @@ void LibSvcTest()
 		SlicerConfig.HopSize
 	};
 #endif
-
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
 	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams Params;
 	Params.VocoderSamplingRate = Config.SamplingRate;
@@ -435,65 +441,90 @@ void LibSvcTest()
 #ifndef DRAGONIANLIB_IMPORT
 //#include "tlibsr/MoeSuperResolution.hpp"
 
+struct TestStruct
+{
+	TestStruct() = delete;
+	TestStruct(int i) : aaa(i) {}
+	int aaa = 0;
+};
+
+template <typename _T>
+bool Equal(const _T& a, const _T& b)
+{
+	if constexpr (std::is_floating_point_v<_T>)
+		return std::abs(a - b) < 0.0000001;
+	if constexpr (std::is_integral_v<_T>)
+		return a == b;
+	throw std::runtime_error("Not Supported Type");
+}
+
+#define TestOperatorType ==
+
 void OperatorTest()
 {
-	std::normal_distribution<float> NormalDist(0.f, 1.f);
-	std::mt19937_64 Gen;
 	using namespace DragonianLib;
-	ThreadPool Thp {8};
-	Thp.Join();
-	/*auto TestTensor = FloatTensor::New({ 114, 514, 810 });
-	auto DimInfo = TestTensor.GetShapeInfo();
-	auto Dim3 = TestTensor.GetShapeInfo(0, 3);
-	auto Dim1 = TestTensor.GetShapeInfo(0, 1);
-	auto Dim2 = TestTensor.GetShapeInfo(1, 3);
-	auto TestData = TestTensor.Data();
-
-	WithTimer(
-		[&]()
-		{
-			_D_Dragonian_Lib_Operator_Loop_S_2(DimInfo, 3, 0, 0, 0, 0, 0, TestData[IndexAxis20A] = 1.f;);
-			//_D_Dragonian_Lib_Operator_Loop_D_5(DimInfo, DimInfo, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, printf("%lld\n", IndexAxis50A););
-		}
-	);
-
-	WithTimer(
-		[&]()
-		{
-			for (size_t i = 0; i < TestTensor.TotalSize(); ++i)
-				TestData[i] = 1.f;
-		}
-	);*/
+	
+	std::mt19937_64 Gen;
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(8);
-	int LoopCount = 20;
-	auto TensorA = FloatTensor::Zeros({ 500, 100, 400 });
-	auto TensorB = FloatTensor::Ones({ 500, 100, 400 });
-	TensorA = TensorA.Transpose(1, 2);
-	std::vector DataB(500ll * 100 * 400, 0.f);
-	for (auto& i : DataB)
-		i = NormalDist(Gen);
-	const auto BSize = (SizeType)DataB.size();
-	TensorA.Fix(DataB.data(), BSize);
-	TensorA.MakeContinuous();
-	auto TensorC = TensorA.Cast<int64_t>().Eval();
-	auto TensorD = TensorA.Clone();
-	TensorD.Eval();
+	/*auto TensorA = FloatTensor::Randn({ 500, 100, 400 });
+	auto TensorB = FloatTensor::Randn({ 500, 100, 400 });
+	auto TensorC = TensorA + TensorB;
 	auto DataPtrA = TensorA.Data();
-	auto DataPtrB = DataB.data();
+	auto DataPtrB = TensorB.Data();
+	auto DataPtrC = TensorC.Data();
+	TensorC.Eval();
+	TensorA += TensorB;
+	TensorA.Eval();*/
+	
+	auto TestTensor = Tensor<TestStruct>::New({ 1, 2, 3 }, 1);
+	int LoopCount = 20;
+
+	using TestType = double;
+
+	SetRandomSeed(114514);
+	auto TensorA = Tensor<TestType>::Rand({ 500, 100, 400 }, 0, 1);
+	SetRandomSeed(114514);
+	auto TensorB = Tensor<TestType>::Rand({ 500, 100, 400 }, 0, 1);
+	//TensorA.MakeContinuous();                //i * 100 * 400, j * 100, k = i * 100 * 400, k * 1, j * 400
+	//TensorA = TensorA.Transpose(1, 2);
+	auto TensorC = TensorA + TensorB;
+	auto TensorD = (TensorA TestOperatorType TensorB);
+	TensorC.Eval();
+	TensorD.Eval();
+
+	const auto TotalSize = TensorA.TotalSize();
+
+	auto DataPtrA = TensorA.Data();
+	auto DataPtrB = TensorB.Data();
 	auto DataPtrC = TensorC.Data();
 	auto DataPtrD = TensorD.Data();
+	auto BoolCondition = Vector<bool>(TotalSize);
+	for (SizeType i = 0; i < TotalSize; ++i)
+		BoolCondition[i] = DataPtrA[i] TestOperatorType DataPtrB[i];
 
-	for (SizeType i = 0; i < BSize; ++i)
-	{
-		if (abs(DataPtrA[i] - DataPtrB[i]) > 0.001f || int64_t(DataPtrA[i]) != DataPtrC[i] || abs(DataPtrA[i] - DataPtrD[i]) > 0.001f)
-			std::cout << "Error " << i << ' ' << DataPtrA[i] << ' ' << DataPtrB[i] << ' ' << DataPtrC[i] << ' ' << DataPtrD[i] << '\n';
-	}
+	for (SizeType i = 0; i < 500; ++i)
+		for (SizeType j = 0; j < 100; ++j)
+			for (SizeType k = 0; k < 400; ++k)
+				if(!DataPtrD[i * 100 * 400 + j * 400 + k])
+				{
+					std::cout << "Error " << i * 100 * 400 + j * 400 + k << ' ' <<
+						DataPtrA[i * 100 * 400 + j * 400 + k] << ' ' <<
+						DataPtrB[i * 100 * 400 + j * 400 + k] << ' ' <<
+						DataPtrD[i * 100 * 400 + j * 400 + k] << ' ' <<
+						BoolCondition[i * 100 * 400 + j * 400 + k] << '\n';
+				}
 	
 	while (LoopCount--)
 	{
 		WithTimer(
-			[&] { TensorA.RandnFix().Eval(); }
+			[&]
+			{
+				TensorA.RandnFix();
+				TensorB.RandnFix();
+				TensorA.Eval();
+				TensorB.Eval();
+			}
 		);
 	}
 	/*tlibsvc::VitsSvcConfig Config{

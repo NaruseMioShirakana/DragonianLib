@@ -38,7 +38,8 @@ bool RangeIsAllNone(const Vector<Range>& _Input)
 
 void SetRandomSeed(SizeType _Seed)
 {
-	Operators::_Impl_Global_Seed = _Seed;
+	Operators::_Valdef_My_Thread_Pool.SetRandomSeed(_Seed);
+	Operators::_Valdef_Global_Random_Device_Id = 0;
 }
 
 void SetWorkerCount(SizeType _ThreadCount)
@@ -56,5 +57,12 @@ void EnableTimeLogger(bool _Enable)
 {
 	Operators::_Valdef_My_Thread_Pool.EnableTimeLogger(_Enable);
 }
+
+void EnableInstantRun(bool _Enable)
+{
+	Operators::_Valdef_My_Thread_Pool.EnableInstantRun(_Enable);
+	Operators::_Flag_Instant_Run = _Enable;
+}
+
 
 _D_Dragonian_Lib_Space_End

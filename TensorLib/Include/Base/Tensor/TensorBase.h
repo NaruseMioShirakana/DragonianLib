@@ -29,7 +29,7 @@ _D_Dragonian_Lib_Space_Begin
 
 using namespace DragonianLibSTL;
 
-using SizeType = int64;
+using SizeType = Int64;
 template <typename _Ty>
 using ContainerSet = std::set<_Ty>;
 template <typename _TyA, typename _TyB>
@@ -62,33 +62,33 @@ struct _Impl_Dragonian_Lib_Decldtype { static constexpr auto _DType = DType::Unk
 template<>
 struct _Impl_Dragonian_Lib_Decldtype<bool> { static constexpr auto _DType = DType::Bool; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<int8> { static constexpr auto _DType = DType::Int8; };
+struct _Impl_Dragonian_Lib_Decldtype<Int8> { static constexpr auto _DType = DType::Int8; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<int16> { static constexpr auto _DType = DType::Int16; };
+struct _Impl_Dragonian_Lib_Decldtype<Int16> { static constexpr auto _DType = DType::Int16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<int32> { static constexpr auto _DType = DType::Int32; };
+struct _Impl_Dragonian_Lib_Decldtype<Int32> { static constexpr auto _DType = DType::Int32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<int64> { static constexpr auto _DType = DType::Int64; };
+struct _Impl_Dragonian_Lib_Decldtype<Int64> { static constexpr auto _DType = DType::Int64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<uint8> { static constexpr auto _DType = DType::UInt8; };
+struct _Impl_Dragonian_Lib_Decldtype<UInt8> { static constexpr auto _DType = DType::UInt8; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<uint16> { static constexpr auto _DType = DType::UInt16; };
+struct _Impl_Dragonian_Lib_Decldtype<UInt16> { static constexpr auto _DType = DType::UInt16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<uint32> { static constexpr auto _DType = DType::UInt32; };
+struct _Impl_Dragonian_Lib_Decldtype<UInt32> { static constexpr auto _DType = DType::UInt32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<uint64> { static constexpr auto _DType = DType::UInt64; };
+struct _Impl_Dragonian_Lib_Decldtype<UInt64> { static constexpr auto _DType = DType::UInt64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<float16> { static constexpr auto _DType = DType::Float16; };
+struct _Impl_Dragonian_Lib_Decldtype<Float16> { static constexpr auto _DType = DType::Float16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<float32> { static constexpr auto _DType = DType::Float32; };
+struct _Impl_Dragonian_Lib_Decldtype<Float32> { static constexpr auto _DType = DType::Float32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<float64> { static constexpr auto _DType = DType::Float64; };
+struct _Impl_Dragonian_Lib_Decldtype<Float64> { static constexpr auto _DType = DType::Float64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<std::complex<float32>> { static constexpr auto _DType = DType::Complex32; };
+struct _Impl_Dragonian_Lib_Decldtype<Complex32> { static constexpr auto _DType = DType::Complex32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<std::complex<float64>> { static constexpr auto _DType = DType::Complex64; };
+struct _Impl_Dragonian_Lib_Decldtype<Complex64> { static constexpr auto _DType = DType::Complex64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<bfloat16> { static constexpr auto _DType = DType::BFloat16; };
+struct _Impl_Dragonian_Lib_Decldtype<BFloat16> { static constexpr auto _DType = DType::BFloat16; };
 template<typename _Type>
 constexpr auto _Impl_Dragonian_Lib_Decldtype_v = _Impl_Dragonian_Lib_Decldtype<_Type>::_DType;
 

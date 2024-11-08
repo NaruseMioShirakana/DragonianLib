@@ -23,15 +23,23 @@
 #include <queue>
 #include <future>
 #include <mutex>
+#include <random>
 #include <semaphore>
 
 _D_Dragonian_Lib_Space_Begin
+
+struct RandomEngine
+{
+	std::mutex Mx;
+	std::mt19937_64 Engine;
+	RandomEngine(Int64 _Seed) : Engine(_Seed) {}
+};
 
 class ThreadPool {
 public:
     using Task = std::function<void()>;
 
-    ThreadPool(int64 _ThreadCount = 0);
+    ThreadPool(Int64 _ThreadCount = 0);
     ~ThreadPool();
 
     template <typename _FunTy, typename... _ArgsTy>
@@ -50,17 +58,20 @@ public:
             std::lock_guard lock(TaskMx_);
             Tasks_.emplace([task] { (*task)(); });
         }
-        Condition_.release();
+		if (InstantRun_) Condition_.release();
         return ret;
     }
-    void Init(int64 _ThreadCount = 0);
+    void Init(Int64 _ThreadCount = 0);
     void Join();
-
+	void Notify(size_t _TaskCount = 1)
+	{
+        if (!InstantRun_ && !Stoped_ && _TaskCount > 0 && _TaskCount <= Tasks_.size()) Condition_.release((Int64)_TaskCount);
+	}
     bool Enabled() const
     {
         return !Stoped_;
     }
-    int64 GetThreadCount() const
+    Int64 GetThreadCount() const
     {
         return ThreadCount_;
     }
@@ -72,17 +83,32 @@ public:
     {
         LogTime_ = _Enabled;
     }
+	void EnableInstantRun(bool _Enabled)
+	{
+		InstantRun_ = _Enabled;
+	}
+	void SetRandomSeed(Int64 _Seed)
+	{
+		_MySeed = _Seed;
+	}
+    std::mt19937_64 GetRandomEngine(size_t Index) const
+    {
+        return std::mt19937_64{ Index + _MySeed };
+    }
 
 private:
     std::vector<std::thread> Threads_;
+    Int64 _MySeed = 1104;
+
     std::queue<Task> Tasks_;
     std::counting_semaphore<> Condition_{ 0 };
 
     std::atomic<bool> Stoped_;
     std::mutex TaskMx_;
 
-    int64 ThreadCount_ = 0;
+    Int64 ThreadCount_ = 0;
     bool LogTime_ = false;
+    bool InstantRun_ = true;
 
     void Run();
 	ThreadPool(const ThreadPool&) = delete;

@@ -193,22 +193,34 @@ void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount);
 void EnableTimeLogger(bool _Enable);
 
 /**
+ * @brief Enable the instant run in thread pool.
+ * @param _Enable True to enable, false to disable.
+ */
+void EnableInstantRun(bool _Enable);
+
+/**
  * @class Tensor
  * @brief Tensor with a specified value type and device.
  * @tparam _TensorType The value type of the tensor.
  * @tparam _MyDevice The device of the tensor.
  */
-template<typename _TensorType = float32, Device _MyDevice = Device::CPU>
+template<typename _TensorType = Float32, Device _MyDevice = Device::CPU>
 class Tensor : public Value
 {
 public:
 	using InvokeFnType = void(*)(Tensor&);
-	using ValueType = std::remove_reference_t<_TensorType>;
+	using ValueTypeSrcImpl = std::remove_reference_t<_TensorType>;
+	using ValueType = _Impl_Dragonian_Lib_Constexpr_Decltype_t<
+		_Impl_Dragonian_Lib_Is_Bool_v<ValueTypeSrcImpl>, Int8, ValueTypeSrcImpl
+	>;
 	using Pointer = std::shared_ptr<void>;
 	using RawPointer = ValueType*;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
+	static_assert(!_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<ValueType, _D_Dragonian_Lib_Namespace Value>);
 
+	using _MyMultiThreadSyncT = Operators::OperatorParameter::_MyMultiThreadSyncT;
+	using _MyMultiThreadSyncP = Operators::OperatorParameter::_MyMultiThreadSyncP;
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
 
@@ -216,9 +228,11 @@ public:
 	{
 		if (_MyFutures)
 		{
+			if (!_MyFutures->empty() && !Operators::_Flag_Instant_Run)
+				Operators::_Valdef_My_Thread_Pool.Notify(_MyFutures->size());
 			while (!_MyFutures->empty())
 			{
-				_MyFutures->front().get();
+				_MyFutures->front().first.get();
 				_MyFutures->pop_front();
 			}
 		}
@@ -227,9 +241,11 @@ public:
 	{
 		if (_MyFutures)
 		{
+			if (!_MyFutures->empty() && !Operators::_Flag_Instant_Run)
+				Operators::_Valdef_My_Thread_Pool.Notify(_MyFutures->size());
 			while (!_MyFutures->empty())
 			{
-				_MyFutures->front().get();
+				_MyFutures->front().first.get();
 				_MyFutures->pop_front();
 			}
 		}
@@ -240,12 +256,12 @@ protected:
 	Allocator _MyAllocator = nullptr;
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr, _MyData = nullptr;
-	
+
 	Dimensions _MyShape;
 	Dimensions _MyViewStep;
 	Dimensions _MyViewLeft;
 	Dimensions _MyViewStride;
-	std::shared_ptr<std::deque<std::future<void>>> _MyFutures = nullptr;
+	_MyMultiThreadSyncP _MyFutures = nullptr;
 
 	bool IsBroadCasted_ = false;
 
@@ -254,7 +270,24 @@ public:
 	Tensor(const Tensor& Left) = default;
 	Tensor(Tensor&& Right) noexcept = default;
 
-	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
+	constexpr Tensor& operator=(Tensor&& _Right) noexcept
+	{
+		_Right.Eval();
+		if (this != &_Right)
+		{
+			_MyAllocator = _Right._MyAllocator;
+			_MyFirst = std::move(_Right._MyFirst);
+			_MyLast = _Right._MyLast;
+			_MyData = _Right._MyData;
+			_MyShape = std::move(_Right._MyShape);
+			_MyViewStep = std::move(_Right._MyViewStep);
+			_MyViewLeft = std::move(_Right._MyViewLeft);
+			_MyViewStride = std::move(_Right._MyViewStride);
+			_MyFutures = std::move(_Right._MyFutures);
+			IsBroadCasted_ = _Right.IsBroadCasted_;
+		}
+		return *this;
+	}
 
 	/**
 	 * @brief Copy the data of a tensor
@@ -263,9 +296,30 @@ public:
 	 */
 	constexpr Tensor& operator=(const Tensor& _Left)
 	{
-		if(this != &_Left)
-			Assign(_Left);
-		return *this;
+		if constexpr (_Impl_Dragonian_Lib_Could_Be_Converted_From_v<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
+		{
+			if (this != &_Left)
+				Assign(_Left);
+			return *this;
+		}
+		else
+			_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	/**
+	 * @brief Assign the tensor with a scalar value.
+	 * @param _Val The scalar value.
+	 * @return Reference of this.
+	 */
+	constexpr Tensor& operator=(const ValueType& _Val)
+	{
+		if constexpr (_Impl_Dragonian_Lib_Could_Be_Converted_From_v<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
+		{
+			Assign(_Val);
+			return *this;
+		}
+		else
+			_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
 	/**
@@ -290,8 +344,8 @@ public:
 
 	/**
 	 * @brief Get an element tensor of the tensor. for example, if the tensor is a 3D tensor, then tensor[{0, 0}] will return the 1st row of the 1st matrix of the tensor.
-	 * @param _Indice 
-	 * @return 
+	 * @param _Indice
+	 * @return
 	 */
 	constexpr Tensor operator[](const Dimensions& _Indice) const
 	{
@@ -326,35 +380,67 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the specified shape.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param MyShape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor New(const Dimensions& MyShape)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_trivial_v<_CurValueType> ||
+		std::is_constructible_v<_CurValueType>>,
+		Tensor> New(const Dimensions& MyShape)
 	{
 		return Tensor(MyShape);
 	}
 
+	template <typename _CurValueType = ValueType, typename _First, typename ...Rest>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_constructible_v<_CurValueType, _First, Rest...>>,
+		Tensor> New(const Dimensions& MyShape, _First Arg0, Rest ...Args)
+	{
+		return Tensor(MyShape, Arg0, Args...);
+	}
+
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_constructible_v<_CurValueType, ValueType>>,
+		Tensor> New(ValueType _Val)
+	{
+		return Tensor({ 1 }, _Val);
+	}
+
 	/**
 	 * @brief Create an empty new tensor.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor New()
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_trivial_v<_CurValueType>>,
+		Tensor> New()
 	{
 		return Tensor();
 	}
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with ones.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor Ones(const Dimensions& _Shape)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(1)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> Ones(const Dimensions& _Shape)
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(ValueType(1));
@@ -364,12 +450,17 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with zeros.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor Zeros(const Dimensions& _Shape)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(0)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> Zeros(const Dimensions& _Shape)
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(ValueType(0));
@@ -379,13 +470,17 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with a constant value.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _Shape The shape of the tensor.
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor ConstantOf(const Dimensions& _Shape, ValueType _Val)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> ConstantOf(const Dimensions& _Shape, const ValueType& _Val)
 	{
 		Tensor Ret(_Shape);
 		Ret.Assign(_Val);
@@ -395,29 +490,37 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with random values.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _Shape The shape of the tensor.
+	 * @param Min The minimum value of the random values.
+	 * @param Max The maximum value of the random values.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor Rand(const Dimensions& _Shape)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor> Rand(const Dimensions& _Shape, const ValueType& Min, const ValueType& Max)
 	{
 		Tensor Ret(_Shape);
-		Ret.AssignRand();
+		Ret.AssignRand(Min, Max);
 		Ret.Eval();
 		return Ret;
 	}
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with random values.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _Shape The shape of the tensor.
 	 * @param _Mean The mean value of the random values.
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor Randn(const Dimensions& _Shape, double _Mean = 0., double _Sigma = 1.)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor> Randn(const Dimensions& _Shape, double _Mean = 0., double _Sigma = 1.)
 	{
 		Tensor Ret(_Shape);
 		Ret.AssignRandn(_Mean, _Sigma);
@@ -427,63 +530,85 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with ones.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor OnesLike(const Tensor& _ShapeReference)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(1)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> OnesLike(const Tensor& _ShapeReference)
 	{
 		return Ones(_ShapeReference.Shape());
 	}
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with zeros.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor ZerosLike(const Tensor& _ShapeReference)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(0)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> ZerosLike(const Tensor& _ShapeReference)
 	{
 		return Zeros(_ShapeReference.Shape());
 	}
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with a constant value.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor ConstantLike(const Tensor& _ShapeReference, ValueType _Val)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> ConstantLike(const Tensor& _ShapeReference, const ValueType& _Val)
 	{
 		return ConstantOf(_ShapeReference.Shape(), _Val);
 	}
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param Min The minimum value of the random values.
+	 * @param Max The maximum value of the random values.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor RandLike(const Tensor& _ShapeReference)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor> RandLike(const Tensor& _ShapeReference, const ValueType& Min, const ValueType& Max)
 	{
-		return Rand(_ShapeReference.Shape());
+		return Rand(_ShapeReference.Shape(), Min, Max);
 	}
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
-	 * @tparam _Type Value type of the tensor.
-	 * @tparam _Device Device of the tensor.
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @param _Mean The mean value of the random values.
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor RandnLike(const Tensor& _ShapeReference,  double _Mean = 0., double _Sigma = 1.)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor> RandnLike(const Tensor& _ShapeReference, double _Mean = 0., double _Sigma = 1.)
 	{
 		return Randn(_ShapeReference.Shape(), _Mean, _Sigma);
 	}
@@ -493,7 +618,12 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor Empty(const Dimensions& _Shape)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_trivial_v<_CurValueType>>,
+		Tensor> Empty(const Dimensions& _Shape)
 	{
 		return Tensor(_Shape);
 	}
@@ -503,12 +633,22 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	static constexpr Tensor EmptyLike(const Tensor& _ShapeReference)
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		std::is_trivial_v<_CurValueType>>,
+		Tensor> EmptyLike(const Tensor& _ShapeReference)
 	{
 		return Tensor(_ShapeReference._MyShape);
 	}
 
-	static constexpr Tensor Arange(float64 _Begin, float64 _End, float64 _Step);
+	template <typename _CurValueType = ValueType>
+	static constexpr std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor> Arange(Float64 _Begin, Float64 _End, Float64 _Step);
 
 private:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool AllocateMemory(const Dimensions& MyShape, Allocator MyAlloc)
@@ -519,37 +659,69 @@ private:
 		_MyAllocator = MyAlloc;
 		const auto Size = VectorMul(MyShape);
 		_MyFirst = Pointer(
-			MyAlloc->Allocate(Size * sizeof(ValueType)),
-			[&](void* _Pointer) { _MyAllocator->Free(_Pointer); }
+			MyAlloc->Allocate(std::max(Size * sizeof(ValueType), 256ull)),
+			[MyAlloc](void* _Pointer) { MyAlloc->Free(_Pointer); }
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + Size;
 		return true;
 	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ConstructViewInfo(const Dimensions& MyShape)
+	{
+		_MyShape = MyShape;
+		_MyViewStep.Resize(_MyShape.Size());
+		auto _Begin = _MyViewStep.ReversedBegin();
+		auto _End = _MyViewStep.ReversedEnd();
+		auto _Iter = _MyShape.ReversedBegin();
+		*_Begin-- = 1;
+		while (_Begin != _End)
+		{
+			*_Begin = *(_Begin + 1) * *_Iter--;
+			--_Begin;
+		}
+		_MyViewLeft = { _MyShape.Size(), 0ll, _MyShape.GetAllocator() };
+		_MyViewStride = { _MyShape.Size(), 1ll, _MyShape.GetAllocator() };
+	}
 
 	Tensor() = default;
 
-	Tensor(const Dimensions& MyShape) : _MyFutures(new std::deque<std::future<void>>)
+	Tensor(const Dimensions& MyShape) : _MyFutures(new _MyMultiThreadSyncT)
 	{
-		if(AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
+		if (AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
 		{
-			_MyShape = MyShape;
-			_MyViewStep.Resize(_MyShape.Size());
-			auto _Begin = _MyViewStep.ReversedBegin();
-			auto _End = _MyViewStep.ReversedEnd();
-			auto _Iter = _MyShape.ReversedBegin();
-			*_Begin-- = 1;
-			while (_Begin != _End)
+			ConstructViewInfo(MyShape);
+			if constexpr (!std::is_trivial_v<ValueType> && std::is_constructible_v<ValueType>)
 			{
-				*_Begin = *(_Begin + 1) * *_Iter--;
-				--_Begin;
+				auto IterData = _MyData;
+				while (IterData != _MyLast)
+					new (IterData++) ValueType();
 			}
-			_MyViewLeft = { _MyShape.Size(), 0ll, _MyShape.GetAllocator() };
-			_MyViewStride = { _MyShape.Size(), 1ll, _MyShape.GetAllocator() };
 		}
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(ValueType _Value)
+	template <typename _First, typename ...Rest>
+	Tensor(const Dimensions& MyShape, _First Arg0, Rest ...Args) : _MyFutures(new _MyMultiThreadSyncT)
+	{
+		if (AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
+		{
+			ConstructViewInfo(MyShape);
+			if constexpr (std::is_constructible_v<ValueType, _First, Rest...>)
+			{
+				auto IterData = _MyData;
+				while (IterData != _MyLast)
+					new (IterData++) ValueType(Arg0, Args...);
+			}
+		}
+	}
+
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>
+		> Assign(const ValueType& _Value)
 	{
 		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignScalar(
@@ -560,7 +732,14 @@ private:
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const ValueType* _Buffer, SizeType _Count)
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>
+		> Assign(const ValueType* _Buffer, SizeType _Count)
 	{
 		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignBuffer(
@@ -572,19 +751,22 @@ private:
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Assign(const Tensor& _Val)
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>
+		> Assign(const Tensor& _Val)
 	{
 		if (IsBroadCasted())
 			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		if (_Val.IsScalar())
-		{
-			_Val.Eval();
-			Assign(_Val.Item());
-			return;
-		}
-		Tensor BroadCasted = BroadCast(_Val);
-		BroadCasted.Eval();
+		_Val.Eval();
 		Eval();
+		if (_Val.IsScalar())
+			return Assign(_Val.Item());
+		Tensor BroadCasted = BroadCast(_Val);
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignTensor(
 			_MyData,
 			GetDefaultOperatorParameter(),
@@ -594,19 +776,34 @@ private:
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRand()
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>
+		> AssignRand(const ValueType& Min, const ValueType& Max)
 	{
 		Eval();
+		//std::unique_lock lg(Operators::_Valdef_My_Thread_Pool.GetSeedMutex(), std::try_to_lock);
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
 			_MyData,
 			GetDefaultOperatorParameter(),
+			Min, Max,
 			!IsBroadCasted() && IsContinuous()
 		);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AssignRandn(double _Mean = 0., double _Sigma = 1.)
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>
+		> AssignRandn(double _Mean = 0., double _Sigma = 1.)
 	{
 		Eval();
+		//std::unique_lock lg(Operators::_Valdef_My_Thread_Pool.GetSeedMutex(), std::try_to_lock);
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
 			_MyData,
 			GetDefaultOperatorParameter(),
@@ -662,7 +859,10 @@ public:
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Data() const
 	{
-		return _MyData;
+		if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TensorType, bool>)
+			return (bool*)_MyData;
+		else
+			return _MyData;
 	}
 
 	/**
@@ -678,7 +878,10 @@ public:
 			const SizeType Idx = CalcIndex(_Indices[i], _MyShape[i]);
 			Index += ((Idx * _MyViewStride[i]) + _MyViewLeft[i]) * _MyViewStep[i];
 		}
-		return _MyData + Index;
+		if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TensorType, bool>)
+			return (bool*)(_MyData + Index);
+		else
+			return _MyData + Index;
 	}
 
 	/**
@@ -688,7 +891,10 @@ public:
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Get(SizeType Index) const
 	{
-		return *(_MyData + Index);
+		if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TensorType, bool>)
+			return *(bool*)(_MyData + Index);
+		else
+			return *(_MyData + Index);
 	}
 
 	/**
@@ -707,7 +913,10 @@ public:
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Item() const
 	{
-		return *(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
+		if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TensorType, bool>)
+			return *(bool*)(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
+		else
+			return *(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
 	}
 
 	//******************************************************Operator******************************************************//
@@ -716,7 +925,14 @@ public:
 	 * @brief Assign the tensor with ones.
 	 * @return Reference of this.
 	 */
-	Tensor& FixOnes()
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(1)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> FixOnes()
 	{
 		Assign(ValueType(1));
 		return *this;
@@ -726,7 +942,14 @@ public:
 	 * @brief Assign the tensor with zeros.
 	 * @return Reference of this.
 	 */
-	Tensor& FixZeros()
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, decltype(0)>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> FixZeros()
 	{
 		Assign(ValueType(0));
 		return *this;
@@ -737,7 +960,13 @@ public:
 	 * @param _Val The constant value.
 	 * @return Reference of this.
 	 */
-	Tensor& Fix(ValueType _Val)
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> Fix(const ValueType& _Val)
 	{
 		Assign(_Val);
 		return *this;
@@ -749,7 +978,13 @@ public:
 	 * @param _Count Data count of the buffer.
 	 * @return Reference of this.
 	 */
-	Tensor& Fix(const ValueType* _Buffer, SizeType _Count)
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> Fix(const ValueType* _Buffer, SizeType _Count)
 	{
 		Assign(_Buffer, _Count);
 		return *this;
@@ -760,7 +995,13 @@ public:
 	 * @param _Vector The vector.
 	 * @return Reference of this.
 	 */
-	Tensor& Fix(const Vector<ValueType>& _Vector)
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> Fix(const Vector<ValueType>& _Vector)
 	{
 		Assign(_Vector.Data(), _Vector.Size());
 		return *this;
@@ -770,9 +1011,14 @@ public:
 	 * @brief Assign the tensor with random values.
 	 * @return Reference of this.
 	 */
-	Tensor& RandFix()
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor&> RandFix(const ValueType& Min = ValueType(0), const ValueType& Max = ValueType(1))
 	{
-		AssignRand();
+		AssignRand(Min, Max);
 		return *this;
 	}
 
@@ -782,42 +1028,709 @@ public:
 	 * @param _Sigma The sigma value of the random values.
 	 * @return Reference of this.
 	 */
-	Tensor& RandnFix(double _Mean = 0., double _Sigma = 1.)
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
+		Tensor&> RandnFix(double _Mean = 0., double _Sigma = 1.)
 	{
 		AssignRandn(_Mean, _Sigma);
 		return *this;
 	}
 
-	Tensor operator+(const Tensor& _Right) const;
-	Tensor operator-(const Tensor& _Right) const;
-	Tensor operator*(const Tensor& _Right) const;
-	Tensor operator/(const Tensor& _Right) const;
-	Tensor operator+(ValueType _Right) const;
-	Tensor operator-(ValueType _Right) const;
-	Tensor operator*(ValueType _Right) const;
-	Tensor operator/(ValueType _Right) const;
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Add_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator+(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAddScalar(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
 
-	Tensor& operator+=(const Tensor& _Right);
-	Tensor& operator-=(const Tensor& _Right);
-	Tensor& operator*=(const Tensor& _Right);
-	Tensor& operator/=(const Tensor& _Right);
-	Tensor& operator+=(ValueType _Right);
-	Tensor& operator-=(ValueType _Right);
-	Tensor& operator*=(ValueType _Right);
-	Tensor& operator/=(ValueType _Right);
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Sub_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator-(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplSubScalar(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
 
-	Tensor operator!=(const Tensor& _Right) const;
-	Tensor operator==(const Tensor& _Right) const;
-	Tensor operator<(const Tensor& _Right) const;
-	Tensor operator>(const Tensor& _Right) const;
-	Tensor operator<=(const Tensor& _Right) const;
-	Tensor operator>=(const Tensor& _Right) const;
-	Tensor operator!=(ValueType _Right) const;
-	Tensor operator==(ValueType _Right) const;
-	Tensor operator<(ValueType _Right) const;
-	Tensor operator>(ValueType _Right) const;
-	Tensor operator<=(ValueType _Right) const;
-	Tensor operator>=(ValueType _Right) const;
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Mul_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator*(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMulScalar(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Div_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator/(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplDivScalar(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Add_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator+(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this + _Right.Item();
+		if (IsScalar())
+			return _Right + Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAddTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Sub_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator-(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this - _Right.Item();
+		if (IsScalar())
+			return _Right - Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplSubTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Mul_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator*(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this * _Right.Item();
+		if (IsScalar())
+			return _Right * Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMulTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Div_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> operator/(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this / _Right.Item();
+		if (IsScalar())
+			return _Right / Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplDivTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Add_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator+=(const Tensor& _Right)
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this += _Right.Item();
+		if (!_Right.IsScalar() && IsScalar())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign A Tensor To a Scalar!");
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto BroadCasted = BroadCast(_Right);
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAddTensor(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Sub_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator-=(const Tensor& _Right)
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this -= _Right.Item();
+		if (!_Right.IsScalar() && IsScalar())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign A Tensor To a Scalar!");
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto BroadCasted = BroadCast(_Right);
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplSubTensor(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Mul_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator*=(const Tensor& _Right)
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this *= _Right.Item();
+		if (!_Right.IsScalar() && IsScalar())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign A Tensor To a Scalar!");
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto BroadCasted = BroadCast(_Right);
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMulTensor(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Div_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator/=(const Tensor& _Right)
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this /= _Right.Item();
+		if (!_Right.IsScalar() && IsScalar())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign A Tensor To a Scalar!");
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto BroadCasted = BroadCast(_Right);
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplDivTensor(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Add_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator+=(const ValueType& _Right)
+	{
+		Eval();
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAddScalar(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Sub_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator-=(const ValueType& _Right)
+	{
+		Eval();
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplSubScalar(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Mul_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator*=(const ValueType& _Right)
+	{
+		Eval();
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMulScalar(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Div_Inplace_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> operator/=(const ValueType& _Right)
+	{
+		Eval();
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplDivScalar(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_NotEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator!=(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this != _Right.Item();
+		if (IsScalar())
+			return _Right != Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplNotEqualTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Equal_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator==(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this == _Right.Item();
+		if (IsScalar())
+			return _Right == Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplEqualTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Less_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator<(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this < _Right.Item();
+		if (IsScalar())
+			return _Right > Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplLessTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Greater_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator>(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this > _Right.Item();
+		if (IsScalar())
+			return _Right < Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplGreaterTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_LessEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator<=(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this <= _Right.Item();
+		if (IsScalar())
+			return _Right >= Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplLessEqualTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_GreaterEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator>=(const Tensor& _Right) const
+	{
+		Eval();
+		_Right.Eval();
+		if (_Right.IsScalar())
+			return *this >= _Right.Item();
+		if (IsScalar())
+			return _Right <= Item();
+		auto BroadCasted = BroadCast(*this, _Right);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplGreaterEqualTensor(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_NotEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator!=(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplNotEqualScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Equal_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator==(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplEqualScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Less_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator<(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplLessScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Greater_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator>(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplGreaterScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_LessEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator<=(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplLessEqualScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_GreaterEqual_Operator_v<_CurValueType>>,
+		Tensor<bool, _MyDevice>> operator>=(const ValueType& _Right) const
+	{
+		Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_MyShape);
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplGreaterEqualScalar(
+			(bool*)Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Right,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return Ret;
+	}
 
 	//*********************************************************Info*********************************************************//
 
@@ -844,7 +1757,7 @@ public:
 
 		if (CurrentRank > Rank())
 			_D_Dragonian_Lib_Throw_Exception("The Rank Of The Info Is Too High!");
-		
+
 		Operators::OperatorParameter Ret{
 			{ _MyShape.Begin() + _Begin, _MyShape.Begin() + _End, _MyShape.GetAllocator() },
 			{ (size_t)CurrentRank, 0ll, _MyShape.GetAllocator() },
@@ -868,8 +1781,8 @@ public:
 
 	/**
 	 * @brief Get the shape of the specified axis of the tensor.
-	 * @param _Index 
-	 * @return 
+	 * @param _Index
+	 * @return
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
 	{
@@ -1422,7 +2335,13 @@ public:
 	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
 	 * @return New tensor.
 	 */
-	Tensor Clone() const
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> Clone() const
 	{
 		Tensor Ret{ this->_MyShape };
 		Ret = *this;
@@ -1430,10 +2349,33 @@ public:
 	}
 
 	/**
+	 * @brief If the tensor is not continuous, make output continuous.
+	 * @return New tensor (view or clone).
+	 */
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor> Continuous() const
+	{
+		if (IsContinuous())
+			return CreateView();
+		return Clone();
+	}
+
+	/**
 	 * @brief Make this tensor continuous.
 	 * @return Reference of this.
 	 */
-	Tensor& MakeContinuous()
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> MakeContinuous()
 	{
 		if (IsContinuous())
 			return *this;
@@ -1459,10 +2401,14 @@ public:
 	}
 
 	template <typename _Type>
-	Tensor<_Type> Cast() const
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_Type, ValueType>&&
+		_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_Type, _Type>&&
+		std::is_copy_assignable_v<_Type>,
+		Tensor<_Type, _MyDevice>> Cast() const
 	{
 		Eval();
-		Tensor<_Type> Ret = Tensor<_Type>::New(_MyShape);
+		Tensor<_Type, _MyDevice> Ret = Tensor<_Type, _MyDevice>::New(_MyShape);
 		Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
 			(
 				Ret.Data(),
@@ -1478,14 +2424,14 @@ public:
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type,
-		ValueType _Val
+		const ValueType& _Val
 	);
 
 	static Tensor Pad(
 		const Tensor& _Input,
 		const Vector<Range>& _Pad,
 		PaddingType _Type,
-		ValueType _Val
+		const ValueType& _Val
 	);
 
 	static Tensor Padding(
@@ -1612,7 +2558,7 @@ protected:
 	{
 		decltype(auto) Bd = BroadCast(*this, _Other);
 		if (Bd.first.IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("TensorA & TensorB Can Not Be BroadCast At The Same Time In This Operator!");
+			_D_Dragonian_Lib_Throw_Exception("Left Can Not Be BroadCast At The Same Time In This Operator!");
 		return std::move(Bd.second);
 	}
 
@@ -1646,12 +2592,132 @@ protected:
 	}
 
 public:
-	static Tensor Pow(const Tensor& _InputA, const Tensor& _InputB);
-	static Tensor Pow(const Tensor& _InputA, float64 _Val);
-	Tensor Pow(const Tensor& _InputB) const;
-	Tensor Pow(float64 _Val) const;
-	Tensor& Pow_(const Tensor& _InputB);
-	Tensor& Pow_(float64 _Val);
+
+	template <typename _CurValueType = ValueType>
+	static std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> Pow(const Tensor& _InputA, const Tensor& _InputB)
+	{
+		_InputA.Eval();
+		_InputB.Eval();
+		if (_InputB.IsScalar())
+			return Pow(_InputA, _InputB.Item());
+		auto BroadCasted = BroadCast(_InputA, _InputB);
+		auto Ret = Tensor<bool, _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowTensor
+		(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			BroadCasted.first.IsContinuous() && !BroadCasted.first.IsBroadCasted() &&
+			BroadCasted.second.IsContinuous() && !BroadCasted.second.IsBroadCasted()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	static std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> Pow(const Tensor& _InputA, ValueType _Val)
+	{
+		_InputA.Eval();
+		auto Ret = Tensor<bool, _MyDevice>::New(_InputA.Shape());
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowScalar
+		(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			_InputA.Data(),
+			_InputA.GetDefaultOperatorParameter(),
+			_Val,
+			_InputA.IsContinuous() && !_InputA.IsBroadCasted()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> Pow(const Tensor& _InputB) const
+	{
+		return Pow(*this, _InputB);
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor> Pow(ValueType _Val) const
+	{
+		return Pow(*this, _Val);
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> PowInplace(const Tensor& _InputB)
+	{
+		Eval();
+		_InputB.Eval();
+		if (_InputB.IsScalar())
+			return PowInplace(_InputB.Item());
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto BroadCasted = BroadCast(_InputB);
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowTensor
+		(
+			Data(),
+			MyParameter,
+			Data(),
+			MyParameter,
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			IsContinuous() && !IsBroadCasted() &&
+			IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		_Impl_Dragonian_Lib_And_v<
+		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
+		Operators::_Impl_Dragonian_Lib_Has_Pow_Operator_v<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> PowInplace(ValueType _Val)
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowScalar
+		(
+			Data(),
+			MyParameter,
+			Data(),
+			MyParameter,
+			_Val,
+			IsContinuous() && !IsBroadCasted()
+		);
+		return *this;
+	}
 
 	/*DragonianLibTensorFnDef(Abs);
 	DragonianLibTensorFnDef(Sin);
@@ -1677,8 +2743,8 @@ public:
 	DragonianLibTensorFnDef(Round);*/
 };
 
-using FloatTensor = Tensor<float32>;
-using LongTensor = Tensor<int64>;
+using FloatTensor = Tensor<Float32>;
+using LongTensor = Tensor<Int64>;
 using BoolTensor = Tensor<bool>;
 
 _D_Dragonian_Lib_Space_End
