@@ -25,24 +25,26 @@
 #include <vector>
 #include "BaseCluster.hpp"
 
-namespace DragonianLib {
+_D_Dragonian_Lib_Cluster_Namespace_Begin
 
-    class IndexClusterCore;
+class IndexClusterCore;
 
-    class IndexCluster : public BaseCluster
-    {
-    public:
-        IndexCluster() = delete;
-        ~IndexCluster() override = default;
-        IndexCluster(const IndexCluster&) = delete;
-        IndexCluster(IndexCluster&&) = delete;
-        IndexCluster operator=(const IndexCluster&) = delete;
-        IndexCluster operator=(IndexCluster&&) = delete;
-        IndexCluster(const std::wstring& _path, size_t hidden_size, size_t KmeansLen);
-        DragonianLibSTL::Vector<float> Search(float* point, long sid, int64_t n_points = 1) override;
-    private:
-        std::vector<std::shared_ptr<IndexClusterCore>> Indexs;
-        size_t n_hidden_size = 256;
-    };
+class IndexCluster : public BaseCluster
+{
+public:
+    IndexCluster() = delete;
+    ~IndexCluster() override = default;
+    
+    IndexCluster(const std::wstring& RootPath, size_t, size_t);
+    DragonianLibSTL::Vector<float> Search(float* Point, long SpeakerID, int64_t PointCount = 1) override;
+protected:
+    std::vector<std::shared_ptr<IndexClusterCore>> Indexs;
+    size_t n_hidden_size = 256;
+private:
+    IndexCluster(const IndexCluster&) = delete;
+    IndexCluster(IndexCluster&&) = delete;
+    IndexCluster operator=(const IndexCluster&) = delete;
+    IndexCluster operator=(IndexCluster&&) = delete;
+};
 
-}
+_D_Dragonian_Lib_Cluster_Namespace_End

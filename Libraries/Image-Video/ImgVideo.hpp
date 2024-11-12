@@ -7,8 +7,8 @@
 * date: 2023-3-4 Create.
 */
 #pragma once
-#define _D_Dragonian_Lib_Image_Video_Header namespace DragonianLib {
-#define _D_Dragonian_Lib_Image_Video_End }
+#define _D_Dragonian_Lib_Image_Video_Header namespace DragonianLib { namespace ImageVideo {
+#define _D_Dragonian_Lib_Image_Video_End } }
 #include "MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Image_Video_Header

@@ -21,6 +21,7 @@
 
 #pragma once
 #include "ModelBase.hpp"
+#include "F0Extractor/F0ExtractorManager.hpp"
 #include "../InferTools/TensorExtractor/TensorExtractorManager.hpp"
 #include "Cluster/ClusterManager.hpp"
 
@@ -134,15 +135,15 @@ public:
     /**
      * @brief Pre-processes audio data
      * @param _Input Input audio data
-     * @param _SamplingRate Sampling rate (default is 48000)
-     * @param _HopSize Hop size (default is 512)
+	 * @param _Params F0 parameters
      * @param _F0Method F0 extraction method (default is "Dio")
+	 * @param _F0ExtractorLoadParameter F0 extractor user parameter
      */
     static void PreProcessAudio(
         const SingleAudio& _Input,
-        int _SamplingRate = 48000,
-        int _HopSize = 512,
-        const std::wstring& _F0Method = L"Dio"
+        const F0Extractor::F0ExtractorParams& _Params,
+        const std::wstring& _F0Method,
+        const F0Extractor::NetF0ExtractorSetting& _F0ExtractorLoadParameter
     );
 
     /**
@@ -201,7 +202,7 @@ public:
     ) const;
 
 protected:
-    TensorExtractor Preprocessor;
+    TensorExtractor::TensorExtractor Preprocessor;
     std::shared_ptr<Ort::Session> HubertModel = nullptr;
 
     int HopSize = 320;
@@ -210,7 +211,7 @@ protected:
     bool EnableCharaMix = false;
     bool EnableVolume = false;
 
-    ClusterWrp Cluster;
+    Cluster::Cluster Cluster;
     int64_t ClusterCenterSize = 10000;
     bool EnableCluster = false;
 

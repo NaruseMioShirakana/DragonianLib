@@ -24,22 +24,24 @@
 #include "K-DimensionalTree/KDTree.hpp"
 #include <string>
 
-namespace DragonianLib {
+_D_Dragonian_Lib_Cluster_Namespace_Begin
 
-	class KMeansCluster : public BaseCluster
-	{
-	public:
-		KMeansCluster() = delete;
-		~KMeansCluster() override = default;
-		KMeansCluster(const KMeansCluster&) = delete;
-		KMeansCluster(KMeansCluster&&) = delete;
-		KMeansCluster operator=(const KMeansCluster&) = delete;
-		KMeansCluster operator=(KMeansCluster&&) = delete;
-		KMeansCluster(const std::wstring& _path, size_t hidden_size, size_t KmeansLen);
-		DragonianLibSTL::Vector<float> Search(float* point, long sid, int64_t n_points = 1) override;
-	private:
-		std::vector<KDTree> _tree;
-		size_t dims = 0;
-	};
+class KMeansCluster : public BaseCluster
+{
+public:
+	KMeansCluster() = delete;
+	~KMeansCluster() override = default;
+	
+	KMeansCluster(const std::wstring& _RootPath, size_t Dims, size_t KMeansLen);
+	DragonianLibSTL::Vector<float> Search(float* Point, long SpeakerId, int64_t Count = 1) override;
+protected:
+	std::vector<KDTree::KDTree> _tree;
+	size_t dims = 0;
+private:
+	KMeansCluster(const KMeansCluster&) = delete;
+	KMeansCluster(KMeansCluster&&) = delete;
+	KMeansCluster operator=(const KMeansCluster&) = delete;
+	KMeansCluster operator=(KMeansCluster&&) = delete;
+};
 
-}
+_D_Dragonian_Lib_Cluster_Namespace_End

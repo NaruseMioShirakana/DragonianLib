@@ -9,12 +9,46 @@ project (
 )
 
 set(DRAGONIANLIB_ORTLIB_SRC)
-file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_SRC
-	${PROJECT_SOURCE_DIR}/*.c
-	${PROJECT_SOURCE_DIR}/*.cpp
-	${PROJECT_SOURCE_DIR}/*.h
-	${PROJECT_SOURCE_DIR}/*.hpp
-)
+if(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION)
+	file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_SVC_SRC
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.c
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.cpp
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.h
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_ORTLIB_SRC ${DRAGONIANLIB_ORTLIB_SVC_SRC})
+	message("	- Build Singing Voice Conversion")
+endif()
+if(DRAGONIANLIB_ORT_TEXT_TO_SPEECH)
+	file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_TTS_SRC
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.c
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.cpp
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.h
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_ORTLIB_SRC ${DRAGONIANLIB_ORTLIB_TTS_SRC})
+	message("	- Build Text To Speech")
+endif()
+if(DRAGONIANLIB_ORT_SUPER_RESOLUTION)
+ 	file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_SR_SRC
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.c
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.cpp
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.h
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_ORTLIB_SRC ${DRAGONIANLIB_ORTLIB_SR_SRC})
+	message("	- Build Super Resolution")
+endif()
+if(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION)
+ 	file(GLOB_RECURSE DRAGONIANLIB_ORTLIB_MT_SRC
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.c
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.cpp
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.h
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_ORTLIB_SRC ${DRAGONIANLIB_ORTLIB_MT_SRC})
+	message("	- Build Music Transcription")
+endif()
 
 if(DRAGONIANLIB_SHARED_LIBS)
 	add_library(${DRAGONIANLIB_ORT_LIB} SHARED ${DRAGONIANLIB_ORTLIB_SRC})

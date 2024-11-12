@@ -189,6 +189,26 @@ struct InferenceParams
      */
     int VocoderSamplingRate = 44100;
 
+	/**
+	 * @brief Bins of F0
+	 */
+	long F0Bins = 256;
+
+    /**
+	 * @brief Max F0 value
+     */
+    double F0Max = 1100.0;
+
+    /**
+	 * @brief Min F0 value
+     */
+    double F0Min = 50.0;
+
+    /**
+	 * @brief User parameter for F0 extractor
+     */
+    void* F0ExtractorUserParameter = nullptr;
+
 #ifndef DRAGONIANLIB_IMPORT
     /**
      * @brief Cached 16K audio data

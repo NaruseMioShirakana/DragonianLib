@@ -24,7 +24,10 @@
 #include "../InferTools.hpp"
 #include <onnxruntime_cxx_api.h>
 
-_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_Header _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header namespace Sampler {
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_End } _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
+
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_Header
 
 class BaseSampler
 {
@@ -116,4 +119,4 @@ protected:
 	Ort::MemoryInfo* Memory_ = nullptr;
 };
 
-_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_End

@@ -28,18 +28,13 @@
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
- * @brief Sets up the kernel for the components
- */
-void SetupKernel();
-
-/**
  * @brief Gets the Mel operator for the given parameters
  * @param _SamplingRate Sampling rate
  * @param _Hopsize Hop size
  * @param _MelBins Number of Mel bins
  * @return Reference to the Mel operator
  */
-DragonianLib::FunctionTransform::Mel& GetMelOperator(
+FunctionTransform::Mel& GetMelOperator(
 	int32_t _SamplingRate,
 	int32_t _Hopsize,
 	int32_t _MelBins

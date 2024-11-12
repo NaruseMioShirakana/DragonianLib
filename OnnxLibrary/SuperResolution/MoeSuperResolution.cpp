@@ -11,7 +11,7 @@ namespace DragonianLib
 			Model = nullptr;
 		}
 
-		DragonianLib::Image& MoeSR::Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const
+		ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const
 		{
 			_BatchSize = 1;
 			size_t progress = 0;

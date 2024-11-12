@@ -21,49 +21,41 @@
 
 #pragma once
 #include "BaseF0Extractor.hpp"
-#include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
 using F0Extractor = std::shared_ptr<BaseF0Extractor>;
 
-using GetF0ExtractorFn = std::function<F0Extractor(uint32_t, uint32_t, uint32_t, double, double)>;
+struct NetF0ExtractorSetting
+{
+	std::wstring ModelPath;
+	void* OrtEnv;
+};
 
 /**
- * @brief Register a F0Extractor
- * @param Name Name of the F0Extractor
- * @param ConstructorFn Constructor Function of the F0Extractor
+ * @brief Register All F0Extractors in the directory
+ * @param _PluginRootDirectory Root directory of the F0Extractors
  */
-void RegisterF0Extractor(
-    const std::wstring& Name,
-    const GetF0ExtractorFn& ConstructorFn
-);
+void RegisterF0Extractor(const std::wstring& _PluginRootDirectory);
 
 /**
  * @brief Get a F0Extractor
  * @param Name Name of the F0Extractor
- * @param SampleRate Sample Rate of the Audio
- * @param HopSize Hop Size of the Audio
- * @param F0Bin F0 Bin of the Audio
- * @param F0Max Max F0 of the Audio
- * @param F0Min Min F0 of the Audio
+ * @param UserParameter User parameter
  * @return F0Extractor
  */
 F0Extractor GetF0Extractor(
     const std::wstring& Name,
-    uint32_t SampleRate = 48000,
-    uint32_t HopSize = 512,
-    uint32_t F0Bin = 256,
-    double F0Max = 1100.0,
-    double F0Min = 50.0
+    const void* UserParameter
 );
 
 /**
  * @brief Get a list of F0Extractor names
  * @return List of F0Extractor names
  */
-std::vector<std::wstring> GetF0ExtractorList();
+const std::vector<std::wstring>& GetF0ExtractorList();
 
 _D_Dragonian_Lib_F0_Extractor_End

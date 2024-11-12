@@ -130,7 +130,27 @@ extern "C" {
 		INT32 VocoderHopSize;				///< Vocoder hop size
 		INT32 VocoderMelBins;		///< Vocoder mel bins
 		INT32 VocoderSamplingRate;		///< Vocoder sampling rate
+		long F0Bins;	///< F0 bins		
+		double F0Max;  ///< F0 max
+		double F0Min;   ///< F0 min
+		void* F0ExtractorUserParameter;   ///< F0 extractor user parameter
 		INT32 __DEBUG__MODE__;		///< Debug mode					[0:False 1:True]	
+	};
+
+	/**
+	 * @struct LibSvcF0ExtractorSetting
+	 * @brief F0 extractor settings
+	 */
+	struct LibSvcF0ExtractorSetting
+	{
+		INT32 SamplingRate;	///< Sampling rate
+		INT32 HopSize;	///< Hop size
+		INT32 F0Bins;	///< F0 bins
+		double F0Max;	///< F0 max
+		double F0Min;	///< F0 min
+		void* UserParameter;	///< User parameter
+		LibSvcEnv Env;	///< Environment
+		const wchar_t* ModelPath;	///< Model path
 	};
 
 	/**
@@ -231,6 +251,14 @@ extern "C" {
 	 */
 	LibSvcApi void InitLibSvcParams(
 		LibSvcParams* _Input
+	);
+
+	/**
+	 * @brief Initialize the LibSvcF0ExtractorSetting structure
+	 * @param _Input LibSvcF0ExtractorSetting structure
+	 */
+	LibSvcApi void InitLibSvcF0ExtractorSetting(
+		LibSvcF0ExtractorSetting* _Input
 	);
 
 	/**
@@ -634,8 +662,7 @@ extern "C" {
 	 * @brief Preprocesses audio data (int16 version).
 	 * @param _Audio The audio data.
 	 * @param _SlicePos The slice positions.
-	 * @param _SamplingRate The sampling rate.
-	 * @param _HopSize The hop size.
+	 * @param _Settings The settings of the F0 extractor.
 	 * @param _Threshold The threshold.
 	 * @param _F0Method The F0 method.
 	 * @param _Output The output slices.
@@ -644,8 +671,7 @@ extern "C" {
 	LibSvcApi INT32 LibSvcPreprocessI16(
 		LibSvcCInt16Vector _Audio,
 		LibSvcCUInt64Vector _SlicePos,
-		INT32 _SamplingRate,
-		INT32 _HopSize,
+		const LibSvcF0ExtractorSetting* _Settings,
 		double _Threshold,
 		const wchar_t* _F0Method,
 		LibSvcSlicesType _Output
@@ -655,8 +681,7 @@ extern "C" {
 	 * @brief Preprocesses audio data (float version).
 	 * @param _Audio The audio data.
 	 * @param _SlicePos The slice positions.
-	 * @param _SamplingRate The sampling rate.
-	 * @param _HopSize The hop size.
+	 * @param _Settings The settings of the F0 extractor.
 	 * @param _Threshold The threshold.
 	 * @param _F0Method The F0 method.
 	 * @param _Output The output slices.
@@ -665,8 +690,7 @@ extern "C" {
 	LibSvcApi INT32 LibSvcPreprocess(
 		LibSvcCFloatVector _Audio,
 		LibSvcCUInt64Vector _SlicePos,
-		INT32 _SamplingRate,
-		INT32 _HopSize,
+		const LibSvcF0ExtractorSetting* _Settings,
 		double _Threshold,
 		const wchar_t* _F0Method,
 		LibSvcSlicesType _Output
@@ -845,45 +869,13 @@ extern "C" {
 	);
 
 	/**
-	 * @brief Loads a RMVPE model.
-	 * @param Path The model path.
+	 * @brief Unloads a ort model.
+	 * @param ModelPath The model path.
 	 * @param _Env The environment.
 	 * @return Status code.
 	 */
-	LibSvcApi INT32 LibSvcLoadRmvPE(
-		LPCWSTR Path,
-		LibSvcEnv _Env
-	);
-
-	/**
-	 * @brief Unloads a RMVPE model.
-	 */
-	LibSvcApi void LibSvcUnloadRmvPE();
-
-	/**
-	 * @brief Loads a FCPE model.
-	 * @param Path The model path.
-	 * @param _Env The environment.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcLoadFCPE(
-		LPCWSTR Path,
-		LibSvcEnv _Env
-	);
-
-	/**
-	 * @brief Unloads a FCPE model.
-	 */
-	LibSvcApi void LibSvcUnloadFCPE();
-
-	/**
-	 * @brief Unloads a vocoder model.
-	 * @param VocoderPath The vocoder path.
-	 * @param _Env The environment.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcUnloadVocoder(
-		LPCWSTR VocoderPath,
+	LibSvcApi INT32 LibSvcUnloadCachedModel(
+		LPCWSTR ModelPath,
 		LibSvcEnv _Env
 	);
 

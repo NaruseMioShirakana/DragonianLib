@@ -141,22 +141,9 @@ int main()
 
 void LibSvcTest()
 {
-#ifdef DRAGONIANLIB_IMPORT
-	LibSvcInit();
-#else
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SetupKernel();
-	try 
-	{
-		exceptionfn3();
-	}
-	catch (std::exception& e)
-	{
-		std::cout << e.what() << '\n';
-	}
-#endif
 	constexpr auto EProvider = 2;
 	constexpr auto NumThread = 16;
-	constexpr auto DeviceId = 0;
+	constexpr auto DeviceId = 1;
 
 	auto GlobalEnv = LibSvcCreateEnv(NumThread, DeviceId, EProvider);
 	if (!GlobalEnv)
@@ -311,7 +298,7 @@ void LibSvcTest()
 #else
 	const auto SliPos = SliceAudio(Audio, SlicerConfig);
 	auto Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(Audio, SliPos, SlicerConfig);
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(Slices, SrcSr, 512, L"Dio");
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(Slices, { SrcSr, 512 }, L"Dio", {});
 #endif
 
 	size_t Proc = 0;
@@ -503,17 +490,38 @@ void OperatorTest()
 	for (SizeType i = 0; i < TotalSize; ++i)
 		BoolCondition[i] = DataPtrA[i] TestOperatorType DataPtrB[i];
 
+	auto ArangedVector = Vector<TestType>(TotalSize);
+	TestType ArangeBegin = TestType(0);
+	TestType ArangeEnd = TestType(1);
+	TestType ArangeStep = TestType((double(ArangeEnd) - double(ArangeBegin)) / double(TotalSize));
+	for (SizeType i = 0; i < TotalSize; ++i)
+		ArangedVector[i] = ArangeBegin + ArangeStep * TestType(i);
+	auto TensorE = Tensor<TestType>::Arange(ArangeBegin, ArangeEnd, ArangeStep);
+	auto TensorF = Tensor<TestType>::New({ TotalSize });
+	TensorF.Fix(ArangedVector.Data(), TotalSize);
+	Tensor ConditionTensor = TensorE == TensorF;
+	WithTimer([&] {ConditionTensor.Eval(); });
+	auto ConditionalData = ConditionTensor.Data();
+	auto DataPtrE = TensorE.Data();
+	auto DataPtrF = TensorF.Data();
+
 	for (SizeType i = 0; i < 500; ++i)
 		for (SizeType j = 0; j < 100; ++j)
 			for (SizeType k = 0; k < 400; ++k)
-				if(!DataPtrD[i * 100 * 400 + j * 400 + k])
+			{
+				if(!ConditionalData[i * 100 * 400 + j * 400 + k])
+				{
+					std::cout << "Error " << i * 100 * 400 + j * 400 + k << ' ' <<
+						DataPtrE[i * 100 * 400 + j * 400 + k] << ' ' <<
+						DataPtrF[i * 100 * 400 + j * 400 + k] << '\n';
+				}
+				if (DataPtrD[i * 100 * 400 + j * 400 + k] != BoolCondition[i * 100 * 400 + j * 400 + k])
 				{
 					std::cout << "Error " << i * 100 * 400 + j * 400 + k << ' ' <<
 						DataPtrA[i * 100 * 400 + j * 400 + k] << ' ' <<
-						DataPtrB[i * 100 * 400 + j * 400 + k] << ' ' <<
-						DataPtrD[i * 100 * 400 + j * 400 + k] << ' ' <<
-						BoolCondition[i * 100 * 400 + j * 400 + k] << '\n';
+						DataPtrB[i * 100 * 400 + j * 400 + k] << '\n';
 				}
+			}
 	
 	while (LoopCount--)
 	{
@@ -527,56 +535,6 @@ void OperatorTest()
 			}
 		);
 	}
-	/*tlibsvc::VitsSvcConfig Config{
-		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\SoVits4\SoVits4_SoVits.onnx)",
-		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
-		L"SoVits4.0",
-		nullptr,
-		{},
-		{},
-		40000,
-		320,
-		768,
-	};
-	tlibsvc::VitsSvc Model(
-		Config,
-		[](size_t, size_t) {}
-	);
-	auto Audio = DragonianLib::AvCodec().DecodeSigned16(
-		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
-		44100
-	);
-	LibSvcSpace SlicerSettings SlicerConfig{
-		44100,
-		40.,
-		5.,
-		2048,
-		512
-	};
-	const auto SliPos = SliceAudio(Audio, SlicerConfig);
-	auto Slices = tlibsvc:: GetAudioSlice(Audio, SliPos, SlicerConfig.Threshold);
-	tlibsvc::PreProcessAudio(Slices, 44100, 512, L"Dio");*/
-	/*
-
-	auto ddddd = adddd(1, 2.f, 3, 4.f, 5);
-	std::cout << ddddd << '\n';
-	DragonianLib::Tensor::SetThreadCount(8);
-	DragonianLib::Tensor::EnableTimeLogger(false);
-	DragonianLib::ThreadPool Thp;
-	Thp.EnableTimeLogger(false);
-	Thp.Init(8);
-	DragonianLib::Tensor Ten1919810({ 1,768,10000 }, DragonianLib::TensorType::Float32, DragonianLib::Device::CPU);
-	for (int64_t i = 0; i < 20; ++i)
-	{
-		Ten1919810.RandFix(&Thp);
-		WithTimer(
-			[&]()
-			{
-				auto Res = Ten1919810 + Ten1919810 * 2.;
-			}
-		);
-	}
-	*/
 }
 
 void TensorLibDemo()
@@ -747,9 +705,9 @@ void LibSrTest()
 		1
 	);
 
-	DragonianLib::GdiInit();
+	DragonianLib::ImageVideo::GdiInit();
 
-	DragonianLib::Image Image(
+	DragonianLib::ImageVideo::Image Image(
 		LR"(C:\Users\17518\Downloads\xjpic.jpg)",
 		64,
 		64,
@@ -770,7 +728,7 @@ void LibSrTest()
 	if (Image.MergeWrite(LR"(C:\Users\17518\Downloads\xjpic.png)", 4, 100))
 		std::cout << "Complete!\n";
 
-	DragonianLib::GdiClose();
+	DragonianLib::ImageVideo::GdiClose();
 }
 
 void LibMtsTest()

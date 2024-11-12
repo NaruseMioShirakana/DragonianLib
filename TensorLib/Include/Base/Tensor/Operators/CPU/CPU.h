@@ -308,6 +308,14 @@ public:
 		const OperatorParameter& _SrcInfo2,
 		bool Continuous
 	);
+
+	static void ImplArange(
+		_Type* _Dest,
+		const OperatorParameter& _DestInfo,
+		const _Type& _Start,
+		const _Type& _Step,
+		bool Continuous
+	);
 };
 
 template <typename _Type>

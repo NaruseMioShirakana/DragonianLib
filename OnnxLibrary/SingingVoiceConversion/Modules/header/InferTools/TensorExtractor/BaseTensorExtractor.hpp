@@ -23,7 +23,10 @@
 #include "../InferTools.hpp"
 #include "onnxruntime_cxx_api.h"
 
-_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Tensor_Extrator_Header _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header namespace TensorExtractor {
+#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Tensor_Extrator_End } _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
+
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Tensor_Extrator_Header
 
 /**
  * @class LibSvcTensorExtractor
@@ -293,4 +296,4 @@ protected:
 };
 
 
-_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
+_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Tensor_Extrator_End

@@ -39,7 +39,7 @@ namespace DragonianLib
         public:
             SuperResolution(unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider, ProgressCallback _Callback);
             virtual ~SuperResolution() = default;
-            virtual DragonianLib::Image& Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const;
+            virtual ImageVideo::Image& Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const;
         protected:
             DragonianLib::DragonianLibOrtEnv Env_;
             ProgressCallback Callback_;

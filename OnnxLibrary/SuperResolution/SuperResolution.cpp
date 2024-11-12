@@ -6,7 +6,7 @@ namespace DragonianLib
 {
 	namespace LibSuperResolution
 	{
-		DragonianLib::Image& SuperResolution::Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const
+		ImageVideo::Image& SuperResolution::Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const
 		{
 			_D_Dragonian_Lib_Not_Implemented_Error;
 		}

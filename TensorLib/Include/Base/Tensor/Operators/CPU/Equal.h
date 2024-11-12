@@ -1,9 +1,18 @@
 ﻿#pragma once
 #include "CPU.h"
 
-#define _D_Dragonian_Lib_Cur_Operator(Arg1, Arg2) ((Arg1) == (Arg2))
+#define _D_Dragonian_Lib_Cur_Operator(Arg1, Arg2) EqualFunction((Arg1), (Arg2))
 
 _D_Dragonian_Lib_Operator_Space_Begin
+
+template <typename _Type>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) EqualFunction(const _Type& _Arg1, const _Type& _Arg2)
+{
+	if constexpr (_Impl_Dragonian_Lib_Is_Floating_Point_v<_Type>)
+		return std::abs(_Arg1 - _Arg2) <= std::numeric_limits<_Type>::epsilon();
+	else
+		return _Arg1 == _Arg2;
+}
 
 constexpr int64_t _D_Dragonian_Lib_Operator_Equal_Unfold = 8;
 

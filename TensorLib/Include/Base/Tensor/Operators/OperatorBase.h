@@ -463,6 +463,18 @@ public:
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
+
+	static void ImplArange(
+		_Type* _Dest,
+		const OperatorParameter& _DestInfo,
+		const _Type& _Start,
+		const _Type& _Step,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+
+	}
 };
 
 _D_Dragonian_Lib_Operator_Space_End

@@ -235,9 +235,17 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator==(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
-			return _mm256_cmp_ps(*this, _Right, _CMP_EQ_OQ);
+		{
+			const auto Diff = _mm256_sub_ps(*this, _Right);
+			const auto Abs = _mm256_and_ps(Diff, _mm256_set1_ps(-0.0f));
+			return _mm256_cmp_ps(Abs, _mm256_set1_ps(FLT_EPSILON), _CMP_LE_OQ);
+		}
 		else if constexpr (std::is_same_v<Type, double>)
-			return _mm256_cmp_pd(*this, _Right, _CMP_EQ_OQ);
+		{
+			const auto Diff = _mm256_sub_pd(*this, _Right);
+			const auto Abs = _mm256_and_pd(Diff, _mm256_set1_pd(-0.0));
+			return _mm256_cmp_pd(Abs, _mm256_set1_pd(DBL_EPSILON), _CMP_LE_OQ);
+		}
 		else if constexpr (std::is_same_v<Type, int8_t>)
 			return _mm256_cmpeq_epi8(*this, _Right);
 		else if constexpr (std::is_same_v<Type, int16_t>)
@@ -252,9 +260,17 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator!=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
-			return _mm256_cmp_ps(*this, _Right, _CMP_NEQ_OQ);
+		{
+			const auto Diff = _mm256_sub_ps(*this, _Right);
+			const auto Abs = _mm256_and_ps(Diff, _mm256_set1_ps(-0.0f));
+			return _mm256_cmp_ps(Abs, _mm256_set1_ps(FLT_EPSILON), _CMP_GT_OQ);
+		}
 		else if constexpr (std::is_same_v<Type, double>)
-			return _mm256_cmp_pd(*this, _Right, _CMP_NEQ_OQ);
+		{
+			const auto Diff = _mm256_sub_pd(*this, _Right);
+			const auto Abs = _mm256_and_pd(Diff, _mm256_set1_pd(-0.0));
+			return _mm256_cmp_pd(Abs, _mm256_set1_pd(DBL_EPSILON), _CMP_GT_OQ);
+		}
 		else
 			return _mm256_xor_si256(*this, _Right);
 	}
@@ -285,6 +301,10 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator+=(const Vectorized& _Right)
+	{
+		return *this = *this + _Right;
+	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator-(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
@@ -302,6 +322,10 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator-=(const Vectorized& _Right)
+	{
+		return *this = *this - _Right;
+	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator*(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
@@ -316,6 +340,10 @@ public:
 			return _mm256_mullo_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error; 
+	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator*=(const Vectorized& _Right)
+	{
+		return *this = *this * _Right;
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator/(const Vectorized& _Right) const
 	{
@@ -333,6 +361,10 @@ public:
 			return _mm256_div_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator/=(const Vectorized& _Right)
+	{
+		return *this = *this / _Right;
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator&(const Vectorized& _Right) const
 	{

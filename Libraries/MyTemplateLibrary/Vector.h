@@ -351,7 +351,9 @@ private:
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+        std::is_constructible_v<ValueType, _ArgsTy...>,
+        Reference> EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
     {
         ::new (static_cast<void*>(std::addressof(_Obj))) ValueType(std::forward<_ArgsTy>(_Args)...);
         return _Obj;
@@ -476,7 +478,9 @@ public:
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+        std::is_constructible_v<ValueType, _ArgsTy...>,
+        Reference> Emplace(ConstIterator _Where, _ArgsTy &&... _Args)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -491,7 +495,9 @@ public:
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) EmplaceBack(_ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+        std::is_constructible_v<ValueType, _ArgsTy...>,
+        Reference> EmplaceBack(_ArgsTy &&... _Args)
     {
         return Emplace(_MyLast, std::forward<_ArgsTy>(_Args)...);
     }
@@ -1049,6 +1055,24 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> Inter
     Vector<TypeOutput> Output(CalculateResampledSize(Data.Size(), (double)SrcSamplingRate, (double)DstSamplingRate));
     Resample(Data.Data(), Data.Size(), Output.Data(), Output.Size());
     return Output;
+}
+
+/**
+ * @brief Cast the elements in the vector.
+ * @tparam TypeOutput The type of the destination signal.
+ * @tparam TypeInput The type of the source signal.
+ * @param Data Source signal.
+ * @return Signal.
+ */
+template<typename TypeOutput, typename TypeInput>
+_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> SignalCast(
+    const Vector<TypeInput>& Data
+)
+{
+	Vector<TypeOutput> Output(Data.Size());
+	for (size_t i = 0; i < Data.Size(); ++i)
+		Output[i] = static_cast<TypeOutput>(Data[i]);
+	return Output;
 }
 
 /**

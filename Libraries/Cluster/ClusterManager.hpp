@@ -21,32 +21,38 @@
 
 #pragma once
 #include "BaseCluster.hpp"
-#include <functional>
 #include <memory>
 #include <string>
 
-namespace DragonianLib {
-	
-	using ClusterWrp = std::shared_ptr<BaseCluster>;
+_D_Dragonian_Lib_Cluster_Namespace_Begin
 
-	//Cluster Constructor Function
-	using GetClusterFn = std::function<ClusterWrp(const std::wstring&, size_t, size_t)>;
+using Cluster = std::shared_ptr<BaseCluster>;
 
-	/**
-	 * @brief Register a constructor function for a cluster
-	 * @param ClusterName Name of the cluster
-	 * @param Constructor Constructor function
-	 */
-	void RegisterCluster(const std::wstring& ClusterName, const GetClusterFn& Constructor);
+/**
+ * @brief Register All Clusters in the directory
+ * @param _PluginRootDirectory Root directory of the Clusters
+ */
+void RegisterCluster(const std::wstring& _PluginRootDirectory);
 
-	/**
-	 * @brief Get a cluster by name
-	 * @param ClusterName Name of the cluster
-	 * @param ClusterFile File path of the cluster
-	 * @param ClusterDimension Dimension of the cluster
-	 * @param ClusterSize Size of the cluster
-	 * @return A shared pointer to the cluster
-	 */
-	ClusterWrp GetCluster(const std::wstring& ClusterName, const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize);
+/**
+ * @brief Get a Cluster
+ * @param ClusterName Name of the Cluster
+ * @param ClusterFile File of the Cluster
+ * @param ClusterDimension Dimension of the Cluster
+ * @param ClusterSize Size of the Cluster
+ * @return Cluster
+ */
+Cluster GetCluster(
+	const std::wstring& ClusterName,
+	const std::wstring& ClusterFile,
+	size_t ClusterDimension,
+	size_t ClusterSize
+);
 
-}
+/**
+ * @brief Get a list of Cluster names
+ * @return List of Cluster names
+ */
+const std::vector<std::wstring>& GetClusterList();
+
+_D_Dragonian_Lib_Cluster_Namespace_End

@@ -23,9 +23,6 @@
 #include <functional>
 #include <thread>
 #include <onnxruntime_cxx_api.h>
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#endif
 #include "Params.hpp"
 #include "EnvManager.hpp"
 #include "../InferTools/inferTools.hpp"

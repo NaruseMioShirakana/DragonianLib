@@ -23,20 +23,27 @@
 #include "BaseF0Extractor.hpp"
 
 _D_Dragonian_Lib_F0_Extractor_Header
+
 class DioF0Extractor : public BaseF0Extractor
 {
 public:
-	DioF0Extractor(int sampling_rate, int hop_size, int n_f0_bins = 256, double max_f0 = 1100.0, double min_f0 = 50.0);
+	DioF0Extractor() = default;
 	~DioF0Extractor() override = default;
+
+	static Vector<double> Dio(
+		const Vector<double>& PCMData,
+		const F0ExtractorParams& Params
+	);
+
+	Vector<float> ExtractF0(
+		const Vector<double>& PCMData,
+		const F0ExtractorParams& Params
+	) override;
+private:
 	DioF0Extractor(const DioF0Extractor&) = delete;
 	DioF0Extractor(DioF0Extractor&&) = delete;
 	DioF0Extractor operator=(const DioF0Extractor&) = delete;
 	DioF0Extractor operator=(DioF0Extractor&&) = delete;
-
-	void compute_f0(const double* PCMData, size_t PCMLen);
-	//void InterPf0(size_t TargetLength);
-	DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength) override;
-private:
-	DragonianLibSTL::Vector<double> refined_f0;
 };
+
 _D_Dragonian_Lib_F0_Extractor_End

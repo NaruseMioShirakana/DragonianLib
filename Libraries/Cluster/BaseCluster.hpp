@@ -22,31 +22,36 @@
 #pragma once
 #include "MyTemplateLibrary/Vector.h"
 
-namespace DragonianLib
-{
-	/**
-	 * @class BaseCluster
-	 * @brief Base class for clustering algorithms
-	 */
+#define _D_Dragonian_Lib_Cluster_Namespace_Begin namespace DragonianLib { namespace Cluster {
+#define _D_Dragonian_Lib_Cluster_Namespace_End } }
+
+_D_Dragonian_Lib_Cluster_Namespace_Begin
+
+/**
+ * @class BaseCluster
+ * @brief Base class for clustering algorithms
+ */
 	class BaseCluster
-	{
-	public:
-		BaseCluster() = default;
-		virtual ~BaseCluster() = default;
+{
+public:
+	BaseCluster() = default;
+	virtual ~BaseCluster() = default;
 
-		/**
-		 * @brief Search for the nearest Points to the Point in the cluster of SpeakerId
-		 * @param Point Point that needs to be searched
-		 * @param SpeakerId SpeakerId of the cluster center vector
-		 * @param Count Count of the nearest Points
-		 * @return A vector of the nearest Points, Shape: [Count, Dimension]
-		 */
-		virtual DragonianLibSTL::Vector<float> Search(float* Point, long SpeakerId, int64_t Count = 1);
+	/**
+	 * @brief Search for the nearest Points to the Point in the cluster of SpeakerId
+	 * @param Point Point that needs to be searched
+	 * @param SpeakerId SpeakerId of the cluster center vector
+	 * @param Count Count of the nearest Points
+	 * @return A vector of the nearest Points, Shape: [Count, Dimension]
+	 */
+	virtual DragonianLibSTL::Vector<float> Search(float* Point, long SpeakerId, int64_t Count = 1);
 
-		BaseCluster(const BaseCluster&) = delete;
-		BaseCluster(BaseCluster&&) = delete;
-		BaseCluster operator=(const BaseCluster&) = delete;
-		BaseCluster operator=(BaseCluster&&) = delete;
-	};
-}
+private:
+	BaseCluster(const BaseCluster&) = delete;
+	BaseCluster(BaseCluster&&) = delete;
+	BaseCluster operator=(const BaseCluster&) = delete;
+	BaseCluster operator=(BaseCluster&&) = delete;
+};
+
+_D_Dragonian_Lib_Cluster_Namespace_End
 

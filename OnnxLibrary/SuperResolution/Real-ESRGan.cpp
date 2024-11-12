@@ -40,7 +40,7 @@ namespace DragonianLib
 			Destory();
 		}
 
-		DragonianLib::Image& RealESRGan::Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const
+		ImageVideo::Image& RealESRGan::Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const
 		{
 			size_t progress = 0;
 			//auto img = DragonianLib::ImageSlicer(_path, s_width, s_height, tile_pad, 0.f, false);

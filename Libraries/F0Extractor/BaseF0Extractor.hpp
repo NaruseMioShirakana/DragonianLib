@@ -20,13 +20,28 @@
 */
 
 #pragma once
-#include <cstdint>
 #include "MyTemplateLibrary/Vector.h"
 
-#define _D_Dragonian_Lib_F0_Extractor_Header namespace DragonianLib{
-#define _D_Dragonian_Lib_F0_Extractor_End }
+#define _D_Dragonian_Lib_F0_Extractor_Header namespace DragonianLib { namespace F0Extractor {
+#define _D_Dragonian_Lib_F0_Extractor_End } }
 
 _D_Dragonian_Lib_F0_Extractor_Header
+
+using namespace DragonianLibSTL;
+
+/**
+ * @struct F0ExtractorParams
+ * @brief Parameters for F0 extraction
+ */
+struct F0ExtractorParams
+{
+	long SamplingRate = 16000; ///< Sampling rate
+	long HopSize = 320; ///< Hop size
+	long F0Bins = 256; ///< Number of bins for F0
+	double F0Max = 1100.0; ///< Maximum F0
+	double F0Min = 50.0; ///< Minimum F0
+	void* UserParameter = nullptr; ///< User parameter
+};
 
 /**
  * @class BaseF0Extractor
@@ -35,46 +50,47 @@ _D_Dragonian_Lib_F0_Extractor_Header
 class BaseF0Extractor
 {
 public:
-
-    BaseF0Extractor() = delete;
-    BaseF0Extractor(int sampling_rate, int hop_size, int n_f0_bins = 256, double max_f0 = 1100.0, double min_f0 = 50.0);
+    BaseF0Extractor() = default;
     virtual ~BaseF0Extractor() = default;
-    BaseF0Extractor(const BaseF0Extractor&) = delete;
-    BaseF0Extractor(BaseF0Extractor&&) = delete;
-    BaseF0Extractor operator=(const BaseF0Extractor&) = delete;
-    BaseF0Extractor operator=(BaseF0Extractor&&) = delete;
-
-    /**
-	 * @brief Extract F0 from PCM data
-	 * @param PCMData PCM data
-	 * @param TargetLength Target length of F0
-	 * @return F0
-     */
-    virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<double>& PCMData, size_t TargetLength);
-
-	/**
-	 * @brief Extract F0 from PCM data
-	 * @param PCMData PCM data
-	 * @param TargetLength Target length of F0
-	 * @return F0
-	 */
-    virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<float>& PCMData, size_t TargetLength);
 
     /**
      * @brief Extract F0 from PCM data
      * @param PCMData PCM data
-     * @param TargetLength Target length of F0
+	 * @param Params Parameters for F0 extraction
      * @return F0
      */
-    virtual DragonianLibSTL::Vector<float> ExtractF0(const DragonianLibSTL::Vector<int16_t>& PCMData, size_t TargetLength);
-protected:
-    const uint32_t fs;
-    const uint32_t hop;
-    const uint32_t f0_bin;
-    const double f0_max;
-    const double f0_min;
-    double f0_mel_min;
-    double f0_mel_max;
+    virtual Vector<float> ExtractF0(
+        const Vector<double>& PCMData,
+		const F0ExtractorParams& Params
+    );
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data
+     * @param Params Parameters for F0 extraction
+     * @return F0
+     */
+    virtual Vector<float> ExtractF0(
+        const Vector<float>& PCMData,
+        const F0ExtractorParams& Params
+    );
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data
+     * @param Params Parameters for F0 extraction
+     * @return F0
+     */
+    virtual Vector<float> ExtractF0(
+        const Vector<int16_t>& PCMData,
+        const F0ExtractorParams& Params
+    );
+
+private:
+    BaseF0Extractor(const BaseF0Extractor&) = delete;
+    BaseF0Extractor(BaseF0Extractor&&) = delete;
+    BaseF0Extractor operator=(const BaseF0Extractor&) = delete;
+    BaseF0Extractor operator=(BaseF0Extractor&&) = delete;
 };
 
 _D_Dragonian_Lib_F0_Extractor_End

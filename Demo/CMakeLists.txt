@@ -7,13 +7,7 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 
-if(DRAGONIANLIBORTDEMO)
-	#message("Build Ort Demo")
-	add_executable(${DRAGONIANLIBDEMOEXE} "mainort.cpp")
-else()
-	#message("Build Lib Demo")
-	add_executable(${DRAGONIANLIBDEMOEXE} "main.cpp")
-endif()
+add_executable(${DRAGONIANLIBDEMOEXE} "main.cpp")
 
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
@@ -41,8 +35,6 @@ else()
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
 endif()
-
-message(${DRAGONIANLIB_LIBRARIES})
 
 target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_LIBRARIES})
 target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_INCLUDE_DIRS}) 

@@ -31,7 +31,7 @@ namespace DragonianLib
             RealESRGan(const Hparams& _Config, ProgressCallback _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider);
             ~RealESRGan() override;
 
-            DragonianLib::Image& Infer(DragonianLib::Image& _Image, int64_t _BatchSize) const override;
+            ImageVideo::Image& Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const override;
         private:
             void Destory();
             RealESRGan(const RealESRGan&) = delete;

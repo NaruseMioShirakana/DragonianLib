@@ -2,8 +2,8 @@
 
 #Version
 set(DRAGONIANLIB_VERSION_MAJOR 1)
-set(DRAGONIANLIB_VERSION_MINOR 0)
-set(DRAGONIANLIB_VERSION_PATCH 2)
+set(DRAGONIANLIB_VERSION_MINOR 1)
+set(DRAGONIANLIB_VERSION_PATCH 0)
 
 #Global Visual Studio Macros
 add_definitions(-DUNICODE)
@@ -11,16 +11,23 @@ add_definitions(-D_UNICODE)
 add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 
 #DragonianLib Build Options
-option(DRAGONIANLIB_DML                     "dml backend"         OFF)
-option(DRAGONIANLIB_CUDA                    "cuda backend"        OFF)
-option(DRAGONIANLIB_ROCM                    "rocm backend"        OFF)
-option(DRAGONIANLIB_SHARED_LIBS             "build shared libs"   OFF)
-option(DRAGONIANLIB_ONNXRUNTIME             "build ort libs"      ON)
-option(DRAGONIANLIB_TENSORRT                "build trt libs"      OFF)
-option(DRAGONIANLIB_STATIC_FFMPEG           "use static ffmpeg"   ON)
-option(DRAGONIANLIB_BUILD_DEMO              "build demo"          ON)
+option(DRAGONIANLIB_DML									"dml backend"									OFF)
+option(DRAGONIANLIB_CUDA								"cuda backend"									OFF)
+option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
+option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
+option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				ON)
+option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		ON)
+option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					ON)
+option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			ON)
+option(DRAGONIANLIB_TENSORRT							"build trt libs"								OFF)
+option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
+option(DRAGONIANLIB_BUILD_DEMO							"build demo"									ON)
 if(DRAGONIANLIB_TENSORRT)
 	set(DRAGONIANLIB_CUDA ON)
+endif()
+set(DRAGONIANLIB_ONNXRUNTIME OFF)
+if(DRAGONIANLIB_ORT_SUPER_RESOLUTION OR DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION OR DRAGONIANLIB_ORT_TEXT_TO_SPEECH OR DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION)
+	set(DRAGONIANLIB_ONNXRUNTIME ON)
 endif()
 
 #DragonianLib Configs
@@ -264,9 +271,11 @@ if(DRAGONIANLIB_SHARED_LIBS)
 endif()
 add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 
+message("Project Name: "${DRAGONIANLIB_LIB})
+
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-	message("Build Release")
+	message("Build Type: \"Release\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
 		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
@@ -276,7 +285,7 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
         /LTCG
     )
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-	message("Build RelWithDebInfo")
+	message("Build Type: \"RelWithDebInfo\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
 		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
@@ -286,14 +295,13 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
         /LTCG
     )
 else()
-	message("Build Debug")
+	message("Build Type: \"Debug\"")
 	add_definitions(-DDRAGONIANLIB_DEBUG)
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental
 	)
 endif()
-
 #Link Libraries
 if(DEFINED FFMPEG_LIBRARIES)
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${FFMPEG_LIBRARIES})
@@ -362,11 +370,14 @@ target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR}/Ten
 target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR}/Libraries)
 
 if(DRAGONIANLIB_ONNXRUNTIME)
+	message("")
+	message("OnnxRuntime Libraries: Enabled")
 	add_definitions(-DDRAGONIANLIB_ONNXRT_LIB)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${ONNXRUNTIME_INCLUDE_DIRS})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${ONNXRUNTIME_LIBRARIES})
 	add_subdirectory(OnnxLibrary)
 	set(DRAGONIANLIB_ORT_LIB ${DRAGONIANLIB_LIB}OrtLib)
+	message("")
 endif()
 
 if(DRAGONIANLIB_TENSORRT)

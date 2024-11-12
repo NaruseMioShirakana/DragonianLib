@@ -818,4 +818,99 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 	}
 }
 
+template <typename _Type>
+struct ArangeParams
+{
+	_Type _Start;
+	_Type _Step;
+	const _Type* _DestBegin;
+};
+
+template<typename _Type>
+void ArangeImpCont(
+	_Type* _Dest,
+	SizeType DestSize,
+	ArangeParams<_Type> _Value
+)
+{
+	const auto Index = _Dest - _Value._DestBegin;
+	_Dest[0] = _Value._Start + _Type(Index) * _Value._Step;
+
+	constexpr int64_t OpThroughput = 2;
+	constexpr int64_t Stride = int64_t(sizeof(__m256) / sizeof(_Type));
+	constexpr int64_t LoopStride = OpThroughput * Stride;
+
+	int64_t i = 0;
+	if constexpr (_Impl_Dragonian_Lib_Is_Avx256_Supported_v<_Type>)
+	{
+		if(DestSize >= LoopStride)
+		{
+			for (int64_t j = 1; j < LoopStride; ++j)
+				_Dest[j] = _Dest[j - 1] + _Value._Step;
+
+			Vectorized<_Type> _VectorizedValue1(_Dest);
+			Vectorized<_Type> _VectorizedValue2(_Dest + Stride);
+			Vectorized<_Type> _VectorizedStep1(_Value._Step * LoopStride);
+			Vectorized<_Type> _VectorizedStep2(_Value._Step * LoopStride);
+			for (; i < DestSize - LoopStride; i += LoopStride)
+			{
+				_VectorizedValue1.Store(_Dest + i);
+				_VectorizedValue2.Store(_Dest + i + Stride);
+				_VectorizedValue1 += _VectorizedStep1;
+				_VectorizedValue2 += _VectorizedStep2;
+			}
+		}
+	}
+	else
+	{
+		if (DestSize >= LoopStride)
+		{
+			for (int64_t j = 1; j < LoopStride; ++j)
+				_Dest[j] = _Dest[j - 1] + _Value._Step;
+			for (; i < DestSize - LoopStride; i += LoopStride)
+				for (int64_t j = 0; j < LoopStride; ++j)
+					_Dest[i + j] = _Dest[i + j - 1] + _Value._Step;
+		}
+	}
+	for (; i < DestSize; ++i)
+		_Dest[i] = _Dest[i - 1] + _Value._Step;
+}
+
+template<typename _Type>
+void ArangeImp(
+	_Type* _Dest,
+	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	ArangeParams<_Type> Settings
+)
+{
+	_D_Dragonian_Lib_Not_Implemented_Error;
+}
+
+template<typename _Type>
+void OperatorsBase<_Type, Device::CPU>::ImplArange(
+	_Type* _Dest,
+	const OperatorParameter& _DestInfo,
+	const _Type& _Start,
+	const _Type& _Step,
+	bool Continuous
+)
+{
+	if constexpr (!_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>)
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	else
+	{
+		if (!Continuous)
+			_D_Dragonian_Lib_Not_Implemented_Error;
+		ArangeParams<_Type> _Value = { _Start, _Step, _Dest };
+		ImplMultiThreadSingle<_Type, ArangeParams<_Type>>(
+			_Dest,
+			_DestInfo,
+			_Value,
+			Continuous,
+			ArangeImp<_Type>,
+			ArangeImpCont<_Type>
+		);
+	}
+}
+
 _D_Dragonian_Lib_Operator_Space_End

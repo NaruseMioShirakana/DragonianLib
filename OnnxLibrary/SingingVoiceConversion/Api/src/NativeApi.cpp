@@ -42,8 +42,8 @@ using Config = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams;
 using VitsSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VitsSvc;
 using DiffusionSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space DiffusionSvc;
 using ReflowSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ReflowSvc;
-using ClusterBase = DragonianLib::BaseCluster;
-using TensorExtractorBase = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcTensorExtractor;
+using ClusterBase = DragonianLib::Cluster::BaseCluster;
+using TensorExtractorBase = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space TensorExtractor::LibSvcTensorExtractor;
 using ProgressCallback = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ProgressCallback;
 using ExecutionProvider = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders;
 using Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleAudio;
@@ -131,7 +131,25 @@ void InitLibSvcParams(
 	_Input->VocoderHopSize = 512;
 	_Input->VocoderMelBins = 128;
 	_Input->VocoderSamplingRate = 44100;
+	_Input->F0Bins = 256;	///< F0 bins		
+	_Input->F0Max = 1100.0;  ///< F0 max
+	_Input->F0Min = 50.0;   ///< F0 min
+	_Input->F0ExtractorUserParameter = nullptr;   ///< F0 extractor user parameter
 	_Input->__DEBUG__MODE__ = 0;
+}
+
+void InitLibSvcF0ExtractorSetting(
+	LibSvcF0ExtractorSetting* _Input
+)
+{
+	_Input->HopSize = 480;
+	_Input->SamplingRate = 48000;
+	_Input->F0Bins = 256;
+	_Input->F0Max = 1100.0;
+	_Input->F0Min = 50.0;
+	_Input->UserParameter = nullptr;
+	_Input->ModelPath = LibSvcNullString;
+	_Input->Env = nullptr;
 }
 
 void InitLibSvcSlicerSettings(
@@ -454,7 +472,7 @@ void LibSvcSetLoggerFunction(
 
 void LibSvcInit()
 {
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SetupKernel();
+	
 }
 
 void LibSvcFreeString(BSTR _String)
@@ -579,8 +597,7 @@ INT32 LibSvcSliceAudio(
 INT32 LibSvcPreprocessI16(
 	LibSvcCInt16Vector _Audio,
 	LibSvcCUInt64Vector _SlicePos,
-	INT32 _SamplingRate,
-	INT32 _HopSize,
+	const LibSvcF0ExtractorSetting* _Settings,
 	double _Threshold,
 	const wchar_t* _F0Method,
 	LibSvcSlicesType _Output
@@ -624,9 +641,19 @@ INT32 LibSvcPreprocessI16(
 
 		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
 			Ret,
-			_SamplingRate,
-			_HopSize,
-			_F0Method
+			{
+				_Settings->SamplingRate,
+				_Settings->HopSize,
+				_Settings->F0Bins,
+				_Settings->F0Max,
+				_Settings->F0Min,
+				_Settings->UserParameter,
+			},
+			_F0Method,
+			{
+				_Settings->ModelPath,
+				_Settings->Env
+			}
 		);
 	}
 	catch (std::exception& e)
@@ -640,8 +667,7 @@ INT32 LibSvcPreprocessI16(
 INT32 LibSvcPreprocess(
 	LibSvcCFloatVector _Audio,
 	LibSvcCUInt64Vector _SlicePos,
-	INT32 _SamplingRate,
-	INT32 _HopSize,
+	const LibSvcF0ExtractorSetting* _Settings,
 	double _Threshold,
 	const wchar_t* _F0Method,
 	LibSvcSlicesType _Output
@@ -680,9 +706,19 @@ INT32 LibSvcPreprocess(
 
 		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
 			Ret,
-			_SamplingRate,
-			_HopSize,
-			_F0Method
+			{
+				_Settings->SamplingRate,
+				_Settings->HopSize,
+				_Settings->F0Bins,
+				_Settings->F0Max,
+				_Settings->F0Min,
+				_Settings->UserParameter,
+			},
+			_F0Method,
+			{
+				_Settings->ModelPath,
+				_Settings->Env
+			}
 		);
 	}
 	catch (std::exception& e)
@@ -854,6 +890,10 @@ INT32 LibSvcInferSlice(
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
 		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter,
 		{},
 		{},
 		{},
@@ -938,6 +978,10 @@ INT32 LibSvcInferAudio(
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
 		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter,
 		{},
 		{},
 		{},
@@ -1019,6 +1063,10 @@ INT32 LibSvcInferPCMData(
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
 		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter,
 		{},
 		{},
 		{},
@@ -1133,6 +1181,10 @@ INT32 LibSvcShallowDiffusionInference(
 		_InferParams->VocoderHopSize,
 		_InferParams->VocoderMelBins,
 		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter,
 		{},
 		{},
 		{},
@@ -1348,82 +1400,14 @@ LibSvcVocoderModel LibSvcLoadVocoder(
 	}
 }
 
-INT32 LibSvcLoadRmvPE(
-	LPCWSTR Path,
+INT32 LibSvcUnloadCachedModel(
+	LPCWSTR ModelPath,
 	LibSvcEnv _Env
 )
 {
-	if (!Path)
+	if (!ModelPath)
 	{
-		RaiseError(L"Path Could Not Be Null");
-		return 1;
-	}
-
-	if (!_Env)
-	{
-		RaiseError(L"_Env Could Not Be Null");
-		return 1;
-	}
-
-	try
-	{
-		LoadRMVPEModel(Path, *(DragonianLib::DragonianLibOrtEnv*)_Env);
-		return 0;
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-}
-
-void LibSvcUnloadRMVPE()
-{
-	DragonianLib::UnloadRMVPEModel();
-}
-
-INT32 LibSvcLoadFCPE(
-	LPCWSTR Path,
-	LibSvcEnv _Env
-)
-{
-	if (!Path)
-	{
-		RaiseError(L"Path Could Not Be Null");
-		return 1;
-	}
-
-	if (!_Env)
-	{
-		RaiseError(L"_Env Could Not Be Null");
-		return 1;
-	}
-
-	try
-	{
-		LoadFCPEModel(Path, *(DragonianLib::DragonianLibOrtEnv*)_Env);
-		return 0;
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-}
-
-void LibSvcUnloadFCPE()
-{
-	DragonianLib::UnloadFCPEModel();
-}
-
-INT32 LibSvcUnloadVocoder(
-	LPCWSTR VocoderPath,
-	LibSvcEnv _Env
-)
-{
-	if (!VocoderPath)
-	{
-		RaiseError(L"VocoderPath Could Not Be Null");
+		RaiseError(L"ModelPath Could Not Be Null");
 		return 1;
 	}
 
@@ -1436,7 +1420,7 @@ INT32 LibSvcUnloadVocoder(
 	try
 	{
 		DragonianLib::DragonianLibOrtEnv::UnRefOrtCachedModel(
-			VocoderPath,
+			ModelPath,
 			*(DragonianLib::DragonianLibOrtEnv*)_Env
 		);
 	}

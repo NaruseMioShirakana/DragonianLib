@@ -409,7 +409,7 @@ public:
 		_Impl_Dragonian_Lib_And_v<
 		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
 		std::is_constructible_v<_CurValueType, ValueType>>,
-		Tensor> New(ValueType _Val)
+		Tensor> NewScalar(const ValueType& _Val)
 	{
 		return Tensor({ 1 }, _Val);
 	}
@@ -647,8 +647,29 @@ public:
 	static constexpr std::enable_if_t<
 		_Impl_Dragonian_Lib_And_v<
 		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_CurValueType, ValueType>,
-		_Impl_Dragonian_Lib_Is_Arithmetic_v<_CurValueType>>,
-		Tensor> Arange(Float64 _Begin, Float64 _End, Float64 _Step);
+		Operators::_Impl_Dragonian_Lib_Has_Add_Operator_v<_CurValueType> &&
+		Operators::_Impl_Dragonian_Lib_Has_Mul_Operator_v<_CurValueType> &&
+		std::is_move_assignable_v<_CurValueType>&&
+		std::is_constructible_v<ValueType>>,
+		Tensor> Arange(ValueType _Begin, ValueType _End, ValueType _Step)
+	{
+		if (_Step == ValueType(0))
+			_D_Dragonian_Lib_Throw_Exception("Step Can't Be Zero!");
+		auto _Count = static_cast<SizeType>((_End - _Begin) / _Step);
+		if (_Count <= 0)
+			_D_Dragonian_Lib_Throw_Exception("End Must Be Greater Than Begin!");
+		if constexpr (_Impl_Dragonian_Lib_Is_Floating_Point_v<ValueType>)
+			if(std::isnan(_Count))
+				_D_Dragonian_Lib_Throw_Exception("Invalid Range!");
+		Tensor Ret = New({ _Count });
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplArange(
+			Ret._MyData,
+			Ret.GetDefaultOperatorParameter(),
+			_Begin, _Step,
+			!Ret.IsBroadCasted() && Ret.IsContinuous()
+		);
+		return Ret;
+	}
 
 private:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool AllocateMemory(const Dimensions& MyShape, Allocator MyAlloc)
