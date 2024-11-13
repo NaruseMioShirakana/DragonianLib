@@ -14,20 +14,32 @@ add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 option(DRAGONIANLIB_DML									"dml backend"									OFF)
 option(DRAGONIANLIB_CUDA								"cuda backend"									OFF)
 option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
-option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
+
 option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				ON)
 option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		ON)
 option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					ON)
 option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			ON)
-option(DRAGONIANLIB_TENSORRT							"build trt libs"								OFF)
+
+option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				ON)
+option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		ON)
+option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					ON)
+option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			ON)
+
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
+option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
 option(DRAGONIANLIB_BUILD_DEMO							"build demo"									ON)
-if(DRAGONIANLIB_TENSORRT)
-	set(DRAGONIANLIB_CUDA ON)
-endif()
+
 set(DRAGONIANLIB_ONNXRUNTIME OFF)
 if(DRAGONIANLIB_ORT_SUPER_RESOLUTION OR DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION OR DRAGONIANLIB_ORT_TEXT_TO_SPEECH OR DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION)
 	set(DRAGONIANLIB_ONNXRUNTIME ON)
+endif()
+
+if(DRAGONIANLIB_TRT_SUPER_RESOLUTION OR DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION OR DRAGONIANLIB_TRT_TEXT_TO_SPEECH OR DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION)
+	set(DRAGONIANLIB_TENSORRT ON)
+endif()
+
+if(DRAGONIANLIB_TENSORRT)
+	set(DRAGONIANLIB_CUDA ON)
 endif()
 
 #DragonianLib Configs
@@ -232,6 +244,9 @@ if(DRAGONIANLIB_TENSORRT)
 	endif()
 endif()
 
+message(">--------------------------------------DragonianLib--------------------------------------<")
+message("")
+
 #Output Directories
 if(DRAGONIANLIB_SHARED_LIBS)
 	set(DRAGONIANLIB_TYPE_DIR "Shared")
@@ -310,6 +325,10 @@ else()
 	message(FATAL_ERROR "FFMPEG Libraries Not Found")
 endif()
 
+if(WIN32)
+	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC winmm.lib)
+endif()
+
 if(DEFINED LIBREMIDI_LIBRARIES)
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${LIBREMIDI_LIBRARIES})
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${LIBREMIDI_INCLUDE_DIRS})
@@ -381,11 +400,14 @@ if(DRAGONIANLIB_ONNXRUNTIME)
 endif()
 
 if(DRAGONIANLIB_TENSORRT)
+	message("")
+	message("TensorRT Libraries: Enabled")
 	add_definitions(-DDRAGONIANLIB_TENSORRT_LIB)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${TENSORRT_INCLUDE_DIRS})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${TENSORRT_LIBRARIES})
-
+	add_subdirectory(TensorRT)
 	set(DRAGONIANLIB_TRT_LIB ${DRAGONIANLIB_LIB}TRTLib)
+	message("")
 endif()
 
 #C++ Standard
@@ -509,6 +531,9 @@ if(DRAGONIANLIB_TENSORRT)
 	)
 endif()
 
+message(">--------------------------------------DragonianLib--------------------------------------<")
+message("")
+
 #Build Demo
 if (DRAGONIANLIB_BUILD_DEMO)
 	if(DRAGONIANLIB_ONNXRUNTIME)
@@ -516,3 +541,4 @@ if (DRAGONIANLIB_BUILD_DEMO)
 	endif()
 	add_subdirectory(Demo)
 endif()
+

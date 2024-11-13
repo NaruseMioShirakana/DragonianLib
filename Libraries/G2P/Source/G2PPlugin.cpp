@@ -16,11 +16,12 @@ void BasicG2P::Initialize(const void* Parameter)
 {
 	_MyInstance = _MyPlugin->GetInstance(Parameter);
 	_MyConvert = (G2PApiType)_MyPlugin->GetFunction("Convert", true);
+	_MyGetExtraInfo = (G2PGetExtraInfoType)_MyPlugin->GetFunction("GetExtraInfo");
 }
 
 void BasicG2P::Release()
 {
-
+	_MyPlugin->DestoryInstance(_MyInstance);
 }
 
 std::pair<Vector<std::wstring>, Vector<Int64>> BasicG2P::Convert(
@@ -30,19 +31,21 @@ std::pair<Vector<std::wstring>, Vector<Int64>> BasicG2P::Convert(
 )
 {
 	std::lock_guard Lock(_MyMutex);
-	Vector<std::wstring> Result;
+	Vector<std::wstring> Result1;
+	Vector<Int64> Result2;
 	auto PhonemeList = _MyConvert(
 		_MyInstance,
 		InputText.c_str(),
 		LanguageID.c_str(),
 		UserParameter
 	);
-	while (*PhonemeList)
+	while (wcscmp(PhonemeList->Phoneme, L"[EOS]") != 0 && PhonemeList->Tone != INT64_MAX)
 	{
-		Result.EmplaceBack(*PhonemeList);
-		PhonemeList += 2;
+		Result1.EmplaceBack(PhonemeList->Phoneme);
+		Result2.EmplaceBack(PhonemeList->Tone);
+		++PhonemeList;
 	}
-	return Result;
+	return { std::move(Result1), std::move(Result2) };
 }
 
 _D_Dragonian_Lib_G2P_End

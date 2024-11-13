@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <mutex>
 #include "Base.h"
 #include "MyTemplateLibrary/Vector.h"
 #define _D_Dragonian_Lib_G2P_Header _D_Dragonian_Lib_Space_Begin namespace G2P {
@@ -21,11 +22,14 @@ public:
 		const void* UserParameter = nullptr
 	) = 0;
 
+	virtual std::pair<std::unique_lock<std::mutex>, void*> GetExtraInfo() = 0;
+
 protected:
 	void Construct(const void* Parameter);
 	void Destory();
 	virtual void Initialize(const void* Parameter) = 0;
 	virtual void Release() = 0;
+	std::mutex _MyMutex;
 
 private:
 	G2PBase(const G2PBase&) = delete;

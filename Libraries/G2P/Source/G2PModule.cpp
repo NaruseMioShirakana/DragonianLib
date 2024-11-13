@@ -35,10 +35,11 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	if (RegisteredG2PModules.contains(_PluginName))
 		return;
 	const auto PluginPath = _PluginRootDirectory + L"\\" + _PluginName;
+	const auto _PluginFileName = _PluginName.substr(0, _PluginName.find_last_of('.'));
 	try
 	{
-		auto Plugin = Plugin::LoadPlugin(PluginPath);
-		RegisteredG2PModules.emplace(_PluginName, [Plugin](const void* UserParameter) -> G2PModule {
+		auto Plugin = std::make_shared<Plugin::MPlugin>(PluginPath);
+		RegisteredG2PModules.emplace(_PluginFileName, [Plugin](const void* UserParameter) -> G2PModule {
 			return std::make_shared<BasicG2P>(UserParameter, Plugin);
 			});
 	}
@@ -46,7 +47,7 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	G2PModulesList.emplace_back(_PluginName);
+	G2PModulesList.emplace_back(_PluginFileName);
 }
 
 void RegisterG2PModule(const std::wstring& _PluginRootDirectory)
@@ -104,5 +105,8 @@ const std::vector<std::wstring>& GetG2PModuleList()
 {
 	return G2PModulesList;
 }
+
+struct Init { Init() { RegisterG2PModule(GetCurrentFolder() + L"/Plugins/G2P"); } };
+Init _Init;
 
 _D_Dragonian_Lib_G2P_End

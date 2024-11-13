@@ -13,7 +13,7 @@ namespace Plugin
 
 	MPlugin::MPlugin(const std::wstring& RelativePath) : _MyLibrary(MyLoadLibrary(RelativePath), Free)
 	{
-		_MyGetInstance = (GetInstanceFunc)GetFunction("GetInstance", true);
+		_MyGetInstance = (GetInstanceFunc)GetFunction("CreateInstance", true);
 		_MyDestoryInstance = (DestoryInstanceFunc)GetFunction("DestoryInstance", true);
 	}
 

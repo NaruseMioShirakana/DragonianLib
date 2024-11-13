@@ -40,10 +40,11 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	if (RegisteredF0Extractors.contains(_PluginName))
 		return;
 	const auto PluginPath = _PluginRootDirectory + L"\\" + _PluginName;
+	const auto _PluginFileName = _PluginName.substr(0, _PluginName.find_last_of('.'));
 	try
 	{
-		auto Plugin = Plugin::LoadPlugin(PluginPath);
-		RegisteredF0Extractors.emplace(_PluginName, [Plugin](const void* UserParameter) -> F0Extractor {
+		auto Plugin = std::make_shared<Plugin::MPlugin>(PluginPath);
+		RegisteredF0Extractors.emplace(_PluginFileName, [Plugin](const void* UserParameter) -> F0Extractor {
 			return std::make_shared<PluginF0Extractor>(Plugin, UserParameter);
 			});
 	}
@@ -51,7 +52,7 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	F0ExtractorsList.emplace_back(_PluginName);
+	F0ExtractorsList.emplace_back(_PluginFileName);
 }
 
 void RegisterF0Extractor(const std::wstring& _PluginRootDirectory)

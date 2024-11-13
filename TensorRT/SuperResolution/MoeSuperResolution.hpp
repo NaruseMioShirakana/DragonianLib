@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: MoeSuperResolution.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -18,37 +18,38 @@
 */
 
 #pragma once
-#include "../TRTBase.hpp"
+#include "../TensorRTBase/TRTBase.hpp"
 #include "Image-Video/ImgVideo.hpp"
 
+#define _D_Dragonian_Lib_TRT_Sr_Space_Header _D_Dragonian_TensorRT_Lib_Space_Header namespace SuperResolution {
+#define _D_Dragonian_Lib_TRT_Sr_Space_End } _D_Dragonian_TensorRT_Lib_Space_End
 
-namespace tlibsr
+_D_Dragonian_Lib_TRT_Sr_Space_Header
+
+class MoeSR
 {
-    using namespace TensorRTLib;
+public:
+    MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSettings, ProgressCallback _Callback);
+    ~MoeSR();
 
-    class MoeSR
-    {
-    public:
-        MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSettings, ProgressCallback _Callback);
-        ~MoeSR();
+    ImageVideo::Image& Infer(ImageVideo::Image& _Image, const InferenceDeviceBuffer& _Buffer, int64_t _BatchSize) const;
+private:
+    MoeSR(const MoeSR&) = delete;
+    MoeSR(MoeSR&&) = delete;
+    MoeSR& operator=(const MoeSR&) = delete;
+    MoeSR& operator=(MoeSR&&) = delete;
 
-        DragonianLib::Image& Infer(DragonianLib::Image& _Image, const InferenceDeviceBuffer& _Buffer, int64_t _BatchSize) const;
-    private:
-        MoeSR(const MoeSR&) = delete;
-        MoeSR(MoeSR&&) = delete;
-        MoeSR& operator=(const MoeSR&) = delete;
-        MoeSR& operator=(MoeSR&&) = delete;
-
-        ProgressCallback Callback_;
-        std::unique_ptr<TrtModel> Model = nullptr;
-        long ScaleFactor = 2;
-        DragonianLibSTL::Vector<DynaShapeSlice> DynaSetting{
-	        {
-	        	"DynaArg0",
-	            nvinfer1::Dims4(1, 3, 64, 64),
-	            nvinfer1::Dims4(1, 3, 64, 64),
-	            nvinfer1::Dims4(1, 3, 64, 64)
-	        }
-        };
+    ProgressCallback Callback_;
+    std::unique_ptr<TrtModel> Model = nullptr;
+    long ScaleFactor = 2;
+    DragonianLibSTL::Vector<DynaShapeSlice> DynaSetting{
+        {
+            "DynaArg0",
+            nvinfer1::Dims4(1, 3, 64, 64),
+            nvinfer1::Dims4(1, 3, 128, 128),
+            nvinfer1::Dims4(1, 3, 192, 192)
+        }
     };
-}
+};
+
+_D_Dragonian_Lib_TRT_Sr_Space_End

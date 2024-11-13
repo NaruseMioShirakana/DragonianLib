@@ -39,10 +39,11 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	if (RegisteredCluster.contains(_PluginName))
 		return;
 	const auto PluginPath = _PluginRootDirectory + L"\\" + _PluginName;
+	const auto _PluginFileName = _PluginName.substr(0, _PluginName.find_last_of('.'));
 	try
 	{
-		auto Plugin = Plugin::LoadPlugin(PluginPath);
-		RegisteredCluster.emplace(_PluginName, [Plugin](const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize) -> Cluster {
+		auto Plugin = std::make_shared<Plugin::MPlugin>(PluginPath);
+		RegisteredCluster.emplace(_PluginFileName, [Plugin](const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize) -> Cluster {
 			return std::make_shared<PluginCluster>(
 				Plugin, PluginClusterInfo{ ClusterFile, ClusterDimension, ClusterSize }
 			);
@@ -52,7 +53,7 @@ void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	ClusterList.emplace_back(_PluginName);
+	ClusterList.emplace_back(_PluginFileName);
 }
 
 void RegisterCluster(const std::wstring& _PluginRootDirectory)
