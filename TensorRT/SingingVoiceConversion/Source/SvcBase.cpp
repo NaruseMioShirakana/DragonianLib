@@ -1,4 +1,4 @@
-#include "../SvcBase.hpp"
+﻿#include "../SvcBase.hpp"
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
 
@@ -269,14 +269,14 @@ DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<fl
 	return Of0;
 }
 
-DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<int16_t>& _Audio, int _HopSize)
+DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float>& _Audio, int _HopSize)
 {
 	DragonianLibSTL::Vector<double> Audio;
 	Audio.Reserve(_Audio.Size() * 2);
-	Audio.Insert(Audio.end(), _HopSize, double(_Audio[0]) / 32768.);
+	Audio.Insert(Audio.end(), _HopSize, double(_Audio[0]));
 	for (const auto i : _Audio)
-		Audio.EmplaceBack((double)i / 32768.);
-	Audio.Insert(Audio.end(), _HopSize, double(_Audio[_Audio.Size() - 1]) / 32768.);
+		Audio.EmplaceBack((double)i);
+	Audio.Insert(Audio.end(), _HopSize, double(_Audio[_Audio.Size() - 1]));
 	const size_t n_frames = (_Audio.Size() / _HopSize) + 1;
 	DragonianLibSTL::Vector<float> volume(n_frames);
 	for (auto& i : Audio)
@@ -290,7 +290,7 @@ DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<int16
 	return volume;
 }
 
-SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<int16_t>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold)
+SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold)
 {
 	SingleAudio audio_slice;
 	for (size_t i = 1; i < _SlicePos.Size(); i++)

@@ -18,46 +18,22 @@
 */
 
 #pragma once
-#include <vector>
 #include <string>
-#include <unordered_map>
+#include <regex>
+#include "MyTemplateLibrary/Vector.h"
 
 namespace DragonianLib
 {
 	namespace PreDefinedRegex
 	{
-		static constexpr wchar_t _Valdef_Regex_Chinese_And_Japanese[] = LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF])";
-		static constexpr wchar_t _Valdef_Regex_Chinese_And_Japanese_String[] = LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]+)";
-		static constexpr wchar_t _Valdef_Regex_All_Symbol[] = L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]";
-		static constexpr wchar_t _Valdef_Regex_All_Symbol_Group[] = L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]+";
-	}
-
-	namespace PreDefinedReplaceMap
-	{
-		static inline const std::unordered_map<std::wstring, std::wstring> _PUNCTUATION_MAP{
-			{ L"：", L"," }, { L"；", L"," }, { L"，", L"," }, { L"。", L"." }, { L"！", L"!" }, { L"？", L"?" },
-			{ L"·", L"," }, { L"、", L"," }, { L"...", L"…" }, { L"$", L"." }, { L"“", L"'" },
-			{ L"”", L"'" }, { L"‘", L"'" }, { L"’", L"'" }, { L"（", L"'" }, { L"）", L"'" }, { L"(", L"'" },
-			{ L")", L"'" }, { L"《", L"'" }, { L"》", L"'" }, { L"【", L"'" }, { L"】", L"'" }, { L"[", L"'" },
-			{ L"]", L"'" }, { L"—", L"-" }, { L"～", L"-" }, { L"~", L"-" }, { L"「", L"'" }, { L"」", L"'" }
-		};
-		static inline const std::unordered_map<std::wstring, std::wstring> _ALPHASYMBOL_MAP{
-			{L"#", L"シャープ"}, { L"%", L"パーセント" }, { L"&", L"アンド" }, { L"+", L"プラス" }, { L"-", L"マイナス" },
-			{ L":", L"コロン" }, { L";", L"セミコロン" }, { L"<", L"小なり" }, { L"=", L"イコール" }, { L">", L"大なり" },
-			{ L"@", L"アット" }, { L"a", L"エー" }, { L"b", L"ビー" }, { L"c", L"シー" }, { L"d", L"ディー" },
-			{ L"e", L"イー" }, { L"f", L"エフ" }, { L"g", L"ジー" }, { L"h", L"エイチ" }, { L"i", L"アイ" },
-			{ L"j", L"ジェー" }, { L"k", L"ケー" }, { L"l", L"エル" }, { L"m", L"エム" }, { L"n", L"エヌ" },
-			{ L"o", L"オー" }, { L"p", L"ピー" }, { L"q", L"キュー" }, { L"r", L"アール" }, { L"s", L"エス" },
-			{ L"t", L"ティー" }, { L"u", L"ユー" }, { L"v", L"ブイ" }, { L"w", L"ダブリュー" }, { L"x", L"エックス" },
-			{ L"y", L"ワイ" }, { L"z", L"ゼット" }, { L"α", L"アルファ" }, { L"β", L"ベータ" }, { L"γ", L"ガンマ" },
-			{ L"δ", L"デルタ" }, { L"ε", L"イプシロン" }, { L"ζ", L"ゼータ" }, { L"η", L"イータ" }, { L"θ", L"シータ" },
-			{ L"ι", L"イオタ" }, { L"κ", L"カッパ" }, { L"λ", L"ラムダ" }, { L"μ", L"ミュー" }, { L"ν", L"ニュー" },
-			{ L"ξ", L"クサイ" }, { L"ο", L"オミクロン" }, { L"π", L"パイ" }, { L"ρ", L"ロー" }, { L"σ", L"シグマ" },
-			{ L"τ", L"タウ" }, { L"υ", L"ウプシロン" }, { L"φ", L"ファイ" },{ L"χ", L"カイ" }, { L"ψ", L"プサイ" },
-			{ L"ω", L"オメガ", } };
-		static inline const std::vector<std::pair<std::wstring, std::wstring>> _CURRENCY_MAP{
-			{L"\\$", L"ドル"}, { L"¥", L"円" }, { L"£", L"ポンド" }, { L"€", L"ユーロ" }
-		};
+		static inline auto _Valdef_Regex_Chinese_And_Japanese =
+			std::wregex(LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF])");
+		static inline auto _Valdef_Regex_Chinese_And_Japanese_String =
+			std::wregex(LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]+)");
+		static inline auto _Valdef_Regex_All_Symbol =
+			std::wregex(L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]");
+		static inline auto _Valdef_Regex_All_Symbol_Group =
+			std::wregex(L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]+");
 	}
 
 	std::string WideStringToUTF8(const std::wstring& input);
@@ -66,12 +42,12 @@ namespace DragonianLib
 
 	std::wstring UTF8ToWideString(const std::string& input);
 
-	std::wstring SerializeStringVector(const std::vector<std::string>& vector);
+	std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::string>& vector);
 
-	std::wstring SerializeStringVector(const std::vector<std::wstring>& vector);
+	std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::wstring>& vector);
 
 	template <typename T>
-	std::wstring SerializeVector(const std::vector<T>& vector)
+	std::wstring SerializeVector(const DragonianLibSTL::Vector<T>& vector)
 	{
 		std::wstring vecstr = L"[";
 		for (const auto& it : vector)

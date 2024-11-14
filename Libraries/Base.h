@@ -664,4 +664,19 @@ public:
 private:
 	FILE* file_ = nullptr;
 };
+
+template <typename _Func>
+struct TidyGuard
+{
+	TidyGuard() = delete;
+	TidyGuard(_Func Fn) : Fn_(Fn) {}
+	~TidyGuard() { Fn_(); }
+private:
+	_Func Fn_;
+	TidyGuard(const TidyGuard&) = delete;
+	TidyGuard& operator=(const TidyGuard&) = delete;
+	TidyGuard(TidyGuard&&) = delete;
+	TidyGuard& operator=(TidyGuard&&) = delete;
+};
+
 _D_Dragonian_Lib_Space_End

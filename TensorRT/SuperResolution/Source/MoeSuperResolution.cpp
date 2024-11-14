@@ -3,7 +3,7 @@
 
 _D_Dragonian_Lib_TRT_Sr_Space_Header
 
-ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, const InferenceDeviceBuffer& _Buffer, int64_t _BatchSize) const
+ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, int64_t _BatchSize)
 {
 	UNUSED(_BatchSize);
 	_BatchSize = 1;
@@ -24,6 +24,28 @@ ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, const InferenceDevice
 
 	const size_t progressMax = imgAlpha.Size() / pixCount;
 	Callback_(progress, progressMax);
+
+	std::vector<ITensorInfo> InputTensorsInfo;
+	InputTensorsInfo.emplace_back(
+		nvinfer1::Dims4(_BatchSize, 3, InputHeight, InputWidth),
+		Model->GetInputNames()[0],
+		dataSize * _BatchSize * sizeof(float),
+		nvinfer1::DataType::kFLOAT
+	);
+
+	try
+	{
+		if (!_MySession.IsReady(InputTensorsInfo))
+			_MySession = Model->Construct(
+				InputTensorsInfo,
+				Model->GetOutputNames()
+			);
+	}
+	catch (std::exception& e)
+	{
+		_D_Dragonian_Lib_Throw_Exception(e.what());
+	}
+
 	while (progress < progressMax)
 	{
 		if (progress + _BatchSize > progressMax)
@@ -31,32 +53,22 @@ ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, const InferenceDevice
 		if (_BatchSize == 0)
 			break;
 
-		DragonianLibSTL::Vector<TrtTensor> Tensors, outTensors;
-		Tensors.EmplaceBack(
-			std::make_shared<Tensor>(imgRGB.Data() + (dataSize * progress),
-			nvinfer1::Dims4(_BatchSize, 3, InputHeight, InputWidth),
-			Model->GetInputNames()[0],
-			dataSize * _BatchSize * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
-		);
-
 		try
 		{
-			outTensors = Model->Infer(
-				Tensors,
-				_Buffer,
-				Model->GetOutputNames()
+			_MySession.HostMemoryToDevice(
+				0, imgRGB.Data() + (dataSize * progress),
+				dataSize * _BatchSize * sizeof(float)
 			);
+			_MySession.Run();
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception(e.what());
 		}
 
-		outTensors[0]->DeviceData2Host();
-		const auto outData = (float*)outTensors[0]->Data;
-		OutRGB.Insert(OutRGB.End(), outData, outData + TotalScale * dataSize);
-
+		std::vector<float> OutData(TotalScale * dataSize);
+		_MySession.DeviceMemoryToHost(0, OutData.data(), OutData.size() * sizeof(float));
+		OutRGB.Insert(OutRGB.End(), OutData.data(), OutData.data() + OutData.size());
 		progress += _BatchSize;
 		Callback_(progress, progressMax);
 	}
@@ -68,7 +80,12 @@ ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, const InferenceDevice
 	return _Image;
 }
 
-MoeSR::MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSettings, ProgressCallback _Callback)
+MoeSR::MoeSR(
+	const std::wstring& RGBModel,
+	long Scale,
+	const TrtConfig& TrtSettings,
+	ProgressCallback _Callback
+)
 {
 	Callback_ = std::move(_Callback);
 	ScaleFactor = Scale;
@@ -77,7 +94,7 @@ MoeSR::MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSetti
 		Model = std::make_unique<TrtModel>(
 			RGBModel,
 			TrtSettings.CacheFile,
-			DynaSetting,
+			TrtSettings.DynaSetting,
 			TrtSettings.DLACore,
 			TrtSettings.Fallback,
 			TrtSettings.EnableFp16,

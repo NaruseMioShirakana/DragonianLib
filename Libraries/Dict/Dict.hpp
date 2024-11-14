@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Base.h"
 #include "MyTemplateLibrary/Vector.h"
+#include <regex>
 
 #define _D_Dragonian_Lib_Dict_Header _D_Dragonian_Lib_Space_Begin namespace Dict {
 #define _D_Dragonian_Lib_Dict_End _D_Dragonian_Lib_Space_End }
@@ -57,17 +58,17 @@ private:
 public:
 	static Vector<std::wstring> SplitWithSymbol(
 		const std::wstring& _InputText,
-		const std::wstring& _RegularExpression,
+		const std::wregex& _RegularExpression,
 		const std::initializer_list<int>& _SubMatch = { -1 }
 	);
 	static Vector<std::wstring> SplitWithSymbol(
 		const Vector<std::wstring>& _InputSeq,
-		const std::wstring& _RegularExpression,
+		const std::wregex& _RegularExpression,
 		const std::initializer_list<int>& _SubMatch = { -1 }
 	);
 	static Vector<std::wstring_view> SplitWithSymbolToViews(
 		const std::wstring& _InputSeq,
-		const std::wstring& _RegularExpression,
+		const std::wregex& _RegularExpression,
 		const std::initializer_list<int>& _SubMatch = { -1 }
 	);
 };

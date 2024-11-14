@@ -20,6 +20,12 @@
 #include "Alloc.h"
 #include <initializer_list>
 #include <algorithm>
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
 
 //Force Inline
 #ifdef _MSC_VER
@@ -293,7 +299,7 @@ public:
         return _MyFirst == _MyLast;
     }
 
-private:
+protected:
     _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void _Tidy()
     {
         if constexpr (!std::is_arithmetic_v<ValueType>)
@@ -310,6 +316,7 @@ private:
         _MyEnd = nullptr;
     }
 
+private:
     _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Destory()
     {
         _Tidy();

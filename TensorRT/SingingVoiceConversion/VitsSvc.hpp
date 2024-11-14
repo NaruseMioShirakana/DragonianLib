@@ -26,7 +26,7 @@ _D_Dragonian_Lib_TRT_Svc_Space_Header
 class VitsSvc
 {
 public:
-    using ioBuffer_t = InferenceDeviceBuffer[2];
+
     VitsSvc(
         const VitsSvcConfig& _Hps,
         const ProgressCallback& _ProgressCallback
@@ -37,15 +37,16 @@ public:
     VitsSvc& operator=(const VitsSvc&) = delete;
     VitsSvc& operator=(VitsSvc&&) = delete;
 
-    [[nodiscard]] DragonianLibSTL::Vector<int16_t> SliceInference(
+    [[nodiscard]] DragonianLibSTL::Vector<float> SliceInference(
         const SingleSlice& _Slice,
-        const InferenceParams& _Params,
-        ioBuffer_t& _IOBuffer
-    ) const;
+        const InferenceParams& _Params
+    );
 
 private:
     std::unique_ptr<TrtModel> VitsSvcModel;
     std::shared_ptr<TrtModel> HubertModel;
+	InferenceSession VitsSvcSession;
+	InferenceSession HubertSession;
 
     int64_t MySamplingRate, HopSize, HiddenUnitKDims, SpeakerCount, ClusterCenterSize;
     bool EnableVolume, EnableCharaMix, EnableCluster;
@@ -80,7 +81,7 @@ private:
         int64_t AudioSize
     ) const;
 
-    static inline DragonianLibSTL::Vector<DynaShapeSlice> VitsSvcDynaSetting{
+    static inline std::vector<DynaShapeSlice> VitsSvcDynaSetting{
     {"c", nvinfer1::Dims3(1, 20, 256), nvinfer1::Dims3(1, 2500, 256), nvinfer1::Dims3(1, 5000, 256)},
     {"f0", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
     {"mel2ph", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },

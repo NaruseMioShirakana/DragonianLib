@@ -32,7 +32,7 @@ public:
     MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSettings, ProgressCallback _Callback);
     ~MoeSR();
 
-    ImageVideo::Image& Infer(ImageVideo::Image& _Image, const InferenceDeviceBuffer& _Buffer, int64_t _BatchSize) const;
+    ImageVideo::Image& Infer(ImageVideo::Image& _Image, int64_t _BatchSize);
 private:
     MoeSR(const MoeSR&) = delete;
     MoeSR(MoeSR&&) = delete;
@@ -41,8 +41,9 @@ private:
 
     ProgressCallback Callback_;
     std::unique_ptr<TrtModel> Model = nullptr;
+    InferenceSession _MySession;
     long ScaleFactor = 2;
-    DragonianLibSTL::Vector<DynaShapeSlice> DynaSetting{
+    static inline std::vector<DynaShapeSlice> DynaSetting{
         {
             "DynaArg0",
             nvinfer1::Dims4(1, 3, 64, 64),

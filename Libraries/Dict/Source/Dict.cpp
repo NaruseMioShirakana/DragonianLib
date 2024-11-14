@@ -1,5 +1,4 @@
 ﻿#include "../Dict.hpp"
-#include <regex>
 #include "Util/StringPreprocess.h"
 #include "MJson/MJson.h"
 
@@ -7,13 +6,12 @@ _D_Dragonian_Lib_Dict_Header
 
 Vector<std::wstring> Tokenizer::SplitWithSymbol(
 	const std::wstring& _InputText,
-	const std::wstring& _RegularExpression,
+	const std::wregex& _RegularExpression,
 	const std::initializer_list<int>& _SubMatch
 )
 {
 	auto Result = DragonianLibSTL::Vector<std::wstring>();
-	std::wregex Regex(_RegularExpression);
-	std::wsregex_token_iterator Begin(_InputText.begin(), _InputText.end(), Regex, _SubMatch);
+	std::wsregex_token_iterator Begin(_InputText.begin(), _InputText.end(), _RegularExpression, _SubMatch);
 	std::wsregex_token_iterator End;
 
 	for (auto It = Begin; It != End; ++It)
@@ -25,15 +23,14 @@ Vector<std::wstring> Tokenizer::SplitWithSymbol(
 
 Vector<std::wstring> Tokenizer::SplitWithSymbol(
 	const Vector<std::wstring>& _InputSeq,
-	const std::wstring& _RegularExpression,
+	const std::wregex& _RegularExpression,
 	const std::initializer_list<int>& _SubMatch
 )
 {
 	auto Result = DragonianLibSTL::Vector<std::wstring>();
-	std::wregex Regex(_RegularExpression);
 	for (const auto& Seq : _InputSeq)
 	{
-		std::wsregex_token_iterator Begin(Seq.begin(), Seq.end(), Regex, _SubMatch);
+		std::wsregex_token_iterator Begin(Seq.begin(), Seq.end(), _RegularExpression, _SubMatch);
 		std::wsregex_token_iterator End;
 
 		for (auto It = Begin; It != End; ++It)
@@ -45,13 +42,12 @@ Vector<std::wstring> Tokenizer::SplitWithSymbol(
 
 Vector<std::wstring_view> Tokenizer::SplitWithSymbolToViews(
 	const std::wstring& _InputSeq,
-	const std::wstring& _RegularExpression,
+	const std::wregex& _RegularExpression,
 	const std::initializer_list<int>& _SubMatch
 )
 {
 	auto Result = DragonianLibSTL::Vector<std::wstring_view>();
-	std::wregex Regex(_RegularExpression);
-	std::wsregex_token_iterator Begin(_InputSeq.begin(), _InputSeq.end(), Regex, _SubMatch);
+	std::wsregex_token_iterator Begin(_InputSeq.begin(), _InputSeq.end(), _RegularExpression, _SubMatch);
 	std::wsregex_token_iterator End;
 
 	for (auto It = Begin; It != End; ++It)

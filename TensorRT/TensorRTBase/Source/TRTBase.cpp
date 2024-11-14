@@ -6,9 +6,14 @@
 
 _D_Dragonian_TensorRT_Lib_Space_Header
 
-::DragonianLib::TensorRTLib::DLogger logger;
+DLogger logger;
 
-size_t NvDataType2Size(nvinfer1::DataType _Ty)
+void _Impl_Dragonian_Lib_Free_CPU_Memory(void* _Pointer) { GetMemoryProvider(Device::CPU)->Free(_Pointer); }
+void _Impl_Dragonian_Lib_Free_CUDA_Memory(void* _Pointer) { if (cudaFree(_Pointer)) _D_Dragonian_Lib_CUDA_Error; }
+struct _Impl_Dragonian_Lib_Default_Deleter { template <typename T>void operator()(T* obj) const { delete obj; } };
+_Impl_Dragonian_Lib_Default_Deleter _Valdef_My_Default_Deleter;
+
+static size_t NvDataType2Size(nvinfer1::DataType _Ty)
 {
 	if (nvinfer1::DataType::kFLOAT == _Ty) return 4;
 	if (nvinfer1::DataType::kHALF == _Ty) return 2;
@@ -22,15 +27,6 @@ size_t NvDataType2Size(nvinfer1::DataType _Ty)
 	if (nvinfer1::DataType::kINT4 == _Ty) _D_Dragonian_Lib_CUDA_Error;
 	_D_Dragonian_Lib_Fatal_Error;
 }
-
-struct InferDeleter
-{
-	template <typename T>
-	void operator()(T* obj) const
-	{
-		delete obj;
-	}
-};
 
 static void setAllDynamicRanges(const nvinfer1::INetworkDefinition* network, float inRange = 2.0F, float outRange = 4.0F)
 {
@@ -81,89 +77,10 @@ void DLogger::log(Severity severity, nvinfer1::AsciiChar const* msg) noexcept
 		LogMessage(UTF8ToWideString(msg));
 }
 
-void Tensor::DeviceData2Host()
-{
-	if (!GpuBuffer)
-		return;
-	Data = GetMemoryProvider(DragonianLib::Device::CPU)->Allocate(Size);
-	IsOwner = true;
-	if (const auto Ret = cudaMemcpy(Data, GpuBuffer, Size, cudaMemcpyDeviceToHost); Ret)
-		_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-	GpuBuffer = nullptr;
-}
-
-int64_t Tensor::GetElementCount() const
-{
-	return Size / NvDataType2Size(Type);
-}
-
-bool operator==(const std::shared_ptr<Tensor>& _Ptr, const char* _Val)
-{
-	return _Ptr->Name == _Val;
-}
-
-GPUBuffer::GPUBuffer(const Tensor& HostTensor)
-{
-	if (const auto Ret = cudaMalloc(&Data, HostTensor.Size); Ret)
-		_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-	if (const auto Ret = cudaMemcpy(Data, HostTensor.Data, HostTensor.Size, cudaMemcpyHostToDevice); Ret)
-		_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-	Size = HostTensor.Size;
-}
-
-GPUBuffer::~GPUBuffer()
-{
-	Destory();
-}
-
-GPUBuffer::GPUBuffer(GPUBuffer&& _Val) noexcept
-{
-	Size = _Val.Size;
-	Data = _Val.Data;
-	_Val.Size = 0;
-	_Val.Data = nullptr;
-}
-
-GPUBuffer& GPUBuffer::operator=(const Tensor& HostTensor)
-{
-	if (HostTensor.Size > Size)
-	{
-		Destory();
-		if (const auto Ret = cudaMalloc(&Data, HostTensor.Size); Ret)
-			_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-		Size = HostTensor.Size;
-	}
-	if (const auto Ret = cudaMemcpy(Data, HostTensor.Data, HostTensor.Size, cudaMemcpyHostToDevice); Ret)
-		_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-	return *this;
-}
-
-GPUBuffer& GPUBuffer::Resize(size_t NewSize)
-{
-	if ((int64_t)NewSize > Size)
-	{
-		Destory();
-		if (const auto Ret = cudaMalloc(&Data, NewSize); Ret)
-			_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-		Size = (int64_t)NewSize;
-	}
-	return *this;
-}
-
-void GPUBuffer::Destory()
-{
-	if (!Data)
-		return;
-	if (const auto Ret = cudaFree(Data); Ret)
-		_D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(Ret));
-	Data = nullptr;
-	Size = 0;
-}
-
 void TrtModel::LoadModel(
 	const std::wstring& _OrtPath,
 	const std::wstring& _CacheFile,
-	const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
+	const std::vector<DynaShapeSlice>& DynaShapeConfig,
 	int DLACore,
 	bool Fallback,
 	bool EnableFp16,
@@ -175,28 +92,26 @@ void TrtModel::LoadModel(
 {
 	if (_CacheFile.empty() || !exists(std::filesystem::path(_CacheFile)))
 	{
-		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(::DragonianLib::TensorRTLib::logger));
+		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(logger));
 		if (!builder)
 			_D_Dragonian_Lib_Fatal_Error;
 
 		auto mNetwork = std::unique_ptr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(
-			1 << int(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)
+			0
 		));
 		if (!mNetwork)
 			_D_Dragonian_Lib_Fatal_Error;
 
 		//Parse Onnx Model
+		auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, logger));
+		if (!parser)
+			_D_Dragonian_Lib_Fatal_Error;
+		if (!parser->parseFromFile(WideStringToUTF8(_OrtPath).c_str(), static_cast<int>(VerboseLevel)))
 		{
-			auto parser = std::unique_ptr<nvonnxparser::IParser>(nvonnxparser::createParser(*mNetwork, ::DragonianLib::TensorRTLib::logger));
-			if (!parser)
-				_D_Dragonian_Lib_Fatal_Error;
-			if (!parser->parseFromFile(DragonianLib::WideStringToUTF8(_OrtPath).c_str(), static_cast<int>(VerboseLevel)))
-			{
-				std::string Errors;
-				for (int i = 0; i < parser->getNbErrors(); ++i)
-					(Errors += '\n') += parser->getError(i)->desc();
-				_D_Dragonian_Lib_Throw_Exception(Errors);
-			}
+			std::string Errors;
+			for (int i = 0; i < parser->getNbErrors(); ++i)
+				(Errors += '\n') += parser->getError(i)->desc();
+			_D_Dragonian_Lib_Throw_Exception(Errors);
 		}
 
 		auto config = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
@@ -204,94 +119,105 @@ void TrtModel::LoadModel(
 			_D_Dragonian_Lib_Fatal_Error;
 
 		//Config
+		auto timingCache = std::unique_ptr<nvinfer1::ITimingCache>();
+
+		if (EnableFp16 && builder->platformHasFastFp16())
+			config->setFlag(nvinfer1::BuilderFlag::kFP16);
+		if (EnableBf16 && builder->platformHasFastFp16())
+			config->setFlag(nvinfer1::BuilderFlag::kBF16);
+		if (EnableInt8 && builder->platformHasFastInt8())
 		{
-			auto timingCache = std::unique_ptr<nvinfer1::ITimingCache>();
-
-			if (EnableFp16 && builder->platformHasFastFp16())
-				config->setFlag(nvinfer1::BuilderFlag::kFP16);
-			if (EnableBf16 && builder->platformHasFastFp16())
-				config->setFlag(nvinfer1::BuilderFlag::kBF16);
-			if (EnableInt8 && builder->platformHasFastInt8())
-			{
-				config->setFlag(nvinfer1::BuilderFlag::kINT8);
-				setAllDynamicRanges(mNetwork.get(), 127.0F, 127.0F);
-			}
-
-			if (_CacheFile.size() && exists(std::filesystem::path(_CacheFile)))
-			{
-				LogMessage(L"Not Impl Yet!");
-			}
-
-			size_t VRAMFREE, VRAMTOTAL;
-			cudaMemGetInfo(&VRAMFREE, &VRAMTOTAL);
-			config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, VRAMFREE * 8 / 10);
-
-			if (DLACore > 0)
-			{
-				if (builder->getNbDLACores() == 0)
-					_D_Dragonian_Lib_Throw_Exception("Error: use DLA core on a platfrom that doesn't have any DLA cores");
-				if (Fallback)
-					config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
-				if (!config->getFlag(nvinfer1::BuilderFlag::kINT8))
-					config->setFlag(nvinfer1::BuilderFlag::kFP16);
-
-				config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-				config->setDLACore(DLACore);
-			}
-
-			if (OptimizationLevel)
-				for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
-				{
-					auto inp = mNetwork->getInput(i);
-					auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
-					if (iter == DynaShapeConfig.end())
-						iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));
-					if (iter == DynaShapeConfig.end())
-						continue;
-					auto opt = builder->createOptimizationProfile();
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
-					opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
-					if (!opt->isValid())
-						_D_Dragonian_Lib_Fatal_Error;
-					config->addOptimizationProfile(opt);
-				}
-
-			config->setBuilderOptimizationLevel(OptimizationLevel);
+			config->setFlag(nvinfer1::BuilderFlag::kINT8);
+			setAllDynamicRanges(mNetwork.get(), 127.0F, 127.0F);
 		}
+
+		if (_CacheFile.size() && exists(std::filesystem::path(_CacheFile)))
+		{
+			LogMessage(L"Not Impl Yet!");
+		}
+
+		size_t VRAMFREE, VRAMTOTAL;
+		cudaMemGetInfo(&VRAMFREE, &VRAMTOTAL);
+		config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, VRAMFREE * 8 / 10);
+
+		if (DLACore > 0)
+		{
+			if (builder->getNbDLACores() == 0)
+				_D_Dragonian_Lib_Throw_Exception("Error: use DLA core on a platfrom that doesn't have any DLA cores");
+			if (Fallback)
+				config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+			if (!config->getFlag(nvinfer1::BuilderFlag::kINT8))
+				config->setFlag(nvinfer1::BuilderFlag::kFP16);
+
+			config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+			config->setDLACore(DLACore);
+		}
+
+		if (OptimizationLevel)
+			for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
+			{
+				auto inp = mNetwork->getInput(i);
+				auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
+				if (iter == DynaShapeConfig.end())
+					iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));
+				if (iter == DynaShapeConfig.end())
+					continue;
+				auto opt = builder->createOptimizationProfile();
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
+				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
+				if (!opt->isValid())
+					_D_Dragonian_Lib_Fatal_Error;
+				config->addOptimizationProfile(opt);
+			}
+
+		config->setBuilderOptimizationLevel(OptimizationLevel);
 
 		std::unique_ptr<nvinfer1::IHostMemory> plan(builder->buildSerializedNetwork(*mNetwork, *config));
 		if (!plan)
 			_D_Dragonian_Lib_Fatal_Error;
 		if (!_CacheFile.empty() && !exists(std::filesystem::path(_CacheFile)))
 		{
-			DragonianLib::FileGuard file(_CacheFile, L"wb");
+			FileGuard file(_CacheFile, L"wb");
 			fwrite(plan->data(), 1, plan->size(), file);
 		}
 
-		mRuntime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::DragonianLib::TensorRTLib::logger));
+		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(
+			nvinfer1::createInferRuntime(logger),
+			_Valdef_My_Default_Deleter
+		);
 		if (!mRuntime)
 			_D_Dragonian_Lib_Fatal_Error;
 
 		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-			mRuntime->deserializeCudaEngine(plan->data(), plan->size()), InferDeleter());
+			mRuntime->deserializeCudaEngine(
+				plan->data(), plan->size()
+			),
+			_Valdef_My_Default_Deleter
+		);
 		if (!mEngine)
 			_D_Dragonian_Lib_Fatal_Error;
 	}
 	else if (exists(std::filesystem::path(_CacheFile)))
 	{
-		DragonianLib::FileGuard file(_CacheFile, L"rb");
+		FileGuard file(_CacheFile, L"rb");
 		struct stat file_stat;
-		stat(DragonianLib::WideStringToUTF8(_CacheFile).c_str(), &file_stat);
-		DragonianLibSTL::Vector<unsigned char> Buffer(file_stat.st_size);
-		fread(Buffer.Data(), 1, file_stat.st_size, file);
+		stat(WideStringToUTF8(_CacheFile).c_str(), &file_stat);
+		std::vector<unsigned char> Buffer(file_stat.st_size);
+		fread(Buffer.data(), 1, file_stat.st_size, file);
 
-		mRuntime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(::DragonianLib::TensorRTLib::logger));
+		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(
+			nvinfer1::createInferRuntime(logger),
+			_Valdef_My_Default_Deleter
+		);
 		if (!mRuntime)
 			_D_Dragonian_Lib_Fatal_Error;
 
 		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
-			mRuntime->deserializeCudaEngine(Buffer.Data(), Buffer.Size()), InferDeleter()
+			mRuntime->deserializeCudaEngine(
+				Buffer.data(), Buffer.size()
+			),
+			_Valdef_My_Default_Deleter
 		);
 		if (!mEngine)
 			_D_Dragonian_Lib_Fatal_Error;
@@ -314,20 +240,33 @@ void TrtModel::LoadModel(
 			MyOutputNames.emplace_back(name);
 		}
 	}
+	_MyGpuBuffers.resize(mIONodeCount);
 }
 
-DragonianLibSTL::Vector<std::shared_ptr<Tensor>> TrtModel::Infer(
-	const DragonianLibSTL::Vector<std::shared_ptr<Tensor>>& Inputs,
-	const InferenceDeviceBuffer& _Buffer,
+InferenceSession TrtModel::Construct(
+	const std::vector<ITensorInfo>& Inputs,
 	const std::vector<std::string>& _OutputNames
-) const
+)
 {
-	if (Inputs.Size() < size_t(mInputCount))
+	std::lock_guard Lock(mMutex);
+
+	InferenceSession ReInferenceSession;
+	if (Inputs.size() < size_t(mInputCount))
 		_D_Dragonian_Lib_Throw_Exception("Missing Inputs!");
 	if (_OutputNames.size() != mOutputCount)
 		_D_Dragonian_Lib_Throw_Exception("Output Count Mismatch!");
 
-	auto mContext = std::unique_ptr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
+	ReInferenceSession._MyContext = std::shared_ptr<nvinfer1::IExecutionContext>(
+		mEngine->createExecutionContext(),
+		_Valdef_My_Default_Deleter
+	);
+	ReInferenceSession._MyInputInfos.resize(mInputCount);
+	ReInferenceSession._MyInputGpuBuffer.resize(mInputCount);
+	ReInferenceSession._MyDeviceBindings.resize(mIONodeCount);
+	ReInferenceSession._MyOutputInfos.resize(mOutputCount);
+	ReInferenceSession._MyOutputGpuBuffer.resize(mOutputCount);
+
+	auto mContext = ReInferenceSession._MyContext;
 	if (!mContext)
 		_D_Dragonian_Lib_Fatal_Error;
 
@@ -338,19 +277,25 @@ DragonianLibSTL::Vector<std::shared_ptr<Tensor>> TrtModel::Infer(
 		if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
 		{
 			auto _Tensor = std::find(Inputs.begin(), Inputs.end(), name);
-			if (_Tensor == Inputs.End())
+
+			if (_Tensor == Inputs.end())
 				_D_Dragonian_Lib_Throw_Exception("The Input " + std::string(name) + " Is Missing, Please Fix This Input!");
-			if (mEngine->getTensorDataType(name) != (*_Tensor)->Type)
+			if (mEngine->getTensorDataType(name) != _Tensor->_MyType)
 				_D_Dragonian_Lib_Throw_Exception("Data Type Mismatch!");
-			if (!mContext->setInputTensorAddress(name, _Buffer.mDeviceBindings[i] = (_Buffer.mGpuBuffers[i] = **_Tensor)))
+
+			const auto Index = _Tensor - Inputs.begin();
+			_MyGpuBuffers[i].ReAllocate(_Tensor->_MySize);
+			ReInferenceSession._MyInputGpuBuffer[Index] = _MyGpuBuffers[i].GetData();
+			ReInferenceSession._MyInputInfos[Index] = *_Tensor;
+			ReInferenceSession._MyDeviceBindings[i] = _MyGpuBuffers[i].GetData().get();
+
+			if (!mContext->setInputTensorAddress(name, ReInferenceSession._MyDeviceBindings[i]))
 				_D_Dragonian_Lib_Fatal_Error;
-			if (!mContext->setInputShape(name, (*_Tensor)->Shape))
+			if (!mContext->setInputShape(name, _Tensor->_MyShape))
 				_D_Dragonian_Lib_Throw_Exception("Shape Mismatch!");
 		}
 	}
 
-	// Output Tensors
-	DragonianLibSTL::Vector<std::shared_ptr<Tensor>> OutputTensors(mOutputCount);
 	for (int32_t i = 0; i < mIONodeCount; i++)
 	{
 		auto const name = mEngine->getIOTensorName(i);
@@ -359,26 +304,142 @@ DragonianLibSTL::Vector<std::shared_ptr<Tensor>> TrtModel::Infer(
 			auto Iter = std::ranges::find(_OutputNames, name);
 			if (Iter == _OutputNames.end())
 				_D_Dragonian_Lib_Throw_Exception("The Output Name " + std::string(name) + " Is Missing, Please Check Your Output Names!");
-			auto Idx = Iter - _OutputNames.begin();
+			auto Index = Iter - _OutputNames.begin();
 
-			auto& TensorRef = OutputTensors[Idx];
-			TensorRef->Shape = mContext->getTensorShape(name);
-			TensorRef->Type = mEngine->getTensorDataType(name);
-			TensorRef->Size = NvDataType2Size(TensorRef->Type);
-			for (int j = 0; j < TensorRef->Shape.nbDims; ++j)
-				TensorRef->Size *= TensorRef->Shape.d[j];
-			TensorRef->GpuBuffer = _Buffer.mDeviceBindings[i] = _Buffer.mGpuBuffers[i].Resize(TensorRef->Size);
+			auto& TensorRef = ReInferenceSession._MyOutputInfos[Index];
+			TensorRef._MyShape = mContext->getTensorShape(name);
+			TensorRef._MyType = mEngine->getTensorDataType(name);
+			TensorRef._MySize = NvDataType2Size(TensorRef._MyType);
+			TensorRef._MyName = name;
+			for (int j = 0; j < TensorRef._MyShape.nbDims; ++j)
+				TensorRef._MySize *= TensorRef._MyShape.d[j];
+			_MyGpuBuffers[i].ReAllocate(TensorRef._MySize);
+			ReInferenceSession._MyOutputGpuBuffer[Index] = _MyGpuBuffers[i].GetData();
+			ReInferenceSession._MyDeviceBindings[i] = _MyGpuBuffers[i].GetData().get();
 
-			if (!mContext->setOutputTensorAddress(name, TensorRef->GpuBuffer))
+			if (!mContext->setOutputTensorAddress(name, ReInferenceSession._MyDeviceBindings[i]))
 				_D_Dragonian_Lib_Fatal_Error;
 		}
 	}
 
-	bool status = mContext->executeV2(_Buffer.mDeviceBindings.Data());
-	if (!status)
-		_D_Dragonian_Lib_Throw_Exception("An Error Occurred While Inference!");
+	return ReInferenceSession;
+}
 
-	return OutputTensors;
+IGPUBufferImpl& IGPUBufferImpl::ReAllocate(size_t NewSize)
+{
+	if (NewSize > _MySize)
+	{
+		void* Data = nullptr;
+		if (cudaMalloc(&Data, NewSize))
+			_D_Dragonian_Lib_CUDA_Error;
+		_MyData = std::shared_ptr<void>(
+			Data, _Impl_Dragonian_Lib_Free_CUDA_Memory
+		);
+		_MySize = NewSize;
+	}
+	return *this;
+}
+
+std::shared_ptr<void> IGPUBufferImpl::GetData() const
+{
+	return _MyData;
+}
+
+IGPUBufferImpl::operator void*() const
+{
+	return _MyData.get();
+}
+
+ITensorInfo::ITensorInfo(
+	const nvinfer1::Dims& shape,
+	std::string name,
+	int64_t size,
+	nvinfer1::DataType type
+) : _MyShape(shape), _MyName(std::move(name)),
+_MySize(size), _MyType(type) {}
+
+bool ITensorInfo::operator==(const char* _Val) const
+{
+	return _MyName == _Val;
+}
+
+int64_t ITensorInfo::GetElementCount() const
+{
+	return _MySize / NvDataType2Size(_MyType);
+}
+
+bool ITensorInfo::operator==(const ITensorInfo& _Val) const
+{
+	if (_MyShape != _Val._MyShape)
+		return false;
+	if (_MyName != _Val._MyName)
+		return false;
+	if (_MySize != _Val._MySize)
+		return false;
+	if (_MyType != _Val._MyType)
+		return false;
+	return true;
+}
+
+bool ITensorInfo::operator!=(const ITensorInfo& _Val) const
+{
+	return !(*this == _Val);
+}
+
+void InferenceSession::HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size)
+{
+	if (!_MyCondition)
+	{
+		std::lock_guard Lock(*_MyMutex);
+		auto Buffer = _MyInputGpuBuffer[_Index].get();
+		if (cudaMemcpy(Buffer, _Pointer, _Size, cudaMemcpyHostToDevice))
+			_D_Dragonian_Lib_CUDA_Error;
+		_MyCondition = true;
+	}
+	else
+		_D_Dragonian_Lib_Throw_Exception("Input Data Already Set!");
+}
+
+void InferenceSession::Run()
+{
+	if (!_MyCondition)
+		_D_Dragonian_Lib_Throw_Exception("No Input Data!");
+	TidyGuard Tidy([this] { _MyCondition = false; });
+	std::lock_guard Lock(*_MyMutex);
+	_MyContext->executeV2(_MyDeviceBindings.data());
+}
+
+void InferenceSession::DeviceMemoryToHost(size_t _Index, void* _Pointer, size_t _Size) const
+{
+	std::lock_guard Lock(*_MyMutex);
+	auto Buffer = _MyOutputGpuBuffer[_Index].get();
+	if (cudaMemcpy(_Pointer, Buffer, _Size, cudaMemcpyDeviceToHost))
+		_D_Dragonian_Lib_CUDA_Error;
+}
+
+bool InferenceSession::IsReady(const std::vector<ITensorInfo>& _Check) const
+{
+	if (_Check.size() != _MyInputInfos.size())
+		return false;
+	for (size_t i = 0; i < _Check.size(); ++i)
+		if (_Check[i] != _MyInputInfos[i])
+			return false;
+	return true;
+}
+
+bool operator==(const nvinfer1::Dims& _Left, const nvinfer1::Dims& _Right)
+{
+	if (_Left.nbDims != _Right.nbDims)
+		return false;
+	for (int i = 0; i < _Left.nbDims; ++i)
+		if (_Left.d[i] != _Right.d[i])
+			return false;
+	return true;
+}
+
+bool operator!=(const nvinfer1::Dims& _Left, const nvinfer1::Dims& _Right)
+{
+	return !(_Left == _Right);
 }
 
 _D_Dragonian_TensorRT_Lib_Space_End

@@ -28,14 +28,31 @@ void ProgressCbS(size_t a, size_t b)
 	ShowProgressBar(a, b);
 }
 
+template <typename _Function>
+void WithTimer(_Function&& _Func)
+{
+	auto start = std::chrono::high_resolution_clock::now();
+	_Func();
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
+}
+
 int main()
 {
 	using namespace DragonianLib::TensorRTLib::SuperResolution;
 	MoeSR Model{
-		LR"(D:\VSGIT\x2_universal-fix1.onnx)",
-		2,
+		LR"(D:\VSGIT\hat_lite_seed0721.onnx)",
+		4,
 		DragonianLib::TensorRTLib::TrtConfig{
-			LR"(D:\VSGIT\x2_universal-fix1.trt)",
+			LR"(D:\VSGIT\hat_lite_seed0721.trt)",
+			DragonianLib::TensorRTLib::TrtConfig::DynaShapeSettings{
+					{
+						"DynaArg0",
+					   nvinfer1::Dims4(1, 3, 64, 64),
+					   nvinfer1::Dims4(1, 3, 128, 128),
+					   nvinfer1::Dims4(1, 3, 192, 192)
+					}
+			},
 			0,
 			true,
 			false,
@@ -50,9 +67,9 @@ int main()
 	DragonianLib::ImageVideo::GdiInit();
 
 	DragonianLib::ImageVideo::Image Image(
-		LR"(C:\Users\17518\Downloads\xjpic.jpg)",
-		64,
-		64,
+		LR"(D:\VSGIT\CG000000.BMP)",
+		192,
+		192,
 		16,
 		0.f,
 		false/*,
@@ -64,10 +81,12 @@ int main()
 	Image.Transpose();
 	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TNN.png)", 1, 100))
 		std::cout << "2-Complete!\n";*/
-	DragonianLib::TensorRTLib::InferenceDeviceBuffer Buffer;
-	Model.Infer(Image, Buffer, 1);
 
-	if (Image.MergeWrite(LR"(C:\Users\17518\Downloads\xjpic.png)", 4, 100))
+	WithTimer([&]() {
+		Model.Infer(Image, 1);
+		});
+
+	if (Image.MergeWrite(LR"(D:\VSGIT\CG000000114514.BMP)", 4, 100))
 		std::cout << "Complete!\n";
 
 	DragonianLib::ImageVideo::GdiClose();

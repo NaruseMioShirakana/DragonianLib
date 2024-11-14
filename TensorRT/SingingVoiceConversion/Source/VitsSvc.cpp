@@ -48,7 +48,7 @@ VitsSvc::VitsSvc(
 			HubertModel = std::make_shared<TrtModel>(
 				_Hps.HubertPath,
 				_Hps.TrtSettings.CacheFile,
-				HubertDynaSetting,
+				_Hps.TrtSettings.DynaSetting,
 				_Hps.TrtSettings.DLACore,
 				_Hps.TrtSettings.Fallback,
 				_Hps.TrtSettings.EnableFp16,
@@ -57,22 +57,11 @@ VitsSvc::VitsSvc(
 				_Hps.TrtSettings.VerboseLevel,
 				_Hps.TrtSettings.OptimizationLevel
 			);
-		auto DynConf = VitsSvcDynaSetting;
-		DynConf[0].Min.d[2] = HiddenUnitKDims; DynConf[0].Opt.d[2] = HiddenUnitKDims; DynConf[0].Max.d[2] = HiddenUnitKDims;
-		DynConf[7].Min.d[2] = HiddenUnitKDims; DynConf[7].Opt.d[2] = HiddenUnitKDims; DynConf[7].Max.d[2] = HiddenUnitKDims;
-		if (EnableCharaMix)
-		{
-			DynConf[5].Min.d[1] = SpeakerCount;
-			DynConf[5].Opt.d[1] = SpeakerCount;
-			DynConf[5].Max.d[1] = SpeakerCount;
-		}
-		else
-			DynConf[5].Name = "None";
 
 		VitsSvcModel = std::make_unique<TrtModel>(
 			_Hps.ModelPath,
 			_Hps.TrtSettings.CacheFile,
-			DynConf,
+			_Hps.TrtSettings.DynaSetting,
 			_Hps.TrtSettings.DLACore,
 			_Hps.TrtSettings.Fallback,
 			_Hps.TrtSettings.EnableFp16,
@@ -120,66 +109,66 @@ TensorXData VitsSvc::SoVits4Preprocess(
 		it = normal(gen) * Params.NoiseScale;
 	SvcTensors.Data.Speaker[0] = Params.SpeakerId;
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.HiddenUnit.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.HiddenUnit.Data());
+	SvcTensors.Tensors.emplace_back(
 		HiddenUnitShape,
 		"c",
 		SvcTensors.Data.HiddenUnit.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.F0.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.F0.Data());
+	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"f0",
 		SvcTensors.Data.F0.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.Alignment.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.Alignment.Data());
+	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"mel2ph",
 		SvcTensors.Data.Alignment.Size() * sizeof(int64_t),
-		nvinfer1::DataType::kINT64)
+		nvinfer1::DataType::kINT64
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.UnVoice.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.UnVoice.Data());
+	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"uv",
 		SvcTensors.Data.UnVoice.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.Noise.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.Noise.Data());
+	SvcTensors.Tensors.emplace_back(
 		NoiseShape,
 		"noise",
 		SvcTensors.Data.Noise.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
 	if (EnableCharaMix)
 	{
 		SvcTensors.Data.SpkMap = GetCurrectSpkMixData(SpkMap, FrameShape.d[1], Params.SpeakerId, SpeakerCount);
 
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.SpkMap.Data(),
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.SpkMap.Data());
+		SvcTensors.Tensors.emplace_back(
 			SpkShape,
 			"sid",
 			SvcTensors.Data.SpkMap.Size() * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
+			nvinfer1::DataType::kFLOAT
 		);
 	}
 	else
 	{
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.Speaker,
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.Speaker);
+		SvcTensors.Tensors.emplace_back(
 			TensorData::OneShape,
 			"sid",
 			sizeof(int64_t),
-			nvinfer1::DataType::kINT64)
+			nvinfer1::DataType::kINT64
 		);
 	}
 
@@ -187,12 +176,12 @@ TensorXData VitsSvc::SoVits4Preprocess(
 	{
 		SvcTensors.Data.Volume = InterpFunc(Volume, long(Volume.Size()), long(FrameShape.d[1]));
 
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.Volume.Data(),
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.Volume.Data());
+		SvcTensors.Tensors.emplace_back(
 			FrameShape,
 			"vol",
 			SvcTensors.Data.Volume.Size() * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
+			nvinfer1::DataType::kFLOAT
 		);
 	}
 
@@ -240,79 +229,79 @@ TensorXData VitsSvc::RVCTensorPreprocess(
 		it = normal(gen) * Params.NoiseScale;
 	SvcTensors.Data.Speaker[0] = Params.SpeakerId;
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.HiddenUnit.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.HiddenUnit.Data());
+	SvcTensors.Tensors.emplace_back(
 		HiddenUnitShape,
 		"phone",
 		SvcTensors.Data.HiddenUnit.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.Length,
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.Length);
+	SvcTensors.Tensors.emplace_back(
 		TensorData::OneShape,
 		"phone_lengths",
 		sizeof(int64_t),
-		nvinfer1::DataType::kINT64)
+		nvinfer1::DataType::kINT64
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.NSFF0.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.NSFF0.Data());
+	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"pitch",
 		SvcTensors.Data.NSFF0.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.F0.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.F0.Data());
+	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"pitchf",
 		SvcTensors.Data.F0.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
 	if (EnableCharaMix)
 	{
 		SvcTensors.Data.SpkMap = GetCurrectSpkMixData(SpkMap, FrameShape.d[1], Params.SpeakerId, SpeakerCount);
 
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.SpkMap.Data(),
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.SpkMap.Data());
+		SvcTensors.Tensors.emplace_back(
 			SpkShape,
 			"ds",
 			SvcTensors.Data.SpkMap.Size() * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
+			nvinfer1::DataType::kFLOAT
 		);
 	}
 	else
 	{
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.Speaker,
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.Speaker);
+		SvcTensors.Tensors.emplace_back(
 			TensorData::OneShape,
 			"ds",
 			sizeof(int64_t),
-			nvinfer1::DataType::kINT64)
+			nvinfer1::DataType::kINT64
 		);
 	}
 
-	SvcTensors.Tensors.EmplaceBack(
-		std::make_shared<Tensor>(SvcTensors.Data.Noise.Data(),
+	SvcTensors.InputData.emplace_back(SvcTensors.Data.Noise.Data());
+	SvcTensors.Tensors.emplace_back(
 		NoiseShape,
 		"rnd",
 		SvcTensors.Data.Noise.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT)
+		nvinfer1::DataType::kFLOAT
 	);
 
 	if (EnableVolume)
 	{
 		SvcTensors.Data.Volume = InterpFunc(Volume, long(Volume.Size()), long(FrameShape.d[1]));
 
-		SvcTensors.Tensors.EmplaceBack(
-			std::make_shared<Tensor>(SvcTensors.Data.Volume.Data(),
+		SvcTensors.InputData.emplace_back(SvcTensors.Data.Volume.Data());
+		SvcTensors.Tensors.emplace_back(
 			FrameShape,
 			"vol",
 			SvcTensors.Data.Volume.Size() * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
+			nvinfer1::DataType::kFLOAT
 		);
 	}
 
@@ -349,11 +338,10 @@ TensorXData VitsSvc::Preprocess(
 	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-DragonianLibSTL::Vector<int16_t> VitsSvc::SliceInference(
+DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 	const SingleSlice& _Slice,
-	const InferenceParams& _Params,
-	ioBuffer_t& _IOBuffer
-) const
+	const InferenceParams& _Params
+)
 {
 	if (_Slice.IsNotMute)
 	{
@@ -372,36 +360,37 @@ DragonianLibSTL::Vector<int16_t> VitsSvc::SliceInference(
 				_16KAudio.Resize(WavPaddedSize * DRAGONIANLIB_PADDING_COUNT, 0.f);
 		}
 
-		DragonianLibSTL::Vector<TrtTensor> HubertInputTensors, HubertOutPuts;
+		std::vector<ITensorInfo> HubertInputTensors;
 
-		HubertInputTensors.EmplaceBack(
-			std::make_shared<Tensor>(_16KAudio.Data(),
+		HubertInputTensors.emplace_back(
 			nvinfer1::Dims3(1, 1, (int64_t)_16KAudio.Size()),
 			"source",
 			_16KAudio.Size() * sizeof(float),
-			nvinfer1::DataType::kFLOAT)
+			nvinfer1::DataType::kFLOAT
 		);
 
 		try {
-			HubertOutPuts = HubertModel->Infer(
-				HubertInputTensors,
-				_IOBuffer[0].Reload(*HubertModel),
-				{ "embed" }
-			);
+			if (!HubertSession.IsReady(HubertInputTensors))
+				HubertSession = HubertModel->Construct(
+					HubertInputTensors,
+					{ "embed" }
+				);
+			HubertSession.HostMemoryToDevice(0, _16KAudio.Data(), HubertInputTensors[0].GetSize());
+			HubertSession.Run();
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Hubert\n") + e.what()));
 		}
 
-		HubertOutPuts[0]->DeviceData2Host();
-		const auto HubertSize = HubertOutPuts[0]->GetElementCount();
-		const auto HubertOutPutData = (float*)HubertOutPuts[0]->Data;
-		auto HubertOutPutShape = HubertOutPuts[0]->Shape;
+		auto HubertOutputInfos = HubertSession.GetOutputInfos();
+		const auto HubertSize = HubertOutputInfos[0].GetElementCount();
+		auto HubertOutPutShape = HubertOutputInfos[0].GetShape();
 		if (HubertOutPutShape.d[2] != HiddenUnitKDims)
 			_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
-		DragonianLibSTL::Vector SrcHiddenUnits(HubertOutPutData, HubertOutPutData + HubertSize);
+		DragonianLibSTL::Vector<float> SrcHiddenUnits(HubertSize);
+		HubertSession.DeviceMemoryToHost(0, SrcHiddenUnits.Data(), HubertSize * sizeof(float));
 
 		int64_t SpeakerIdx = _Params.SpeakerId;
 		if (SpeakerIdx >= SpeakerCount)
@@ -445,38 +434,34 @@ DragonianLibSTL::Vector<int16_t> VitsSvc::SliceInference(
 		else
 			InputTensors = Preprocess(SrcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Params, int64_t(_Slice.OrgLen));
 
-		DragonianLibSTL::Vector<TrtTensor> finaOut;
 		try
 		{
-			finaOut = VitsSvcModel->Infer(
-				InputTensors.Tensors,
-				_IOBuffer[1].Reload(*VitsSvcModel),
-				{ "audio" }
-			);
+			if (!VitsSvcSession.IsReady(InputTensors.Tensors))
+				VitsSvcSession = VitsSvcModel->Construct(
+					InputTensors.Tensors,
+					{ "audio" }
+				);
+			for (size_t i = 0; i < InputTensors.InputData.size(); ++i)
+				VitsSvcSession.HostMemoryToDevice(i, InputTensors.InputData[i], InputTensors.Tensors[i].GetSize());
+			VitsSvcSession.Run();
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: VitsSvc\n") + e.what()));
 		}
 
-		auto VitsOutputAudioSize = finaOut[0]->GetElementCount();
-		DragonianLibSTL::Vector<int16_t> VitsOutput(VitsOutputAudioSize);
-		{
-			finaOut[0]->DeviceData2Host();
-			auto VitsOutputAudioData = (float*)finaOut[0]->Data;
-			auto OutputAudioData = VitsOutput.Data();
-			const auto OutputAudioEnd = OutputAudioData + VitsOutput.Size();
-			while (OutputAudioData != OutputAudioEnd)
-				*(OutputAudioData++) = (int16_t)(*(VitsOutputAudioData++) * 32760.f);
-		}
+
+		auto VitsOutputAudioSize = VitsSvcSession.GetOutputInfos()[0].GetElementCount();
+		DragonianLibSTL::Vector<float> VitsOutputAudio(VitsOutputAudioSize);
+		VitsSvcSession.DeviceMemoryToHost(0, VitsOutputAudio.Data(), VitsOutputAudioSize * sizeof(float));
 
 		const auto dstWavLen = (_Slice.OrgLen * int64_t(MySamplingRate)) / (int)(_Params.SrcSamplingRate);
-		VitsOutput.Resize(dstWavLen, 0);
-		return VitsOutput;
+		VitsOutputAudio.Resize(dstWavLen, 0.f);
+		return VitsOutputAudio;
 	}
 	//Mute clips
 	const auto len = size_t(_Slice.OrgLen * int64_t(MySamplingRate) / (int)(_Params.SrcSamplingRate));
-	return { len, 0i16, GetMemoryProvider(DragonianLib::Device::CPU) };
+	return { len, 0.f, GetMemoryProvider(DragonianLib::Device::CPU) };
 }
 
 _D_Dragonian_Lib_TRT_Svc_Space_End

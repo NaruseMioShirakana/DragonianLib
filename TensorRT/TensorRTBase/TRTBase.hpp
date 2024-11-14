@@ -19,6 +19,7 @@
 
 #pragma once
 #include <functional>
+#include <mutex>
 #include "Base.h"
 #include "NvInfer.h"
 #include "MyTemplateLibrary/Vector.h"
@@ -51,74 +52,9 @@ struct DynaShapeSlice
 	}
 };
 
-struct Tensor
-{
-	Tensor(
-		void* data = nullptr,
-		const nvinfer1::Dims& shape = nvinfer1::Dims2(0, 0),
-		std::string name = "None",
-		int64_t size = 0,
-		nvinfer1::DataType type = nvinfer1::DataType::kFLOAT
-	) :
-		Data(data), Shape(shape), Name(std::move(name)), Size(size), Type(type) {}
-	~Tensor()
-	{
-		if (IsOwner && Data)
-			GetMemoryProvider(DragonianLib::Device::CPU)->Free(Data);
-	}
-	bool operator==(const char* _Val) const
-	{
-		return Name == _Val;
-	}
-	Tensor(Tensor&& _Val) noexcept = delete;
-	Tensor& operator=(Tensor&& _Val) noexcept = delete;
-	friend bool operator==(const std::shared_ptr<Tensor>& _Ptr, const char* _Val);
-	void DeviceData2Host();
-	int64_t GetElementCount() const;
-
-	void* Data = nullptr;
-	nvinfer1::Dims Shape;
-	std::string Name;
-	int64_t Size = 0;
-	nvinfer1::DataType Type = nvinfer1::DataType::kFLOAT;
-	bool IsOwner = false;
-	void* GpuBuffer = nullptr;
-private:
-	Tensor(const Tensor& _Val) = delete;
-	Tensor& operator=(const Tensor& _Val) = delete;
-};
-
-bool operator==(const std::shared_ptr<Tensor>& _Ptr, const char* _Val);
-
-using TrtTensor = std::shared_ptr<::DragonianLib::TensorRTLib::Tensor>;
-
-class GPUBuffer
-{
-public:
-	GPUBuffer() = default;
-	GPUBuffer(const Tensor& HostTensor);
-	~GPUBuffer();
-
-	GPUBuffer& operator=(const Tensor& HostTensor);
-	GPUBuffer& Resize(size_t NewSize);
-	GPUBuffer(GPUBuffer&& _Val) noexcept;
-
-	operator void* () const
-	{
-		return Data;
-	}
-private:
-	void Destory();
-	void* Data = nullptr;
-	int64_t Size = 0;
-
-	GPUBuffer(const GPUBuffer& _Val) = delete;
-
-	GPUBuffer& operator=(const GPUBuffer& _Val) = delete;
-	GPUBuffer& operator=(GPUBuffer&& _Val) noexcept = delete;
-};
-
-struct InferenceDeviceBuffer;
+struct ITensorInfo;
+struct IGPUBufferImpl;
+class InferenceSession;
 
 class TrtModel
 {
@@ -128,7 +64,7 @@ public:
 	TrtModel(
 		const std::wstring& _OrtPath,
 		const std::wstring& _CacheFile,
-		const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
+		const std::vector<DynaShapeSlice>& DynaShapeConfig,
 		int DLACore = -1,
 		bool Fallback = true,
 		bool EnableFp16 = false,
@@ -155,7 +91,7 @@ public:
 	void LoadModel(
 		const std::wstring& _OrtPath,
 		const std::wstring& _CacheFile,
-		const DragonianLibSTL::Vector<DynaShapeSlice>& DynaShapeConfig,
+		const std::vector<DynaShapeSlice>& DynaShapeConfig,
 		int DLACore = -1,
 		bool Fallback = true,
 		bool EnableFp16 = false,
@@ -165,25 +101,25 @@ public:
 		int32_t OptimizationLevel = 3
 	);
 
-	DragonianLibSTL::Vector<std::shared_ptr<Tensor>> Infer(
-		const DragonianLibSTL::Vector<std::shared_ptr<Tensor>>& Inputs,
-		const InferenceDeviceBuffer& _Buffer,
+	InferenceSession Construct(
+		const std::vector<ITensorInfo>& Inputs,
 		const std::vector<std::string>& _OutputNames
-	) const;
+	);
 
 	int64_t GetInputCount() const { return mInputCount; }
 	int64_t GetOutputCount() const { return mOutputCount; }
-	int64_t GetIOCount() const { return mEngine->getNbIOTensors(); }
+	int64_t GetIOCount() const { return mIONodeCount; }
 	const std::vector<std::string>& GetInputNames() const { return MyInputNames; }
 	const std::vector<std::string>& GetOutputNames() const { return MyOutputNames; }
 
 private:
-	std::unique_ptr<nvinfer1::IRuntime> mRuntime = nullptr;
+	std::shared_ptr<nvinfer1::IRuntime> mRuntime = nullptr;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr;
+	std::mutex mMutex;
 
 	int64_t mInputCount = 0, mOutputCount = 0, mIONodeCount = 0;
-
 	std::vector<std::string> MyInputNames, MyOutputNames;
+	std::vector<IGPUBufferImpl> _MyGpuBuffers;
 
 	TrtModel(const TrtModel& _Val) = delete;
 	TrtModel(TrtModel&& _Val) = delete;
@@ -191,28 +127,99 @@ private:
 	TrtModel& operator=(TrtModel&& _Val) = delete;
 };
 
-struct InferenceDeviceBuffer
+struct IGPUBufferImpl
 {
-	DragonianLibSTL::Vector<GPUBuffer> mGpuBuffers;
-	DragonianLibSTL::Vector<void*> mDeviceBindings;
+	friend struct ITensorInfo;
+	friend class InferenceSession;
+	friend class TrtModel;
+	IGPUBufferImpl() = default;
+	~IGPUBufferImpl() = default;
+	IGPUBufferImpl& ReAllocate(size_t NewSize);
+	std::shared_ptr<void> GetData() const;
+	operator void* () const;
 
-	InferenceDeviceBuffer() = default;
-	InferenceDeviceBuffer(const TrtModel& _Model)
-	{
-		mGpuBuffers.Resize(_Model.GetIOCount());
-		mDeviceBindings.Resize(_Model.GetIOCount());
-	}
-	InferenceDeviceBuffer& Reload(const TrtModel& _Model)
-	{
-		mGpuBuffers.Resize(_Model.GetIOCount());
-		mDeviceBindings.Resize(_Model.GetIOCount());
-		return *this;
-	}
+	IGPUBufferImpl(const IGPUBufferImpl& _Val) = default;
+	IGPUBufferImpl(IGPUBufferImpl&& _Val) noexcept = default;
+	IGPUBufferImpl& operator=(const IGPUBufferImpl& _Val) = default;
+	IGPUBufferImpl& operator=(IGPUBufferImpl&& _Val) noexcept = default;
+protected:
+	std::shared_ptr<void> _MyData = nullptr;
+	int64_t _MySize = 0;
+};
+
+struct ITensorInfo
+{
+	friend struct IGPUBufferImpl;
+	friend class InferenceSession;
+	friend class TrtModel;
+	ITensorInfo(
+		const nvinfer1::Dims& shape = nvinfer1::Dims2(0, 0),
+		std::string name = "None",
+		int64_t size = 0,
+		nvinfer1::DataType type = nvinfer1::DataType::kFLOAT
+	);
+	~ITensorInfo() = default;
+	bool operator==(const char* _Val) const;
+	int64_t GetElementCount() const;
+
+	ITensorInfo(ITensorInfo&& _Val) noexcept = default;
+	ITensorInfo& operator=(ITensorInfo&& _Val) noexcept = default;
+	ITensorInfo(const ITensorInfo& _Val) = default;
+	ITensorInfo& operator=(const ITensorInfo& _Val) = default;
+
+	bool operator==(const ITensorInfo& _Val) const;
+	bool operator!=(const ITensorInfo& _Val) const;
+
+	nvinfer1::Dims& GetShape() { return _MyShape; }
+	const nvinfer1::Dims& GetShape() const { return _MyShape; }
+	std::string& GetName() { return _MyName; }
+	const std::string& GetName() const { return _MyName; }
+	int64_t GetSize() const { return _MySize; }
+	nvinfer1::DataType GetType() const { return _MyType; }
+
+protected:
+	nvinfer1::Dims _MyShape;
+	std::string _MyName;
+	int64_t _MySize = 0;
+	nvinfer1::DataType _MyType = nvinfer1::DataType::kFLOAT;
+};
+
+class InferenceSession
+{
+public:
+	friend class TrtModel;
+	InferenceSession() : _MyMutex(std::make_shared<std::mutex>()) {}
+	~InferenceSession() = default;
+	void HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size);
+	void Run();
+	void DeviceMemoryToHost(size_t _Index, void* _Pointer, size_t _Size) const;
+	bool IsReady(const std::vector<ITensorInfo>& _Check) const;
+
+	std::vector<ITensorInfo>& GetOutputInfos() { return _MyOutputInfos; }
+	const std::vector<ITensorInfo>& GetOutputInfos() const { return _MyOutputInfos; }
+	std::vector<ITensorInfo>& GetInputInfos() { return _MyInputInfos; }
+	const std::vector<ITensorInfo>& GetInputInfos() const { return _MyInputInfos; }
+
+	InferenceSession(const InferenceSession& _Val) = delete;
+	InferenceSession& operator=(const InferenceSession& _Val) = delete;
+	InferenceSession(InferenceSession&& _Val) noexcept = default;
+	InferenceSession& operator=(InferenceSession&& _Val) noexcept = default;
+protected:
+	std::shared_ptr<nvinfer1::IExecutionContext> _MyContext = nullptr;
+	std::vector<void*> _MyDeviceBindings;
+	std::vector<std::shared_ptr<void>> _MyInputGpuBuffer;
+	std::vector<ITensorInfo> _MyInputInfos;
+	std::vector<std::shared_ptr<void>> _MyOutputGpuBuffer;
+	std::vector<ITensorInfo> _MyOutputInfos;
+private:
+	bool _MyCondition = false;
+	std::shared_ptr<std::mutex> _MyMutex;
 };
 
 struct TrtConfig
 {
 	std::wstring CacheFile;
+	std::vector<DynaShapeSlice> DynaSetting;
 	int DLACore = -1;
 	bool Fallback = true;
 	bool EnableFp16 = false;
@@ -221,5 +228,8 @@ struct TrtConfig
 	nvinfer1::ILogger::Severity VerboseLevel = nvinfer1::ILogger::Severity::kWARNING;
 	int32_t OptimizationLevel = 3;
 };
+
+bool operator==(const nvinfer1::Dims& _Left, const nvinfer1::Dims& _Right);
+bool operator!=(const nvinfer1::Dims& _Left, const nvinfer1::Dims& _Right);
 
 _D_Dragonian_TensorRT_Lib_Space_End

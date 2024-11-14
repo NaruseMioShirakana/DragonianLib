@@ -84,7 +84,7 @@ namespace DragonianLib
 		return inp;
 	}
 
-	std::wstring SerializeStringVector(const std::vector<std::string>& vector)
+	std::wstring SerializeStringVector(DragonianLibSTL::Vector<std::string>& vector)
 	{
 		std::wstring vecstr = L"[";
 		for (const auto& it : vector)
@@ -96,7 +96,7 @@ namespace DragonianLib
 		return vecstr;
 	}
 
-	std::wstring SerializeStringVector(const std::vector<std::wstring>& vector)
+	std::wstring SerializeStringVector(DragonianLibSTL::Vector<std::wstring>& vector)
 	{
 		std::wstring vecstr = L"[";
 		for (const auto& it : vector)

@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * FileName: SvcBase.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -26,7 +26,7 @@
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
 
-static inline DragonianLibSTL::Vector<DynaShapeSlice> HubertDynaSetting{
+static inline std::vector<DynaShapeSlice> HubertDynaSetting{
 	{"source", nvinfer1::Dims3(1, 1, 3200)	, nvinfer1::Dims3(1, 1, 32000), nvinfer1::Dims3(1, 1, 320000)}
 };
 
@@ -122,7 +122,7 @@ struct VitsSvcConfig
 
 struct SingleSlice
 {
-	DragonianLibSTL::Vector<int16_t> Audio;
+	DragonianLibSTL::Vector<float> Audio;
 	DragonianLibSTL::Vector<float> F0;
 	DragonianLibSTL::Vector<float> Volume;
 	DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> Speaker;
@@ -138,24 +138,24 @@ struct SingleAudio
 
 struct InferenceParams
 {
-	float NoiseScale = 0.3f;                           //ÔëÉùĞŞÕıÒò×Ó          0-10
-	int64_t Seed = 52468;                              //ÖÖ×Ó
-	int64_t SpeakerId = 0;                             //½ÇÉ«ID
-	uint64_t SrcSamplingRate = 48000;                  //Ô´²ÉÑùÂÊ
-	int64_t SpkCount = 2;                              //Ä£ĞÍ½ÇÉ«Êı
-	float IndexRate = 0.f;                             //Ë÷Òı±È               0-1
-	float ClusterRate = 0.f;                           //¾ÛÀà±È               0-1
-	float DDSPNoiseScale = 0.8f;                       //DDSPÔëÉùĞŞÕıÒò×Ó      0-10
-	float Keys = 0.f;                                  //Éı½µµ÷               -64-64
-	size_t MeanWindowLength = 2;                       //¾ùÖµÂË²¨Æ÷´°¿Ú´óĞ¡     1-20
-	size_t Pndm = 1;                                   //Diffusion¼ÓËÙ±¶Êı    1-200
-	size_t Step = 100;                                 //Diffusion×Ü²½Êı      1-1000
+	float NoiseScale = 0.3f;                           //å™ªå£°ä¿®æ­£å› å­          0-10
+	int64_t Seed = 52468;                              //ç§å­
+	int64_t SpeakerId = 0;                             //è§’è‰²ID
+	uint64_t SrcSamplingRate = 48000;                  //æºé‡‡æ ·ç‡
+	int64_t SpkCount = 2;                              //æ¨¡å‹è§’è‰²æ•°
+	float IndexRate = 0.f;                             //ç´¢å¼•æ¯”               0-1
+	float ClusterRate = 0.f;                           //èšç±»æ¯”               0-1
+	float DDSPNoiseScale = 0.8f;                       //DDSPå™ªå£°ä¿®æ­£å› å­      0-10
+	float Keys = 0.f;                                  //å‡é™è°ƒ               -64-64
+	size_t MeanWindowLength = 2;                       //å‡å€¼æ»¤æ³¢å™¨çª—å£å¤§å°     1-20
+	size_t Pndm = 1;                                   //DiffusionåŠ é€Ÿå€æ•°    1-200
+	size_t Step = 100;                                 //Diffusionæ€»æ­¥æ•°      1-1000
 	float TBegin = 0.f;
 	float TEnd = 1.f;
-	std::wstring Sampler = L"Pndm";                    //Diffusion²ÉÑùÆ÷
-	std::wstring ReflowSampler = L"Eular";             //Reflow²ÉÑùÆ÷
-	std::wstring F0Method = L"Dio";                    //F0ÌáÈ¡Ëã·¨
-	bool UseShallowDiffusion = false;                  //Ê¹ÓÃÇ³À©É¢
+	std::wstring Sampler = L"Pndm";                    //Diffusioné‡‡æ ·å™¨
+	std::wstring ReflowSampler = L"Eular";             //Reflowé‡‡æ ·å™¨
+	std::wstring F0Method = L"Dio";                    //F0æå–ç®—æ³•
+	bool UseShallowDiffusion = false;                  //ä½¿ç”¨æµ…æ‰©æ•£
 	void* VocoderModel = nullptr;
 	void* ShallowDiffusionModel = nullptr;
 	bool ShallowDiffusionUseSrcAudio = true;
@@ -185,24 +185,25 @@ struct TensorData
 struct TensorXData
 {
 	TensorData Data;
-	DragonianLibSTL::Vector<TrtTensor> Tensors;
+	std::vector<void*> InputData;
+	std::vector<ITensorInfo> Tensors;
 };
 
-//»ñÈ¡»»ËãÎª0-255µÄf0
+//è·å–æ¢ç®—ä¸º0-255çš„f0
 DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>&);
 
-//½«F0ÖĞ0Öµµ¥¶À²åÖµ
+//å°†F0ä¸­0å€¼å•ç‹¬æ’å€¼
 DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float>&);
 
 //DragonianLibSTL::Vector<float> InterpUVF0(const DragonianLibSTL::Vector<float>&, size_t PaddedIndex = size_t(-1));
 
-//»ñÈ¡UnVoiceMask
+//è·å–UnVoiceMask
 DragonianLibSTL::Vector<float> GetUV(const DragonianLibSTL::Vector<float>&);
 
-//»ñÈ¡¶ÔÆë¾ØÕó
+//è·å–å¯¹é½çŸ©é˜µ
 DragonianLibSTL::Vector<int64_t> GetAligments(size_t, size_t);
 
-//ÏßĞÔ×éºÏ
+//çº¿æ€§ç»„åˆ
 template <typename T>
 void LinearCombination(DragonianLibSTL::Vector<DragonianLibSTL::Vector<T>>& _data, size_t default_id, T Value = T(1.0))
 {
@@ -229,18 +230,18 @@ void LinearCombination(DragonianLibSTL::Vector<DragonianLibSTL::Vector<T>>& _dat
 	}
 }
 
-//½«F0ÖĞ0Öµµ¥¶À²åÖµ£¨¿ÉÉèÖÃÊÇ·ñÈ¡log£©
+//å°†F0ä¸­0å€¼å•ç‹¬æ’å€¼ï¼ˆå¯è®¾ç½®æ˜¯å¦å–logï¼‰
 DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<float>&, bool);
 
-//»ñÈ¡ÕıÈ·µÄ½ÇÉ«»ìºÏÊı¾İ
+//è·å–æ­£ç¡®çš„è§’è‰²æ··åˆæ•°æ®
 DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk, int64_t _NSpeaker);
 
-//»ñÈ¡ÕıÈ·µÄ½ÇÉ«»ìºÏÊı¾İ
+//è·å–æ­£ç¡®çš„è§’è‰²æ··åˆæ•°æ®
 DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count);
 
-DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<int16_t>& _Audio, int _HopSize);
+DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float>& _Audio, int _HopSize);
 
-SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<int16_t>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold);
+SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold);
 
 void PreProcessAudio(const SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter);
 
