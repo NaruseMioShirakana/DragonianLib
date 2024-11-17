@@ -20,6 +20,7 @@
  */
 
 #pragma once
+#include "onnxruntime_cxx_api.h"
 #include "../InferTools/InferTools.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header

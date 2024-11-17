@@ -1,4 +1,5 @@
-﻿#include "../header/GPT-SoVits.hpp"
+﻿/*
+#include "../header/GPT-SoVits.hpp"
 #include "../../InferTools/inferTools.hpp"
 #include <random>
 #include <set>
@@ -622,3 +623,4 @@ std::vector<std::vector<int16_t>> GptSoVits::Inference(const std::vector<MoeVSPr
 }
 
 MoeVoiceStudioCoreEnd
+ */

@@ -20,6 +20,7 @@
 #pragma once
 #define _D_Dragonian_Lib_Template_Library_Space_Begin namespace DragonianLibSTL {
 #define _D_Dragonian_Lib_Template_Library_Space_End }
+#include <memory>
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
@@ -41,26 +42,11 @@ namespace DragonianLib
 		DIRECTX,
 	};
 
-	class MemoryProvider
-	{
-	public:
-		~MemoryProvider();
-		friend Allocator GetMemoryProvider(Device _Device);
-		MemoryProvider(const MemoryProvider&) = delete;
-		MemoryProvider(MemoryProvider&&) = delete;
-		MemoryProvider& operator=(const MemoryProvider&) = delete;
-		MemoryProvider& operator=(MemoryProvider&&) = delete;
-
-	private:
-		MemoryProvider();
-	};
-
 	Allocator GetMemoryProvider(Device _Device);
 }
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 using DragonianLib::Device;
-using DragonianLib::MemoryProvider;
 using DragonianLib::GetMemoryProvider;
 using DragonianLib::NopID;
 
@@ -76,7 +62,6 @@ public:
 	virtual unsigned char* Allocate(size_t _Size);
 	virtual void Free(void* _Block);
 	Device GetDevice() const;
-protected:
 	BaseAllocator(Device _Type) : Type_(_Type) {}
 	Device Type_;
 };
@@ -92,7 +77,6 @@ public:
 	CPUAllocator& operator=(CPUAllocator&&) = default;
 	unsigned char* Allocate(size_t _Size) override;
 	void Free(void* _Block) override;
-protected:
 	CPUAllocator() : BaseAllocator(Device::CPU) {}
 };
 

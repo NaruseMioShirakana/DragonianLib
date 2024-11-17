@@ -19,6 +19,7 @@
  * date: 2023-11-9 Create
 */
 
+/*
 #pragma once
 #include "TTS.hpp"
 
@@ -95,3 +96,4 @@ private:
 };
 
 MoeVoiceStudioCoreEnd
+*/

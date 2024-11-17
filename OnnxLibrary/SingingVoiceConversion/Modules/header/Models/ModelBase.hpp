@@ -22,7 +22,6 @@
 #pragma once
 #include <functional>
 #include <thread>
-#include <onnxruntime_cxx_api.h>
 #include "Params.hpp"
 #include "EnvManager.hpp"
 #include "../InferTools/inferTools.hpp"

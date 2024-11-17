@@ -26,11 +26,6 @@ public:
 	Tokenizer& operator=(const Tokenizer&) = default;
 	Tokenizer& operator=(Tokenizer&&) noexcept = default;
 
-private:
-	std::unordered_map<std::wstring, TokenizerType> _MyVocab;
-	std::wstring _MySymbol = L"##";
-	TokenizerFix _MyFix = Prefix;
-
 	void Tokenize(
 		const std::wstring& _InputText,
 		Vector<std::wstring>& _OutputTokens,
@@ -47,14 +42,19 @@ private:
 		size_t _MaximumMatching = 32
 	) const;
 
+	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens) const;
+
+private:
+	std::unordered_map<std::wstring, TokenizerType> _MyVocab;
+	std::wstring _MySymbol = L"##";
+	TokenizerFix _MyFix = Prefix;
+
 	void Tokenize(
 		std::wstring_view _InputText,
 		Vector<std::wstring>& _OutputTokens,
 		TokenizerMethod _Method = Maximum,
 		size_t _MaximumMatching = 32
 	) const;
-
-	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens) const;
 public:
 	static Vector<std::wstring> SplitWithSymbol(
 		const std::wstring& _InputText,

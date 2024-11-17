@@ -1,32 +1,24 @@
 ﻿#include "../Alloc.h"
 #include <exception>
+#include <memory>
 
 namespace DragonianLib
 {
-	static Allocator _Provider[8];
-
-	MemoryProvider::MemoryProvider()
+	static std::shared_ptr<DragonianLibSTL::BaseAllocator> _Provider[8]
 	{
-		_Provider[0] = new DragonianLibSTL::CPUAllocator;
-		_Provider[1] = nullptr;
-		_Provider[2] = nullptr;
-		_Provider[3] = nullptr;
-		_Provider[4] = nullptr;
-		_Provider[5] = nullptr;
-		_Provider[6] = nullptr;
-		_Provider[7] = nullptr;
-	}
-
-	MemoryProvider::~MemoryProvider()
-	{
-		for (auto i : _Provider)
-			delete i;
-	}
+		std::make_shared<DragonianLibSTL::CPUAllocator>(),
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr
+	};
 
 	Allocator GetMemoryProvider(Device _Device)
 	{
-		static MemoryProvider _Instance;
-		return _Provider[size_t(_Device)];
+		return _Provider[size_t(_Device)].get();
 	}
 }
 
