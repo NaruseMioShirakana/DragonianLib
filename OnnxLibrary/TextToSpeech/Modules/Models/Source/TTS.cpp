@@ -1,5 +1,6 @@
 ﻿#include "../header/TTS.hpp"
 #include "Util/Logger.h"
+#include <ranges>
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 	TextToSpeech::TextToSpeech(
@@ -91,6 +92,8 @@ DragonianLibSTL::Vector<float> TextToSpeech::Inference(
 
 	if (!InputData.GetPhonemes().Empty() && InputData._PhonemesIds.Empty())
 		InputData._PhonemesIds = CleanedSeq2Indices(InputData.GetPhonemes());
+	if (!InputData.GetRefPhonemes().Empty() && InputData._RefPhonemesIds.Empty())
+		InputData._RefPhonemesIds = CleanedSeq2Indices(InputData.GetRefPhonemes());
 	if (!InputData.GetLanguageSymbols().Empty() && InputData._LanguageIds.Empty())
 		InputData._LanguageIds = LanguageSymbol2Indices(InputData.GetLanguageSymbols(), Params.LanguageID);
 	if (InputData._SpeakerMixIds.empty())
@@ -182,12 +185,12 @@ std::map<int64_t, float> TextToSpeech::SpeakerMixSymbol2Indices(
 	}
 
 	auto Sum = 0.0f;
-	for (const auto& i : Indices)
-		Sum += i.second;
+	for (const auto& i : Indices | std::ranges::views::values)
+		Sum += i;
 
 	if (Sum > 0.0001f)
-		for (auto& i : Indices)
-			i.second /= Sum;
+		for (auto& i : Indices | std::ranges::views::values)
+			i /= Sum;
 	else
 		Indices[SpeakerID] = 1.0f;
 
@@ -249,7 +252,7 @@ DragonianLibSTL::Vector<int64_t> TextToSpeech::GetAligments(size_t DstLen, size_
 	return bert2ph;
 }
 
-BertModel::BertModel(
+ContextModel::ContextModel(
 	const std::wstring& ModelPath,
 	const ExecutionProviders& ExecutionProvider_,
 	unsigned DeviceID_,
@@ -260,7 +263,7 @@ Tokenizer(ModelPath + L"/Tokenizer.json")
 	Session = std::make_shared<Ort::Session>(*OnnxEnv, (ModelPath + L"/model.onnx").c_str(), *SessionOptions);
 }
 
-std::pair<DragonianLibSTL::Vector<float>, int64_t> BertModel::Inference(
+std::pair<DragonianLibSTL::Vector<float>, int64_t> ContextModel::Inference(
 	const std::wstring& InputData,
 	Dict::Tokenizer::TokenizerMethod _Method,
 	bool _SkipNonLatin,
@@ -275,41 +278,11 @@ std::pair<DragonianLibSTL::Vector<float>, int64_t> BertModel::Inference(
 		_SkipNonLatin,
 		_MaximumMatching
 	);
-	auto input_ids = Tokenizer(
-		Tokens
-	);
-	std::vector<int64_t> attention_mask(input_ids.Size(), 1), token_type_ids(input_ids.Size(), 0);
-	const int64_t AttentionShape[2] = { 1, (int64_t)input_ids.Size() };
-	std::vector<Ort::Value> AttentionInput, AttentionOutput;
-	AttentionInput.emplace_back(Ort::Value::CreateTensor(
-		*MemoryInfo, input_ids.Data(), input_ids.Size(), AttentionShape, 2));
-	if (Session->GetInputCount() == 3)
-		AttentionInput.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, attention_mask.data(), attention_mask.size(), AttentionShape, 2));
-	AttentionInput.emplace_back(Ort::Value::CreateTensor(
-		*MemoryInfo, token_type_ids.data(), token_type_ids.size(), AttentionShape, 2));
-	try
-	{
-		AttentionOutput = Session->Run(Ort::RunOptions{ nullptr },
-			BertInputNames.data(),
-			AttentionInput.data(),
-			Session->GetInputCount(),
-			BertOutputNames.data(),
-			1);
-	}
-	catch (Ort::Exception& e)
-	{
-		_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Bert\n") + e.what()));
-	}
-	const auto AttentionOutputTensor = AttentionOutput[0].GetTensorData<float>();
-	const auto AttentionOutputSize = AttentionOutput[0].GetTensorTypeAndShapeInfo().GetElementCount();
-
-	return {
-		{ AttentionOutputTensor, AttentionOutputTensor + AttentionOutputSize },
-		AttentionOutput[0].GetTensorTypeAndShapeInfo().GetShape().back()
-	};
+	auto input_ids = Tokenizer(Tokens);
+	return Inference(input_ids);
 }
 
-std::pair<DragonianLibSTL::Vector<float>, int64_t> BertModel::Inference(DragonianLibSTL::Vector<int64_t>& TokenIds) const
+std::pair<DragonianLibSTL::Vector<float>, int64_t> ContextModel::Inference(DragonianLibSTL::Vector<int64_t>& TokenIds) const
 {
 	std::vector<int64_t> attention_mask(TokenIds.Size(), 1), token_type_ids(TokenIds.Size(), 0);
 	const int64_t AttentionShape[2] = { 1, (int64_t)TokenIds.Size() };
@@ -323,10 +296,10 @@ std::pair<DragonianLibSTL::Vector<float>, int64_t> BertModel::Inference(Dragonia
 	try
 	{
 		AttentionOutput = Session->Run(Ort::RunOptions{ nullptr },
-			BertInputNames.data(),
+			InputNames.data(),
 			AttentionInput.data(),
 			Session->GetInputCount(),
-			BertOutputNames.data(),
+			OutputNames.data(),
 			1);
 	}
 	catch (Ort::Exception& e)
@@ -338,7 +311,10 @@ std::pair<DragonianLibSTL::Vector<float>, int64_t> BertModel::Inference(Dragonia
 
 	return {
 		{ AttentionOutputTensor, AttentionOutputTensor + AttentionOutputSize },
-		AttentionOutput[0].GetTensorTypeAndShapeInfo().GetShape().back()
+		std::max(
+			AttentionOutput[0].GetTensorTypeAndShapeInfo().GetShape().back(),
+			AttentionOutput[0].GetTensorTypeAndShapeInfo().GetShape().front()
+		)
 	};
 }
 

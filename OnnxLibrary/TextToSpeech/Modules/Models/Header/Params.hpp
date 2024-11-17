@@ -36,13 +36,26 @@ struct VitsConfigs
     std::wstring DecoderPath;
 };
 
+struct GptSoVitsConfigs
+{
+    std::wstring VitsPath;
+    std::wstring SSLPath;
+    std::wstring EncoderPath;
+    std::wstring DecoderPath;
+    std::wstring FDecoderPath;
+};
+
 struct ModelHParams
 {
 	VitsConfigs VitsConfig;
+    GptSoVitsConfigs GptSoVitsConfig;
 	long SamplingRate = 22050;
     int64_t DefBertSize = 1024;
     int64_t VQCodeBookSize = 10;
     int64_t BertCount = 3;
+    int64_t NumLayers = 24;
+    int64_t EmbeddingDim = 512;
+    int64_t EOSId = 1024;
     bool AddBlank = true;
     bool UseTone = false;
     bool UseBert = false;
@@ -65,15 +78,15 @@ struct ModelHParams
 struct TTSInputData
 {
     friend LibTTSModule;
-    DragonianLibSTL::Vector<float> _ReferenceAudio;
+    DragonianLibSTL::Vector<float> _ReferenceAudio16KSr, _ReferenceAudioSrc;
 
     int64_t _BertDims;
-    DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _BertVec;
+	DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _BertVec; // If GptSoVits, Index[0] is Reference, Index[1] is Target
     DragonianLibSTL::Vector<int64_t> _Token2Phoneme;
 
     DragonianLibSTL::Vector<float> _ClapVec;
 
-    DragonianLibSTL::Vector<int64_t> _PhonemesIds;
+    DragonianLibSTL::Vector<int64_t> _PhonemesIds, _RefPhonemesIds;
 
     DragonianLibSTL::Vector<int64_t> _Tones;
 
@@ -87,6 +100,7 @@ struct TTSInputData
 
 protected:
     DragonianLibSTL::Vector<std::wstring> _Phonemes;
+    DragonianLibSTL::Vector<std::wstring> _RefPhonemes;
     DragonianLibSTL::Vector<std::wstring> _LanguageSymbols;
     DragonianLibSTL::Vector<std::pair<std::wstring, float>> _SpeakerMixSymbol;
 
@@ -96,6 +110,11 @@ public:
         _Phonemes = std::move(Phonemes);
 		_PhonemesIds.Clear();
     }
+	_D_Dragonian_Lib_Force_Inline void SetRefPhonemes(DragonianLibSTL::Vector<std::wstring> RefPhonemes)
+	{
+		_RefPhonemes = std::move(RefPhonemes);
+        _RefPhonemesIds.Clear();
+	}
     _D_Dragonian_Lib_Force_Inline void SetLanguageSymbols(DragonianLibSTL::Vector<std::wstring> LanguageSymbols)
     {
         _LanguageSymbols = std::move(LanguageSymbols);
@@ -109,6 +128,10 @@ public:
     _D_Dragonian_Lib_Force_Inline DragonianLibSTL::Vector<std::wstring>& GetPhonemes()
     {
         return _Phonemes;
+    }
+	_D_Dragonian_Lib_Force_Inline DragonianLibSTL::Vector<std::wstring>& GetRefPhonemes()
+    {
+		return _RefPhonemes;
     }
     _D_Dragonian_Lib_Force_Inline DragonianLibSTL::Vector<std::wstring>& GetLanguageSymbols()
     {
@@ -131,7 +154,7 @@ struct TTSParams
     float FactorDpSdp = 0.f;                                        //随机时长预测器与时长预测器混合比例
 
     float GateThreshold = 0.66666f;                                 //Tacotron2解码器EOS阈值
-    int64_t MaxDecodeStep = 2000;                                   //Tacotron2最大解码步数
+    int64_t MaxDecodeStep = 2000;                                   //Tacotron2/GptSoVits最大自回归步数
     int64_t VQIndex = 0;
 
     DragonianLibSTL::Vector<std::wstring> EmotionPrompt;            //情感标记

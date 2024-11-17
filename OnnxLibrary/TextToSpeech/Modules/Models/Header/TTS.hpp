@@ -96,17 +96,17 @@ public:
 	TextToSpeech& operator=(TextToSpeech&&) noexcept = default;
 };
 
-class BertModel : public LibTTSModule
+class ContextModel : public LibTTSModule
 {
 public:
-	BertModel(
+	ContextModel(
 		const std::wstring& ModelPath,
 		const ExecutionProviders& ExecutionProvider_,
 		unsigned DeviceID_,
 		unsigned ThreadCount_ = 0
 	);
 
-	~BertModel() override = default;
+	~ContextModel() override = default;
 
 	std::pair<DragonianLibSTL::Vector<float>, int64_t> Inference(
 		const std::wstring& InputData,
@@ -119,16 +119,16 @@ public:
 		DragonianLibSTL::Vector<int64_t>& TokenIds
 	) const;
 
-	BertModel(const BertModel&) = default;
-	BertModel& operator=(const BertModel&) = default;
-	BertModel(BertModel&&) noexcept = default;
-	BertModel& operator=(BertModel&&) noexcept = default;
+	ContextModel(const ContextModel&) = default;
+	ContextModel& operator=(const ContextModel&) = default;
+	ContextModel(ContextModel&&) noexcept = default;
+	ContextModel& operator=(ContextModel&&) noexcept = default;
 
 private:
 	std::shared_ptr<Ort::Session> Session = nullptr;
 	Dict::Tokenizer Tokenizer;
-	static inline const std::vector<const char*> BertInputNames = { "input_ids", "attention_mask", "token_type_ids" };
-	static inline const std::vector<const char*> BertOutputNames = { "last_hidden_state" };
+	static inline const std::vector<const char*> InputNames = { "input_ids", "attention_mask", "token_type_ids" };
+	static inline const std::vector<const char*> OutputNames = { "last_hidden_state" };
 };
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_End

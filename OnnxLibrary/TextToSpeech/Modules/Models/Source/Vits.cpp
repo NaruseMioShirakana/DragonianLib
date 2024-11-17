@@ -4,7 +4,8 @@
 #include "Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
-	Vits::Vits(
+
+Vits::Vits(
 	const ModelHParams& _Config,
 	const ProgressCallback& _ProgressCallback,
 	const DurationCallback& _DurationCallback,
@@ -39,7 +40,7 @@ UseVQ(_Config.UseVQ), UseClap(_Config.UseClap), Emotion2Id(_Config.Emotion2Id)
 
 	if (UseBert)
 	{
-		if(BertCount > 0 && BertCount < static_cast<int64_t>(VistBertInputNames.size()))
+		if (BertCount > 0 && BertCount < static_cast<int64_t>(VistBertInputNames.size()))
 		{
 			for (int64_t i = 0; i < BertCount; ++i)
 			{
@@ -48,7 +49,7 @@ UseVQ(_Config.UseVQ), UseClap(_Config.UseClap), Emotion2Id(_Config.Emotion2Id)
 		}
 	}
 
-	if(UseClap)
+	if (UseClap)
 		EncoderInputNames.emplace_back("emo");
 
 	sessionDec = std::make_shared<Ort::Session>(*OnnxEnv, _Config.VitsConfig.DecoderPath.c_str(), *SessionOptions);
@@ -193,7 +194,7 @@ DragonianLibSTL::Vector<float> Vits::Inference(
 			_D_Dragonian_Lib_Throw_Exception("Emotion Size Not Matched!");
 	}
 
-	if(UseBert)
+	if (UseBert)
 	{
 		if (InputData._BertVec.Empty())
 			_D_Dragonian_Lib_Throw_Exception("BertVec Could Not Be Empty!");
@@ -218,7 +219,7 @@ DragonianLibSTL::Vector<float> Vits::Inference(
 		auto BertSize = BertBufferSize / InputData._BertDims;
 		if (BertSize != PhonemeSize)
 		{
-			if(PhonemeSize != InputData._Token2Phoneme.Size())
+			if (PhonemeSize != InputData._Token2Phoneme.Size())
 				InputData._Token2Phoneme = GetAligments(PhonemeSize, BertSize);
 			const auto TargetBertSize = PhonemeSize * InputData._BertDims;
 			for (auto& BertVec : InputData._BertVec)

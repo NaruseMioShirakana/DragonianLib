@@ -97,7 +97,7 @@ static int TrtSr()
 
 int main()
 {
-	DragonianLib::TextToSpeech::BertModel BertModel(
+	DragonianLib::TextToSpeech::ContextModel BertModel(
 		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Bert\deberta-v2-large-japanese)",
 		DragonianLib::TextToSpeech::LibTTSModule::ExecutionProviders::CPU,
 		1,
@@ -118,10 +118,14 @@ int main()
 				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_flow.onnx)",
 				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_dec.onnx)",
 			},
+			{},
 			44100,
 			1024,
 			10,
 			3,
+			24,
+			512,
+			1024,
 			true,
 			true,
 			true,

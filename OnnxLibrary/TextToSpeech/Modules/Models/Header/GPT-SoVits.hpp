@@ -19,81 +19,56 @@
  * date: 2023-11-9 Create
 */
 
-/*
 #pragma once
 #include "TTS.hpp"
 
-MoeVoiceStudioCoreHeader
+_D_Dragonian_Lib_Lib_Text_To_Speech_Header
 class GptSoVits : public TextToSpeech
 {
 public:
-    GptSoVits(const MJson& _Config, const ProgressCallback& _ProgressCallback,
+    GptSoVits
+	(
+        const ModelHParams& _Config,
+        const ProgressCallback& _ProgressCallback,
         const DurationCallback& _DurationCallback,
         ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
+        unsigned DeviceID_ = 0,
+        unsigned ThreadCount_ = 0
+    );
 
-    GptSoVits(const std::map<std::string, std::wstring>& _PathDict, const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        const DurationCallback& _DurationCallback,
-        ExecutionProviders ExecutionProvider_ = ExecutionProviders::CPU,
-        unsigned DeviceID_ = 0, unsigned ThreadCount_ = 0);
+    ~GptSoVits() override = default;
 
-    void load(const std::map<std::string, std::wstring>& _PathDict,
-        const MJson& _Config, const ProgressCallback& _ProgressCallback,
-        const DurationCallback& _DurationCallback);
+    GptSoVits(const GptSoVits&) = default;
+    GptSoVits& operator=(const GptSoVits&) = default;
+    GptSoVits(GptSoVits&&) noexcept = default;
+    GptSoVits& operator=(GptSoVits&&) noexcept = default;
 
-    ~GptSoVits() override;
+    DragonianLibSTL::Vector<float> Inference(TTSInputData& InputData, const TTSParams& Params) const override;
 
-    void destory()
-    {
-        delete sessionBert;
-        delete sessionVits;
-        delete sessionSSL;
-        sessionBert = nullptr;
-        sessionVits = nullptr;
-        sessionSSL = nullptr;
-
-        delete sessionEncoder;
-        delete sessionFDecoder;
-        delete sessionDecoder;
-        sessionEncoder = nullptr;
-        sessionFDecoder = nullptr;
-        sessionDecoder = nullptr;
-    }
-
-    [[nodiscard]] std::tuple<std::vector<float>, std::vector<int64_t>> GetBertPhs(const MoeVSProjectSpace::MoeVSTTSSeq& Seq, const MoeVSG2P::Tokenizer& Tokenizer) const;
-
-    [[nodiscard]] std::vector<std::vector<int16_t>> Inference(const std::vector<MoeVSProjectSpace::MoeVSTTSSeq>& _Input) const override;
 private:
-    Ort::Session* sessionBert = nullptr;
-    Ort::Session* sessionVits = nullptr;
-    Ort::Session* sessionSSL = nullptr;
+    std::shared_ptr<Ort::Session> sessionVits = nullptr;
+    std::shared_ptr<Ort::Session> sessionSSL = nullptr;
 
-    Ort::Session* sessionEncoder = nullptr;
-    Ort::Session* sessionFDecoder = nullptr;
-    Ort::Session* sessionDecoder = nullptr;
+    std::shared_ptr<Ort::Session> sessionEncoder = nullptr;
+    std::shared_ptr<Ort::Session> sessionFDecoder = nullptr;
+    std::shared_ptr<Ort::Session> sessionDecoder = nullptr;
 
     int64_t NumLayers = 24;
     int64_t EmbeddingDim = 512;
     int64_t EOSId = 1024;
 
     std::vector<const char*> VitsInputNames = { "text_seq", "pred_semantic", "ref_audio" };
-    const std::vector<const char*> VitsOutputNames = { "audio" };
+    static inline const std::vector<const char*> VitsOutputNames = { "audio" };
 
     std::vector<const char*> EncoderInputNames = { "ref_seq", "text_seq", "ref_bert", "text_bert", "ssl_content" };
-    const std::vector<const char*> EncoderOutputNames = { "x", "prompts" };
+    static inline const std::vector<const char*> EncoderOutputNames = { "x", "prompts" };
     std::vector<const char*> DecoderInputNames = { "iy", "ik", "iv", "iy_emb", "ix_example" };
-    const std::vector<const char*> DecoderOutputNames = { "y", "k", "v", "y_emb", "logits", "samples" };
+    static inline const std::vector<const char*> DecoderOutputNames = { "y", "k", "v", "y_emb", "logits", "samples" };
     std::vector<const char*> FDecoderInputNames = { "x", "prompts" };
-    const std::vector<const char*> FDecoderOutputNames = { "y", "k", "v", "y_emb", "x_example" };
+    static inline const std::vector<const char*> FDecoderOutputNames = { "y", "k", "v", "y_emb", "x_example" };
 
     std::vector<const char*> SSLInputNames = { "audio" };
-    const std::vector<const char*> SSLOutputNames = { "last_hidden_state" };
-
-    const std::vector<const char*> BertInputNames = { "input_ids", "attention_mask", "token_type_ids" };
-    const std::vector<const char*> BertInputNames2 = { "input_ids", "attention_mask" };
-    const std::vector<const char*> BertInputNames3 = { "input_ids" };
-    const std::vector<const char*> BertOutputNames = { "last_hidden_state" };
+    static inline const std::vector<const char*> SSLOutputNames = { "last_hidden_state" };
 };
 
-MoeVoiceStudioCoreEnd
-*/
+_D_Dragonian_Lib_Lib_Text_To_Speech_End
