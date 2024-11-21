@@ -80,7 +80,7 @@ struct TTSInputData
     friend LibTTSModule;
     DragonianLibSTL::Vector<float> _ReferenceAudio16KSr, _ReferenceAudioSrc;
 
-    int64_t _BertDims;
+    int64_t _BertDims = 1024;
 	DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _BertVec; // If GptSoVits, Index[0] is Reference, Index[1] is Target
     DragonianLibSTL::Vector<int64_t> _Token2Phoneme;
 

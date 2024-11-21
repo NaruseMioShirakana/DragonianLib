@@ -17,11 +17,37 @@ namespace Plugin
 		void DestoryInstance(void* Instance) const;
 		void* GetFunction(const std::string& FunctionName, bool Restrict = false) const;
 		void* GetFunction(const char* FunctionName, bool Restrict = false) const;
+		void* GetFunction(const std::string& FunctionName, bool Restrict = false);
+		void* GetFunction(const char* FunctionName, bool Restrict = false);
+
+		template <typename ReturnType, typename ...ArgTypes>
+		ReturnType Invoke(const std::string& FunctionName, ArgTypes... Args)
+		{
+			auto Iter = _MyFunctions.find(FunctionName);
+			void* Function = nullptr;
+			if (Iter == _MyFunctions.end())
+				Function = GetFunction(FunctionName, true);
+			else
+				Function = Iter->second;
+
+			return reinterpret_cast<ReturnType(*)(ArgTypes...)>(Function)(Args...);
+		}
+
+		template <typename ReturnType, typename ...ArgTypes>
+		ReturnType Invoke(const char* FunctionName, ArgTypes... Args) const
+		{
+			auto Iter = _MyFunctions.find(FunctionName);
+			if (Iter == _MyFunctions.end())
+				_D_Dragonian_Lib_Throw_Exception("Failed to find function: " + std::string(FunctionName));
+			return reinterpret_cast<ReturnType(*)(ArgTypes...)>(Iter->second)(Args...);
+		}
 
 	protected:
 		std::shared_ptr<void> _MyLibrary = nullptr;
 		GetInstanceFunc _MyGetInstance = nullptr;
 		DestoryInstanceFunc _MyDestoryInstance = nullptr;
+		std::unordered_map<std::string, void*> _MyFunctions;
+
 	private:
 		MPlugin() = delete;
 		MPlugin(const MPlugin&) = delete;
@@ -33,10 +59,6 @@ namespace Plugin
 	};
 
 	using Plugin = std::shared_ptr<MPlugin>;
-
-	Plugin LoadPlugin(const std::wstring& RelativePath);
-
-	void UnloadPlugin(const std::wstring& RelativePath);
 
 }
 

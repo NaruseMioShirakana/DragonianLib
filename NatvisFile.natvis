@@ -23,6 +23,7 @@
 			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]}, {_MyFirst[1]}, {_MyFirst[2]}, ..., {*(_MyLast - 3)}, {*(_MyLast - 2)}, {*(_MyLast - 1)} ] }}
 		</DisplayString>
 		<Expand>
+			<Item Name="[Buffer]" ExcludeView="simple">_MyFirst</Item>
 			<Item Name="[Size]" ExcludeView="simple">_MyLast - _MyFirst</Item>
 			<Item Name="[Capacity]" ExcludeView="simple">_MyEnd - _MyFirst</Item>
 			<Synthetic Name="[Data]">
@@ -43,6 +44,7 @@
 					</ArrayItems>
 				</Expand>
 			</Synthetic>
+			<Item Name="[Type]" ExcludeView="simple">_MyAllocator->Type_</Item>
 		</Expand>
 	</Type>
 

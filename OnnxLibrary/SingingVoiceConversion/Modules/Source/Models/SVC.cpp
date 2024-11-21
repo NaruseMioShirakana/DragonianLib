@@ -65,7 +65,10 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::ExtractVolume(
 	int64_t index = 0;
 	for (auto& i : volume)
 	{
-		i = sqrt((float)DragonianLibSTL::Average(Audio.begin() + index * HopSize, Audio.begin() + (index + 1) * HopSize));
+		i = sqrt((float)DragonianLibSTL::Average(
+			(Audio.begin() + index * HopSize).Get(),
+			(Audio.begin() + (index + 1) * HopSize).Get()
+		));
 		++index;
 	}
 	return volume;
@@ -89,7 +92,10 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::ExtractVolume(
 	int64_t index = 0;
 	for (auto& i : volume)
 	{
-		i = sqrt((float)DragonianLibSTL::Average(Audio.begin() + index * _HopSize, Audio.begin() + (index + 1) * _HopSize));
+		i = sqrt((float)DragonianLibSTL::Average(
+			(Audio.begin() + index * _HopSize).Get(),
+			(Audio.begin() + (index + 1) * _HopSize).Get()
+		));
 		++index;
 	}
 	return volume;
@@ -119,7 +125,7 @@ SingleAudio SingingVoiceConversion::GetAudioSlice(
 }
 
 void SingingVoiceConversion::PreProcessAudio(
-	const SingleAudio& _Input,
+	SingleAudio& _Input,
 	const F0Extractor::F0ExtractorParams& _Params,
 	const std::wstring& _F0Method,
 	const F0Extractor::NetF0ExtractorSetting& _F0ExtractorLoadParameter

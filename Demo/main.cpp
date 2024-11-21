@@ -40,7 +40,7 @@ void WithTimer(_Function&& _Func)
 	std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
-static int TrtSr()
+static void TrtSr()
 {
 	using namespace DragonianLib::TensorRTLib::SuperResolution;
 	MoeSR Model{
@@ -48,14 +48,12 @@ static int TrtSr()
 		4,
 		DragonianLib::TensorRTLib::TrtConfig{
 			LR"(D:\VSGIT\hat_lite_seed0721.trt)",
-			DragonianLib::TensorRTLib::TrtConfig::DynaShapeSettings{
-					{
-						"DynaArg0",
-					   nvinfer1::Dims4(1, 3, 64, 64),
-					   nvinfer1::Dims4(1, 3, 128, 128),
-					   nvinfer1::Dims4(1, 3, 192, 192)
-					}
-			},
+			{DragonianLib::TensorRTLib::DynaShapeSlice{
+					"DynaArg0",
+				   nvinfer1::Dims4(1, 3, 64, 64),
+				   nvinfer1::Dims4(1, 3, 128, 128),
+				   nvinfer1::Dims4(1, 3, 192, 192)
+			}},
 			0,
 			true,
 			false,
@@ -95,7 +93,7 @@ static int TrtSr()
 	DragonianLib::ImageVideo::GdiClose();
 }
 
-int main()
+static void TTS()
 {
 	DragonianLib::TextToSpeech::ContextModel BertModel(
 		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Bert\deberta-v2-large-japanese)",
@@ -281,6 +279,9 @@ int main()
 		Audio,
 		44100
 	);
+}
 
+int main()
+{
 	return 0;
 }

@@ -59,14 +59,13 @@ namespace Plugin
 		auto Function = GetProcAddress(HINSTANCE(_MyLibrary.get()), FunctionName);
 		if (!Function && Restrict)
 			_D_Dragonian_Lib_Throw_Exception("Failed to get function: " + std::string(FunctionName));
-		return (void*)Function;
 #else
 		auto Function = dlsym(_MyLibrary, FunctionName);
 		auto ErrorMessage = dlerror();
 		if (ErrorMessage && Restrict)
 			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
-		return Function;
 #endif
+		return (void*)Function;
 	}
 
 	void* MPlugin::GetFunction(const std::string& FunctionName, bool Restrict) const
@@ -74,21 +73,25 @@ namespace Plugin
 		return GetFunction(FunctionName.c_str(), Restrict);
 	}
 
-	static std::unordered_map<std::wstring, std::shared_ptr<MPlugin>> _MyPlugins;
-
-	std::shared_ptr<MPlugin> LoadPlugin(const std::wstring& RelativePath)
+	void* MPlugin::GetFunction(const char* FunctionName, bool Restrict)
 	{
-		auto PluginIt = _MyPlugins.find(RelativePath);
-		if (PluginIt != _MyPlugins.end())
-			return PluginIt->second;
-		return _MyPlugins[RelativePath] = std::make_shared<MPlugin>(RelativePath);
+#ifdef _WIN32
+		auto Function = GetProcAddress(HINSTANCE(_MyLibrary.get()), FunctionName);
+		if (!Function && Restrict)
+			_D_Dragonian_Lib_Throw_Exception("Failed to get function: " + std::string(FunctionName));
+#else
+		auto Function = dlsym(_MyLibrary, FunctionName);
+		auto ErrorMessage = dlerror();
+		if (ErrorMessage && Restrict)
+			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+#endif
+		_MyFunctions[FunctionName] = (void*)Function;
+		return (void*)Function;
 	}
 
-	void UnloadPlugin(const std::wstring& RelativePath)
+	void* MPlugin::GetFunction(const std::string& FunctionName, bool Restrict)
 	{
-		auto PluginIt = _MyPlugins.find(RelativePath);
-		if (PluginIt != _MyPlugins.end())
-			_MyPlugins.erase(PluginIt);
+		return GetFunction(FunctionName.c_str(), Restrict);
 	}
 
 }

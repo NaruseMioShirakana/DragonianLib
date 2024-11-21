@@ -140,7 +140,7 @@ public:
 	 * @param _F0ExtractorLoadParameter F0 extractor user parameter
      */
     static void PreProcessAudio(
-        const SingleAudio& _Input,
+		SingleAudio& _Input,
         const F0Extractor::F0ExtractorParams& _Params,
         const std::wstring& _F0Method,
         const F0Extractor::NetF0ExtractorSetting& _F0ExtractorLoadParameter

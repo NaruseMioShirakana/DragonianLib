@@ -473,7 +473,7 @@ constexpr int64_t _Impl_Dragonian_Lib_Calculate_Index_v = _D_Dragonian_Lib_Names
 
 //***********************************************Get Va List Type**************************************************//
 template <int64_t Idx, typename First, typename ...Rest>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl {};
+struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl;
 template <typename First, typename ...Rest>
 struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<0, First, Rest...> { using _Type = First; };
 template <int64_t Idx, typename First, typename ...Rest>
@@ -497,7 +497,7 @@ using _Impl_Dragonian_Lib_Get_Va_List_Type_t = typename _D_Dragonian_Lib_Namespa
 
 //***********************************************Get Value At Index*************************************************//
 template <int64_t Index, typename First, typename... Rest>
-struct _Impl_Dragonian_Lib_Get_Value_At_Index {};
+struct _Impl_Dragonian_Lib_Get_Value_At_Index;
 template <int64_t Index, typename First, typename... Rest>
 struct _Impl_Dragonian_Lib_Get_Value_At_Index<Index, First, Rest...> {
 	static constexpr auto Get(First, Rest... rest) {

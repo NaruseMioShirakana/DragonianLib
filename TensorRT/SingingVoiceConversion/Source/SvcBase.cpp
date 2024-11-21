@@ -284,7 +284,10 @@ DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float
 	int64_t index = 0;
 	for (auto& i : volume)
 	{
-		i = sqrt((float)DragonianLibSTL::Average(Audio.begin() + index * _HopSize, Audio.begin() + (index + 1) * _HopSize));
+		i = sqrt((float)DragonianLibSTL::Average(
+			Audio.begin().Get() + index * _HopSize,
+			Audio.begin().Get() + (index + 1) * _HopSize
+		));
 		++index;
 	}
 	return volume;
@@ -308,7 +311,7 @@ SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const
 	return audio_slice;
 }
 
-void PreProcessAudio(const SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter)
+void PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter)
 {
 	const auto F0Extractor = F0Extractor::GetF0Extractor(_F0Method, UserParameter);
 	const auto num_slice = _Input.Slices.Size();

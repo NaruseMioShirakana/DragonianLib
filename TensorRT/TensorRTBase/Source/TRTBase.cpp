@@ -327,7 +327,7 @@ InferenceSession TrtModel::Construct(
 
 IGPUBufferImpl& IGPUBufferImpl::ReAllocate(size_t NewSize)
 {
-	if (NewSize > _MySize)
+	if (NewSize > static_cast<size_t>(_MySize))
 	{
 		void* Data = nullptr;
 		if (cudaMalloc(&Data, NewSize))

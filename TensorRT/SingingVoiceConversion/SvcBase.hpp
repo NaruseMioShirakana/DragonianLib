@@ -243,6 +243,6 @@ DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float
 
 SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold);
 
-void PreProcessAudio(const SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter);
+void PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter);
 
 _D_Dragonian_Lib_TRT_Svc_Space_End
