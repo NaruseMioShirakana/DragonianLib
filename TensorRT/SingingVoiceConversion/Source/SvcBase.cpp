@@ -341,11 +341,12 @@ DragonianLibSTL::Vector<float> SvcBase::InferenceAudio(
 
 	const auto SourceSamplingRate = _SourceSamplingRate;
 	const auto CrossFadeSamples = SourceSamplingRate / 10;
-	auto SliceSize = SourceSamplingRate * _SliceTime;
-	SliceSize -= CrossFadeSamples;
-
+	const auto SliceSize = (SourceSamplingRate * _SliceTime) - CrossFadeSamples;
+	if (static_cast<long long>(SliceSize) < CrossFadeSamples / 2)
+		_D_Dragonian_Lib_Throw_Exception("Slice time is too low to inference!");
+	
 	auto Audio = _Audio;
-	Audio.Resize((Audio.Size() / SliceSize + 1) * SliceSize);
+	Audio.Resize((Audio.Size() / SliceSize + 1) * SliceSize, 0.f);
 	auto SlicePos = DragonianLibSTL::Arange(0ull, Audio.Size() + 1, SliceSize);
 	auto Slices = GetAudioSlice(Audio, SlicePos, _Params.Threshold);
 
@@ -402,7 +403,7 @@ DragonianLibSTL::Vector<float> SvcBase::InferenceAudio(
 	DragonianLibSTL::Vector<float> LastData;
 	for (auto& Slice : Slices.Slices)
 	{
-		auto OutPutAudio = SliceInference(Slice, _Params);
+		auto OutPutAudio = DragonianLibSTL::InterpResample<float>(SliceInference(Slice, _Params), static_cast<long>(MySamplingRate), static_cast<long>(SourceSamplingRate));
 		if (!LastData.Empty())
 			for (int64_t i = 0; i < CrossFadeSamples; ++i)
 				OutPutAudio[i] = OutPutAudio[i] * FadeInWindow[i] + LastData[i + SliceSize] * FadeOutWindow[i];

@@ -310,11 +310,11 @@ int main()
 				{},
 				0,
 				true,
-				false,
+				true,
 				false,
 				false,
 				nvinfer1::ILogger::Severity::kWARNING,
-				4
+				5
 			},
 			40000,
 			320,
@@ -338,15 +338,20 @@ int main()
 		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
 		SourceSamplingRate
 	);
+	const auto AudioSeconds = static_cast<double>(Audio.Size()) / static_cast<double>(SourceSamplingRate);
 	try
 	{
-		Model.InferenceAudio(
+		auto TimeBegin = std::chrono::high_resolution_clock::now();
+		Audio = Model.InferenceAudio(
 			Audio,
 			DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
 			SourceSamplingRate,
 			4,
 			true
 		);
+		const auto UsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TimeBegin).count();
+		auto InferenceDurations = static_cast<double>(UsedTime) / 1000.0;
+		std::cout << "RTF: " << InferenceDurations / AudioSeconds << "\n";
 	}
 	catch (const std::exception& e)
 	{
