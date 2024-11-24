@@ -24,7 +24,7 @@
 #ifdef DRAGONIANLIB_ONNXRT_LIB
 
 #include "BaseF0Extractor.hpp"
-#include "EnvManager.hpp"
+#include "Libraries/EnvManager.hpp"
 
 _D_Dragonian_Lib_F0_Extractor_Header
 

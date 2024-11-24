@@ -1,7 +1,7 @@
 ﻿#include "../Header/Vits.hpp"
 #include <random>
-#include "Util/Logger.h"
-#include "Util/StringPreprocess.h"
+#include "Libraries/Util/Logger.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 

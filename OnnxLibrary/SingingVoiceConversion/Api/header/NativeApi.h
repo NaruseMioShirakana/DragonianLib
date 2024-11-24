@@ -18,7 +18,7 @@
 */
 
 #pragma once
-#include "DynLibExport.h"
+#include "Libraries/DynLibExport.h"
 
 #ifdef __GNUC__
 #define LibSvcDeprecated __attribute__((deprecated))

@@ -1,6 +1,6 @@
 ﻿#include "SuperResolution.hpp"
-#include "Base.h"
-#include "Util/StringPreprocess.h"
+#include "Libraries/Base.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 namespace DragonianLib
 {

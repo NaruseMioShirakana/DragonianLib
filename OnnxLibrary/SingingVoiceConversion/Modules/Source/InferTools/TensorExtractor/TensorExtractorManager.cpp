@@ -1,8 +1,8 @@
 ﻿#include "../../../header/InferTools/TensorExtractor/TensorExtractorManager.hpp"
 #include "../../../header/InferTools/TensorExtractor/TensorExtractor.hpp"
 #include <map>
-#include "Base.h"
-#include "Util/Logger.h"
+#include "Libraries/Base.h"
+#include "Libraries/Util/Logger.h"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Tensor_Extrator_Header
 

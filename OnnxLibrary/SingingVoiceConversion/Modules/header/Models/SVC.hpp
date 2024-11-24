@@ -21,9 +21,9 @@
 
 #pragma once
 #include "ModelBase.hpp"
-#include "F0Extractor/F0ExtractorManager.hpp"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 #include "../InferTools/TensorExtractor/TensorExtractorManager.hpp"
-#include "Cluster/ClusterManager.hpp"
+#include "Libraries/Cluster/ClusterManager.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 

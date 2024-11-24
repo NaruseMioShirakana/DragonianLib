@@ -21,8 +21,8 @@
 
 #pragma once
 #include <functional>
-#include "Base.h"
-#include "EnvManager.hpp"
+#include "Libraries/Base.h"
+#include "Libraries/EnvManager.hpp"
 
 #define _D_Dragonian_Lib_Lib_Text_To_Speech_Header namespace DragonianLib { namespace TextToSpeech { 
 #define _D_Dragonian_Lib_Lib_Text_To_Speech_End } }

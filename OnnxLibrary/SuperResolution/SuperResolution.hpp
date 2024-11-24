@@ -18,8 +18,8 @@
 */
 
 #pragma once
-#include "EnvManager.hpp"
-#include "Image-Video/ImgVideo.hpp"
+#include "Libraries/EnvManager.hpp"
+#include "Libraries/Image-Video/ImgVideo.hpp"
 namespace DragonianLib
 {
     namespace LibSuperResolution

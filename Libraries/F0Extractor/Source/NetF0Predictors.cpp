@@ -1,8 +1,8 @@
 ﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
-#include "Base.h"
+#include "Libraries/Base.h"
 #include "../NetF0Predictors.hpp"
 #include "../DioF0Extractor.hpp"
-#include "Util/StringPreprocess.h"
+#include "Libraries/Util/StringPreprocess.h"
 #include "onnxruntime_cxx_api.h"
 
 _D_Dragonian_Lib_F0_Extractor_Header

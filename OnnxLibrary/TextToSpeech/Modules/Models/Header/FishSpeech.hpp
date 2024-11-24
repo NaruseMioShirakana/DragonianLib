@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "ModelBase.hpp"
-#include "Dict/Dict.hpp"
+#include "Libraries/Dict/Dict.hpp"
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 
 class FireflyArchitecture : public LibTTSModule

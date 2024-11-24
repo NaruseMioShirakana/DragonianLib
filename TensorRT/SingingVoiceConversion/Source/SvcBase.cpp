@@ -1,5 +1,5 @@
 ﻿#include "../SvcBase.hpp"
-#include "AvCodec/AvCodec.h"
+#include "Libraries/AvCodec/AvCodec.h"
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
 	constexpr float f0_max = 1100.0;

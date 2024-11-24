@@ -1,9 +1,8 @@
 ﻿#include "../stft.hpp"
-#include "Base.h"
+#include "Libraries/Base.h"
 #include "cblas.h"
-#include "Util/Logger.h"
+#include "Libraries/Util/Logger.h"
 #include "fftw3.h"
-#include "Tensor/TensorBase.h"
 #ifdef max
 #undef max
 #endif

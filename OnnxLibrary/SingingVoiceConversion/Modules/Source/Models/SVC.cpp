@@ -1,7 +1,7 @@
 ﻿#include "../../header/Models/SVC.hpp"
-#include "Base.h"
-#include "AvCodec/AvCodec.h"
-#include "F0Extractor/F0ExtractorManager.hpp"
+#include "Libraries/Base.h"
+#include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 

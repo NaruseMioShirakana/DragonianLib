@@ -18,9 +18,9 @@
 */
 
 #pragma once
-#include "MyTemplateLibrary/Vector.h"
-#include "EnvManager.hpp"
-#include "AvCodec/AvCodec.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
+#include "Libraries/EnvManager.hpp"
+#include "Libraries/AvCodec/AvCodec.h"
 
 namespace DragonianLib
 {

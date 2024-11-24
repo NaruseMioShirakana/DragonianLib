@@ -23,7 +23,7 @@
 #include "Models/VitsSvc.hpp"
 #include "Models/DiffSvc.hpp"
 #include "Models/ReflowSvc.hpp"
-#include "Stft/stft.hpp"
+#include "Libraries/Stft/stft.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 

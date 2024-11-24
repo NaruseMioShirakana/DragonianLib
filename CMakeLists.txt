@@ -196,7 +196,6 @@ if(NOT faiss_FOUND)
 	endif()
 endif()
 
-find_package(yyjson)
 if(NOT yyjson_FOUND)
 	if(NOT DEFINED YYJSON_LIBRARIES)
 		set(YYJSON_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/out/install/x64-Release/lib/yyjson.lib)
@@ -334,7 +333,11 @@ if(DEFINED LIBREMIDI_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${LIBREMIDI_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC libremidi)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:libremidi,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(LIBREMIDI_INCLUDE_DIRS libremidi INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT LIBREMIDI_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for libremidi")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${LIBREMIDI_INCLUDE_DIRS})
 endif()
 
 if(DEFINED FFTW3_LIBRARIES)
@@ -342,7 +345,11 @@ if(DEFINED FFTW3_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${FFTW3_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC fftw3)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:fftw3,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(FFTW3_INCLUDE_DIRS fftw3 INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT FFTW3_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for fftw3")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${FFTW3_INCLUDE_DIRS})
 endif()
 
 if(DEFINED WORLD_LIBRARIES)
@@ -350,7 +357,11 @@ if(DEFINED WORLD_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${WORLD_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC world)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:world,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(WORLD_INCLUDE_DIRS world INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT WORLD_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for world")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${WORLD_INCLUDE_DIRS})
 endif()
 
 if(DEFINED FAISS_LIBRARIES)
@@ -358,7 +369,11 @@ if(DEFINED FAISS_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${FAISS_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC faiss_avx2)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:faiss_avx2,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(FAISS_INCLUDE_DIRS faiss_avx2 INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT FAISS_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for faiss_avx2")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${FAISS_INCLUDE_DIRS})
 endif()
 
 if(DEFINED OpenBLAS_LIBRARIES)
@@ -366,7 +381,11 @@ if(DEFINED OpenBLAS_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${OpenBLAS_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC OpenBLAS::OpenBLAS)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:OpenBLAS::OpenBLAS,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(OpenBLAS_INCLUDE_DIRS OpenBLAS::OpenBLAS INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT OpenBLAS_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for OpenBLAS")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${OpenBLAS_INCLUDE_DIRS})
 endif()
 
 if(DEFINED YYJSON_LIBRARIES)
@@ -374,7 +393,11 @@ if(DEFINED YYJSON_LIBRARIES)
 	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${YYJSON_INCLUDE_DIRS})
 else()
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC yyjson::yyjson)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE $<TARGET_PROPERTY:yyjson::yyjson,INTERFACE_INCLUDE_DIRECTORIES>)
+	get_target_property(YYJSON_INCLUDE_DIRS yyjson::yyjson INTERFACE_INCLUDE_DIRECTORIES)
+	if(NOT YYJSON_INCLUDE_DIRS)
+		message(FATAL_ERROR "Failed to get INTERFACE_INCLUDE_DIRECTORIES for yyjson")
+	endif()
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${YYJSON_INCLUDE_DIRS})
 endif()
 
 if(DRAGONIANLIB_CUDA)
@@ -383,10 +406,8 @@ if(DRAGONIANLIB_CUDA)
 endif()
 
 #project include
-set(DRAGONIANLIB_TENSORLIB_BASE_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/TensorLib/Include/Base)
-set(DRAGONIANLIB_BASE_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Libraries)
-target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR}/TensorLib/Include/Base)
-target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR}/Libraries)
+set(DRAGONIANLIB_BASE_INCLUDE_DIRS ${PROJECT_SOURCE_DIR})
+target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${PROJECT_SOURCE_DIR})
 
 if(DRAGONIANLIB_ONNXRUNTIME)
 	message("")
@@ -428,12 +449,9 @@ set(DRAGONIANLIB_LIBRARIES)
 list(APPEND DRAGONIANLIB_LIBRARIES ${DRAGONIANLIB_LIB} ${DRAGONIANLIB_ORT_LIB} ${DRAGONIANLIB_TRT_LIB})
 
 set(DRAGONIANLIB_INCLUDE_DIRS
-	${PROJECT_SOURCE_DIR}/Libraries
-	${PROJECT_SOURCE_DIR}/OnnxLibrary
-	${PROJECT_SOURCE_DIR}/TensorRT
-	${PROJECT_SOURCE_DIR}/TensorLib
-	${PROJECT_SOURCE_DIR}/TensorLib/Include/Base
-	${ONNXRUNTIME_INCLUDE_DIRS})
+	${PROJECT_SOURCE_DIR}
+	${ONNXRUNTIME_INCLUDE_DIRS}
+)
 
 #Install Target
 install(
@@ -454,19 +472,19 @@ install(
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/OnnxLibrary/
-	DESTINATION include/OnnxLibrary
+	DESTINATION include/OnnxRuntimeLibraries
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/TensorRT/
-	DESTINATION include/TensorRT
+	DESTINATION include/NvinferLibraries
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/TensorLib/
-	DESTINATION include/TensorLib
+	DESTINATION include/DragonianTensor
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )

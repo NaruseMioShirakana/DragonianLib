@@ -20,10 +20,10 @@
 #pragma once
 #include <functional>
 #include <mutex>
-#include "Base.h"
+#include "Libraries/Base.h"
 #include "NvInfer.h"
-#include "MyTemplateLibrary/Vector.h"
-#include "Util/StringPreprocess.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 #define _D_Dragonian_TensorRT_Lib_Space_Header _D_Dragonian_Lib_Space_Begin namespace TensorRTLib{
 #define _D_Dragonian_TensorRT_Lib_Space_End } _D_Dragonian_Lib_Space_End

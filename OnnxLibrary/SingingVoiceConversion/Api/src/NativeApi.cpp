@@ -9,12 +9,12 @@
 
 #include <mutex>
 #include <string>
-#include "AvCodec/AvCodec.h"
-#include "Base.h"
+#include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/Base.h"
 #include "../../Modules/header/Modules.hpp"
-#include "F0Extractor/NetF0Predictors.hpp"
-#include "Util/Logger.h"
-#include "Util/StringPreprocess.h"
+#include "Libraries/F0Extractor/NetF0Predictors.hpp"
+#include "Libraries/Util/Logger.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)

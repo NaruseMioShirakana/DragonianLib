@@ -1,5 +1,5 @@
 ﻿#include "../../../header/InferTools/Sampler/BaseSampler.hpp"
-#include "Base.h"
+#include "Libraries/Base.h"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_Header
 

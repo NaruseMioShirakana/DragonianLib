@@ -1,5 +1,5 @@
 ﻿#include "MusicTranscriptionBase.hpp"
-#include "Base.h"
+#include "Libraries/Base.h"
 #include <fstream>
 
 namespace DragonianLib

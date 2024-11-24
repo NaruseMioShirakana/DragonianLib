@@ -19,8 +19,8 @@
 
 #pragma once
 #include "../TensorRTBase/TRTBase.hpp"
-#include "F0Extractor/F0ExtractorManager.hpp"
-#include "Cluster/ClusterManager.hpp"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
+#include "Libraries/Cluster/ClusterManager.hpp"
 
 #define _D_Dragonian_Lib_TRT_Svc_Space_Header _D_Dragonian_TensorRT_Lib_Space_Header namespace SingingVoiceConversion {
 #define _D_Dragonian_Lib_TRT_Svc_Space_End } _D_Dragonian_TensorRT_Lib_Space_End

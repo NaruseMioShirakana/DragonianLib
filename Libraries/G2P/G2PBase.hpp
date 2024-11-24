@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <mutex>
-#include "Base.h"
-#include "MyTemplateLibrary/Vector.h"
+#include "Libraries/Base.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 #define _D_Dragonian_Lib_G2P_Header _D_Dragonian_Lib_Space_Begin namespace G2P {
 #define _D_Dragonian_Lib_G2P_End _D_Dragonian_Lib_Space_End }
 

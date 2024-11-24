@@ -1,9 +1,9 @@
 ﻿#include <map>
-#include "Base.h"
-#include "Cluster/KmeansCluster.hpp"
-#include "Cluster/IndexCluster.hpp"
-#include "Cluster/PluginBasedCluster.hpp"
-#include "Cluster/ClusterManager.hpp"
+#include "Libraries/Base.h"
+#include "Libraries/Cluster/KmeansCluster.hpp"
+#include "Libraries/Cluster/IndexCluster.hpp"
+#include "Libraries/Cluster/PluginBasedCluster.hpp"
+#include "Libraries/Cluster/ClusterManager.hpp"
 #include <functional>
 #ifdef _WIN32
 #include <Windows.h>

@@ -1,8 +1,8 @@
 ﻿#include "../../../header/InferTools/Sampler/SamplerManager.hpp"
 #include "../../../header/InferTools/Sampler/Samplers.hpp"
 #include <map>
-#include "Base.h"
-#include "Util/Logger.h"
+#include "Libraries/Base.h"
+#include "Libraries/Util/Logger.h"
 #include <ranges>
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Sampler_Header

@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include <future>
 #include <random>
-#include "Tensor/TensorBase.h"
-#include "Tensor/Operators/OperatorMarco.h"
+#include "../TensorBase.h"
+#include "OperatorMarco.h"
 
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End

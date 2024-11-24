@@ -9,7 +9,7 @@
 #pragma once
 #define _D_Dragonian_Lib_Image_Video_Header namespace DragonianLib { namespace ImageVideo {
 #define _D_Dragonian_Lib_Image_Video_End } }
-#include "MyTemplateLibrary/Vector.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Image_Video_Header
 

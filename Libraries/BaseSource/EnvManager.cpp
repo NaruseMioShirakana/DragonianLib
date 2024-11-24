@@ -1,10 +1,10 @@
 ﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
-#include "Base.h"
-#include "EnvManager.hpp"
+#include "Libraries/Base.h"
+#include "Libraries/EnvManager.hpp"
 #include <providers/dml/dml_provider_factory.h>
 #include <thread>
-#include "Util/Logger.h"
-#include "Util/StringPreprocess.h"
+#include "Libraries/Util/Logger.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 namespace DragonianLib {
 

@@ -1,6 +1,6 @@
 ﻿#include "../Dict.hpp"
-#include "Util/StringPreprocess.h"
-#include "MJson/MJson.h"
+#include "Libraries/Util/StringPreprocess.h"
+#include "Libraries/MJson/MJson.h"
 
 _D_Dragonian_Lib_Dict_Header
 

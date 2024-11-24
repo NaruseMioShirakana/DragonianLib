@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Base.h"
-#include "MyTemplateLibrary/Vector.h"
+#include "Libraries/Base.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 #include <regex>
 
 #define _D_Dragonian_Lib_Dict_Header _D_Dragonian_Lib_Space_Begin namespace Dict {

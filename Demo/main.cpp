@@ -1,9 +1,9 @@
-﻿#include "TensorRT/SuperResolution/MoeSuperResolution.hpp"
-#include "TextToSpeech/Modules/Models/Header/Vits.hpp"
-#include <iostream>
-#include "AvCodec/AvCodec.h"
-#include "G2P/G2PModule.hpp"
+﻿#include "OnnxLibrary/TextToSpeech/Modules/Models/Header/Vits.hpp"
+#include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/G2P/G2PModule.hpp"
 #include "TensorRT/SingingVoiceConversion/VitsSvc.hpp"
+#include "TensorRT/SuperResolution/MoeSuperResolution.hpp"
+#include <iostream>
 
 size_t TotalStep = 0;
 void ShowProgressBar(size_t progress) {

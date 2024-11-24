@@ -19,7 +19,7 @@
 
 #pragma once
 #include "../TensorRTBase/TRTBase.hpp"
-#include "Image-Video/ImgVideo.hpp"
+#include "Libraries/Image-Video/ImgVideo.hpp"
 
 #define _D_Dragonian_Lib_TRT_Sr_Space_Header _D_Dragonian_TensorRT_Lib_Space_Header namespace SuperResolution {
 #define _D_Dragonian_Lib_TRT_Sr_Space_End } _D_Dragonian_TensorRT_Lib_Space_End

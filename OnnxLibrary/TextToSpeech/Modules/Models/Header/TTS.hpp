@@ -22,7 +22,7 @@
 #pragma once
 #include <map>
 #include "Params.hpp"
-#include "Dict/Dict.hpp"
+#include "Libraries/Dict/Dict.hpp"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 

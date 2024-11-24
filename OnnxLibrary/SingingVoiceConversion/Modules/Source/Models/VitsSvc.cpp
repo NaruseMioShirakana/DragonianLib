@@ -1,12 +1,12 @@
 ﻿#include "../../header/Models/VitsSvc.hpp"
 #include "../../header/Modules.hpp"
-#include "F0Extractor/F0ExtractorManager.hpp"
-#include "Util/Logger.h"
-#include "Base.h"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
+#include "Libraries/Util/Logger.h"
+#include "Libraries/Base.h"
 #include <random>
 #include <regex>
 
-#include "Util/StringPreprocess.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 

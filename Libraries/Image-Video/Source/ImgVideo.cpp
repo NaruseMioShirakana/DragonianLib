@@ -16,7 +16,7 @@
 #else
 #error GDIPLUS is not supported on this platform.
 #endif
-#include "Base.h"
+#include "Libraries/Base.h"
 
 _D_Dragonian_Lib_Image_Video_Header
 #ifdef _WIN32

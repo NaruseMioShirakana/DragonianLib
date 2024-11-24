@@ -23,7 +23,7 @@
 #include <functional>
 #include <thread>
 #include "Params.hpp"
-#include "EnvManager.hpp"
+#include "Libraries/EnvManager.hpp"
 #include "../InferTools/inferTools.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header

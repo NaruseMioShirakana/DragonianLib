@@ -1,9 +1,9 @@
-﻿#include "F0Extractor/F0ExtractorManager.hpp"
-#include "F0Extractor/DioF0Extractor.hpp"
-#include "F0Extractor/HarvestF0Extractor.hpp"
-#include "F0Extractor/NetF0Predictors.hpp"
-#include "F0Extractor/PluginBasedF0Extractor.hpp"
-#include "Base.h"
+﻿#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
+#include "Libraries/F0Extractor/DioF0Extractor.hpp"
+#include "Libraries/F0Extractor/HarvestF0Extractor.hpp"
+#include "Libraries/F0Extractor/NetF0Predictors.hpp"
+#include "Libraries/F0Extractor/PluginBasedF0Extractor.hpp"
+#include "Libraries/Base.h"
 #ifdef _WIN32
 #include <Windows.h>
 #else

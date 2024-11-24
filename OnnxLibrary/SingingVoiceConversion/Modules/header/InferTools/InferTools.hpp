@@ -20,7 +20,7 @@
 */
 
 #pragma once
-#include "MyTemplateLibrary/Vector.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 #define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header namespace DragonianLib { namespace SingingVoiceConversion { 
 #define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End } }
