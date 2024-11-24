@@ -691,9 +691,9 @@ private:
 	{
 		_MyShape = MyShape;
 		_MyViewStep.Resize(_MyShape.Size());
-		auto _Begin = _MyViewStep.ReversedBegin();
-		auto _End = _MyViewStep.ReversedEnd();
-		auto _Iter = _MyShape.ReversedBegin();
+		auto _Begin = _MyViewStep.FrontReversedBegin();
+		auto _End = _MyViewStep.FrontReversedEnd();
+		auto _Iter = _MyShape.FrontReversedBegin();
 		*_Begin-- = 1;
 		while (_Begin != _End)
 		{
@@ -2328,9 +2328,9 @@ public:
 				break;
 			}
 		Ret._MyViewStep.Resize(Ret._MyShape.Size());
-		auto _Begin = Ret._MyViewStep.ReversedBegin();
-		auto _End = Ret._MyViewStep.ReversedEnd();
-		auto _Iter = Ret._MyShape.ReversedBegin();
+		auto _Begin = Ret._MyViewStep.FrontReversedBegin();
+		auto _End = Ret._MyViewStep.FrontReversedEnd();
+		auto _Iter = Ret._MyShape.FrontReversedBegin();
 		*_Begin-- = 1;
 		while (_Begin != _End) *_Begin-- = *_Iter--;
 		Ret._MyViewLeft = { Ret._MyShape.Size(), 0ll, Ret._MyShape.GetAllocator() };

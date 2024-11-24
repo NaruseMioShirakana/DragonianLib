@@ -128,11 +128,12 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 		if (SpeakerIdx < 0)
 			SpeakerIdx = 0;
 
-		const auto max_cluster_size = int64_t((size_t)HubertOutPutShape[1] * src_audio_length / _16KAudio.Size());
 		if (EnableCluster && _Params.ClusterRate > 0.001f)
 		{
-			const auto pts = Cluster->Search(SrcHiddenUnits.Data(), long(SpeakerIdx), max_cluster_size);
-			for (int64_t indexs = 0; indexs < max_cluster_size * HiddenUnitKDims; ++indexs)
+			const auto pts = Cluster->Search(
+				SrcHiddenUnits.Data(), long(SpeakerIdx), HubertOutPutShape[1]
+			);
+			for (int64_t indexs = 0; indexs < HubertOutPutShape[1] * HiddenUnitKDims; ++indexs)
 				SrcHiddenUnits[indexs] = SrcHiddenUnits[indexs] * (1.f - _Params.ClusterRate) + pts[indexs] * _Params.ClusterRate;
 		}
 

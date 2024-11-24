@@ -1,13 +1,16 @@
 ﻿#include "../SvcBase.hpp"
+#include "AvCodec/AvCodec.h"
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
-
-constexpr float f0_max = 1100.0;
+	constexpr float f0_max = 1100.0;
 constexpr float f0_min = 50.0;
 float f0_mel_min = 1127.f * log(1.f + f0_min / 700.f);
 float f0_mel_max = 1127.f * log(1.f + f0_max / 700.f);
 
-DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk, int64_t _NSpeaker)
+DragonianLibSTL::Vector<float> SvcBase::GetCurrectSpkMixData(
+	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+	size_t dst_len, int64_t curspk, int64_t _NSpeaker
+)
 {
 	DragonianLibSTL::Vector<float> mixData;
 	mixData.Reserve(_NSpeaker * dst_len);
@@ -43,7 +46,10 @@ DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vecto
 	return mixData;
 }
 
-DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count)
+DragonianLibSTL::Vector<float> SvcBase::GetSpkMixData(
+	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+	size_t dst_len, size_t spk_count
+)
 {
 	DragonianLibSTL::Vector<float> mixData;
 	mixData.Reserve(spk_count * dst_len);
@@ -79,7 +85,9 @@ DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<Drago
 	return mixData;
 }
 
-DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<int64_t> SvcBase::GetNSFF0(
+	const DragonianLibSTL::Vector<float>& F0
+)
 {
 	const auto f0Len = F0.Size();
 	DragonianLibSTL::Vector<int64_t> NSFF0(f0Len);
@@ -98,7 +106,9 @@ DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>& 
 	return NSFF0;
 }
 
-DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<float> SvcBase::GetInterpedF0(
+	const DragonianLibSTL::Vector<float>& F0
+)
 {
 	const auto specLen = F0.Size();
 	DragonianLibSTL::Vector<float> Of0(specLen, 0.0);
@@ -148,45 +158,9 @@ DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float
 	return Of0;
 }
 
-/*DragonianLibSTL::Vector<float> InterpUVF0(const DragonianLibSTL::Vector<float>& F0, size_t PaddedIndex)
-{
-	if (PaddedIndex == size_t(-1))
-		PaddedIndex = F0.Size();
-	DragonianLibSTL::Vector<double> NUVF0;
-	DragonianLibSTL::Vector<double> UVF0Indices, NUVF0Indices;
-	UVF0Indices.Reserve(F0.Size());
-	NUVF0.Reserve(F0.Size());
-	NUVF0Indices.Reserve(F0.Size());
-	if (F0[0] < 0.0001f)
-	{
-		NUVF0.EmplaceBack(0);
-		NUVF0Indices.EmplaceBack(0);
-	}
-	for (size_t i = 1; i < PaddedIndex; ++i)
-	{
-		if (F0[i] < 0.0001f)
-			UVF0Indices.EmplaceBack((double)i);
-		else
-		{
-			NUVF0.EmplaceBack((double)F0[i]);
-			NUVF0Indices.EmplaceBack((double)i);
-		}
-	}
-	if (UVF0Indices.Empty() || NUVF0Indices.Empty())
-		return F0;
-
-	NUVF0Indices.EmplaceBack(F0.Size());
-	NUVF0.EmplaceBack(0.);
-	DragonianLibSTL::Vector<double> UVF0(F0.Size());
-	DragonianLibSTL::Vector<float> Of0 = F0;
-	interp1(NUVF0Indices.Data(), NUVF0.Data(), (int)NUVF0.Size(),
-		UVF0Indices.Data(), (int)UVF0Indices.Size(), UVF0.Data());
-	for (size_t i = 0; i < UVF0Indices.Size(); ++i)
-		Of0[size_t(UVF0Indices[i])] = (float)UVF0[i];
-	return Of0;
-}*/
-
-DragonianLibSTL::Vector<float> GetUV(const DragonianLibSTL::Vector<float>& F0)
+DragonianLibSTL::Vector<float> SvcBase::GetUV(
+	const DragonianLibSTL::Vector<float>& F0
+)
 {
 	const auto specLen = F0.Size();
 	DragonianLibSTL::Vector<float> ruv(specLen, 1.0);
@@ -198,7 +172,10 @@ DragonianLibSTL::Vector<float> GetUV(const DragonianLibSTL::Vector<float>& F0)
 	return ruv;
 }
 
-DragonianLibSTL::Vector<int64_t> GetAligments(size_t specLen, size_t hubertLen)
+DragonianLibSTL::Vector<int64_t> SvcBase::GetAligments(
+	size_t specLen,
+	size_t hubertLen
+)
 {
 	DragonianLibSTL::Vector mel2ph(specLen + 1, 0ll);
 
@@ -214,7 +191,10 @@ DragonianLibSTL::Vector<int64_t> GetAligments(size_t specLen, size_t hubertLen)
 	return mel2ph;
 }
 
-DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<float>& rF0, bool enable_log)
+DragonianLibSTL::Vector<float> SvcBase::GetInterpedF0log(
+	const DragonianLibSTL::Vector<float>& rF0,
+	bool enable_log
+)
 {
 	const auto specLen = rF0.Size();
 	DragonianLibSTL::Vector<float> F0(specLen);
@@ -269,7 +249,10 @@ DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<fl
 	return Of0;
 }
 
-DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float>& _Audio, int _HopSize)
+DragonianLibSTL::Vector<float> SvcBase::ExtractVolume(
+	const DragonianLibSTL::Vector<float>& _Audio,
+	int _HopSize
+)
 {
 	DragonianLibSTL::Vector<double> Audio;
 	Audio.Reserve(_Audio.Size() * 2);
@@ -293,13 +276,17 @@ DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float
 	return volume;
 }
 
-SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold)
+SingleAudio SvcBase::GetAudioSlice(
+	const DragonianLibSTL::Vector<float>& _InputPCM,
+	const DragonianLibSTL::Vector<size_t>& _SlicePos,
+	double Threshold
+)
 {
 	SingleAudio audio_slice;
 	for (size_t i = 1; i < _SlicePos.Size(); i++)
 	{
 		SingleSlice _CurSlice;
-		const bool is_not_mute = abs(DragonianLibSTL::Average((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i]))) > Threshold;
+		const bool is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > Threshold;
 		_CurSlice.IsNotMute = is_not_mute;
 		_CurSlice.OrgLen = long(_SlicePos[i] - _SlicePos[i - 1]);
 		if (is_not_mute)
@@ -311,12 +298,16 @@ SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const
 	return audio_slice;
 }
 
-void PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter)
+void SvcBase::PreProcessAudio(
+	SingleAudio& _Input, int _SamplingRate, int _HopSize,
+	const std::wstring& _F0Method, const void* UserParameter
+)
 {
 	const auto F0Extractor = F0Extractor::GetF0Extractor(_F0Method, UserParameter);
 	const auto num_slice = _Input.Slices.Size();
 	for (size_t i = 0; i < num_slice; ++i)
 	{
+		_Input.Slices[i].SamplingRate = _SamplingRate;
 		if (_Input.Slices[i].IsNotMute)
 		{
 			_Input.Slices[i].F0 = F0Extractor->ExtractF0(
@@ -335,6 +326,96 @@ void PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const
 		}
 		_Input.Slices[i].Speaker.Clear();
 	}
+}
+
+DragonianLibSTL::Vector<float> SvcBase::InferenceAudio(
+	const DragonianLibSTL::Vector<float>& _Audio,
+	const InferenceParams& _Params,
+	int64_t _SourceSamplingRate,
+	size_t _SliceTime,
+	bool _Refersh
+)
+{
+	if (_Refersh)
+		EmptyCache();
+
+	const auto SourceSamplingRate = _SourceSamplingRate;
+	const auto CrossFadeSamples = SourceSamplingRate / 10;
+	auto SliceSize = SourceSamplingRate * _SliceTime;
+	SliceSize -= CrossFadeSamples;
+
+	auto Audio = _Audio;
+	Audio.Resize((Audio.Size() / SliceSize + 1) * SliceSize);
+	auto SlicePos = DragonianLibSTL::Arange(0ull, Audio.Size() + 1, SliceSize);
+	auto Slices = GetAudioSlice(Audio, SlicePos, _Params.Threshold);
+
+	for (size_t i = 0; i < Slices.Slices.Size() - 1; ++i)
+	{
+		Slices.Slices[i].OrgLen += static_cast<int32_t>(CrossFadeSamples);
+		if (Slices.Slices[i].IsNotMute)
+		{
+			if (Slices.Slices[i + 1].IsNotMute)
+				Slices.Slices[i].Audio.Insert(
+					Slices.Slices[i].Audio.End(),
+					Slices.Slices[i + 1].Audio.Begin(),
+					Slices.Slices[i + 1].Audio.Begin() + CrossFadeSamples
+				);
+			else
+				Slices.Slices[i].Audio.Resize(
+					Slices.Slices[i].Audio.Size() + CrossFadeSamples,
+					0.f
+				);
+		}
+	}
+	Slices.Slices.Back().OrgLen += static_cast<int32_t>(CrossFadeSamples);
+	Slices.Slices.Back().Audio.Resize(
+		Slices.Slices.Back().Audio.Size() + CrossFadeSamples,
+		0.f
+	);
+
+	PreProcessAudio(
+		Slices,
+		static_cast<int>(SourceSamplingRate),
+		_Params.MuteCheckHopSize,
+		_Params.F0Method,
+		_Params.UserParameters
+	);
+
+	std::vector<float> FadeInWindow(CrossFadeSamples), FadeOutWindow(CrossFadeSamples);
+	{
+		double Current = 0.;
+		double Frequency = 3.1415926535 / double(CrossFadeSamples);
+		for (int64_t i = 0; i < CrossFadeSamples; ++i) {
+			auto Reg = (float)(0.5 * (1. + sin(Frequency * Current + 3.1415926535 / 2.)));
+			Reg *= Reg;
+			FadeOutWindow[i] = Reg;
+			FadeInWindow[i] = 1.f - Reg;
+			Current += 1.;
+		}
+	}
+
+	ProgressFn(0, Slices.Slices.Size());
+	size_t Proc = 0;
+
+	DragonianLibSTL::Vector<float> TotalOutPutAudio;
+	TotalOutPutAudio.Reserve(Slices.Slices.Size() * SliceSize);
+	DragonianLibSTL::Vector<float> LastData;
+	for (auto& Slice : Slices.Slices)
+	{
+		auto OutPutAudio = SliceInference(Slice, _Params);
+		if (!LastData.Empty())
+			for (int64_t i = 0; i < CrossFadeSamples; ++i)
+				OutPutAudio[i] = OutPutAudio[i] * FadeInWindow[i] + LastData[i + SliceSize] * FadeOutWindow[i];
+		TotalOutPutAudio.Insert(
+			TotalOutPutAudio.End(),
+			OutPutAudio.Begin(),
+			OutPutAudio.Begin() + static_cast<ptrdiff_t>(SliceSize)
+		);
+		LastData = std::move(OutPutAudio);
+		ProgressFn(++Proc, 0);
+	}
+
+	return TotalOutPutAudio;
 }
 
 _D_Dragonian_Lib_TRT_Svc_Space_End

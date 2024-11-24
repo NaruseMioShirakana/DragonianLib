@@ -20,6 +20,7 @@
 #pragma once
 #include "../TensorRTBase/TRTBase.hpp"
 #include "F0Extractor/F0ExtractorManager.hpp"
+#include "Cluster/ClusterManager.hpp"
 
 #define _D_Dragonian_Lib_TRT_Svc_Space_Header _D_Dragonian_TensorRT_Lib_Space_Header namespace SingingVoiceConversion {
 #define _D_Dragonian_Lib_TRT_Svc_Space_End } _D_Dragonian_TensorRT_Lib_Space_End
@@ -127,6 +128,7 @@ struct SingleSlice
 	DragonianLibSTL::Vector<float> Volume;
 	DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> Speaker;
 	int32_t OrgLen = 0;
+	int32_t SamplingRate = 32000;
 	bool IsNotMute = false;
 };
 
@@ -138,31 +140,26 @@ struct SingleAudio
 
 struct InferenceParams
 {
-	float NoiseScale = 0.3f;                           //噪声修正因子          0-10
-	int64_t Seed = 52468;                              //种子
-	int64_t SpeakerId = 0;                             //角色ID
-	uint64_t SrcSamplingRate = 48000;                  //源采样率
-	int64_t SpkCount = 2;                              //模型角色数
-	float IndexRate = 0.f;                             //索引比               0-1
-	float ClusterRate = 0.f;                           //聚类比               0-1
-	float DDSPNoiseScale = 0.8f;                       //DDSP噪声修正因子      0-10
-	float Keys = 0.f;                                  //升降调               -64-64
-	size_t MeanWindowLength = 2;                       //均值滤波器窗口大小     1-20
-	size_t Pndm = 1;                                   //Diffusion加速倍数    1-200
-	size_t Step = 100;                                 //Diffusion总步数      1-1000
+	float NoiseScale = 0.3f;							//噪声修正因子          0-10
+	int64_t Seed = 52468;								//种子
+	int64_t SpeakerId = 0;								//角色ID
+	int64_t SpkCount = 2;								//模型角色数
+	float IndexRate = 0.f;								//索引比               0-1
+	float ClusterRate = 0.f;							//聚类比               0-1
+	float DDSPNoiseScale = 0.8f;						//DDSP噪声修正因子      0-10
+	float Keys = 0.f;									//升降调               -64-64
+	size_t MeanWindowLength = 2;						//均值滤波器窗口大小     1-20
+	size_t Pndm = 1;									//Diffusion加速倍数    1-200
+	size_t Step = 100;									//Diffusion总步数      1-1000
+	double Threshold = -60.;							//音量阈值             -100-20
+	long MuteCheckHopSize = 512;						//静音检测帧长
 	float TBegin = 0.f;
 	float TEnd = 1.f;
-	std::wstring Sampler = L"Pndm";                    //Diffusion采样器
-	std::wstring ReflowSampler = L"Eular";             //Reflow采样器
-	std::wstring F0Method = L"Dio";                    //F0提取算法
-	bool UseShallowDiffusion = false;                  //使用浅扩散
+	std::wstring Sampler = L"Pndm";						//Diffusion采样器
+	std::wstring ReflowSampler = L"Eular";				//Reflow采样器
+	std::wstring F0Method = L"Dio";						//F0提取算法
 	void* VocoderModel = nullptr;
-	void* ShallowDiffusionModel = nullptr;
-	bool ShallowDiffusionUseSrcAudio = true;
-	int VocoderHopSize = 512;
-	int VocoderMelBins = 128;
-	int VocoderSamplingRate = 44100;
-	int64_t ShallowDiffuisonSpeaker = 0;
+	void* UserParameters = nullptr;
 };
 
 struct TensorData
@@ -189,60 +186,103 @@ struct TensorXData
 	std::vector<ITensorInfo> Tensors;
 };
 
-//获取换算为0-255的f0
-DragonianLibSTL::Vector<int64_t> GetNSFF0(const DragonianLibSTL::Vector<float>&);
-
-//将F0中0值单独插值
-DragonianLibSTL::Vector<float> GetInterpedF0(const DragonianLibSTL::Vector<float>&);
-
-//DragonianLibSTL::Vector<float> InterpUVF0(const DragonianLibSTL::Vector<float>&, size_t PaddedIndex = size_t(-1));
-
-//获取UnVoiceMask
-DragonianLibSTL::Vector<float> GetUV(const DragonianLibSTL::Vector<float>&);
-
-//获取对齐矩阵
-DragonianLibSTL::Vector<int64_t> GetAligments(size_t, size_t);
-
-//线性组合
-template <typename T>
-void LinearCombination(DragonianLibSTL::Vector<DragonianLibSTL::Vector<T>>& _data, size_t default_id, T Value = T(1.0))
+class SvcBase
 {
-	if (_data.Empty())
-		return;
-	if (default_id > _data.Size())
-		default_id = 0;
+public:
+	SvcBase() = default;
+	virtual ~SvcBase() = default;
+	virtual DragonianLibSTL::Vector<float> SliceInference(const SingleSlice& _Slice, const InferenceParams& _Params) = 0;
+	virtual void EmptyCache() = 0;
+	int64_t GetSamplingRate() const { return MySamplingRate; }
+	int64_t GetHopSize() const { return HopSize; }
+	int64_t GetHiddenUnitKDims() const { return HiddenUnitKDims; }
+	int64_t GetSpeakerCount() const { return SpeakerCount; }
+	int64_t GetClusterCenterSize() const { return ClusterCenterSize; }
+	bool IsVolumeEnabled() const { return EnableVolume; }
+	bool IsSpeakerMixEnabled() const { return EnableCharaMix; }
+	bool IsClusterEnabled() const { return EnableCluster; }
+	SvcBase& operator=(const SvcBase&) = delete;
+	SvcBase& operator=(SvcBase&&) = delete;
+	SvcBase(const SvcBase&) = delete;
+	SvcBase(SvcBase&&) = delete;
 
-	for (size_t i = 0; i < _data[0].Size(); ++i)
+	DragonianLibSTL::Vector<float> InferenceAudio(
+		const DragonianLibSTL::Vector<float>& _Audio,
+		const InferenceParams& _Params,
+		int64_t _SourceSamplingRate,
+		size_t _SliceTime,
+		bool _Refersh
+	);
+
+	template <typename T>
+	static void LinearCombination(DragonianLibSTL::Vector<DragonianLibSTL::Vector<T>>& _data, size_t default_id, T Value = T(1.0))
 	{
-		T Sum = T(0.0);
-		for (size_t j = 0; j < _data.Size(); ++j)
-			Sum += _data[j][i];
-		if (Sum < T(0.0001))
+		if (_data.Empty())
+			return;
+		if (default_id > _data.Size())
+			default_id = 0;
+
+		for (size_t i = 0; i < _data[0].Size(); ++i)
 		{
+			T Sum = T(0.0);
 			for (size_t j = 0; j < _data.Size(); ++j)
-				_data[j][i] = T(0);
-			_data[default_id][i] = T(1);
-			continue;
+				Sum += _data[j][i];
+			if (Sum < T(0.0001))
+			{
+				for (size_t j = 0; j < _data.Size(); ++j)
+					_data[j][i] = T(0);
+				_data[default_id][i] = T(1);
+				continue;
+			}
+			Sum *= T(Value);
+			for (size_t j = 0; j < _data.Size(); ++j)
+				_data[j][i] /= Sum;
 		}
-		Sum *= T(Value);
-		for (size_t j = 0; j < _data.Size(); ++j)
-			_data[j][i] /= Sum;
 	}
-}
 
-//将F0中0值单独插值（可设置是否取log）
-DragonianLibSTL::Vector<float> GetInterpedF0log(const DragonianLibSTL::Vector<float>&, bool);
+protected:
+	int64_t MySamplingRate = 32000, HopSize = 320, HiddenUnitKDims = 256, SpeakerCount = 1, ClusterCenterSize = 10000;
+	bool EnableVolume = false, EnableCharaMix = false, EnableCluster = false;
+	ProgressCallback ProgressFn;
+	Cluster::Cluster Cluster;
 
-//获取正确的角色混合数据
-DragonianLibSTL::Vector<float> GetCurrectSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, int64_t curspk, int64_t _NSpeaker);
-
-//获取正确的角色混合数据
-DragonianLibSTL::Vector<float> GetSpkMixData(const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input, size_t dst_len, size_t spk_count);
-
-DragonianLibSTL::Vector<float> ExtractVolume(const DragonianLibSTL::Vector<float>& _Audio, int _HopSize);
-
-SingleAudio GetAudioSlice(const DragonianLibSTL::Vector<float>& _InputPCM, const DragonianLibSTL::Vector<size_t>& _SlicePos, double Threshold);
-
-void PreProcessAudio(SingleAudio& _Input, int _SamplingRate, int _HopSize, const std::wstring& _F0Method, const void* UserParameter);
+public:
+	static DragonianLibSTL::Vector<float> GetInterpedF0log(
+		const DragonianLibSTL::Vector<float>&,
+		bool
+	);
+	static DragonianLibSTL::Vector<float> GetCurrectSpkMixData(
+		const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+		size_t dst_len, int64_t curspk, int64_t _NSpeaker
+	);
+	static DragonianLibSTL::Vector<float> GetSpkMixData(
+		const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& _input,
+		size_t dst_len, size_t spk_count
+	);
+	static DragonianLibSTL::Vector<float> ExtractVolume(
+		const DragonianLibSTL::Vector<float>& _Audio, int _HopSize
+	);
+	static SingleAudio GetAudioSlice(
+		const DragonianLibSTL::Vector<float>& _InputPCM,
+		const DragonianLibSTL::Vector<size_t>& _SlicePos,
+		double Threshold
+	);
+	static void PreProcessAudio(
+		SingleAudio& _Input, int _SamplingRate, int _HopSize,
+		const std::wstring& _F0Method, const void* UserParameter
+	);
+	static DragonianLibSTL::Vector<int64_t> GetNSFF0(
+		const DragonianLibSTL::Vector<float>&
+	);
+	static DragonianLibSTL::Vector<float> GetInterpedF0(
+		const DragonianLibSTL::Vector<float>&
+	);
+	static DragonianLibSTL::Vector<float> GetUV(
+		const DragonianLibSTL::Vector<float>&
+	);
+	static DragonianLibSTL::Vector<int64_t> GetAligments(
+		size_t, size_t
+	);
+};
 
 _D_Dragonian_Lib_TRT_Svc_Space_End

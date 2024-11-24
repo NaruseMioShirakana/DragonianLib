@@ -93,7 +93,7 @@ MoeSR::MoeSR(
 	{
 		Model = std::make_unique<TrtModel>(
 			RGBModel,
-			TrtSettings.CacheFile,
+			TrtSettings.CacheFile.at(RGBModel),
 			TrtSettings.DynaSetting,
 			TrtSettings.DLACore,
 			TrtSettings.Fallback,

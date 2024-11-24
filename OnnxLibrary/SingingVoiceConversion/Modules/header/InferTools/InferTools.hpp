@@ -25,28 +25,9 @@
 #define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header namespace DragonianLib { namespace SingingVoiceConversion { 
 #define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End } }
 #define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ::DragonianLib::SingingVoiceConversion::
+#define _D_Dragonian_Lib_Lib_Av_Codec_Space ::DragonianLib::AvCodec::
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
-struct SlicerSettings
-{
-	int32_t SamplingRate = 48000;
-	double Threshold = 30. / 32768.;
-	double MinLength = 3.;
-	int32_t WindowLength = 2048;
-	int32_t HopSize = 512;
-};
-
-/**
- * @brief Slice audio data into segments
- * @param _PcmData Input audio data
- * @param _SlicerSettings Slice settings
- * @return 
- */
-DragonianLibSTL::Vector<size_t> SliceAudio(
-	const DragonianLibSTL::Vector<float>& _PcmData,
-	const SlicerSettings& _SlicerSettings
-);
-
 #ifdef LIBSVC_FLOAT_TENSOR_AVX_WRP
 class FloatTensorWrapper
 {

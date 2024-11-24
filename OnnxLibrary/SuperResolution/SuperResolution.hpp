@@ -41,7 +41,7 @@ namespace DragonianLib
             virtual ~SuperResolution() = default;
             virtual ImageVideo::Image& Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const;
         protected:
-            DragonianLib::DragonianLibOrtEnv Env_;
+            std::shared_ptr<DragonianLibOrtEnv> Env_;
             ProgressCallback Callback_;
             std::vector<Ort::AllocatedStringPtr> Names;
             char* inputNames = nullptr;

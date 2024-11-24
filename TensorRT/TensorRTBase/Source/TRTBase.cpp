@@ -154,6 +154,8 @@ void TrtModel::LoadModel(
 		}
 
 		if (OptimizationLevel)
+		{
+			auto opt = builder->createOptimizationProfile();
 			for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
 			{
 				auto inp = mNetwork->getInput(i);
@@ -162,14 +164,14 @@ void TrtModel::LoadModel(
 					iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));
 				if (iter == DynaShapeConfig.end())
 					continue;
-				auto opt = builder->createOptimizationProfile();
 				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
 				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kOPT, iter->Opt);
 				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMAX, iter->Max);
-				if (!opt->isValid())
-					_D_Dragonian_Lib_Fatal_Error;
-				config->addOptimizationProfile(opt);
 			}
+			if (!opt->isValid())
+				_D_Dragonian_Lib_Fatal_Error;
+			config->addOptimizationProfile(opt);
+		}
 
 		config->setBuilderOptimizationLevel(OptimizationLevel);
 
@@ -265,6 +267,7 @@ InferenceSession TrtModel::Construct(
 	ReInferenceSession._MyDeviceBindings.resize(mIONodeCount);
 	ReInferenceSession._MyOutputInfos.resize(mOutputCount);
 	ReInferenceSession._MyOutputGpuBuffer.resize(mOutputCount);
+	ReInferenceSession._MyCondition.resize(mInputCount, false);
 
 	auto mContext = ReInferenceSession._MyContext;
 	if (!mContext)
@@ -294,12 +297,7 @@ InferenceSession TrtModel::Construct(
 			if (!mContext->setInputShape(name, _Tensor->_MyShape))
 				_D_Dragonian_Lib_Throw_Exception("Shape Mismatch!");
 		}
-	}
-
-	for (int32_t i = 0; i < mIONodeCount; i++)
-	{
-		auto const name = mEngine->getIOTensorName(i);
-		if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
+		else if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
 		{
 			auto Iter = std::ranges::find(_OutputNames, name);
 			if (Iter == _OutputNames.end())
@@ -387,24 +385,37 @@ bool ITensorInfo::operator!=(const ITensorInfo& _Val) const
 }
 
 void InferenceSession::HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size)
+#ifndef DRAGONIANLIB_DEBUG
+const
+#endif
 {
-	if (!_MyCondition)
+#ifdef DRAGONIANLIB_DEBUG
+	if (!_MyCondition[_Index])
 	{
+#endif
 		std::lock_guard Lock(*_MyMutex);
 		auto Buffer = _MyInputGpuBuffer[_Index].get();
 		if (cudaMemcpy(Buffer, _Pointer, _Size, cudaMemcpyHostToDevice))
 			_D_Dragonian_Lib_CUDA_Error;
-		_MyCondition = true;
+#ifdef DRAGONIANLIB_DEBUG
+		_MyCondition[_Index] = true;
 	}
 	else
 		_D_Dragonian_Lib_Throw_Exception("Input Data Already Set!");
+#endif
 }
 
 void InferenceSession::Run()
+#ifndef DRAGONIANLIB_DEBUG
+const
+#endif
 {
-	if (!_MyCondition)
-		_D_Dragonian_Lib_Throw_Exception("No Input Data!");
-	TidyGuard Tidy([this] { _MyCondition = false; });
+#ifdef DRAGONIANLIB_DEBUG
+	for (const auto& Condition : _MyCondition)
+		if (!Condition)
+			_D_Dragonian_Lib_Throw_Exception("No Input Data!");
+	TidyGuard Tidy([this] { _MyCondition = { _MyCondition.size(), false, std::allocator<bool>() }; });
+#endif
 	std::lock_guard Lock(*_MyMutex);
 	_MyContext->executeV2(_MyDeviceBindings.data());
 }
@@ -425,6 +436,17 @@ bool InferenceSession::IsReady(const std::vector<ITensorInfo>& _Check) const
 		if (_Check[i] != _MyInputInfos[i])
 			return false;
 	return true;
+}
+
+DragonianLibSTL::Vector<float> InferenceSession::GetOutput(size_t _Index) const
+{
+	std::lock_guard Lock(*_MyMutex);
+	auto Buffer = _MyOutputGpuBuffer[_Index].get();
+	auto& Tensor = _MyOutputInfos[_Index];
+	DragonianLibSTL::Vector<float> Result(Tensor.GetElementCount());
+	if (cudaMemcpy(Result.Data(), Buffer, Tensor._MySize, cudaMemcpyDeviceToHost))
+		_D_Dragonian_Lib_CUDA_Error;
+	return Result;
 }
 
 bool operator==(const nvinfer1::Dims& _Left, const nvinfer1::Dims& _Right)

@@ -452,7 +452,7 @@ void OperatorTest()
 	using namespace DragonianLib;
 	
 	std::mt19937_64 Gen;
-	SetWorkerCount(8);
+	SetWorkerCount(16);
 	SetMaxTaskCountPerOperator(8);
 	/*auto TensorA = FloatTensor::Randn({ 500, 100, 400 });
 	auto TensorB = FloatTensor::Randn({ 500, 100, 400 });

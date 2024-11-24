@@ -13,10 +13,10 @@ namespace DragonianLib
 
 			try
 			{
-				OnSetModel = new Ort::Session(*Env_.GetEnv(), (_Config.OnSetPath).c_str(), *Env_.GetSessionOptions());
-				FrameModel = new Ort::Session(*Env_.GetEnv(), (_Config.FramePath).c_str(), *Env_.GetSessionOptions());
+				OnSetModel = new Ort::Session(*Env_->GetEnv(), (_Config.OnSetPath).c_str(), *Env_->GetSessionOptions());
+				FrameModel = new Ort::Session(*Env_->GetEnv(), (_Config.FramePath).c_str(), *Env_->GetSessionOptions());
 				if(!_Config.ModelPath.empty())
-					CQTModel = new Ort::Session(*Env_.GetEnv(), (_Config.ModelPath).c_str(), *Env_.GetSessionOptions());
+					CQTModel = new Ort::Session(*Env_->GetEnv(), (_Config.ModelPath).c_str(), *Env_->GetSessionOptions());
 			}
 			catch (Ort::Exception& e)
 			{
@@ -40,9 +40,9 @@ namespace DragonianLib
 			Destory();
 		}
 
-		MidiTrack MoePianoTranScription::Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize) const
+		AvCodec::MidiTrack MoePianoTranScription::Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize) const
 		{
-			_BatchSize = 1;
+			auto _Audio = _InputAudio;
 			const auto SegmentSamples = size_t(_Config.SegmentTime * float(_Config.SamplingRate));
 			const size_t AudioLength = _Audio.Size();
 			const size_t PaddingLength = size_t(ceil(double(AudioLength) / double(SegmentSamples))) * SegmentSamples;

@@ -79,7 +79,6 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-//*****************************************************Types********************************************************//
 /**
  * @struct float16_t
  * @brief Half precision floating point struct
@@ -141,11 +140,9 @@ using Complex64 = std::complex<double>; ///< 64-bit complex
 struct NoneType {}; ///< None type
 static constexpr NoneType None; ///< None constant
 
-//**************************************************Va List********************************************************//
 template<typename ..._ArgTypes>
 struct _Impl_Dragonian_Lib_Va_List { constexpr static int64_t _Size = sizeof...(_ArgTypes); };
 
-//***********************************************Constexpr Decltype************************************************//
 template <bool _Test, typename _Tyt = void, typename _Tyf = void>
 struct _Impl_Dragonian_Lib_Constexpr_Decltype;
 template <typename _Tyt, typename _Tyf>
@@ -247,7 +244,6 @@ constexpr auto _Impl_Dragonian_Lib_Could_Be_Converted_To_v = _D_Dragonian_Lib_Na
 template<bool _Condition1, bool _Condition2>
 constexpr auto _Impl_Dragonian_Lib_And_v = _Condition1 && _Condition2;
 
-//***********************************************Callable TypeDecl***************************************************//
 template<typename _Callable, typename ..._ArgTypes>
 struct _Impl_Dragonian_Lib_Callable_Return
 {
@@ -269,7 +265,6 @@ struct _Impl_Dragonian_Lib_Callable_Return<_Callable, _D_Dragonian_Lib_Namespace
 template<typename _Callable, typename ..._ArgTypes>
 using _Impl_Dragonian_Lib_Callable_Return_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Callable_Return<_Callable, _ArgTypes...>::Type;
 
-//*************************************************Modification****************************************************//
 template <typename _Type>
 struct _Impl_Dragonian_Lib_Remove_Pointer { using _DeclType = _Type; };
 template <typename _Type>
@@ -394,7 +389,6 @@ struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type&&>
 template <typename _Type>
 using _Impl_Dragonian_Lib_Remove_ARPCV_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_DeclType;
 
-//***********************************************Decl Callable Type************************************************//
 template <typename Type>
 class _Impl_Dragonian_Lib_Is_Callable_Object
 {
@@ -461,7 +455,6 @@ using _Impl_Dragonian_Lib_Return_Type_t = typename _D_Dragonian_Lib_Namespace _I
 template<typename Objt>
 using _Impl_Dragonian_Lib_Argument_Types_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Decl_Callable<Objt>::_ArgumentTypes;
 
-//************************************************Calculate Index**************************************************//
 template <int64_t Idx, int64_t Range>
 struct _Impl_Dragonian_Lib_Calculate_Index
 {
@@ -471,7 +464,6 @@ struct _Impl_Dragonian_Lib_Calculate_Index
 template <int64_t Idx, int64_t Range>
 constexpr int64_t _Impl_Dragonian_Lib_Calculate_Index_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index<Idx, Range>::Index;
 
-//***********************************************Get Va List Type**************************************************//
 template <int64_t Idx, typename First, typename ...Rest>
 struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl;
 template <typename First, typename ...Rest>
@@ -495,7 +487,6 @@ struct _Impl_Dragonian_Lib_Get_Va_List_Type<Idx, _Impl_Dragonian_Lib_Va_List<Typ
 template <int64_t Idx, typename ...Types>
 using _Impl_Dragonian_Lib_Get_Va_List_Type_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Va_List_Type<Idx, Types...>::Type;
 
-//***********************************************Get Value At Index*************************************************//
 template <int64_t Index, typename First, typename... Rest>
 struct _Impl_Dragonian_Lib_Get_Value_At_Index;
 template <int64_t Index, typename First, typename... Rest>
@@ -522,8 +513,6 @@ constexpr auto _Impl_Dragonian_Lib_Get_Value_At_Index_v(Types... args) {
 	constexpr static auto Idx = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index_v<Index, Size>;
 	return _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Value_At_Index<Idx, Types...>::Get(args...);
 }
-
-//***********************************************Is Arithmetic Type************************************************//
 
 template <typename _Type>
 constexpr auto _Impl_Dragonian_Lib_Is_Floating_Point_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, float, double, long double, Float16, Float8, BFloat16>;

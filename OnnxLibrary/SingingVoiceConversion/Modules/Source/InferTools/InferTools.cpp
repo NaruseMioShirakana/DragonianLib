@@ -6,58 +6,6 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-DragonianLibSTL::Vector<size_t> SliceAudio(
-    const DragonianLibSTL::Vector<float>& _PcmData,
-    const SlicerSettings& _SlicerSettings
-)
-{
-    if (_PcmData.Size() < size_t(_SlicerSettings.MinLength) * _SlicerSettings.SamplingRate)
-        return { 0, _PcmData.Size() };
-
-    DragonianLibSTL::Vector<unsigned long long> slice_point;
-    bool slice_tag = true;
-    slice_point.EmplaceBack(0);
-
-    unsigned long CurLength = 0;
-    for (size_t i = 0; i + _SlicerSettings.WindowLength < _PcmData.Size(); i += _SlicerSettings.HopSize)
-    {
-
-        if (slice_tag)
-        {
-            const auto vol = abs(DragonianLibSTL::Average(_PcmData.Data() + i, _PcmData.Data() + i + _SlicerSettings.WindowLength));
-            if (vol < _SlicerSettings.Threshold)
-            {
-                slice_tag = false;
-                if (CurLength > _SlicerSettings.MinLength * _SlicerSettings.SamplingRate)
-                {
-                    CurLength = 0;
-                    slice_point.EmplaceBack(i + (_SlicerSettings.WindowLength / 2));
-                }
-            }
-            else
-                slice_tag = true;
-        }
-        else
-        {
-            const auto vol = abs(DragonianLibSTL::Average(_PcmData.Data() + i, _PcmData.Data() + i + _SlicerSettings.WindowLength));
-            if (vol < _SlicerSettings.Threshold)
-                slice_tag = false;
-            else
-            {
-                slice_tag = true;
-                if (CurLength > _SlicerSettings.MinLength * _SlicerSettings.SamplingRate)
-                {
-                    CurLength = 0;
-                    slice_point.EmplaceBack(i + (_SlicerSettings.WindowLength / 2));
-                }
-            }
-        }
-        CurLength += _SlicerSettings.HopSize;
-    }
-    slice_point.EmplaceBack(_PcmData.Size());
-    return slice_point;
-}
-
 #ifdef LIBSVC_FLOAT_TENSOR_AVX_WRP
 FloatTensorWrapper& FloatTensorWrapper::operator+=(const FloatTensorWrapper& _right)
 {

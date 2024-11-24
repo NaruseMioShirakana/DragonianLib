@@ -1,5 +1,6 @@
 ﻿#include "../../header/Models/SVC.hpp"
 #include "Base.h"
+#include "AvCodec/AvCodec.h"
 #include "F0Extractor/F0ExtractorManager.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
@@ -104,15 +105,16 @@ DragonianLibSTL::Vector<float> SingingVoiceConversion::ExtractVolume(
 SingleAudio SingingVoiceConversion::GetAudioSlice(
 	const DragonianLibSTL::Vector<float>& _InputPCM,
 	const DragonianLibSTL::Vector<size_t>& _SlicePos,
-	const SlicerSettings& _SlicerConfig
+	long _SamplingRate,
+	double _Threshold
 )
 {
 	SingleAudio audio_slice;
 	for (size_t i = 1; i < _SlicePos.Size(); i++)
 	{
 		SingleSlice _CurSlice;
-		_CurSlice.SamplingRate = _SlicerConfig.SamplingRate;
-		const bool is_not_mute = abs(DragonianLibSTL::Average((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i]))) > _SlicerConfig.Threshold;
+		_CurSlice.SamplingRate = _SamplingRate;
+		const bool is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > _Threshold;
 		_CurSlice.IsNotMute = is_not_mute;
 		_CurSlice.OrgLen = _SlicePos[i] - _SlicePos[i - 1];
 		if (is_not_mute)

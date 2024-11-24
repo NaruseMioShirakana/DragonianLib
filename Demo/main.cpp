@@ -3,10 +3,12 @@
 #include <iostream>
 #include "AvCodec/AvCodec.h"
 #include "G2P/G2PModule.hpp"
+#include "TensorRT/SingingVoiceConversion/VitsSvc.hpp"
 
-void ShowProgressBar(size_t progress, size_t total) {
+size_t TotalStep = 0;
+void ShowProgressBar(size_t progress) {
 	int barWidth = 70;
-	float progressRatio = static_cast<float>(progress) / float(total);
+	float progressRatio = static_cast<float>(progress) / float(TotalStep);
 	int pos = static_cast<int>(float(barWidth) * progressRatio);
 
 	std::cout << "\r";
@@ -20,19 +22,17 @@ void ShowProgressBar(size_t progress, size_t total) {
 	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
 }
 
-size_t TotalStep = 0;
-void ProgressCb(size_t a, size_t)
-{
-	ShowProgressBar(a, TotalStep);
-}
 
-void ProgressCbS(size_t a, size_t b)
+void ProgressCb(size_t a, size_t b)
 {
-	ShowProgressBar(a, b);
+	if (a == 0)
+		TotalStep = b;
+	ShowProgressBar(a);
 }
 
 template <typename _Function>
-void WithTimer(_Function&& _Func)
+std::enable_if_t<std::is_invocable_v<_Function>>
+WithTimer(const _Function& _Func)
 {
 	auto start = std::chrono::high_resolution_clock::now();
 	_Func();
@@ -47,13 +47,20 @@ static void TrtSr()
 		LR"(D:\VSGIT\hat_lite_seed0721.onnx)",
 		4,
 		DragonianLib::TensorRTLib::TrtConfig{
-			LR"(D:\VSGIT\hat_lite_seed0721.trt)",
-			{DragonianLib::TensorRTLib::DynaShapeSlice{
+			{
+				{
+					LR"(D:\VSGIT\hat_lite_seed0721.onnx)",
+					LR"(D:\VSGIT\hat_lite_seed0721.trt)"
+				}
+			},
+			{
+				DragonianLib::TensorRTLib::DynaShapeSlice{
 					"DynaArg0",
 				   nvinfer1::Dims4(1, 3, 64, 64),
 				   nvinfer1::Dims4(1, 3, 128, 128),
 				   nvinfer1::Dims4(1, 3, 192, 192)
-			}},
+				}
+			},
 			0,
 			true,
 			false,
@@ -62,7 +69,7 @@ static void TrtSr()
 			nvinfer1::ILogger::Severity::kWARNING,
 			4
 		},
-		ProgressCbS
+		ProgressCb
 	};
 
 	DragonianLib::ImageVideo::GdiInit();
@@ -226,11 +233,11 @@ static void TTS()
 			{{L"ZH", 0}, {L"JP", 1}, {L"EN", 2} },
 		},
 		ProgressCb,
-		[](float*, const float*){},
+		[](float*, const float*) {},
 		DragonianLib::TextToSpeech::LibTTSModule::ExecutionProviders::CPU,
 		1,
 		8
-	);
+		);
 
 	auto InputText = L"こんにちは,世界ー..元気?!";
 
@@ -274,7 +281,7 @@ static void TTS()
 		true
 	);
 
-	DragonianLib::WritePCMData(
+	DragonianLib::AvCodec::WritePCMData(
 		LR"(D:\VSGIT\test.wav)",
 		Audio,
 		44100
@@ -283,5 +290,74 @@ static void TTS()
 
 int main()
 {
+	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvcConfig MyConfig{
+			LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.onnx)",
+			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.onnx)",
+			L"RVC",
+			nullptr,
+			DragonianLib::TensorRTLib::SingingVoiceConversion::ClusterConfig{},
+			DragonianLib::TensorRTLib::TrtConfig{
+				{
+					{
+						LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.onnx)",
+						LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.trt)"
+					},
+					{
+						LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.onnx)",
+						LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.trt)"
+					}
+				},
+				{},
+				0,
+				true,
+				false,
+				false,
+				false,
+				nvinfer1::ILogger::Severity::kWARNING,
+				4
+			},
+			40000,
+			320,
+			256,
+			1,
+			false,
+			false
+	};
+	auto DynaSetting = DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc::VitsSvcDefaultsDynaSetting;
+	DynaSetting[1].Max.d[2] = MyConfig.HiddenUnitKDims;
+	DynaSetting[1].Min.d[2] = MyConfig.HiddenUnitKDims;
+	DynaSetting[1].Opt.d[2] = MyConfig.HiddenUnitKDims;
+	MyConfig.TrtSettings.DynaSetting = std::move(DynaSetting);
+	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc Model{
+		MyConfig,
+		ProgressCb
+	};
+
+	auto SourceSamplingRate = 48000;
+	auto Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
+		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
+		SourceSamplingRate
+	);
+	try
+	{
+		Model.InferenceAudio(
+			Audio,
+			DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
+			SourceSamplingRate,
+			4,
+			true
+		);
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << e.what() << '\n';
+	}
+
+	DragonianLib::AvCodec::WritePCMData(
+		LR"(D:\VSGIT\test.wav)",
+		Audio,
+		SourceSamplingRate
+	);
+
 	return 0;
 }

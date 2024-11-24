@@ -1,4 +1,5 @@
 ﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
+#include "Base.h"
 #include "EnvManager.hpp"
 #include <providers/dml/dml_provider_factory.h>
 #include <thread>
@@ -8,8 +9,9 @@
 namespace DragonianLib {
 
 	std::unordered_map<std::wstring, std::shared_ptr<Ort::Session>> GlobalOrtModelCache;
+	std::unordered_map<std::wstring, std::shared_ptr<DragonianLibOrtEnv>> GlobalOrtEnvCache;
 
-	const char* logger_id = "DragonianLib";
+	const char* logger_id = "DragonianLib-OnnxRuntime";
 
 	void DragonianLibOrtLoggingFn(void* param, OrtLoggingLevel severity, const char* category, const char* logid, const char* code_location,
 		const char* message)
@@ -22,51 +24,75 @@ namespace DragonianLib {
 		LogMessage(UTF8ToWideString(ort_message));
 	}
 
-	void DragonianLibOrtEnv::Destory()
+	static const std::vector GlobalOrtCUDAOptionKeys{
+		"device_id",
+		"gpu_mem_limit",
+		"arena_extend_strategy",
+		"cudnn_conv_algo_search",
+		"do_copy_in_default_stream",
+		"cudnn_conv_use_max_workspace",
+		"cudnn_conv1d_pad_to_nc1d",
+		"enable_cuda_graph",
+		"enable_skip_layer_norm_strict_mode"
+	};
+	static std::vector GlobalOrtCUDAOptionValues{
+		"0",
+		"2147483648",
+		"kNextPowerOfTwo",
+		"EXHAUSTIVE",
+		"1",
+		"1",
+		"1",
+		"0",
+		"0"
+	};
+	static std::vector<std::string> GlobalOrtCUDAOptionValueStrings{
+		"0",
+		"2147483648",
+		"kNextPowerOfTwo",
+		"EXHAUSTIVE",
+		"1",
+		"1",
+		"1",
+		"0",
+		"0"
+	};
+
+	DragonianLibOrtEnv::~DragonianLibOrtEnv()
 	{
-		const bool log = GlobalOrtSessionOptions;
-		if (log)
-			LogInfo(L"Removing Env & Release Memory");
-		delete GlobalOrtSessionOptions;
-		delete GlobalOrtEnv;
-		delete GlobalOrtMemoryInfo;
-		GlobalOrtSessionOptions = nullptr;
-		GlobalOrtEnv = nullptr;
-		GlobalOrtMemoryInfo = nullptr;
+		auto Message = 
+			L"Destory OnnxRuntime Env With [Provider: " + std::to_wstring(_MyProvider) +
+			L" DeviceID: " + std::to_wstring(_MyDeviceID) +
+			L" ThreadCount: " + std::to_wstring(_MyThreadCount) + L']';
+		LogInfo(Message);
+	}
 
-		if (cuda_option_v2)
-			Ort::GetApi().ReleaseCUDAProviderOptions(cuda_option_v2);
-		cuda_option_v2 = nullptr;
-
-		if (log)
-			LogInfo(L"Env Was Destroyed!");
+	DragonianLibOrtEnv::DragonianLibOrtEnv(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
+	{
+		try
+		{
+			Load(ThreadCount, DeviceID, Provider);
+		}
+		catch (std::exception& e)
+		{
+			throw std::exception(e.what());
+		}
 	}
 
 	void DragonianLibOrtEnv::Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
 	{
 		try
 		{
-			if (Provider != CurProvider)
-				Create(ThreadCount, DeviceID, Provider);
-			if (Provider == 0 && ThreadCount != CurThreadCount)
-				Create(ThreadCount, DeviceID, Provider);
-			if ((Provider == 1 || Provider == 2) && DeviceID != CurDeviceID)
-				Create(ThreadCount, DeviceID, Provider);
-			CurProvider = Provider;
+			Create(ThreadCount, DeviceID, Provider);
 		}
 		catch (std::exception& e)
 		{
-			Destory();
-			CurThreadCount = unsigned(-1);
-			CurDeviceID = unsigned(-1);
-			CurProvider = unsigned(-1);
 			throw std::exception(e.what());
 		}
 	}
 
 	void DragonianLibOrtEnv::Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_)
 	{
-		Destory();
 		LogInfo(
 			L"Creating Env With Provider:[" +
 			std::to_wstring(ExecutionProvider_) +
@@ -75,9 +101,18 @@ namespace DragonianLib {
 			+ L']'
 		);
 
-		switch (ExecutionProvider_)
+		static const OrtApi& GlobalOrtApi = Ort::GetApi();
+		_MyOrtSessionOptions = std::make_shared<Ort::SessionOptions>();
+		if (ExecutionProvider_ == 0)
 		{
-		case 1:
+			if (ThreadCount_ == 0)
+				ThreadCount_ = std::thread::hardware_concurrency();
+			_MyOrtEnv = std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, logger_id, DragonianLibOrtLoggingFn, nullptr);
+			_MyOrtSessionOptions->SetIntraOpNumThreads(static_cast<int>(ThreadCount_));
+			_MyOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
+			_MyOrtMemoryInfo = std::make_shared<Ort::MemoryInfo>(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
+		}
+		else if (ExecutionProvider_ == 1)
 		{
 			const auto AvailableProviders = Ort::GetAvailableProviders();
 			bool ret = true;
@@ -86,52 +121,30 @@ namespace DragonianLib {
 					ret = false;
 			if (ret)
 				throw std::exception("CUDA Provider Not Found");
-			GlobalOrtSessionOptions = new Ort::SessionOptions;
 
-#ifdef DragonianLibCUDAProviderV1
-			OrtCUDAProviderOptions cuda_option;
-			cuda_option.device_id = int(DeviceID_);
-			cuda_option.do_copy_in_default_stream = false;
-			GlobalOrtSessionOptions->AppendExecutionProvider_CUDA(cuda_option);
-#else
-			const OrtApi& ortApi = Ort::GetApi();
-			if (cuda_option_v2)
-				ortApi.ReleaseCUDAProviderOptions(cuda_option_v2);
-			ortApi.CreateCUDAProviderOptions(&cuda_option_v2);
-			const std::vector keys{
-				"device_id",
-				"gpu_mem_limit",
-				"arena_extend_strategy",
-				"cudnn_conv_algo_search",
-				"do_copy_in_default_stream",
-				"cudnn_conv_use_max_workspace",
-				"cudnn_conv1d_pad_to_nc1d",
-				"enable_cuda_graph",
-				"enable_skip_layer_norm_strict_mode"
-			};
-			const std::vector values{
-				std::to_string(DeviceID_).c_str(),
-				"2147483648",
-				"kNextPowerOfTwo",
-				"EXHAUSTIVE",
-				"1",
-				"1",
-				"1",
-				"0",
-				"0"
-			};
-			ortApi.UpdateCUDAProviderOptions(cuda_option_v2, keys.data(), values.data(), keys.size());
-			GlobalOrtSessionOptions->AppendExecutionProvider_CUDA_V2(*cuda_option_v2);
-			//ortApi.ReleaseCUDAProviderOptions(cuda_option_v2);
-#endif
-			GlobalOrtEnv = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, logger_id, DragonianLibOrtLoggingFn, nullptr);
-			GlobalOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-			GlobalOrtSessionOptions->SetIntraOpNumThreads((int)std::thread::hardware_concurrency());
-			GlobalOrtMemoryInfo = new Ort::MemoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
-			CurDeviceID = DeviceID_;
-			break;
+			{
+				OrtCUDAProviderOptionsV2* TmpCudaProviderOptionsV2 = nullptr;
+				GlobalOrtApi.CreateCUDAProviderOptions(&TmpCudaProviderOptionsV2);
+				_MyCudaOptionsV2 = std::shared_ptr<OrtCUDAProviderOptionsV2>(
+					TmpCudaProviderOptionsV2,
+					GlobalOrtApi.ReleaseCUDAProviderOptions
+				);
+				GlobalOrtCUDAOptionValues[0] = std::to_string(DeviceID_).c_str();
+				GlobalOrtApi.UpdateCUDAProviderOptions(
+					_MyCudaOptionsV2.get(),
+					GlobalOrtCUDAOptionKeys.data(),
+					GlobalOrtCUDAOptionValues.data(),
+					GlobalOrtCUDAOptionKeys.size()
+				);
+			}
+
+			_MyOrtEnv = std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, logger_id, DragonianLibOrtLoggingFn, nullptr);
+			_MyOrtSessionOptions->AppendExecutionProvider_CUDA_V2(*_MyCudaOptionsV2);
+			_MyOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
+			_MyOrtSessionOptions->SetIntraOpNumThreads((int)std::thread::hardware_concurrency());
+			_MyOrtMemoryInfo = std::make_shared<Ort::MemoryInfo>(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
 		}
-		case 2:
+		else if (ExecutionProvider_ == 2)
 		{
 			const auto AvailableProviders = Ort::GetAvailableProviders();
 			std::string ret;
@@ -140,36 +153,25 @@ namespace DragonianLib {
 					ret = it;
 			if (ret.empty())
 				throw std::exception("DML Provider Not Found");
-			const OrtApi& ortApi = Ort::GetApi();
+
 			const OrtDmlApi* ortDmlApi = nullptr;
-			ortApi.GetExecutionProviderApi("DML", ORT_API_VERSION, reinterpret_cast<const void**>(&ortDmlApi));
+			GlobalOrtApi.GetExecutionProviderApi("DML", ORT_API_VERSION, reinterpret_cast<const void**>(&ortDmlApi));
 			Ort::ThreadingOptions threading_options;
 			threading_options.SetGlobalInterOpNumThreads(static_cast<int>(ThreadCount_));
-			GlobalOrtEnv = new Ort::Env(threading_options, DragonianLibOrtLoggingFn, nullptr, ORT_LOGGING_LEVEL_WARNING, logger_id);
-			GlobalOrtEnv->DisableTelemetryEvents();
-			GlobalOrtSessionOptions = new Ort::SessionOptions;
-			ortDmlApi->SessionOptionsAppendExecutionProvider_DML(*GlobalOrtSessionOptions, int(DeviceID_));
-			GlobalOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-			GlobalOrtSessionOptions->DisablePerSessionThreads();
-			GlobalOrtSessionOptions->SetExecutionMode(ORT_SEQUENTIAL);
-			GlobalOrtSessionOptions->DisableMemPattern();
-			GlobalOrtMemoryInfo = new Ort::MemoryInfo(Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemType::OrtMemTypeCPU));
-			CurDeviceID = DeviceID_;
-			break;
+			_MyOrtEnv = std::make_shared<Ort::Env>(threading_options, DragonianLibOrtLoggingFn, nullptr, ORT_LOGGING_LEVEL_WARNING, logger_id);
+			_MyOrtEnv->DisableTelemetryEvents();
+			ortDmlApi->SessionOptionsAppendExecutionProvider_DML(*_MyOrtSessionOptions, int(DeviceID_));
+			_MyOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
+			_MyOrtSessionOptions->DisablePerSessionThreads();
+			_MyOrtSessionOptions->SetExecutionMode(ORT_SEQUENTIAL);
+			_MyOrtSessionOptions->DisableMemPattern();
+			_MyOrtMemoryInfo = std::make_shared<Ort::MemoryInfo>(Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU));
 		}
-		default:
+		else
 		{
-			if (ThreadCount_ == 0)
-				ThreadCount_ = std::thread::hardware_concurrency();
-			GlobalOrtSessionOptions = new Ort::SessionOptions;
-			GlobalOrtEnv = new Ort::Env(ORT_LOGGING_LEVEL_WARNING, logger_id, DragonianLibOrtLoggingFn, nullptr);
-			GlobalOrtSessionOptions->SetIntraOpNumThreads(static_cast<int>(ThreadCount_));
-			GlobalOrtSessionOptions->SetGraphOptimizationLevel(ORT_ENABLE_ALL);
-			GlobalOrtMemoryInfo = new Ort::MemoryInfo(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault));
-			CurThreadCount = ThreadCount_;
-			break;
+			_D_Dragonian_Lib_Throw_Exception("Invalid Execution Provider");
 		}
-		}
+		
 		LogInfo(L"Env Created");
 	}
 
@@ -205,6 +207,44 @@ namespace DragonianLib {
 	void DragonianLibOrtEnv::ClearModelCache()
 	{
 		GlobalOrtModelCache.clear();
+	}
+
+	void DragonianLibOrtEnv::SetCUDAOption(
+		const std::string& Key,
+		const std::string& Value
+	)
+	{
+		auto Iter = std::ranges::find(GlobalOrtCUDAOptionKeys, Key);
+		if (Iter == GlobalOrtCUDAOptionKeys.end())
+			_D_Dragonian_Lib_Throw_Exception("Invalid CUDA Option Key");
+		const auto Index = Iter - GlobalOrtCUDAOptionKeys.begin();
+		GlobalOrtCUDAOptionValueStrings[Index] = Value;
+		GlobalOrtCUDAOptionValues[Index] = GlobalOrtCUDAOptionValueStrings[Index].c_str();
+	}
+
+	std::shared_ptr<DragonianLibOrtEnv>& DragonianLibOrtEnv::CreateEnv(
+		unsigned ThreadCount, unsigned DeviceID, unsigned Provider
+	)
+	{
+		const auto ID = L"EP:" + std::to_wstring(Provider) +
+			L" DEVICE:" + std::to_wstring(DeviceID) +
+			L" THREAD:" + std::to_wstring(ThreadCount);
+		auto Iter = GlobalOrtEnvCache.find(ID);
+		if (Iter != GlobalOrtEnvCache.end())
+			return Iter->second;
+		return GlobalOrtEnvCache[ID] = std::shared_ptr<DragonianLibOrtEnv>(
+			new DragonianLibOrtEnv(ThreadCount, DeviceID, Provider)
+		);
+	}
+
+	void DragonianLibOrtEnv::DestroyEnv(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
+	{
+		const auto ID = L"EP:" + std::to_wstring(Provider) +
+			L" DEVICE:" + std::to_wstring(DeviceID) +
+			L" THREAD:" + std::to_wstring(ThreadCount);
+		auto Iter = GlobalOrtEnvCache.find(ID);
+		if (Iter != GlobalOrtEnvCache.end())
+			GlobalOrtEnvCache.erase(Iter);
 	}
 
 }

@@ -5,7 +5,7 @@
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
 
-//"c", "f0", "mel2ph", "uv", "noise", "sid", "vol"	  "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd", "vol"
+//"c", "f0", "mel2ph", "uv", "noise", "sid", "vol" "phone", "phone_lengths", "pitch", "pitchf", "ds", "rnd", "vol"
 
 VitsSvc::~VitsSvc() { LogMessage(L"[Info] unloading VitsSvc Models"); }
 
@@ -47,7 +47,7 @@ VitsSvc::VitsSvc(
 		else
 			HubertModel = std::make_shared<TrtModel>(
 				_Hps.HubertPath,
-				_Hps.TrtSettings.CacheFile,
+				_Hps.TrtSettings.CacheFile.at(_Hps.HubertPath),
 				_Hps.TrtSettings.DynaSetting,
 				_Hps.TrtSettings.DLACore,
 				_Hps.TrtSettings.Fallback,
@@ -60,7 +60,7 @@ VitsSvc::VitsSvc(
 
 		VitsSvcModel = std::make_unique<TrtModel>(
 			_Hps.ModelPath,
-			_Hps.TrtSettings.CacheFile,
+			_Hps.TrtSettings.CacheFile.at(_Hps.ModelPath),
 			_Hps.TrtSettings.DynaSetting,
 			_Hps.TrtSettings.DLACore,
 			_Hps.TrtSettings.Fallback,
@@ -84,6 +84,7 @@ TensorXData VitsSvc::SoVits4Preprocess(
 	const DragonianLibSTL::Vector<float>& Volume,
 	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
 	const InferenceParams& Params,
+	int32_t SourceSamplingRate,
 	int64_t AudioSize
 ) const
 {
@@ -92,7 +93,7 @@ TensorXData VitsSvc::SoVits4Preprocess(
 	std::normal_distribution<float> normal(0, 1);
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(HiddenUnitKDims);
-	auto FrameShape = nvinfer1::Dims2{ 1, int64_t(AudioSize * MySamplingRate / Params.SrcSamplingRate / HopSize) };
+	auto FrameShape = nvinfer1::Dims2{ 1, int64_t(AudioSize * MySamplingRate / SourceSamplingRate / HopSize) };
 	auto HiddenUnitShape = nvinfer1::Dims3{ 1, HubertLen, int64_t(HiddenUnitKDims) };
 	auto SpkShape = nvinfer1::Dims2{ FrameShape.d[1], int64_t(SpeakerCount) };
 	auto NoiseShape = nvinfer1::Dims3{ 1, 192, FrameShape.d[1] };
@@ -194,7 +195,8 @@ TensorXData VitsSvc::RVCTensorPreprocess(
 	const DragonianLibSTL::Vector<float>& Volume,
 	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
 	const InferenceParams& Params,
-	int64_t AudioSize
+	int32_t SourceSamplingRate,
+	int64_t
 ) const
 {
 	TensorXData SvcTensors;
@@ -202,7 +204,7 @@ TensorXData VitsSvc::RVCTensorPreprocess(
 	std::normal_distribution<float> normal(0, 1);
 	auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(HiddenUnitKDims);
-	auto FrameShape = nvinfer1::Dims2{ 1, int64_t(AudioSize * MySamplingRate / Params.SrcSamplingRate / HopSize) };
+	auto FrameShape = nvinfer1::Dims2{ 1, 0 };
 	auto HiddenUnitShape = nvinfer1::Dims3{ 1, HubertLen, int64_t(HiddenUnitKDims) };
 	constexpr int64_t upSample = 2;
 	const auto srcHubertSize = HiddenUnitShape.d[1];
@@ -249,8 +251,8 @@ TensorXData VitsSvc::RVCTensorPreprocess(
 	SvcTensors.Tensors.emplace_back(
 		FrameShape,
 		"pitch",
-		SvcTensors.Data.NSFF0.Size() * sizeof(float),
-		nvinfer1::DataType::kFLOAT
+		SvcTensors.Data.NSFF0.Size() * sizeof(int64_t),
+		nvinfer1::DataType::kINT64
 	);
 
 	SvcTensors.InputData.emplace_back(SvcTensors.Data.F0.Data());
@@ -314,6 +316,7 @@ TensorXData VitsSvc::Preprocess(
 	const DragonianLibSTL::Vector<float>& Volume,
 	const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
 	const InferenceParams& Params,
+	int32_t SourceSamplingRate,
 	int64_t AudioSize
 ) const
 {
@@ -324,6 +327,7 @@ TensorXData VitsSvc::Preprocess(
 			Volume,
 			SpkMap,
 			Params,
+			SourceSamplingRate,
 			AudioSize
 		);
 	if (VitsSvcVersion == L"SoVits4.0")
@@ -333,6 +337,7 @@ TensorXData VitsSvc::Preprocess(
 			Volume,
 			SpkMap,
 			Params,
+			SourceSamplingRate,
 			AudioSize
 		);
 	_D_Dragonian_Lib_Not_Implemented_Error;
@@ -345,19 +350,36 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 {
 	if (_Slice.IsNotMute)
 	{
-		DragonianLibSTL::Vector<float> _16KAudio;
+		std::shared_ptr<InferenceSession> _MyVitsSvcSession = nullptr;
+		std::shared_ptr<InferenceSession> _MyHubertSession = nullptr;
 
-		_16KAudio = InterpResample(_Slice.Audio, (int)(_Params.SrcSamplingRate), 16000, 32768.0f);
-		const auto src_audio_length = _16KAudio.Size();
-		bool NeedPadding = false;
-#ifdef LIBSVC_CUDA_ONLY_PADDING
-		if (_cur_execution_provider == ExecutionProviders::CUDA)
-#endif
+		DragonianLibSTL::Vector<float> _16KAudio;
+		_16KAudio = InterpResample<float>(_Slice.Audio, _Slice.SamplingRate, 16000);
+		const auto _16KAudioSourceSize = _16KAudio.Size();
+		const auto _16KAudioPaddedCount = _16KAudioSourceSize % DRAGONIANLIB_PADDING_COUNT ?
+			(_16KAudioSourceSize / DRAGONIANLIB_PADDING_COUNT + 1) * DRAGONIANLIB_PADDING_COUNT :
+			_16KAudioSourceSize;
+		if (_16KAudioSourceSize != _16KAudioPaddedCount)
+			_16KAudio.Resize(_16KAudioPaddedCount, 0.f);
+
+		// Dynamic Shape
 		{
-			NeedPadding = _16KAudio.Size() % DRAGONIANLIB_PADDING_COUNT;
-			const size_t WavPaddedSize = _16KAudio.Size() / DRAGONIANLIB_PADDING_COUNT + 1;
-			if (NeedPadding)
-				_16KAudio.Resize(WavPaddedSize * DRAGONIANLIB_PADDING_COUNT, 0.f);
+			auto Iter = VitsSvcSession.find(_16KAudioPaddedCount);
+			if (Iter != VitsSvcSession.end())
+				_MyVitsSvcSession = Iter->second;
+			else
+			{
+				_MyVitsSvcSession = std::make_shared<InferenceSession>();
+				VitsSvcSession[_16KAudioPaddedCount] = _MyVitsSvcSession;
+			}
+			Iter = HubertSession.find(_16KAudioPaddedCount);
+			if (Iter != HubertSession.end())
+				_MyHubertSession = Iter->second;
+			else
+			{
+				_MyHubertSession = std::make_shared<InferenceSession>();
+				HubertSession[_16KAudioPaddedCount] = _MyHubertSession;
+			}
 		}
 
 		std::vector<ITensorInfo> HubertInputTensors;
@@ -370,27 +392,27 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 		);
 
 		try {
-			if (!HubertSession.IsReady(HubertInputTensors))
-				HubertSession = HubertModel->Construct(
+			if (!_MyHubertSession->IsReady(HubertInputTensors))
+				*_MyHubertSession = HubertModel->Construct(
 					HubertInputTensors,
 					{ "embed" }
 				);
-			HubertSession.HostMemoryToDevice(0, _16KAudio.Data(), HubertInputTensors[0].GetSize());
-			HubertSession.Run();
+			_MyHubertSession->HostMemoryToDevice(0, _16KAudio.Data(), HubertInputTensors[0].GetSize());
+			_MyHubertSession->Run();
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: Hubert\n") + e.what()));
 		}
 
-		auto HubertOutputInfos = HubertSession.GetOutputInfos();
+		auto& HubertOutputInfos = _MyHubertSession->GetOutputInfos();
 		const auto HubertSize = HubertOutputInfos[0].GetElementCount();
-		auto HubertOutPutShape = HubertOutputInfos[0].GetShape();
+		auto& HubertOutPutShape = HubertOutputInfos[0].GetShape();
 		if (HubertOutPutShape.d[2] != HiddenUnitKDims)
 			_D_Dragonian_Lib_Throw_Exception("HiddenUnitKDims UnMatch");
 
 		DragonianLibSTL::Vector<float> SrcHiddenUnits(HubertSize);
-		HubertSession.DeviceMemoryToHost(0, SrcHiddenUnits.Data(), HubertSize * sizeof(float));
+		_MyHubertSession->DeviceMemoryToHost(0, SrcHiddenUnits.Data(), HubertSize * sizeof(float));
 
 		int64_t SpeakerIdx = _Params.SpeakerId;
 		if (SpeakerIdx >= SpeakerCount)
@@ -398,70 +420,73 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 		if (SpeakerIdx < 0)
 			SpeakerIdx = 0;
 
-		const auto max_cluster_size = int64_t((size_t)HubertOutPutShape.d[1] * src_audio_length / _16KAudio.Size());
 		if (EnableCluster && _Params.ClusterRate > 0.001f)
 		{
-			const auto pts = Cluster->Search(SrcHiddenUnits.Data(), long(SpeakerIdx), max_cluster_size);
-			for (int64_t indexs = 0; indexs < max_cluster_size * HiddenUnitKDims; ++indexs)
+			const auto pts = Cluster->Search(
+				SrcHiddenUnits.Data(), long(SpeakerIdx), HubertOutPutShape.d[1]
+			);
+			for (int64_t indexs = 0; indexs < HubertOutPutShape.d[1] * HiddenUnitKDims; ++indexs)
 				SrcHiddenUnits[indexs] = SrcHiddenUnits[indexs] * (1.f - _Params.ClusterRate) + pts[indexs] * _Params.ClusterRate;
 		}
 
 		TensorXData InputTensors;
-
-		if (NeedPadding)
+		if (_16KAudioSourceSize != _16KAudioPaddedCount)
 		{
-			DragonianLibSTL::Vector<float> F0Padded, VolumePadded;
-			DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> SpeakerPadded;
-
-			F0Padded = _Slice.F0;
-			VolumePadded = _Slice.Volume;
-			SpeakerPadded = _Slice.Speaker;
-			const auto ScaleSamplingConut = _Params.SrcSamplingRate * DRAGONIANLIB_PADDING_COUNT / 16000;
-			const auto SrcAudioLength = _Slice.Audio.Size();
-			const size_t WavPaddedSize = (SrcAudioLength / ScaleSamplingConut + 1) * ScaleSamplingConut;
-			const size_t AudioPadSize = WavPaddedSize - SrcAudioLength;
-			const size_t PaddedF0Size = F0Padded.Size() + (F0Padded.Size() * AudioPadSize / SrcAudioLength);
-
-			if (!F0Padded.Empty()) F0Padded.Resize(PaddedF0Size, 0.f);
-			if (!VolumePadded.Empty()) VolumePadded.Resize(PaddedF0Size, 0.f);
-			for (auto iSpeaker : SpeakerPadded)
+			const auto _MyF0Size = _Slice.F0.Size();
+			const auto _PaddedF0Size = _MyF0Size * _16KAudioPaddedCount / _16KAudioSourceSize;
+			auto _PaddedF0 = _Slice.F0;
+			_PaddedF0.Resize(_PaddedF0Size, 0.f);
+			auto _PaddedVolume = _Slice.Volume;
+			_PaddedVolume.Resize(_PaddedF0Size, 0.f);
+			DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>> _PaddedSpkMap;
+			if (EnableCharaMix)
 			{
-				if (!iSpeaker.Empty())
-					iSpeaker.Resize(PaddedF0Size, 0.f);
+				_PaddedSpkMap = _Slice.Speaker;
+				for (auto& it : _PaddedSpkMap)
+					it.Resize(_PaddedF0Size, 0.f);
 			}
-			InputTensors = Preprocess(SrcHiddenUnits, F0Padded, VolumePadded, SpeakerPadded, _Params, int64_t(WavPaddedSize));
+			InputTensors = Preprocess(
+				SrcHiddenUnits, _PaddedF0, _PaddedVolume, _PaddedSpkMap, _Params, _Slice.SamplingRate, int64_t(_16KAudioPaddedCount)
+			);
 		}
 		else
-			InputTensors = Preprocess(SrcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Params, int64_t(_Slice.OrgLen));
+			InputTensors = Preprocess(
+				SrcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Params, _Slice.SamplingRate, int64_t(_16KAudioSourceSize)
+			);
 
 		try
 		{
-			if (!VitsSvcSession.IsReady(InputTensors.Tensors))
-				VitsSvcSession = VitsSvcModel->Construct(
+			if (!_MyVitsSvcSession->IsReady(InputTensors.Tensors))
+				*_MyVitsSvcSession = VitsSvcModel->Construct(
 					InputTensors.Tensors,
 					{ "audio" }
 				);
 			for (size_t i = 0; i < InputTensors.InputData.size(); ++i)
-				VitsSvcSession.HostMemoryToDevice(i, InputTensors.InputData[i], InputTensors.Tensors[i].GetSize());
-			VitsSvcSession.Run();
+				_MyVitsSvcSession->HostMemoryToDevice(i, InputTensors.InputData[i], InputTensors.Tensors[i].GetSize());
+			_MyVitsSvcSession->Run();
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception((std::string("Locate: VitsSvc\n") + e.what()));
 		}
 
-
-		auto VitsOutputAudioSize = VitsSvcSession.GetOutputInfos()[0].GetElementCount();
+		auto VitsOutputAudioSize = _MyVitsSvcSession->GetOutputInfos()[0].GetElementCount();
 		DragonianLibSTL::Vector<float> VitsOutputAudio(VitsOutputAudioSize);
-		VitsSvcSession.DeviceMemoryToHost(0, VitsOutputAudio.Data(), VitsOutputAudioSize * sizeof(float));
+		_MyVitsSvcSession->DeviceMemoryToHost(0, VitsOutputAudio.Data(), VitsOutputAudioSize * sizeof(float));
 
-		const auto dstWavLen = (_Slice.OrgLen * int64_t(MySamplingRate)) / (int)(_Params.SrcSamplingRate);
+		const auto dstWavLen = (_Slice.OrgLen * int64_t(MySamplingRate)) / (int)(_Slice.SamplingRate);
 		VitsOutputAudio.Resize(dstWavLen, 0.f);
 		return VitsOutputAudio;
 	}
 	//Mute clips
-	const auto len = size_t(_Slice.OrgLen * int64_t(MySamplingRate) / (int)(_Params.SrcSamplingRate));
+	const auto len = size_t(_Slice.OrgLen * int64_t(MySamplingRate) / (int)(_Slice.SamplingRate));
 	return { len, 0.f, GetMemoryProvider(DragonianLib::Device::CPU) };
+}
+
+void VitsSvc::EmptyCache()
+{
+	VitsSvcSession.clear();
+	HubertSession.clear();
 }
 
 _D_Dragonian_Lib_TRT_Svc_Space_End

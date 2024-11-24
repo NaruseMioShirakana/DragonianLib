@@ -190,8 +190,13 @@ public:
 	friend class TrtModel;
 	InferenceSession() : _MyMutex(std::make_shared<std::mutex>()) {}
 	~InferenceSession() = default;
-	void HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size);
+#ifndef DRAGONIANLIB_DEBUG
+	void Run() const;
+	void HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size) const;
+#else
 	void Run();
+	void HostMemoryToDevice(size_t _Index, const void* _Pointer, size_t _Size);
+#endif
 	void DeviceMemoryToHost(size_t _Index, void* _Pointer, size_t _Size) const;
 	bool IsReady(const std::vector<ITensorInfo>& _Check) const;
 
@@ -199,6 +204,8 @@ public:
 	const std::vector<ITensorInfo>& GetOutputInfos() const { return _MyOutputInfos; }
 	std::vector<ITensorInfo>& GetInputInfos() { return _MyInputInfos; }
 	const std::vector<ITensorInfo>& GetInputInfos() const { return _MyInputInfos; }
+
+	DragonianLibSTL::Vector<float> GetOutput(size_t _Index) const;
 
 	InferenceSession(const InferenceSession& _Val) = delete;
 	InferenceSession& operator=(const InferenceSession& _Val) = delete;
@@ -212,13 +219,13 @@ protected:
 	std::vector<std::shared_ptr<void>> _MyOutputGpuBuffer;
 	std::vector<ITensorInfo> _MyOutputInfos;
 private:
-	bool _MyCondition = false;
+	std::vector<bool> _MyCondition;
 	std::shared_ptr<std::mutex> _MyMutex;
 };
 
 struct TrtConfig
 {
-	std::wstring CacheFile;
+	std::unordered_map<std::wstring, std::wstring> CacheFile;
 	std::vector<DynaShapeSlice> DynaSetting;
 	int DLACore = -1;
 	bool Fallback = true;

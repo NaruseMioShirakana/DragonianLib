@@ -488,7 +488,7 @@ LibSvcEnv LibSvcCreateEnv(
 {
 	try
 	{
-		return LibSvcEnv(new DragonianLib::DragonianLibOrtEnv(ThreadCount, DeviceID, Provider));
+		return LibSvcEnv(DragonianLib::DragonianLibOrtEnv::CreateEnv(ThreadCount, DeviceID, Provider).get());
 	}
 	catch (std::exception& e)
 	{
@@ -501,7 +501,8 @@ void LibSvcDestoryEnv(
 	LibSvcEnv Env
 )
 {
-	delete (DragonianLib::DragonianLibOrtEnv*)Env;
+	auto& _MyEnv = *(DragonianLib::DragonianLibOrtEnv*)Env;
+	DragonianLib::DragonianLibOrtEnv::DestroyEnv(_MyEnv.GetCurThreadCount(), _MyEnv.GetCurDeviceID(), _MyEnv.GetCurProvider());
 }
 
 INT32 LibSvcSliceAudioI16(
@@ -523,7 +524,7 @@ INT32 LibSvcSliceAudioI16(
 	}
 
 	auto& Ret = *(DUInt64Vector*)(_Output);
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings SliSetting{
+	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings SliSetting{
 		_Setting->SamplingRate,
 		_Setting->Threshold,
 		_Setting->MinLength,
@@ -533,7 +534,7 @@ INT32 LibSvcSliceAudioI16(
 
 	try
 	{
-		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SliceAudio(
+		Ret = _D_Dragonian_Lib_Lib_Av_Codec_Space SliceAudio(
 			InterpResample(
 				*(const DInt16Vector*)(_Audio),
 				1,
@@ -571,7 +572,7 @@ INT32 LibSvcSliceAudio(
 
 	auto& Ret = *(DUInt64Vector*)(_Output);
 
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings SliSetting{
+	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings SliSetting{
 		_Setting->SamplingRate,
 		_Setting->Threshold,
 		_Setting->MinLength,
@@ -581,7 +582,7 @@ INT32 LibSvcSliceAudio(
 
 	try
 	{
-		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SliceAudio(
+		Ret = _D_Dragonian_Lib_Lib_Av_Codec_Space SliceAudio(
 			*(const DFloat32Vector*)(_Audio),
 			SliSetting
 		);
@@ -603,7 +604,7 @@ INT32 LibSvcPreprocessI16(
 	LibSvcSlicesType _Output
 )
 {
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings _Setting{
+	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings _Setting{
 		.Threshold = _Threshold
 	};
 
@@ -636,7 +637,8 @@ INT32 LibSvcPreprocessI16(
 				32768.f
 			),
 			*(const DUInt64Vector*)(_SlicePos),
-			_Setting
+			_Setting.SamplingRate,
+			_Setting.Threshold
 		);
 
 		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
@@ -673,7 +675,7 @@ INT32 LibSvcPreprocess(
 	LibSvcSlicesType _Output
 )
 {
-	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SlicerSettings _Setting{
+	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings _Setting{
 		.Threshold = _Threshold
 	};
 
@@ -701,7 +703,8 @@ INT32 LibSvcPreprocess(
 		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
 			*(const DFloat32Vector*)(_Audio),
 			*(const DUInt64Vector*)(_SlicePos),
-			_Setting
+			_Setting.SamplingRate,
+			_Setting.Threshold
 		);
 
 		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
@@ -1445,7 +1448,7 @@ INT32 LibSvcReadAudio(
 {
 	try
 	{
-		*(DFloat32Vector*)(_Output) = DragonianLib::AvCodec().DecodeFloat(
+		*(DFloat32Vector*)(_Output) = _D_Dragonian_Lib_Lib_Av_Codec_Space AvCodec().DecodeFloat(
 			DragonianLib::WideStringToUTF8(_AudioPath).c_str(),
 			_SamplingRate
 		);
@@ -1465,7 +1468,7 @@ void LibSvcWriteAudioFile(
 	INT32 _SamplingRate
 )
 {
-	DragonianLib::WritePCMData(
+	_D_Dragonian_Lib_Lib_Av_Codec_Space WritePCMData(
 		_OutputPath,
 		*(DFloat32Vector*)(_PCMData),
 		_SamplingRate

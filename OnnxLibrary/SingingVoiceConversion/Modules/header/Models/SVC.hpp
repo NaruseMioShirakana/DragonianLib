@@ -123,13 +123,15 @@ public:
      * @brief Gets an audio slice
      * @param _InputPCM Input PCM data
      * @param _SlicePos Slice positions
-     * @param _SlicerConfig Slicer settings
+	 * @param _SamplingRate Sampling rate
+	 * @param _Threshold Threshold
      * @return Single audio slice
      */
     [[nodiscard]] static SingleAudio GetAudioSlice(
         const DragonianLibSTL::Vector<float>& _InputPCM,
         const DragonianLibSTL::Vector<size_t>& _SlicePos,
-        const SlicerSettings& _SlicerConfig
+        long _SamplingRate,
+        double _Threshold
     );
 
     /**

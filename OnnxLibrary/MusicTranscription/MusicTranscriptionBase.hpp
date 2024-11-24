@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: MusicTranscriptionBase.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -26,6 +26,11 @@ namespace DragonianLib
 {
 	namespace LibMusicTranscription
 	{
+		using AvCodec::EstNoteEvents;
+		using AvCodec::MidiTrack;
+		using AvCodec::EstPedalEvents;
+		using AvCodec::MidiEvent;
+
 		using ProgressCallback = std::function<void(size_t, size_t)>;
 		using OrtTensors = std::vector<Ort::Value>;
 
@@ -72,13 +77,13 @@ namespace DragonianLib
 		public:
 			MusicTranscription(ProgressCallback&& _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider);
 			virtual ~MusicTranscription() = default;
-			MusicTranscription(MusicTranscription&& _Right) = delete;
-			MusicTranscription(const MusicTranscription& _Left) = delete;
-			MusicTranscription operator=(MusicTranscription&& _Right) = delete;
-			MusicTranscription operator=(const MusicTranscription& _Left) = delete;
-			virtual MidiTrack Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize = 1) const;
+			MusicTranscription(MusicTranscription&& _Right) = default;
+			MusicTranscription(const MusicTranscription& _Left) = default;
+			MusicTranscription& operator=(MusicTranscription&& _Right) = default;
+			MusicTranscription& operator=(const MusicTranscription& _Left) = default;
+			virtual AvCodec::MidiTrack Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize = 1) const;
 		protected:
-			DragonianLibOrtEnv Env_;
+			std::shared_ptr<DragonianLibOrtEnv> Env_;
 			ProgressCallback _callback;
 		};
 	}

@@ -49,12 +49,12 @@ namespace DragonianLib
 			return { a.Begin + b.Begin,a.End + b.End,a.OnsetShift + b.OnsetShift,a.OffsetShift + b.OffsetShift,a.NormalizedVelocity + b.NormalizedVelocity };
 		}
 
-		MusicTranscription::MusicTranscription(ProgressCallback&& _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider) : Env_(_ThreadCount, _DeviceID, _Provider), _callback(std::move(_Callback))
+		MusicTranscription::MusicTranscription(ProgressCallback&& _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider) : Env_(DragonianLibOrtEnv::CreateEnv(_ThreadCount, _DeviceID, _Provider)), _callback(std::move(_Callback))
 		{
 			
 		}
 
-		MidiTrack MusicTranscription::Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize) const
+		AvCodec::MidiTrack MusicTranscription::Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize) const
 		{
 			_D_Dragonian_Lib_Not_Implemented_Error;
 		}

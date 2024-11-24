@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: ByteDancePianoTranScription.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -41,7 +41,7 @@ namespace DragonianLib
 			};
 			ByteDancePianoTranScription(const Hparams& _Config, ProgressCallback&& _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider);
 			~ByteDancePianoTranScription() override;
-			MidiTrack Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize = 1) const override;
+			MidiTrack Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize = 1) const override;
 			//DragonianLibSTL::Vector<est_pedal_events> output_dict_to_detected_pedals(const NetOutPuts& output_dict) const;
 		private:
 			static MidiTrack frame_to_note_info(NetOutPuts& netOutputs, const Hparams& _Config);

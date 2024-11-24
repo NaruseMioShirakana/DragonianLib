@@ -19,11 +19,10 @@
 
 #pragma once
 #include "SvcBase.hpp"
-#include "Cluster/ClusterManager.hpp"
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
 
-class VitsSvc
+class VitsSvc : public SvcBase
 {
 public:
 
@@ -31,7 +30,7 @@ public:
         const VitsSvcConfig& _Hps,
         const ProgressCallback& _ProgressCallback
     );
-    ~VitsSvc();
+    ~VitsSvc() override;
     VitsSvc(const VitsSvc&) = delete;
     VitsSvc(VitsSvc&&) = delete;
     VitsSvc& operator=(const VitsSvc&) = delete;
@@ -40,19 +39,17 @@ public:
     [[nodiscard]] DragonianLibSTL::Vector<float> SliceInference(
         const SingleSlice& _Slice,
         const InferenceParams& _Params
-    );
+    ) override;
+
+    void EmptyCache() override;
 
 private:
     std::unique_ptr<TrtModel> VitsSvcModel;
     std::shared_ptr<TrtModel> HubertModel;
-	InferenceSession VitsSvcSession;
-	InferenceSession HubertSession;
+    std::unordered_map<size_t, std::shared_ptr<InferenceSession>> VitsSvcSession;
+    std::unordered_map<size_t, std::shared_ptr<InferenceSession>> HubertSession;
 
-    int64_t MySamplingRate, HopSize, HiddenUnitKDims, SpeakerCount, ClusterCenterSize;
-    bool EnableVolume, EnableCharaMix, EnableCluster;
     std::wstring VitsSvcVersion;
-    ProgressCallback ProgressFn;
-    DragonianLib::Cluster::Cluster Cluster;
 
     TensorXData SoVits4Preprocess(
         const DragonianLibSTL::Vector<float>& HiddenUnit,
@@ -60,6 +57,7 @@ private:
         const DragonianLibSTL::Vector<float>& Volume,
         const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
         const InferenceParams& Params,
+        int32_t SourceSamplingRate,
         int64_t AudioSize
     ) const;
 
@@ -69,6 +67,7 @@ private:
         const DragonianLibSTL::Vector<float>& Volume,
         const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
         const InferenceParams& Params,
+        int32_t SourceSamplingRate,
         int64_t AudioSize
     ) const;
 
@@ -78,21 +77,24 @@ private:
         const DragonianLibSTL::Vector<float>& Volume,
         const DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>& SpkMap,
         const InferenceParams& Params,
+        int32_t SourceSamplingRate,
         int64_t AudioSize
     ) const;
 
-    static inline std::vector<DynaShapeSlice> VitsSvcDynaSetting{
-    {"c", nvinfer1::Dims3(1, 20, 256), nvinfer1::Dims3(1, 2500, 256), nvinfer1::Dims3(1, 5000, 256)},
-    {"f0", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"mel2ph", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"uv", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"noise", nvinfer1::Dims3(1, 192, 20), nvinfer1::Dims3(1, 192, 2500), nvinfer1::Dims3(1, 192, 5000)},
-    {"sid", nvinfer1::Dims2(20, 1), nvinfer1::Dims2(2500, 1), nvinfer1::Dims2(5000, 1) },
-    {"vol", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"phone", nvinfer1::Dims3(1, 20, 256), nvinfer1::Dims3(1, 2500, 256), nvinfer1::Dims3(1, 5000, 256)},
-    {"pitch", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"pitchf", nvinfer1::Dims2(1, 20), nvinfer1::Dims2(1, 2500), nvinfer1::Dims2(1, 5000) },
-    {"rnd", nvinfer1::Dims3(1, 192, 20), nvinfer1::Dims3(1, 192, 2500), nvinfer1::Dims3(1, 192, 5000) }
+public:
+    static inline const std::vector<DynaShapeSlice> VitsSvcDefaultsDynaSetting{
+    {"source", nvinfer1::Dims3(1, 1, 320ll * 20), nvinfer1::Dims3(1, 1, 320ll * 200), nvinfer1::Dims3(1, 1, 320ll * 400)},
+    {"c", nvinfer1::Dims3(1, 100, 256), nvinfer1::Dims3(1, 200, 256), nvinfer1::Dims3(1, 400, 256)},
+    {"phone", nvinfer1::Dims3(1, 100, 256), nvinfer1::Dims3(1, 200, 256), nvinfer1::Dims3(1, 400, 256)},
+    {"f0", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"pitch", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"pitchf", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"mel2ph", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"uv", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"noise", nvinfer1::Dims3(1, 192, 100), nvinfer1::Dims3(1, 192, 200), nvinfer1::Dims3(1, 192, 400)},
+    {"sid", nvinfer1::Dims2(100, 1), nvinfer1::Dims2(200, 1), nvinfer1::Dims2(400, 1) },
+    {"vol", nvinfer1::Dims2(1, 100), nvinfer1::Dims2(1, 200), nvinfer1::Dims2(1, 400) },
+    {"rnd", nvinfer1::Dims3(1, 192, 100), nvinfer1::Dims3(1, 192, 200), nvinfer1::Dims3(1, 192, 400) }
     };
 };
 

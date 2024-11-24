@@ -13,7 +13,7 @@ namespace DragonianLib
 
 			try
 			{
-				PianoTranScriptionModel = new Ort::Session(*Env_.GetEnv(), _Config.ModelPath.c_str(), *Env_.GetSessionOptions());
+				PianoTranScriptionModel = new Ort::Session(*Env_->GetEnv(), _Config.ModelPath.c_str(), *Env_->GetSessionOptions());
 			}
 			catch (Ort::Exception& e)
 			{
@@ -34,8 +34,9 @@ namespace DragonianLib
 		}
 
 		// Infer Function
-		MidiTrack ByteDancePianoTranScription::Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize) const
+		MidiTrack ByteDancePianoTranScription::Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize) const
 		{
+			auto _Audio = _InputAudio;
 			const auto segment_samples = size_t(_Config.SegmentTime * float(_Config.SamplingRate));
 			const size_t audio_len = _Audio.Size();
 			const size_t pad_len = size_t(ceil(double(audio_len) / double(segment_samples))) * segment_samples;
@@ -57,7 +58,7 @@ namespace DragonianLib
 				if (progress + _BatchSize > progressMax)
 					_BatchSize = int64_t(progressMax - progress);
 				const int64_t inputShape[] = { _BatchSize, int64_t(segment_samples) };
-				inputTensors.emplace_back(Ort::Value::CreateTensor(*Env_.GetMemoryInfo(),
+				inputTensors.emplace_back(Ort::Value::CreateTensor(*Env_->GetMemoryInfo(),
 					segments.Data() + i,
 					segment_samples * _BatchSize,
 					inputShape,

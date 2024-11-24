@@ -13,9 +13,7 @@ namespace DragonianLib
 
 		ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, int64_t _BatchSize) const
 		{
-			_BatchSize = 1;
 			size_t progress = 0;
-
 			auto InputWidth = _Image.GetWidth();
 			auto InputHeight = _Image.GetHeight();
 			const auto pixCount = InputWidth * InputHeight;
@@ -43,7 +41,7 @@ namespace DragonianLib
 				std::vector<Ort::Value> Tensors, outTensors;
 				Tensors.emplace_back(
 					Ort::Value::CreateTensor(
-						*Env_.GetMemoryInfo(),
+						*Env_->GetMemoryInfo(),
 						imgRGB.Data() + (dataSize * progress),
 						dataSize * _BatchSize,
 						shape,
@@ -85,7 +83,7 @@ namespace DragonianLib
 			ScaleFactor = _Config.Scale;
 			try
 			{
-				Model = new Ort::Session(*Env_.GetEnv(), _Config.RGBModel.c_str(), *Env_.GetSessionOptions());
+				Model = new Ort::Session(*Env_->GetEnv(), _Config.RGBModel.c_str(), *Env_->GetSessionOptions());
 			}
 			catch (Ort::Exception& e)
 			{

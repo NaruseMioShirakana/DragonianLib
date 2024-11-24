@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FileName: MoePianoTranScription.hpp
  *
  * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -29,7 +29,7 @@ namespace DragonianLib
 		public:
 			MoePianoTranScription(const Hparams& _Config, ProgressCallback&& _Callback, unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider);
 			~MoePianoTranScription() override;
-			MidiTrack Inference(DragonianLibSTL::Vector<float> _Audio, const Hparams& _Config, int64_t _BatchSize = 1) const override;
+			AvCodec::MidiTrack Inference(const DragonianLibSTL::Vector<float>& _InputAudio, const Hparams& _Config, int64_t _BatchSize = 1) const override;
 
 		private:
 			void Destory();

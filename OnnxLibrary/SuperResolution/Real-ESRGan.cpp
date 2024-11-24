@@ -12,8 +12,8 @@ namespace DragonianLib
 			const auto allocator = Ort::AllocatorWithDefaultOptions();
 			try
 			{
-				model = new Ort::Session(*Env_.GetEnv(), _Config.RGBModel.c_str(), *Env_.GetSessionOptions());
-				model_alpha = new Ort::Session(*Env_.GetEnv(), _Config.AlphaModel.c_str(), *Env_.GetSessionOptions());
+				model = new Ort::Session(*Env_->GetEnv(), _Config.RGBModel.c_str(), *Env_->GetSessionOptions());
+				model_alpha = new Ort::Session(*Env_->GetEnv(), _Config.AlphaModel.c_str(), *Env_->GetSessionOptions());
 			}
 			catch (Ort::Exception& e)
 			{
@@ -65,7 +65,7 @@ namespace DragonianLib
 				int64_t shape[4] = { _BatchSize,s_height,s_width,3 };
 				DragonianLibSTL::Vector ImageI(imgRGB.Data() + (s_len * 3ll * progress), imgRGB.Data() + (s_len * 3ll * (progress + _BatchSize)));
 				std::vector<Ort::Value> Tensors, outTensors;
-				Tensors.emplace_back(Ort::Value::CreateTensor(*Env_.GetMemoryInfo(), ImageI.Data(), ImageI.Size(), shape, 4));
+				Tensors.emplace_back(Ort::Value::CreateTensor(*Env_->GetMemoryInfo(), ImageI.Data(), ImageI.Size(), shape, 4));
 				//auto BeginTime = clock();
 				try
 				{
@@ -92,7 +92,7 @@ namespace DragonianLib
 				Tensors.clear();
 				ImageI = DragonianLibSTL::Vector(imgAlpha.Data() + (s_len * progress), imgAlpha.Data() + (s_len * (progress + _BatchSize)));
 
-				Tensors.emplace_back(Ort::Value::CreateTensor(*Env_.GetMemoryInfo(), ImageI.Data(), ImageI.Size(), shape, 4));
+				Tensors.emplace_back(Ort::Value::CreateTensor(*Env_->GetMemoryInfo(), ImageI.Data(), ImageI.Size(), shape, 4));
 
 				try
 				{
