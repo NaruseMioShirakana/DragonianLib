@@ -2,7 +2,8 @@
 #include "Libraries/AvCodec/AvCodec.h"
 
 _D_Dragonian_Lib_TRT_Svc_Space_Header
-	constexpr float f0_max = 1100.0;
+
+constexpr float f0_max = 1100.0;
 constexpr float f0_min = 50.0;
 float f0_mel_min = 1127.f * log(1.f + f0_min / 700.f);
 float f0_mel_max = 1127.f * log(1.f + f0_max / 700.f);
@@ -285,8 +286,22 @@ SingleAudio SvcBase::GetAudioSlice(
 	SingleAudio audio_slice;
 	for (size_t i = 1; i < _SlicePos.Size(); i++)
 	{
+		constexpr auto _SliceHopSize = 1024;
 		SingleSlice _CurSlice;
-		const bool is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > Threshold;
+		bool is_not_mute = false;
+		if (_CurSlice.OrgLen > static_cast<size_t>(_SliceHopSize))
+			for (size_t _SliceBegin = _SlicePos[i - 1]; _SliceBegin <= _SlicePos[i] - _SliceHopSize; _SliceBegin += _SliceHopSize)
+			{
+				auto _SliceBuffer = _InputPCM.Data() + _SliceBegin;
+				const auto _SliceDb = AvCodec::CalculateDB(_SliceBuffer, _SliceBuffer + _SliceHopSize);
+				if (_SliceDb > Threshold)
+				{
+					is_not_mute = true;
+					break;
+				}
+			}
+		else
+			is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > Threshold;
 		_CurSlice.IsNotMute = is_not_mute;
 		_CurSlice.OrgLen = long(_SlicePos[i] - _SlicePos[i - 1]);
 		if (is_not_mute)
@@ -344,10 +359,10 @@ DragonianLibSTL::Vector<float> SvcBase::InferenceAudio(
 	const auto SliceSize = (SourceSamplingRate * _SliceTime) - CrossFadeSamples;
 	if (static_cast<long long>(SliceSize) < CrossFadeSamples / 2)
 		_D_Dragonian_Lib_Throw_Exception("Slice time is too low to inference!");
-	
+
 	auto Audio = _Audio;
 	Audio.Resize((Audio.Size() / SliceSize + 1) * SliceSize, 0.f);
-	auto SlicePos = DragonianLibSTL::Arange(0ull, Audio.Size() + 1, SliceSize);
+	auto SlicePos = DragonianLibSTL::Arange(0ull, Audio.Size() + SliceSize, SliceSize);
 	auto Slices = GetAudioSlice(Audio, SlicePos, _Params.Threshold);
 
 	for (size_t i = 0; i < Slices.Slices.Size() - 1; ++i)

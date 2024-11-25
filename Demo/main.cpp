@@ -1,10 +1,8 @@
-﻿#include "OnnxLibrary/TextToSpeech/Modules/Models/Header/Vits.hpp"
-#include "Libraries/AvCodec/AvCodec.h"
-#include "Libraries/G2P/G2PModule.hpp"
+﻿#include "Libraries/AvCodec/AvCodec.h"
 #include "TensorRT/SingingVoiceConversion/VitsSvc.hpp"
-#include "TensorRT/SuperResolution/MoeSuperResolution.hpp"
 #include <iostream>
 
+auto MyLastTime = std::chrono::high_resolution_clock::now();
 size_t TotalStep = 0;
 void ShowProgressBar(size_t progress) {
 	int barWidth = 70;
@@ -13,6 +11,9 @@ void ShowProgressBar(size_t progress) {
 
 	std::cout << "\r";
 	std::cout.flush();
+	auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - MyLastTime).count();
+	MyLastTime = std::chrono::high_resolution_clock::now();
+	std::cout << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
 	std::cout << "[";
 	for (int i = 0; i < barWidth; ++i) {
 		if (i < pos) std::cout << "=";
@@ -21,7 +22,6 @@ void ShowProgressBar(size_t progress) {
 	}
 	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
 }
-
 
 void ProgressCb(size_t a, size_t b)
 {
@@ -40,288 +40,487 @@ WithTimer(const _Function& _Func)
 	std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
-static void TrtSr()
+enum class ModelType
 {
-	using namespace DragonianLib::TensorRTLib::SuperResolution;
-	MoeSR Model{
-		LR"(D:\VSGIT\hat_lite_seed0721.onnx)",
-		4,
-		DragonianLib::TensorRTLib::TrtConfig{
-			{
-				{
-					LR"(D:\VSGIT\hat_lite_seed0721.onnx)",
-					LR"(D:\VSGIT\hat_lite_seed0721.trt)"
-				}
-			},
-			{
-				DragonianLib::TensorRTLib::DynaShapeSlice{
-					"DynaArg0",
-				   nvinfer1::Dims4(1, 3, 64, 64),
-				   nvinfer1::Dims4(1, 3, 128, 128),
-				   nvinfer1::Dims4(1, 3, 192, 192)
-				}
-			},
-			0,
-			true,
-			false,
-			true,
-			false,
-			nvinfer1::ILogger::Severity::kWARNING,
-			4
-		},
-		ProgressCb
-	};
+	float32,
+	float16,
+	bfloat16,
+	int8
+};	
 
-	DragonianLib::ImageVideo::GdiInit();
-
-	DragonianLib::ImageVideo::Image Image(
-		LR"(D:\VSGIT\CG000000.BMP)",
-		192,
-		192,
-		16,
-		0.f,
-		false/*,
-		LR"(D:\VSGIT\CG000002-DEB.png)"*/
-	);
-	/*Image.Transpose();
-	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TN.png)", 1, 100))
-		std::cout << "1-Complete!\n";
-	Image.Transpose();
-	if (Image.MergeWrite(LR"(D:\VSGIT\CG000002-TNN.png)", 1, 100))
-		std::cout << "2-Complete!\n";*/
-
-	WithTimer([&]() {
-		Model.Infer(Image, 1);
-		});
-
-	if (Image.MergeWrite(LR"(D:\VSGIT\CG000000114514.BMP)", 4, 100))
-		std::cout << "Complete!\n";
-
-	DragonianLib::ImageVideo::GdiClose();
-}
-
-static void TTS()
+int main(int argc, char** argv)
 {
-	DragonianLib::TextToSpeech::ContextModel BertModel(
-		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Bert\deberta-v2-large-japanese)",
-		DragonianLib::TextToSpeech::LibTTSModule::ExecutionProviders::CPU,
-		1,
-		8
-	);
-	auto G2PModule = DragonianLib::G2P::GetG2P(
-		DragonianLib::G2P::GetG2PModuleList().front(),
-		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\G2P)"
-	);
-	std::shared_ptr<DragonianLib::TextToSpeech::TextToSpeech> VitsModel = std::make_shared<DragonianLib::TextToSpeech::Vits>(
-		DragonianLib::TextToSpeech::ModelHParams{
-			{
-				"BertVits2",
-				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_enc_p.onnx)",
-			   LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_emb.onnx)",
-				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_sdp.onnx)",
-				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_dp.onnx)",
-				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_flow.onnx)",
-				LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits - 66 Speaker\BertVits - 66 Speaker_dec.onnx)",
-			},
-			{},
-			44100,
-			1024,
-			10,
-			3,
-			24,
-			512,
-			1024,
-			true,
-			true,
-			true,
-			false,
-			true,
-			true,
-			false,
-			false,
-			false,
-			L"",
-			{},
-			{{ L"\u5bab\u56ed\u85b0[\u65e5]", 0ll },
-			{ L"\u7267\u4e4b\u539f\u7fd4\u5b50[\u65e5]", 1ll },
-			{ L"\u67ab\u539f\u4e07\u53f6[\u4e2d]", 2ll },
-			{ L"\u73ca\u745a\u5bab\u5fc3\u6d77[\u4e2d]", 3ll },
-			{ L"\u5bb5\u5bab[\u4e2d]", 4ll },
-			{ L"\u8fbe\u8fbe\u5229\u4e9a[\u4e2d]", 5ll },
-			{ L"\u7eb3\u897f\u59b2[\u4e2d]", 6ll },
-			{ L"\u7eee\u826f\u826f[\u4e2d]", 7ll },
-			{ L"\u6e29\u8fea[\u4e2d]", 8ll },
-			{ L"\u795e\u91cc\u7eeb\u4eba[\u4e2d]", 9ll },
-			{ L"\u4f18\u83c8[\u4e2d]", 10ll },
-			{ L"\u795e\u91cc\u7eeb\u534e[\u4e2d]", 11ll },
-			{ L"\u8299\u5b81\u5a1c[\u4e2d]", 12ll },
-			{ L"\u82ad\u82ad\u62c9[\u4e2d]", 13ll },
-			{ L"\u949f\u79bb[\u4e2d]", 14ll },
-			{ L"\u80e1\u6843[\u4e2d]", 15ll },
-			{ L"\u8fea\u5a1c\u6cfd\u9edb[\u4e2d]", 16ll },
-			{ L"\u523b\u6674[\u4e2d]", 17ll },
-			{ L"\u53ef\u8389[\u4e2d]", 18ll },
-			{ L"\u5a1c\u7ef4\u5a05[\u4e2d]", 19ll },
-			{ L"\u9b48[\u4e2d]", 20ll },
-			{ L"\u96f7\u7535\u5c06\u519b[\u4e2d]", 21ll },
-			{ L"\u59ae\u9732[\u4e2d]", 22ll },
-			{ L"\u514b\u62c9\u62c9[\u4e2d]", 23ll },
-			{ L"\u5361\u8299\u5361[\u4e2d]", 24ll },
-			{ L"\u7b26\u7384[\u4e2d]", 25ll },
-			{ L"\u5a1c\u5854\u838e[\u4e2d]", 26ll },
-			{ L"\u5e0c\u513f[\u4e2d]", 27ll },
-			{ L"\u4e09\u6708\u4e03[\u4e2d]", 28ll },
-			{ L"\u7d20\u88f3[\u4e2d]", 29ll },
-			{ L"\u9ed1\u5854[\u4e2d]", 30ll },
-			{ L"\u827e\u4e1d\u59b2[\u4e2d]", 31ll },
-			{ L"\u5f00\u62d3\u8005(\u5973)[\u4e2d]", 32ll },
-			{ L"\u5e03\u6d1b\u59ae\u5a05[\u4e2d]", 33ll },
-			{ L"\u59ec\u5b50[\u4e2d]", 34ll },
-			{ L"\u8fea\u5a1c\u6cfd\u9edb[\u65e5]", 35ll },
-			{ L"\u4f18\u83c8[\u65e5]", 36ll },
-			{ L"\u949f\u79bb[\u65e5]", 37ll },
-			{ L"\u6e29\u8fea[\u65e5]", 38ll },
-			{ L"\u5a1c\u7ef4\u5a05[\u65e5]", 39ll },
-			{ L"\u795e\u91cc\u7eeb\u4eba[\u65e5]", 40ll },
-			{ L"\u67ab\u539f\u4e07\u53f6[\u65e5]", 41ll },
-			{ L"\u523b\u6674[\u65e5]", 42ll },
-			{ L"\u96f7\u7535\u5c06\u519b[\u65e5]", 43ll },
-			{ L"\u7eb3\u897f\u59b2[\u65e5]", 44ll },
-			{ L"\u795e\u91cc\u7eeb\u534e[\u65e5]", 45ll },
-			{ L"\u7eee\u826f\u826f[\u65e5]", 46ll },
-			{ L"\u59ae\u9732[\u65e5]", 47ll },
-			{ L"\u9b48[\u65e5]", 48ll },
-			{ L"\u5bb5\u5bab[\u65e5]", 49ll },
-			{ L"\u80e1\u6843[\u65e5]", 50ll },
-			{ L"\u8fbe\u8fbe\u5229\u4e9a[\u65e5]", 51ll },
-			{ L"\u8299\u5b81\u5a1c[\u65e5]", 52ll },
-			{ L"\u73ca\u745a\u5bab\u5fc3\u6d77[\u65e5]", 53ll },
-			{ L"\u82ad\u82ad\u62c9[\u65e5]", 54ll },
-			{ L"\u53ef\u8389[\u65e5]", 55ll },
-			{ L"\u7b26\u7384[\u65e5]", 56ll },
-			{ L"\u5a1c\u5854\u838e[\u65e5]", 57ll },
-			{ L"\u7d20\u88f3[\u65e5]", 58ll },
-			{ L"\u4e09\u6708\u4e03[\u65e5]", 59ll },
-			{ L"\u9ed1\u5854[\u65e5]", 60ll },
-			{ L"\u5f00\u62d3\u8005(\u5973)[\u65e5]", 61ll },
-			{ L"\u5e0c\u513f[\u65e5]", 62ll },
-			{ L"\u5e03\u6d1b\u59ae\u5a05[\u65e5]", 63ll },
-			{ L"\u59ec\u5b50[\u65e5]", 64ll },
-			{ L"\u5361\u8299\u5361[\u65e5]", 65ll },
-			{ L"\u514b\u62c9\u62c9[\u65e5]", 66ll },
-			{ L"\u827e\u4e1d\u59b2[\u65e5]", 67ll },
-			},
-			{
-				{ L"_", 0ll }, { L"AA", 1ll }, { L"E", 2ll }, { L"EE", 3ll }, { L"En", 4ll }, { L"N", 5ll },
-				{ L"OO", 6ll }, { L"V", 7ll }, { L"a", 8ll }, { L"a:", 9ll }, { L"aa", 10ll }, { L"ae", 11ll },
-				{ L"ah", 12ll }, { L"ai", 13ll }, { L"an", 14ll }, { L"ang", 15ll }, { L"ao", 16ll }, { L"aw", 17ll },
-				{ L"ay", 18ll }, { L"b", 19ll }, { L"by", 20ll }, { L"c", 21ll }, { L"ch", 22ll }, { L"d", 23ll },
-				{ L"dh", 24ll }, { L"dy", 25ll }, { L"e", 26ll }, { L"e:", 27ll }, { L"eh", 28ll }, { L"ei", 29ll },
-				{ L"en", 30ll }, { L"eng", 31ll }, { L"er", 32ll }, { L"ey", 33ll }, { L"f", 34ll }, { L"g", 35ll }, { L"gy", 36ll }, { L"h", 37ll }, { L"hh", 38ll }, { L"hy", 39ll }, { L"i", 40ll }, { L"i0", 41ll },
-				{ L"i:", 42ll }, { L"ia", 43ll }, { L"ian", 44ll }, { L"iang", 45ll }, { L"iao", 46ll }, { L"ie", 47ll },
-				{ L"ih", 48ll }, { L"in", 49ll }, { L"ing", 50ll }, { L"iong", 51ll }, { L"ir", 52ll }, { L"iu", 53ll },
-				{ L"iy", 54ll }, { L"j", 55ll }, { L"jh", 56ll }, { L"k", 57ll }, { L"ky", 58ll }, { L"l", 59ll },
-				{ L"m", 60ll }, { L"my", 61ll }, { L"n", 62ll }, { L"ng", 63ll }, { L"ny", 64ll }, { L"o", 65ll },
-				{ L"o:", 66ll }, { L"ong", 67ll }, { L"ou", 68ll }, { L"ow", 69ll }, { L"oy", 70ll }, { L"p", 71ll },
-				{ L"py", 72ll }, { L"q", 73ll }, { L"r", 74ll }, { L"ry", 75ll }, { L"s", 76ll }, { L"sh", 77ll },
-				{ L"t", 78ll }, { L"th", 79ll }, { L"ts", 80ll }, { L"ty", 81ll }, { L"u", 82ll }, { L"u:", 83ll },
-				{ L"ua", 84ll }, { L"uai", 85ll }, { L"uan", 86ll }, { L"uang", 87ll }, { L"uh", 88ll }, { L"ui", 89ll },
-				{ L"un", 90ll }, { L"uo", 91ll }, { L"uw", 92ll }, { L"v", 93ll }, { L"van", 94ll }, { L"ve", 95ll },
-				{ L"vn", 96ll }, { L"w", 97ll }, { L"x", 98ll }, { L"y", 99ll }, { L"z", 100ll }, { L"zh", 101ll },
-				{ L"zy", 102ll }, { L"!", 103ll }, { L"?", 104ll }, { L"\u2026", 105ll }, { L",", 106ll },
-				{ L".", 107ll }, { L"'", 108ll }, { L"-", 109ll }, { L"SP", 110ll }, { L"UNK", 111ll }},
-			{{L"ZH", 0}, {L"JP", 1}, {L"EN", 2} },
-		},
-		ProgressCb,
-		[](float*, const float*) {},
-		DragonianLib::TextToSpeech::LibTTSModule::ExecutionProviders::CPU,
-		1,
-		8
-		);
+	++argv;
+	--argc;
 
-	auto InputText = L"こんにちは,世界ー..元気?!";
+	std::wstring ModelName = L"RVC";
+	std::wstring OnnxModelPath = LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.onnx)";
+	std::wstring OnnxHubertPath = LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.onnx)";
+	std::wstring TrtModelPath = LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.trt)";
+	std::wstring TrtHubertPath = LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.trt)";
+	int64_t ClusterCenterSize = 10000;
+	std::wstring ClusterType;
+	std::wstring ClusterPath;
+	int DLACore = 0;
+	bool EnableFallback = true;
+	ModelType ModelPrecision = ModelType::float16;
+	nvinfer1::ILogger::Severity Severity = nvinfer1::ILogger::Severity::kWARNING;
+	int OptimizationLevel = 5;
+	int SamplingRate = 40000;
+	int HopSize = 320;
+	int FeatureDimention = 256;
+	int SpeakerCount = 1;
+	bool EnableSpeakerMix = false;
+	bool EnableVolumeEmbed = false;
 
-	DragonianLib::TextToSpeech::TTSInputData InputData;
-
-	auto [Phonemes, Tones] = G2PModule->Convert(
-		InputText,
-		"Japanese",
-		(void*)1ull
-	);
-
-	setlocale(LC_ALL, "ja_JP");
-	printf("Phonemes: ");
-	for (auto& Phoneme : Phonemes)
+	if (argc == 0 || (argc == 1 && strcmp(*argv, "--help") == 0))
 	{
-		wprintf(L"%s ", Phoneme.c_str());
+		std::cout << "Usage: " << " [options] means this argument is optional\n";
+		std::cout << "Options:\n\n";
+		std::cout << "  [--model-name] <name> (default: RVC)\n";
+		std::cout << "     |- Optional Items: [\"RVC\", \"SoVits\"]\n";
+		std::cout << '\n';
+		std::cout << "  --onnx-model-path <path>\n";
+		std::cout << "     |- Path Of Onnx Runtime Vits Model\n";
+		std::cout << "     |- If TensorRT Engine Is Not Exist, This Argument Must Be Set With\n";
+		std::cout << "     |  An Exist Onnx Model Path! If TensorRT Engine Is Exist, This Ar-\n";
+		std::cout << "     |  gument Must Be Set With \"Vits\".\n";
+		std::cout << '\n';
+		std::cout << "  --onnx-hubert-path <path>\n";
+		std::cout << "     |- Path Of Onnx Runtime Hubert Model\n";
+		std::cout << "     |- If TensorRT Engine Is Not Exist, This Argument Must Be Set With\n";
+		std::cout << "     |  An Exist Onnx Model Path! If TensorRT Engine Is Exist, This Ar-\n";
+		std::cout << "     |  gument Must Be Set With \"Hubert\".\n";
+		std::cout << '\n';
+		std::cout << "  --trt-model-path <path>\n";
+		std::cout << "     |- Path Of TensorRT Vits Engine\n";
+		std::cout << "     |- If TensorRT Engine Is Not Exist, It Will Be Created Automatically\n";
+		std::cout << "     |  This Argument Is The Path Of The Created TensorRT Engine. If The\n";
+		std::cout << "     |  Path Is An Exist TensorRT Engine Path, It Will Be Loaded Directly.\n";
+		std::cout << '\n';
+		std::cout << "  --trt-hubert-path <path>\n";
+		std::cout << "     |- Path Of TensorRT Hubert Engine\n";
+		std::cout << "     |- If TensorRT Engine Is Not Exist, It Will Be Created Automatically\n";
+		std::cout << "     |  This Argument Is The Path Of The Created TensorRT Engine. If The\n";
+		std::cout << "     |  Path Is An Exist TensorRT Engine Path, It Will Be Loaded Directly.\n";
+		std::cout << '\n';
+		std::cout << "  [--cluster-center-size] <integer> (default: 10000)\n";
+		std::cout << "     |- The Size Of Cluster Center\n";
+		std::cout << '\n';
+		std::cout << "  [--cluster-type] <string> (default: None)\n";
+		std::cout << "     |- Type Of Cluster\n";
+		std::cout << "     |- Optional Items: [\"KMeans\", \"Index\"]\n";
+		std::cout << '\n';
+		std::cout << "  [--cluster-path] <string> (default: None)\n";
+		std::cout << "     |- Path Of Cluster File\n";
+		std::cout << '\n';
+		std::cout << "  [--dla-core] <integer> (default: 0)\n";
+		std::cout << "     |- The Count Of The DLA Core, 0 Means Not Use DLA Core\n";
+		std::cout << '\n';
+		std::cout << "  [--disable-fallback] (default: true)\n";
+		std::cout << "     |- Disable Operator Fallback\n";
+		std::cout << '\n';
+		std::cout << "  [--model-precision] <precision> (default: float16)\n";
+		std::cout << "     |- The Precision Of The Model\n";
+		std::cout << "     |- Optional Items: [\"float32\", \"float16\", \"bfloat16\", \"int8\"]\n";
+		std::cout << '\n';
+		std::cout << "  [--severity] <severity> (default: kWARNING)\n";
+		std::cout << "     |- The Severity Of The Logger\n";
+		std::cout << "     |- Optional Items: [\"kERROR\", \"kWARNING\", \"kINFO\", \"kVERBOSE\"]\n";
+		std::cout << '\n';
+		std::cout << "  [--optimization-level] <integer> (default: 5)\n";
+		std::cout << "     |- The Optimization Level Of The TensorRT Engine\n";
+		std::cout << "     |- Level 0: This enables the fastest compilation by disabling dynamic\n";
+		std::cout << "     |  kernel generation and selecting the first tactic that succeeds in\n";
+		std::cout << "     |  execution. This will also not respect a timing cache.\n";
+		std::cout << "     |- Level 1: Available tactics are sorted by heuristics, but only the \n";
+		std::cout << "     |  top are tested to select the best. If a dynamic kernel is gener-\n";
+		std::cout << "     |  ated its compile optimization is low.\n";
+		std::cout << "     |- Level 2: Available tactics are sorted by heuristics, but only the \n";
+		std::cout << "     |  fastest tactics are tested to select the best.\n";
+		std::cout << "     |- Level 3: Apply heuristics to see if a static precompiled kernel is\n";
+		std::cout << "     |  applicable or if a new one has to be compiled dynamically.\n";
+		std::cout << "     |- Level 4: Always compiles a dynamic kernel.\n";
+		std::cout << "     |- Level 5: Always compiles a dynamic kernel and compares it to static\n";
+		std::cout << "     |  kernels.\n";
+		std::cout << '\n';
+		std::cout << "  [--sampling-rate] <integer> (default: 40000)\n";
+		std::cout << "     |- The Sampling Rate Of The Model\n";
+		std::cout << '\n';
+		std::cout << "  [--hop-size] <integer> (default: 320)\n";
+		std::cout << "     |- The Hop Size Of The Model\n";
+		std::cout << '\n';
+		std::cout << "  [--feature-dimention] <integer> (default: 256)\n";
+		std::cout << "     |- The Feature Dimention Of The Model\n";
+		std::cout << '\n';
+		std::cout << "  [--speaker-count] <integer> (default: 1)\n";
+		std::cout << "     |- The Count Of Speaker\n";
+		std::cout << '\n';
+		std::cout << "  [--enable-speaker-mix] (default: false)\n";
+		std::cout << "     |- Enable Speaker Mix\n";
+		std::cout << '\n';
+		std::cout << "  [--enable-volume-embed] (default: false)\n";
+		std::cout << "     |- Enable Volume Embed\n\n\n";
+		return 0;
 	}
-	printf("\nTones: ");
-	for (auto& Tone : Tones)
+
+	if (argc == 1 && strcmp(*argv, "--debug") == 0) 
 	{
-		printf("%lld ", Tone);
-		Tone += 6;
+		argv++;
+		argc--;
 	}
-	printf("\n");
+	else
+	{
+		OnnxModelPath.clear();
+		OnnxHubertPath.clear();
+		TrtModelPath.clear();
+		TrtHubertPath.clear();
+	}
 
-	InputData.SetPhonemes(std::move(Phonemes));
-	InputData._Tones = std::move(Tones);
-	InputData._LanguageIds = { InputData._Tones.Size(), 1ll, DragonianLib::GetMemoryProvider(DragonianLib::Device::CPU) };
-	auto [BertVec, BertDims] = BertModel.Inference(InputText);
-	InputData._BertVec.EmplaceBack(BertVec.Size(), 0.f);
-	//InputData._BertVec.EmplaceBack(BertVec.Size(), 0.f);
-	InputData._BertVec.EmplaceBack(BertVec);
-	InputData._BertVec.EmplaceBack(BertVec.Size(), 0.f);
-	InputData._BertDims = BertDims;
+	while (argc)
+	{
+		
+		if (strcmp(*argv, "--model-name") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --model-name\n";
+				return 1;
+			}
+			ModelName = DragonianLib::UTF8ToWideString(*argv);
+			if (ModelName != L"RVC" && ModelName != L"SoVits")
+			{
+				std::cerr << "Error: Unknown Model Name " << *argv << '\n';
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--onnx-model-path") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --onnx-model-path\n";
+				return 1;
+			}
+			OnnxModelPath = DragonianLib::UTF8ToWideString(*argv);
+			if (OnnxModelPath.empty())
+			{
+				std::cerr << "Error: Onnx Model Path Must Be Set\n";
+				return 1;
+			}
+			if (OnnxHubertPath == OnnxModelPath)
+			{
+				std::cerr << "Error: Onnx Hubert Path Must Be Different From Onnx Model Path\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--onnx-hubert-path") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --onnx-hubert-path\n";
+				return 1;
+			}
+			OnnxHubertPath = DragonianLib::UTF8ToWideString(*argv);
+			if (OnnxHubertPath.empty())
+			{
+				std::cerr << "Error: Onnx Hubert Path Must Be Set\n";
+				return 1;
+			}
+			if (OnnxHubertPath == OnnxModelPath)
+			{
+				std::cerr << "Error: Onnx Hubert Path Must Be Different From Onnx Model Path\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--trt-model-path") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --trt-model-path\n";
+				return 1;
+			}
+			TrtModelPath = DragonianLib::UTF8ToWideString(*argv);
+			if (TrtModelPath.empty())
+			{
+				std::cerr << "Error: TensorRT Model Path Must Be Set\n";
+				return 1;
+			}
+			if (TrtHubertPath == TrtModelPath)
+			{
+				std::cerr << "Error: TensorRT Hubert Path Must Be Different From TensorRT Model Path\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--trt-hubert-path") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --trt-hubert-path\n";
+				return 1;
+			}
+			TrtHubertPath = DragonianLib::UTF8ToWideString(*argv);
+			if (TrtHubertPath.empty())
+			{
+				std::cerr << "Error: TensorRT Hubert Path Must Be Set\n";
+				return 1;
+			}
+			if (TrtHubertPath == TrtModelPath)
+			{
+				std::cerr << "Error: TensorRT Hubert Path Must Be Different From TensorRT Model Path\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--cluster-center-size") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --cluster-center-size\n";
+				return 1;
+			}
+			ClusterCenterSize = std::stoll(*argv);
+			if (ClusterCenterSize <= 0)
+			{
+				std::cerr << "Error: Cluster Center Size Must Be Greater Than 0\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--cluster-type") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --cluster-type\n";
+				return 1;
+			}
+			ClusterType = DragonianLib::UTF8ToWideString(*argv);
+			if (ClusterType != L"KMeans" && ClusterType != L"Index")
+			{
+				std::cerr << "Error: Unknown Cluster Type " << *argv << '\n';
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--cluster-path") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --cluster-path\n";
+				return 1;
+			}
+			ClusterPath = DragonianLib::UTF8ToWideString(*argv);
+		}
+		else if (strcmp(*argv, "--dla-core") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --dla-core\n";
+				return 1;
+			}
+			DLACore = std::stoi(*argv);
+			if (DLACore < 0)
+			{
+				std::cerr << "Error: DLA Core Must Be Greater Than Or Equal To 0\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--disable-fallback") == 0)
+		{
+			EnableFallback = false;
+		}
+		else if (strcmp(*argv, "--model-precision") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --model-precision\n";
+				return 1;
+			}
+			auto Precision = DragonianLib::UTF8ToWideString(*argv);
+			if (Precision == L"float32")
+				ModelPrecision = ModelType::float32;
+			else if (Precision == L"float16")
+				ModelPrecision = ModelType::float16;
+			else if (Precision == L"bfloat16")
+				ModelPrecision = ModelType::bfloat16;
+			else if (Precision == L"int8")
+				ModelPrecision = ModelType::int8;
+			else
+			{
+				std::cerr << "Error: Unknown Model Precision " << *argv << '\n';
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--severity") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --severity\n";
+				return 1;
+			}
+			auto SeverityStr = DragonianLib::UTF8ToWideString(*argv);
+			if (SeverityStr == L"kERROR")
+				Severity = nvinfer1::ILogger::Severity::kERROR;
+			else if (SeverityStr == L"kWARNING")
+				Severity = nvinfer1::ILogger::Severity::kWARNING;
+			else if (SeverityStr == L"kINFO")
+				Severity = nvinfer1::ILogger::Severity::kINFO;
+			else if (SeverityStr == L"kVERBOSE")
+				Severity = nvinfer1::ILogger::Severity::kVERBOSE;
+			else
+			{
+				std::cerr << "Error: Unknown Severity " << *argv << '\n';
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--optimization-level") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --optimization-level\n";
+				return 1;
+			}
+			OptimizationLevel = std::stoi(*argv);
+			if (OptimizationLevel < 0 || OptimizationLevel > 5)
+			{
+				std::cerr << "Error: Optimization Level Must Be In Range [0, 5]\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--sampling-rate") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --sampling-rate\n";
+				return 1;
+			}
+			SamplingRate = std::stoi(*argv);
+			if (SamplingRate < 16000)
+			{
+				std::cerr << "Error: Sampling Rate Must Be GreaterEqual Than 16000\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--hop-size") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --hop-size\n";
+				return 1;
+			}
+			HopSize = std::stoi(*argv);
+			if (HopSize < 1)
+			{
+				std::cerr << "Error: Hop Size Must Be Greater Than 0\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--feature-dimention") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --feature-dimention\n";
+				return 1;
+			}
+			FeatureDimention = std::stoi(*argv);
+			if (FeatureDimention % 256)
+			{
+				std::cerr << "Error: Feature Dimention Must Be Multiple Of 256\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--speaker-count") == 0)
+		{
+			++argv;
+			--argc;
+			if (!argc)
+			{
+				std::cerr << "Error: Missing Argument Value For --speaker-count\n";
+				return 1;
+			}
+			SpeakerCount = std::stoi(*argv);
+			if (SpeakerCount < 1)
+			{
+				std::cerr << "Error: Speaker Count Must Be Greater Than 0\n";
+				return 1;
+			}
+		}
+		else if (strcmp(*argv, "--enable-speaker-mix") == 0)
+		{
+			EnableSpeakerMix = true;
+		}
+		else if (strcmp(*argv, "--enable-volume-embed") == 0)
+		{
+			EnableVolumeEmbed = true;
+		}
+		else
+			std::cerr << "Error: Unknown Argument " << *argv << '\n';
+		++argv;
+		--argc;
+	}
 
-	DragonianLib::TextToSpeech::TTSParams Params;
-	Params.LanguageID = 1;
-	auto Audio = VitsModel->Inference(
-		InputData,
-		Params,
-		true
-	);
-
-	DragonianLib::AvCodec::WritePCMData(
-		LR"(D:\VSGIT\test.wav)",
-		Audio,
-		44100
-	);
-}
-
-int main()
-{
 	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvcConfig MyConfig{
-			LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.onnx)",
-			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.onnx)",
-			L"RVC",
+			OnnxModelPath,
+			OnnxHubertPath,
+			ModelName,
 			nullptr,
-			DragonianLib::TensorRTLib::SingingVoiceConversion::ClusterConfig{},
+			DragonianLib::TensorRTLib::SingingVoiceConversion::ClusterConfig{
+				ClusterCenterSize,
+				ClusterPath,
+				ClusterType
+			},
 			DragonianLib::TensorRTLib::TrtConfig{
 				{
 					{
-						LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.onnx)",
-						LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-256-layer-9.trt)"
+						OnnxModelPath,
+						TrtModelPath
 					},
 					{
-						LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.onnx)",
-						LR"(D:\VSGIT\MoeSS - Release\Retrieval-based-Voice-Conversion-WebUI-main\kikiV1-s.trt)"
+						OnnxHubertPath,
+						TrtHubertPath
 					}
 				},
 				{},
-				0,
-				true,
-				true,
-				false,
-				false,
-				nvinfer1::ILogger::Severity::kWARNING,
-				5
+				DLACore,
+				EnableFallback,
+				ModelPrecision == ModelType::float16,
+				ModelPrecision == ModelType::bfloat16,
+				ModelPrecision == ModelType::int8,
+				Severity,
+				OptimizationLevel
 			},
-			40000,
-			320,
-			256,
-			1,
-			false,
-			false
+			SamplingRate,
+			HopSize,
+			FeatureDimention,
+			SpeakerCount,
+			EnableSpeakerMix,
+			EnableVolumeEmbed
 	};
 	auto DynaSetting = DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc::VitsSvcDefaultsDynaSetting;
 	DynaSetting[1].Max.d[2] = MyConfig.HiddenUnitKDims;
@@ -334,35 +533,83 @@ int main()
 	};
 
 	auto SourceSamplingRate = 48000;
-	auto Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
-		R"(D:/VSGIT/MoeVoiceStudioSvc - Core - Cmd/libdlvoicecodec/input.wav)",
-		SourceSamplingRate
-	);
-	const auto AudioSeconds = static_cast<double>(Audio.Size()) / static_cast<double>(SourceSamplingRate);
-	try
+	std::cout << "\nPress Target Sampling Rate: > ";
+	std::cin >> SourceSamplingRate;
+	std::cin.ignore();
+	bool Continue = true;
+	while (Continue)
 	{
-		auto TimeBegin = std::chrono::high_resolution_clock::now();
-		Audio = Model.InferenceAudio(
-			Audio,
-			DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
-			SourceSamplingRate,
-			4,
-			true
-		);
-		const auto UsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TimeBegin).count();
-		auto InferenceDurations = static_cast<double>(UsedTime) / 1000.0;
-		std::cout << "RTF: " << InferenceDurations / AudioSeconds << "\n";
-	}
-	catch (const std::exception& e)
-	{
-		std::cout << e.what() << '\n';
+		wchar_t SourcePath[1024];
+		std::cout << "Press Source Path: > ";
+		std::wcin.getline(SourcePath, 1024);
+
+		DragonianLibSTL::Vector<float> Audio;
+		try
+		{
+			Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
+				DragonianLib::UnicodeToAnsi(SourcePath).c_str(),
+				SourceSamplingRate
+			);
+		}
+		catch (const std::exception& e)
+		{
+			std::cout << e.what() << "\n\n";
+			continue;
+		}
+
+		const auto AudioSeconds = static_cast<double>(Audio.Size()) / static_cast<double>(SourceSamplingRate);
+		std::cout << "\n\n//******************************************Start Inference******************************************//\n\n";
+
+		try
+		{
+			MyLastTime = std::chrono::high_resolution_clock::now();
+			auto TimeBegin = std::chrono::high_resolution_clock::now();
+			Audio = Model.InferenceAudio(
+				Audio,
+				DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
+				SourceSamplingRate,
+				4,
+				true
+			);
+			const auto UsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TimeBegin).count();
+			auto InferenceDurations = static_cast<double>(UsedTime) / 1000.0;
+			std::cout << "\n\nInference Use Times: " << InferenceDurations << "s\n";
+			std::cout << "Audio Durations: " << AudioSeconds << "s\n";
+			std::cout << "Inference Speed: " << AudioSeconds / InferenceDurations << "x\n";
+		}
+		catch (const std::exception& e)
+		{
+			std::cout << e.what() << '\n';
+		}
+
+		bool Output = true;
+		while (Output)
+		{
+			wchar_t OutputPath[1024];
+			std::cout << "\nPress Output Path: > ";
+			std::wcin.getline(OutputPath, 1024);
+			try
+			{
+				DragonianLib::AvCodec::WritePCMData(
+					OutputPath,
+					Audio,
+					SourceSamplingRate
+				);
+				std::cout << "Output Audio Saved To: " << DragonianLib::UnicodeToAnsi(OutputPath) << '\n';
+				Output = false;
+			}
+			catch (const std::exception& e)
+			{
+				std::cout << e.what() << '\n';
+			}
+		}
+
+		std::cout << "\n//*******************************************End Inference*******************************************//\n";
+		std::cout << "\nContinue? [0/1] ";
+		std::cin >> Continue;
+		std::cin.ignore();
 	}
 
-	DragonianLib::AvCodec::WritePCMData(
-		LR"(D:\VSGIT\test.wav)",
-		Audio,
-		SourceSamplingRate
-	);
-
+	
 	return 0;
 }

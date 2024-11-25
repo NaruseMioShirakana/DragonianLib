@@ -1,4 +1,5 @@
 ﻿#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
+#include <functional>
 #include "Libraries/F0Extractor/DioF0Extractor.hpp"
 #include "Libraries/F0Extractor/HarvestF0Extractor.hpp"
 #include "Libraries/F0Extractor/NetF0Predictors.hpp"

@@ -330,7 +330,7 @@ TensorXData VitsSvc::Preprocess(
 			SourceSamplingRate,
 			AudioSize
 		);
-	if (VitsSvcVersion == L"SoVits4.0")
+	if (VitsSvcVersion == L"SoVits4.0" || VitsSvcVersion == L"SoVits")
 		return SoVits4Preprocess(
 			HiddenUnit,
 			F0,

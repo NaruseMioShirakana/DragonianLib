@@ -110,13 +110,28 @@ SingleAudio SingingVoiceConversion::GetAudioSlice(
 )
 {
 	SingleAudio audio_slice;
+	const auto _SliceHopSize = std::max(_SamplingRate / 20, 320l);
 	for (size_t i = 1; i < _SlicePos.Size(); i++)
 	{
 		SingleSlice _CurSlice;
 		_CurSlice.SamplingRate = _SamplingRate;
-		const bool is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > _Threshold;
-		_CurSlice.IsNotMute = is_not_mute;
 		_CurSlice.OrgLen = _SlicePos[i] - _SlicePos[i - 1];
+		bool is_not_mute = false;
+		if (_CurSlice.OrgLen > static_cast<size_t>(_SliceHopSize))
+			for (size_t _SliceBegin = _SlicePos[i - 1]; _SliceBegin <= _SlicePos[i] - _SliceHopSize; _SliceBegin += _SliceHopSize)
+			{
+				auto _SliceBuffer = _InputPCM.Data() + _SliceBegin;
+				const auto _SliceDb = AvCodec::CalculateDB(_SliceBuffer, _SliceBuffer + _SliceHopSize);
+				if (_SliceDb > _Threshold)
+				{
+					is_not_mute = true;
+					break;
+				}
+			}
+		else
+			is_not_mute = AvCodec::CalculateDB((_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i])) > _Threshold;
+		_CurSlice.IsNotMute = is_not_mute;
+		
 		if (is_not_mute)
 			_CurSlice.Audio = { (_InputPCM.Data() + _SlicePos[i - 1]), (_InputPCM.Data() + _SlicePos[i]) };
 		else
