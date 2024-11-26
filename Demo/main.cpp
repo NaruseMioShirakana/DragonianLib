@@ -180,7 +180,7 @@ int main(int argc, char** argv)
 	while (argc)
 	{
 		
-		if (strcmp(*argv, "--model-name") == 0)
+		if (strcmp(*argv, "--model-name") == 0 || strcmp(*argv, "-mn") == 0)
 		{
 			++argv;
 			--argc;
@@ -196,7 +196,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--onnx-model-path") == 0)
+		else if (strcmp(*argv, "--onnx-model-path") == 0 || strcmp(*argv, "-omp") == 0)
 		{
 			++argv;
 			--argc;
@@ -217,7 +217,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--onnx-hubert-path") == 0)
+		else if (strcmp(*argv, "--onnx-hubert-path") == 0 || strcmp(*argv, "-ohp") == 0)
 		{
 			++argv;
 			--argc;
@@ -238,7 +238,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--trt-model-path") == 0)
+		else if (strcmp(*argv, "--trt-model-path") == 0 || strcmp(*argv, "-tmp") == 0)
 		{
 			++argv;
 			--argc;
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--trt-hubert-path") == 0)
+		else if (strcmp(*argv, "--trt-hubert-path") == 0 || strcmp(*argv, "-thp") == 0)
 		{
 			++argv;
 			--argc;
@@ -280,7 +280,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--cluster-center-size") == 0)
+		else if (strcmp(*argv, "--cluster-center-size") == 0 || strcmp(*argv, "-ccs") == 0)
 		{
 			++argv;
 			--argc;
@@ -296,7 +296,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--cluster-type") == 0)
+		else if (strcmp(*argv, "--cluster-type") == 0 || strcmp(*argv, "-ct") == 0)
 		{
 			++argv;
 			--argc;
@@ -312,7 +312,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--cluster-path") == 0)
+		else if (strcmp(*argv, "--cluster-path") == 0 || strcmp(*argv, "-cp") == 0)
 		{
 			++argv;
 			--argc;
@@ -323,7 +323,7 @@ int main(int argc, char** argv)
 			}
 			ClusterPath = DragonianLib::UTF8ToWideString(*argv);
 		}
-		else if (strcmp(*argv, "--dla-core") == 0)
+		else if (strcmp(*argv, "--dla-core") == 0 || strcmp(*argv, "-dc") == 0)
 		{
 			++argv;
 			--argc;
@@ -339,11 +339,11 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--disable-fallback") == 0)
+		else if (strcmp(*argv, "--disable-fallback") == 0 || strcmp(*argv, "-df") == 0)
 		{
 			EnableFallback = false;
 		}
-		else if (strcmp(*argv, "--model-precision") == 0)
+		else if (strcmp(*argv, "--model-precision") == 0 || strcmp(*argv, "-mp") == 0)
 		{
 			++argv;
 			--argc;
@@ -367,7 +367,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--severity") == 0)
+		else if (strcmp(*argv, "--severity") == 0 || strcmp(*argv, "-s") == 0)
 		{
 			++argv;
 			--argc;
@@ -391,7 +391,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--optimization-level") == 0)
+		else if (strcmp(*argv, "--optimization-level") == 0 || strcmp(*argv, "-ol") == 0)
 		{
 			++argv;
 			--argc;
@@ -407,7 +407,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--sampling-rate") == 0)
+		else if (strcmp(*argv, "--sampling-rate") == 0 || strcmp(*argv, "-sr") == 0)
 		{
 			++argv;
 			--argc;
@@ -423,7 +423,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--hop-size") == 0)
+		else if (strcmp(*argv, "--hop-size") == 0 || strcmp(*argv, "-hs") == 0)
 		{
 			++argv;
 			--argc;
@@ -439,7 +439,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--feature-dimention") == 0)
+		else if (strcmp(*argv, "--feature-dimention") == 0 || strcmp(*argv, "-fd") == 0)
 		{
 			++argv;
 			--argc;
@@ -455,7 +455,7 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--speaker-count") == 0)
+		else if (strcmp(*argv, "--speaker-count") == 0 || strcmp(*argv, "-sc") == 0)
 		{
 			++argv;
 			--argc;
@@ -471,11 +471,11 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
-		else if (strcmp(*argv, "--enable-speaker-mix") == 0)
+		else if (strcmp(*argv, "--enable-speaker-mix") == 0 || strcmp(*argv, "-esm") == 0)
 		{
 			EnableSpeakerMix = true;
 		}
-		else if (strcmp(*argv, "--enable-volume-embed") == 0)
+		else if (strcmp(*argv, "--enable-volume-embed") == 0 || strcmp(*argv, "-eve") == 0)
 		{
 			EnableVolumeEmbed = true;
 		}
@@ -526,6 +526,8 @@ int main(int argc, char** argv)
 	DynaSetting[1].Max.d[2] = MyConfig.HiddenUnitKDims;
 	DynaSetting[1].Min.d[2] = MyConfig.HiddenUnitKDims;
 	DynaSetting[1].Opt.d[2] = MyConfig.HiddenUnitKDims;
+	if (!EnableSpeakerMix)
+		DynaSetting.erase(std::find(DynaSetting.begin(), DynaSetting.end(), "sid"));
 	MyConfig.TrtSettings.DynaSetting = std::move(DynaSetting);
 	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc Model{
 		MyConfig,

@@ -93,7 +93,7 @@ TensorXData VitsSvc::SoVits4Preprocess(
 	std::normal_distribution<float> normal(0, 1);
 	const auto HubertSize = HiddenUnit.Size();
 	const auto HubertLen = int64_t(HubertSize) / int64_t(HiddenUnitKDims);
-	auto FrameShape = nvinfer1::Dims2{ 1, int64_t(AudioSize * MySamplingRate / SourceSamplingRate / HopSize) };
+	auto FrameShape = nvinfer1::Dims2{ 1, int64_t(AudioSize * MySamplingRate / 16000 / HopSize) };
 	auto HiddenUnitShape = nvinfer1::Dims3{ 1, HubertLen, int64_t(HiddenUnitKDims) };
 	auto SpkShape = nvinfer1::Dims2{ FrameShape.d[1], int64_t(SpeakerCount) };
 	auto NoiseShape = nvinfer1::Dims3{ 1, 192, FrameShape.d[1] };
