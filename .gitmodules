@@ -25,3 +25,6 @@
 [submodule "Third-Party-Libraries/ortmain"]
 	path = Third-Party-Libraries/ortmain
 	url = https://github.com/Microsoft/onnxruntime
+[submodule "Third-Party-Libraries/ncnn"]
+	path = Third-Party-Libraries/ncnn
+	url = https://github.com/Tencent/ncnn

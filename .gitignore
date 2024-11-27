@@ -372,3 +372,5 @@ FodyWeavers.xsd
 /OutPuts
 /OutPuts/*
 /Third-Party-Libraries/TensorRT
+/PythonScript/SoVitsSvc4_0_SupportTensorRT/OnnxSoVits
+/PythonScript/SoVitsSvc4_0_SupportTensorRT/SoVits
