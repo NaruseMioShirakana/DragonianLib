@@ -2,10 +2,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-import onnxexport.attentions as attentions
-import onnxexport.commons as commons
-import onnxexport.modules as modules
-from onnxexport.utils import f0_to_coarse
+import ncnnonnxexport.attentions as attentions
+import ncnnonnxexport.commons as commons
+import ncnnonnxexport.modules as modules
+from ncnnonnxexport.utils import f0_to_coarse
 
 def normalize_f0(f0, uv, random_scale=True):
     uv_sum = torch.sum(uv, dim=1, keepdim=True)
@@ -250,6 +250,7 @@ class SynthesizerTrn(nn.Module):
         self.segment_size = segment_size
         self.gin_channels = gin_channels
         self.ssl_dim = ssl_dim
+        self.n_speaker = n_speakers
         self.vol_embedding = vol_embedding
         self.emb_g = nn.Embedding(n_speakers, gin_channels)
         self.use_depthwise_conv = use_depthwise_conv
@@ -285,14 +286,11 @@ class SynthesizerTrn(nn.Module):
         modules.set_Conv1dModel(self.use_depthwise_conv)
 
         if vocoder_name == "nsf-hifigan":
-            from vdecoder.hifigan.models import Generator
-            self.dec = Generator(h=hps)
-        elif vocoder_name == "nsf-snake-hifigan":
-            from vdecoder.hifiganwithsnake.models import Generator
+            from ncnnonnxexport.gen.models import Generator
             self.dec = Generator(h=hps)
         else:
             print("[?] Unkown vocoder: use default(nsf-hifigan)")
-            from vdecoder.hifigan.models import Generator
+            from ncnnonnxexport.gen.models import Generator
             self.dec = Generator(h=hps)
 
         self.enc_q = Encoder(spec_channels, inter_channels, hidden_channels, 5, 1, 16, gin_channels=gin_channels)
@@ -313,24 +311,24 @@ class SynthesizerTrn(nn.Module):
             )
         self.emb_uv = nn.Embedding(2, hidden_channels)
         self.predict_f0 = False
-        self.speaker_map = []
         self.export_mix = False
 
     def export_chara_mix(self, speakers_mix):
-        self.speaker_map = torch.zeros((len(speakers_mix), 1, 1, self.gin_channels))
+        speaker_map = torch.zeros((len(speakers_mix), 1, 1, self.gin_channels))
         i = 0
         for key in speakers_mix.keys():
             spkidx = speakers_mix[key]
-            self.speaker_map[i] = self.emb_g(torch.LongTensor([[spkidx]]))
+            speaker_map[i] = self.emb_g(torch.LongTensor([[spkidx]]))
             i = i + 1
-        self.speaker_map = self.speaker_map.unsqueeze(0)
+        speaker_map = speaker_map.unsqueeze(0)
+        self.register_buffer("speaker_map", speaker_map)
         self.export_mix = True
 
     def forward(self, c, f0, mel2ph, uv, noise=None, g=None, vol = None):
         decoder_inp = F.pad(c, [0, 0, 1, 0])
         mel2ph_ = mel2ph.unsqueeze(2).repeat([1, 1, c.shape[-1]])
         c = torch.gather(decoder_inp, 1, mel2ph_).transpose(1, 2)  # [B, T, H]
-
+        
         if self.export_mix:   # [N, S]  *  [S, B, 1, H]
             g = g.reshape((g.shape[0], g.shape[1], 1, 1, 1))  # [N, S, B, 1, 1]
             g = g * self.speaker_map  # [N, S, B, 1, H]

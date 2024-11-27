@@ -7,6 +7,7 @@ import onnxexport.commons as commons
 from onnxexport.DSConv import weight_norm_modules
 from onnxexport.modules import LayerNorm
 
+export_pnnx = False
 
 class FFT(nn.Module):
   def __init__(self, hidden_channels, filter_channels, n_heads, n_layers=1, kernel_size=1, p_dropout=0.,
@@ -148,6 +149,9 @@ class MultiHeadAttention(nn.Module):
     # reshape [b, d, t] -> [b, n_h, t, d_k]
     b, d, t_s = key.size()
     t_t = query.size(2)
+    if export_pnnx:
+      b, d, t_s, t_t = torch.IntTensor([b]), torch.IntTensor([d]), torch.IntTensor([t_s]), torch.IntTensor([t_t])
+
     query = query.view(b, self.n_heads, self.k_channels, t_t).transpose(2, 3)
     key = key.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
     value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)

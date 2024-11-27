@@ -7,7 +7,7 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 
-add_executable(${DRAGONIANLIBDEMOEXE} "main.cpp")
+add_executable(${DRAGONIANLIBDEMOEXE} "NCNN-Test.cpp")
 
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")

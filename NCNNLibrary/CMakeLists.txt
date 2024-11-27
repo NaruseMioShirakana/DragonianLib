@@ -1,0 +1,142 @@
+﻿cmake_minimum_required (VERSION 3.13)
+
+set(DRAGONIANLIB_NCNN_LIB ${DRAGONIANLIB_LIB}NCNNLib)
+
+project (
+    ${DRAGONIANLIB_NCNN_LIB}
+    VERSION ${DRAGONIANLIB_VERSION_MAJOR}.${DRAGONIANLIB_VERSION_MINOR}.${DRAGONIANLIB_VERSION_PATCH}
+    LANGUAGES ${DRAGONIANLIB_LANGUAGES}
+)
+
+file(GLOB_RECURSE DRAGONIANLIB_NCNNLIB_SRC
+	${PROJECT_SOURCE_DIR}/NCNNBase/*.c
+	${PROJECT_SOURCE_DIR}/NCNNBase/*.cpp
+	${PROJECT_SOURCE_DIR}/NCNNBase/*.h
+	${PROJECT_SOURCE_DIR}/NCNNBase/*.hpp
+)
+
+if(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION)
+	file(GLOB_RECURSE DRAGONIANLIB_NCNNLIB_SVC_SRC
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.c
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.cpp
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.h
+		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_NCNNLIB_SRC ${DRAGONIANLIB_NCNNLIB_SVC_SRC})
+	message("	- Build Singing Voice Conversion")
+endif()
+if(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH)
+	file(GLOB_RECURSE DRAGONIANLIB_NCNNLIB_TTS_SRC
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.c
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.cpp
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.h
+		${PROJECT_SOURCE_DIR}/TextToSpeech/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_NCNNLIB_SRC ${DRAGONIANLIB_NCNNLIB_TTS_SRC})
+	message("	- Build Text To Speech")
+endif()
+if(DRAGONIANLIB_NCNN_SUPER_RESOLUTION)
+ 	file(GLOB_RECURSE DRAGONIANLIB_NCNNLIB_SR_SRC
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.c
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.cpp
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.h
+		${PROJECT_SOURCE_DIR}/SuperResolution/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_NCNNLIB_SRC ${DRAGONIANLIB_NCNNLIB_SR_SRC})
+	message("	- Build Super Resolution")
+endif()
+if(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION)
+ 	file(GLOB_RECURSE DRAGONIANLIB_NCNNLIB_MT_SRC
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.c
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.cpp
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.h
+		${PROJECT_SOURCE_DIR}/MusicTranscription/*.hpp
+	)
+	list(APPEND DRAGONIANLIB_NCNNLIB_SRC ${DRAGONIANLIB_NCNNLIB_MT_SRC})
+	message("	- Build Music Transcription")
+endif()
+
+if(DRAGONIANLIB_SHARED_LIBS)
+    add_library(${DRAGONIANLIB_NCNN_LIB} SHARED ${DRAGONIANLIB_NCNNLIB_SRC})
+else()
+    add_library(${DRAGONIANLIB_NCNN_LIB} STATIC ${DRAGONIANLIB_NCNNLIB_SRC})
+endif()
+
+#Build Type
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	target_compile_options(
+		${DRAGONIANLIB_NCNN_LIB} PRIVATE
+		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
+	)
+	target_link_options(
+        ${DRAGONIANLIB_NCNN_LIB} PRIVATE
+        /LTCG
+    )
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+	target_compile_options(
+		${DRAGONIANLIB_NCNN_LIB} PRIVATE
+		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
+	)
+	target_link_options(
+        ${DRAGONIANLIB_NCNN_LIB} PRIVATE
+        /LTCG
+    )
+else()
+	add_definitions(-DDRAGONIANLIB_DEBUG)
+	target_compile_options(
+		${DRAGONIANLIB_NCNN_LIB} PRIVATE
+		/Zi /Gy /experimental:module /openmp:experimental
+	)
+endif()
+
+target_include_directories(
+	${DRAGONIANLIB_NCNN_LIB} PRIVATE
+	${DRAGONIANLIB_BASE_INCLUDE_DIRS}
+	${NCNN_INCLUDE_DIRS}
+)
+
+target_link_libraries(
+	${DRAGONIANLIB_NCNN_LIB} PRIVATE
+	${DRAGONIANLIB_LIB}
+	${NCNN_LIBRARIES}
+)
+
+if (CMAKE_VERSION VERSION_GREATER 3.12)
+	set_property(TARGET ${DRAGONIANLIB_NCNN_LIB} PROPERTY CXX_STANDARD 23)
+endif()
+
+if(MSVC)
+	if (POLICY CMP0141)
+		cmake_policy(SET CMP0141 NEW)
+		set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+	endif()
+endif()
+
+# 导出目标
+install(
+	TARGETS ${DRAGONIANLIB_NCNN_LIB}
+	EXPORT ${DRAGONIANLIB_NCNN_LIB}Targets
+	ARCHIVE DESTINATION lib
+	LIBRARY DESTINATION lib
+	RUNTIME DESTINATION bin
+)
+
+# 配置和安装配置文件
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+	${CMAKE_CURRENT_BINARY_DIR}/${DRAGONIANLIB_NCNN_LIB}ConfigVersion.cmake
+	VERSION ${DRAGONIANLIB_VERSION_MAJOR}.${DRAGONIANLIB_VERSION_MINOR}.${DRAGONIANLIB_VERSION_PATCH}
+	COMPATIBILITY AnyNewerVersion
+)
+
+configure_file(
+	Config.cmake
+	${CMAKE_CURRENT_BINARY_DIR}/${DRAGONIANLIB_NCNN_LIB}Config.cmake
+	COPYONLY
+)
+
+install(FILES
+	${CMAKE_CURRENT_BINARY_DIR}/${DRAGONIANLIB_NCNN_LIB}Config.cmake
+	${CMAKE_CURRENT_BINARY_DIR}/${DRAGONIANLIB_NCNN_LIB}ConfigVersion.cmake
+	DESTINATION lib/cmake/${DRAGONIANLIB_NCNN_LIB}
+)

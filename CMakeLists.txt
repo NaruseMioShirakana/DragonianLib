@@ -14,16 +14,22 @@ add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 option(DRAGONIANLIB_DML									"dml backend"									OFF)
 option(DRAGONIANLIB_CUDA								"cuda backend"									OFF)
 option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
+option(DRAGONIANLIB_VULKAN								"vk backend"									OFF)
 
 option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				OFF)
 option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		OFF)
 option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					OFF)
 option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			OFF)
 
-option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				ON)
-option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		ON)
-option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					ON)
-option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			ON)
+option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				OFF)
+option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		OFF)
+option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					OFF)
+option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			OFF)
+
+option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				ON)
+option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		ON)
+option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				ON)
+option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			ON)
 
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
 option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
@@ -34,12 +40,22 @@ if(DRAGONIANLIB_ORT_SUPER_RESOLUTION OR DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSIO
 	set(DRAGONIANLIB_ONNXRUNTIME ON)
 endif()
 
+set (DRAGONIANLIB_TENSORRT OFF)
 if(DRAGONIANLIB_TRT_SUPER_RESOLUTION OR DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION OR DRAGONIANLIB_TRT_TEXT_TO_SPEECH OR DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION)
 	set(DRAGONIANLIB_TENSORRT ON)
 endif()
 
+set (DRAGONIANLIB_NCNN OFF)
+if(DRAGONIANLIB_NCNN_SUPER_RESOLUTION OR DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION OR DRAGONIANLIB_NCNN_TEXT_TO_SPEECH OR DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION)
+	set(DRAGONIANLIB_NCNN ON)
+endif()	
+
 if(DRAGONIANLIB_TENSORRT)
 	set(DRAGONIANLIB_CUDA ON)
+endif()
+
+if(DRAGONIANLIB_NCNN)
+	set(DRAGONIANLIB_VULKAN ON)
 endif()
 
 #DragonianLib Configs
@@ -196,12 +212,25 @@ if(NOT faiss_FOUND)
 	endif()
 endif()
 
+find_package(yyjson)
 if(NOT yyjson_FOUND)
 	if(NOT DEFINED YYJSON_LIBRARIES)
 		set(YYJSON_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/out/install/x64-Release/lib/yyjson.lib)
 	endif()
 	if(NOT DEFINED YYJSON_INCLUDE_DIRS)
 		set(YYJSON_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/yyjson/out/install/x64-Release/include)
+	endif()
+endif()
+
+if(DRAGONIANLIB_NCNN)
+	find_package(ncnn)
+	if(NOT ncnn_FOUND)
+		if(NOT DEFINED NCNN_LIBRARIES)
+			set(NCNN_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/ncnn.lib)
+		endif()
+		if(NOT DEFINED NCNN_INCLUDE_DIRS)
+			set(NCNN_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/include)
+		endif()
 	endif()
 endif()
 
@@ -431,6 +460,17 @@ if(DRAGONIANLIB_TENSORRT)
 	message("")
 endif()
 
+if(DRAGONIANLIB_NCNN)
+	message("")
+	message("NCNN Libraries: Enabled")
+	add_definitions(-DDRAGONIANLIB_NCNN_LIB)
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${NCNN_INCLUDE_DIRS})
+	target_link_directories(${DRAGONIANLIB_LIB} PRIVATE ${NCNN_LIBRARIES})
+	add_subdirectory(NCNNLibrary)
+	set(DRAGONIANLIB_NCNN_LIB ${DRAGONIANLIB_LIB}NCNNLib)
+	message("")
+endif()
+
 #C++ Standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)
 	set_property(TARGET ${DRAGONIANLIB_LIB} PROPERTY CXX_STANDARD 23)
@@ -488,6 +528,12 @@ install(
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
+install(
+	DIRECTORY ${PROJECT_SOURCE_DIR}/NCNNLibrary/
+	DESTINATION include/NCNNLibraries
+	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+	PATTERN "*/" EXCLUDE
+)
 
 #Export Subprojects
 install(
@@ -512,6 +558,15 @@ if(DRAGONIANLIB_TENSORRT)
 		FILE ${DRAGONIANLIB_TRT_LIB}Targets.cmake
 		NAMESPACE ${DRAGONIANLIB_LIB}::
 		DESTINATION lib/cmake/${DRAGONIANLIB_TRT_LIB}
+	)
+endif()
+
+if(DRAGONIANLIB_NCNN)
+	install(
+		EXPORT ${DRAGONIANLIB_NCNN_LIB}Targets
+		FILE ${DRAGONIANLIB_NCNN_LIB}Targets.cmake
+		NAMESPACE ${DRAGONIANLIB_LIB}::
+		DESTINATION lib/cmake/${DRAGONIANLIB_NCNN_LIB}
 	)
 endif()
 
@@ -546,6 +601,14 @@ if(DRAGONIANLIB_TENSORRT)
 		${CMAKE_CURRENT_BINARY_DIR}/TensorRT/${DRAGONIANLIB_TRT_LIB}Config.cmake
 		${CMAKE_CURRENT_BINARY_DIR}/TensorRT/${DRAGONIANLIB_TRT_LIB}ConfigVersion.cmake
 		DESTINATION lib/cmake/${DRAGONIANLIB_TRT_LIB}
+	)
+endif()
+
+if(DRAGONIANLIB_NCNN)
+	install(FILES
+		${CMAKE_CURRENT_BINARY_DIR}/NCNNLibrary/${DRAGONIANLIB_NCNN_LIB}Config.cmake
+		${CMAKE_CURRENT_BINARY_DIR}/NCNNLibrary/${DRAGONIANLIB_NCNN_LIB}ConfigVersion.cmake
+		DESTINATION lib/cmake/${DRAGONIANLIB_NCNN_LIB}
 	)
 endif()
 

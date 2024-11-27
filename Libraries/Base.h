@@ -621,6 +621,8 @@ public:
 	FileGuard() = default;
 	~FileGuard();
 	FileGuard(const std::wstring& _Path, const std::wstring& _Mode);
+	FileGuard(const std::wstring& _Path, const wchar_t* _Mode);
+	FileGuard(const wchar_t* _Path, const wchar_t* _Mode);
 	FileGuard(const FileGuard& _Left) = delete;
 	FileGuard& operator=(const FileGuard& _Left) = delete;
 	FileGuard(FileGuard&& _Right) noexcept;
@@ -632,6 +634,20 @@ public:
 	 * @param _Mode file mode
 	 */
 	void Open(const std::wstring& _Path, const std::wstring& _Mode);
+
+	/**
+	 * @brief Open file
+	 * @param _Path file path
+	 * @param _Mode file mode
+	 */
+	void Open(const std::wstring& _Path, const wchar_t* _Mode);
+
+	/**
+	 * @brief Open file
+	 * @param _Path file path
+	 * @param _Mode file mode
+	 */
+	void Open(const wchar_t* _Path, const wchar_t* _Mode);
 
 	/**
 	 * @brief Close file
@@ -666,6 +682,13 @@ private:
 	TidyGuard& operator=(const TidyGuard&) = delete;
 	TidyGuard(TidyGuard&&) = delete;
 	TidyGuard& operator=(TidyGuard&&) = delete;
+};
+
+enum class FloatPrecision
+{
+	BFloat16,
+	Float16,
+	Float32
 };
 
 _D_Dragonian_Lib_Space_End

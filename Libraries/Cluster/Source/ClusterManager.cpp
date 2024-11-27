@@ -16,7 +16,7 @@ _D_Dragonian_Lib_Cluster_Namespace_Begin
 
 using GetClusterFn = std::function<Cluster(const std::wstring&, size_t, size_t)>;
 
-std::map<std::wstring, GetClusterFn> RegisteredCluster;
+std::unordered_map<std::wstring, GetClusterFn> RegisteredCluster;
 std::vector<std::wstring> ClusterList;
 
 Cluster GetCluster(const std::wstring& ClusterName, const std::wstring& ClusterFile, size_t ClusterDimension, size_t ClusterSize)

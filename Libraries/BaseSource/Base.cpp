@@ -34,6 +34,16 @@ FileGuard::FileGuard(const std::wstring& _Path, const std::wstring& _Mode)
 	Open(_Path, _Mode);
 }
 
+FileGuard::FileGuard(const std::wstring& _Path, const wchar_t* _Mode)
+{
+	Open(_Path, _Mode);
+}
+
+FileGuard::FileGuard(const wchar_t* _Path, const wchar_t* _Mode)
+{
+	Open(_Path, _Mode);
+}
+
 FileGuard::~FileGuard()
 {
 	Close();
@@ -59,6 +69,26 @@ void FileGuard::Open(const std::wstring& _Path, const std::wstring& _Mode)
 	_wfopen_s(&file_, _Path.c_str(), _Mode.c_str());
 #else
 	file_ = _wfopen(_Path.c_str(), _Mode.c_str());
+#endif
+}
+
+void FileGuard::Open(const std::wstring& _Path, const wchar_t* _Mode)
+{
+	Close();
+#ifdef _WIN32
+	_wfopen_s(&file_, _Path.c_str(), _Mode);
+#else
+	file_ = _wfopen(_Path.c_str(), _Mode);
+#endif
+}
+
+void FileGuard::Open(const wchar_t* _Path, const wchar_t* _Mode)
+{
+	Close();
+#ifdef _WIN32
+	_wfopen_s(&file_, _Path, _Mode);
+#else
+	file_ = _wfopen(_Path, _Mode);
 #endif
 }
 

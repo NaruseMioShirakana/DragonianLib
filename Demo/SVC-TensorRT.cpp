@@ -529,10 +529,21 @@ int main(int argc, char** argv)
 	if (!EnableSpeakerMix)
 		DynaSetting.erase(std::find(DynaSetting.begin(), DynaSetting.end(), "sid"));
 	MyConfig.TrtSettings.DynaSetting = std::move(DynaSetting);
-	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc Model{
-		MyConfig,
-		ProgressCb
-	};
+
+	std::shared_ptr<DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc> Model;
+
+	try
+	{
+		Model = std::make_shared<DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc>(
+			MyConfig,
+			ProgressCb
+		);
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << '\n';
+		return 1;
+	}
 
 	auto SourceSamplingRate = 48000;
 	std::cout << "\nPress Target Sampling Rate: > ";
@@ -566,7 +577,7 @@ int main(int argc, char** argv)
 		{
 			MyLastTime = std::chrono::high_resolution_clock::now();
 			auto TimeBegin = std::chrono::high_resolution_clock::now();
-			Audio = Model.InferenceAudio(
+			Audio = Model->InferenceAudio(
 				Audio,
 				DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
 				SourceSamplingRate,
