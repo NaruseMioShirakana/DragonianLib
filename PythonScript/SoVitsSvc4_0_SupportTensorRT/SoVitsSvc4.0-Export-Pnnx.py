@@ -21,17 +21,16 @@ def OnnxExport(path=None):
     for i in SVCVITS.parameters():
         i.requires_grad = False
     
-    num_frames = 200
+    num_frames =        200
 
-    test_hidden_unit = torch.rand(1, num_frames, SVCVITS.gin_channels)
-    test_pitch = torch.rand(1, num_frames)
-    test_vol = torch.rand(1, num_frames)
-    test_mel2ph = torch.LongTensor(torch.arange(0, num_frames)).unsqueeze(0)
-    test_uv = torch.ones(1, num_frames, dtype=torch.float32)
-    test_noise = torch.randn(1, 192, num_frames)
-    test_sid = torch.LongTensor([0])
-    export_mix = True
-    if len(hps.spk) < 2:
+    test_hidden_unit =  torch.rand(SVCVITS.gin_channels, num_frames)
+    test_pitch =        torch.rand(num_frames)
+    test_vol =          torch.rand(num_frames)
+    test_uv =           torch.ones(num_frames, dtype=torch.float32)
+    test_noise =        torch.randn(num_frames, 192)
+    test_sid =          torch.LongTensor([0])
+    export_mix =        True
+    if SVCVITS.n_speaker <= 1:
         export_mix = False
     
     if export_mix:
@@ -54,23 +53,21 @@ def OnnxExport(path=None):
 
     if export_mix:
         daxes = {
-            "c": [0, 1],
-            "f0": [1],
-            "mel2ph": [1],
-            "uv": [1],
-            "noise": [2],
+            "c": [0],
+            "f0": [0],
+            "uv": [0],
+            "noise": [1],
             "sid":[0]
         }
     else:
         daxes = {
-            "c": [0, 1],
-            "f0": [1],
-            "mel2ph": [1],
-            "uv": [1],
-            "noise": [2]
+            "c": [0],
+            "f0": [0],
+            "uv": [0],
+            "noise": [1]
         }
     
-    input_names = ["c", "f0", "mel2ph", "uv", "noise", "sid"]
+    input_names = ["c", "f0", "uv", "noise", "sid"]
     output_names = ["audio", ]
 
     if SVCVITS.vol_embedding:
@@ -80,7 +77,6 @@ def OnnxExport(path=None):
         test_inputs = (
             test_hidden_unit.to(device),
             test_pitch.to(device),
-            test_mel2ph.to(device),
             test_uv.to(device),
             test_noise.to(device),
             test_sid.to(device),
@@ -90,7 +86,6 @@ def OnnxExport(path=None):
         test_inputs = (
             test_hidden_unit.to(device),
             test_pitch.to(device),
-            test_mel2ph.to(device),
             test_uv.to(device),
             test_noise.to(device),
             test_sid.to(device)

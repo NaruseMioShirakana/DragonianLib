@@ -58,20 +58,20 @@ void AndScalarCont(
 		_Dest[i] = _D_Dragonian_Lib_Cur_Operator(_Src[i], _Value);
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void AndScalar(
 	bool* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	const _Type* _Src,
-	std::shared_ptr<OperatorParameter> _SrcInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld,
 	std::shared_ptr<_Type> _ValPtr
 )
 {
 	if constexpr (_Impl_Dragonian_Lib_Has_And_Operator_v<_Type>)
 	{
-		const OperatorParameter& _DestInfo = *_DestInfoOld;
-		const OperatorParameter& _SrcInfo = *_SrcInfoOld;
-		SizeType ViewRank = _DestInfo.GetRank();
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
+		const OperatorParameter<_NRank>& _SrcInfo = *_SrcInfoOld;
+		
 		const auto& _Value = *_ValPtr;
 
 		const auto Func = [&](int64_t _IndexA, int64_t _IndexB)
@@ -87,99 +87,25 @@ void AndScalar(
 		const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data();
 		const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data();
 
-		if (ViewRank == 1)
-			DoubleTensorLoop<1, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 2)
-			DoubleTensorLoop<2, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 3)
-			DoubleTensorLoop<3, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 4)
-			DoubleTensorLoop<4, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 5)
-			DoubleTensorLoop<5, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 6)
-			DoubleTensorLoop<6, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 7)
-			DoubleTensorLoop<7, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 8)
-			DoubleTensorLoop<8, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 9)
-			DoubleTensorLoop<9, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 10)
-			DoubleTensorLoop<10, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_And_Unfold>(
+			0, 0,
+			Shape, Begin,
+			ViewStep, ViewLeft, ViewStride,
+			SrcViewStep, SrcViewLeft, SrcViewStride,
+			Func
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 template <typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAndScalar(
 	bool* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type* _Src,
-	const OperatorParameter& _SrcInfo,
+	const OperatorParameter<_NRank>& _SrcInfo,
 	const _Type& _Value,
 	bool Continuous
 )
@@ -192,7 +118,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAndScalar(
 			_SrcInfo,
 			std::make_shared<_Type>(_Value),
 			Continuous,
-			AndScalar<_Type>,
+			AndScalar<_Type, _NRank>,
 			AndScalarCont<_Type>
 		);
 	else
@@ -237,23 +163,23 @@ void AndTensorCont(
 		_Dest[i] = _D_Dragonian_Lib_Cur_Operator(_Src1[i], _Src2[i]);
 }
 
-template <typename _Type>
+template <typename _Type, size_t _NRank>
 void AndTensor(
 	bool* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	const _Type* _Src1,
-	std::shared_ptr<OperatorParameter> _Src1InfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
 	const _Type* _Src2,
-	std::shared_ptr<OperatorParameter> _Src2InfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
 	void*
 )
 {
 	if constexpr (_Impl_Dragonian_Lib_Has_And_Operator_v<_Type> && std::is_move_assignable_v<_Type>)
 	{
-		const OperatorParameter& _DestInfo = *_DestInfoOld;
-		const OperatorParameter& _Src1Info = *_Src1InfoOld;
-		const OperatorParameter& _Src2Info = *_Src2InfoOld;
-		SizeType ViewRank = _DestInfo.GetRank();
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
+		const OperatorParameter<_NRank>& _Src1Info = *_Src1InfoOld;
+		const OperatorParameter<_NRank>& _Src2Info = *_Src2InfoOld;
+		
 
 		const auto Func = [&](int64_t _IndexA, int64_t _IndexB, int64_t _IndexC)
 			{
@@ -271,111 +197,28 @@ void AndTensor(
 		const SizeType* __restrict Src2ViewLeft = _Src2Info.ViewLeft.Data();
 		const SizeType* __restrict Src2ViewStride = _Src2Info.ViewStride.Data();
 
-		if (ViewRank == 1)
-			TripleTensorLoop<1, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 2)
-			TripleTensorLoop<2, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 3)
-			TripleTensorLoop<3, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 4)
-			TripleTensorLoop<4, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 5)
-			TripleTensorLoop<5, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 6)
-			TripleTensorLoop<6, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 7)
-			TripleTensorLoop<7, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 8)
-			TripleTensorLoop<8, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 9)
-			TripleTensorLoop<9, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else if (ViewRank == 10)
-			TripleTensorLoop<10, _D_Dragonian_Lib_Operator_And_Unfold>(
-				0, 0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				Src1ViewStep, Src1ViewLeft, Src1ViewStride,
-				Src2ViewStep, Src2ViewLeft, Src2ViewStride,
-				Func
-			);
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		TripleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_And_Unfold>(
+			0, 0, 0,
+			Shape, Begin,
+			ViewStep, ViewLeft, ViewStride,
+			Src1ViewStep, Src1ViewLeft, Src1ViewStride,
+			Src2ViewStep, Src2ViewLeft, Src2ViewStride,
+			Func
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 template <typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAndTensor(
 	bool* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type* _Src1,
-	const OperatorParameter& _SrcInfo1,
+	const OperatorParameter<_NRank>& _SrcInfo1,
 	const _Type* _Src2,
-	const OperatorParameter& _SrcInfo2,
+	const OperatorParameter<_NRank>& _SrcInfo2,
 	bool Continuous
 )
 {
@@ -389,7 +232,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAndTensor(
 			_SrcInfo2,
 			nullptr,
 			Continuous,
-			AndTensor<_Type>,
+			AndTensor<_Type, _NRank>,
 			AndTensorCont<_Type>
 		);
 	else

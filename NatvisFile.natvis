@@ -48,33 +48,72 @@
 		</Expand>
 	</Type>
 
+	<Type Name="DragonianLib::ArrayImpl&lt;*&gt;">
+		<DisplayString Condition="_MyRank == 1">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank == 2">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank == 3">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]}, {_MyData[2]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank == 4">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]}, {_MyData[2]}, {_MyData[3]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank == 5">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]}, {_MyData[2]}, {_MyData[3]}, {_MyData[4]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank == 6">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]}, {_MyData[2]}, {_MyData[3]}, {_MyData[4]}, {_MyData[5]} ] }}
+		</DisplayString>
+		<DisplayString Condition="_MyRank > 6">
+			{{ Rank: {_MyRank}, Data: [ {_MyData[0]}, {_MyData[1]}, {_MyData[2]}, ..., {*(_MyData + _MyRank - 3)}, {*(_MyData + _MyRank - 2)}, {*(_MyData + _MyRank - 1)} ] }}
+		</DisplayString>
+		<Expand>
+			<Item Name="[Buffer]" ExcludeView="simple">_MyData</Item>
+			<Item Name="[Rank]" ExcludeView="simple">_MyRank</Item>
+			<Synthetic Name="[Data]">
+				<DisplayString>{{ Size={_MyRank} }}</DisplayString>
+				<Expand>
+					<ArrayItems>
+						<Size>_MyRank</Size>
+						<ValuePointer>_MyData</ValuePointer>
+					</ArrayItems>
+				</Expand>
+			</Synthetic>
+		</Expand>
+	</Type>
+
 	<Type Name="DragonianLib::Tensor&lt;*,*&gt;">
 		<DisplayString>
-			{{ Rank: { _MyShape._MyLast - _MyShape._MyFirst }, ValueType: { _DType }, Device: { _Device } }}
+			{{ Rank: { _MyShape._MyRank }, ValueType: { _DType }, Device: { _Device } }}
 		</DisplayString>
 		<Expand>
 			<Item Name="[Type]" ExcludeView="simple">_DType</Item>
 			<Item Name="[Device]" ExcludeView="simple">_Device</Item>
 			<Item Name="[Capacity]" ExcludeView="simple">_MyLast - _MyFirst._Ptr</Item>
-			<Item Name="[IsTensorView]">_MyData!=_MyFirst._Ptr</Item>
 			<Synthetic Name="[ViewAttribute]">
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 1">
-					{{ Shape: [ {_MyShape._MyFirst[0]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 1">
+					{{ Shape: [ {_MyShape._MyData[0]} ] }}
 				</DisplayString>
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 2">
-					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 2">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]} ] }}
 				</DisplayString>
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 3">
-					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 3">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]} ] }}
 				</DisplayString>
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 4">
-					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 4">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]}, {_MyShape._MyData[3]} ] }}
 				</DisplayString>
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 5">
-					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]}, {_MyShape._MyFirst[4]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 5">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]}, {_MyShape._MyData[3]}, {_MyShape._MyData[4]} ] }}
 				</DisplayString>
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst >= 6">
-					{{ Shape: [ {_MyShape._MyFirst[0]}, {_MyShape._MyFirst[1]}, {_MyShape._MyFirst[2]}, {_MyShape._MyFirst[3]}, {_MyShape._MyFirst[4]}, {_MyShape._MyFirst[5]} ] }}
+				<DisplayString Condition="_MyShape._MyRank == 6">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]}, {_MyShape._MyData[3]}, {_MyShape._MyData[4]}, {_MyShape._MyData[5]} ] }}
+				</DisplayString>
+				<DisplayString Condition="_MyShape._MyRank > 6">
+					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]}, ..., {*(_MyShape._MyData + _MyShape._MyRank - 3)}, {*(_MyShape._MyData + _MyShape._MyRank - 2)}, {*(_MyShape._MyData + _MyShape._MyRank - 1)} ] }}
 				</DisplayString>
 				<Expand>
 					<Item Name="[ViewShape]" ExcludeView="simple">_MyShape</Item>
@@ -84,7 +123,7 @@
 				</Expand>
 			</Synthetic>
 			<Synthetic Name="[Data]">
-				<DisplayString Condition="_MyShape._MyLast - _MyShape._MyFirst == 1">
+				<DisplayString>
 					{{ Capacity: {_MyLast - _MyFirst._Ptr}, Buffer: {_MyFirst._Ptr}, Data: {_MyData} }}
 				</DisplayString>
 				<Expand>
@@ -102,15 +141,14 @@
 						<Expand>
 							<ArrayItems>
 								<Direction>Forward</Direction>
-								<Rank>_MyShape._MyLast - _MyShape._MyFirst</Rank>
-								<Size>_MyShape._MyFirst[$i]</Size>
+								<Rank>_MyShape._MyRank</Rank>
+								<Size>_MyShape._MyData[$i]</Size>
 								<ValuePointer>_MyData</ValuePointer>
 							</ArrayItems>
 						</Expand>
 					</Synthetic>
 				</Expand>
 			</Synthetic>
-			<Item Name="[Allocator]">_MyAllocator</Item>
 		</Expand>
 	</Type>
 

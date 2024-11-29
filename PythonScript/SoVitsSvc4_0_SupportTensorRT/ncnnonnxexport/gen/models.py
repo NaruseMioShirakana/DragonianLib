@@ -94,12 +94,14 @@ class SineGen(torch.nn.Module):
         if uv.device.type == "privateuseone":  # for DirectML
             uv = uv.float()
         return uv
-    
+
     def _f02sine(self, f0, upp):
         a = torch.arange(1, upp + 1, dtype=f0.dtype, device=f0.device)
         rad = f0 / self.sampling_rate * a
-        rad2 = torch.fmod(rad[:, :-1, -1:].float() + 0.5, 1.0) - 0.5
-        rad_acc = rad2.cumsum(dim=1).fmod(1.0).to(f0)
+        fmod_in = rad[:, :-1, -1:].float() + 0.5
+        rad2 = (fmod_in - fmod_in.int().float()) - 0.5
+        rad_acc = rad2.squeeze(-1).cumsum(dim=1).unsqueeze(-1)
+        rad_acc = (rad_acc - rad_acc.int().float()).to(f0)
         rad += F.pad(rad_acc, (0, 0, 1, 0), mode='constant')
         rad = rad.reshape(f0.shape[0], -1, 1)
         b = torch.arange(1, self.dim + 1, dtype=f0.dtype, device=f0.device).reshape(1, 1, -1)
@@ -119,7 +121,7 @@ class SineGen(torch.nn.Module):
                 uv.transpose(2, 1), scale_factor=float(upp), mode="nearest"
             ).transpose(2, 1)
             noise_amp = uv * self.noise_std + (1 - uv) * self.sine_amp / 3
-            noise = noise_amp * torch.randn_like(sine_waves)
+            noise = noise_amp * torch.randn(sine_waves.shape)
             sine_waves = sine_waves * uv + noise
         return sine_waves
 

@@ -9,6 +9,7 @@ set(DRAGONIANLIB_VERSION_PATCH 1)
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
+add_definitions(-DNOMINMAX)
 
 #DragonianLib Build Options
 option(DRAGONIANLIB_DML									"dml backend"									OFF)
@@ -26,10 +27,10 @@ option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conve
 option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					OFF)
 option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			OFF)
 
-option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				ON)
-option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		ON)
-option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				ON)
-option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			ON)
+option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				OFF)
+option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		OFF)
+option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				OFF)
+option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			OFF)
 
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
 option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
@@ -446,7 +447,6 @@ if(DRAGONIANLIB_ONNXRUNTIME)
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${ONNXRUNTIME_LIBRARIES})
 	add_subdirectory(OnnxLibrary)
 	set(DRAGONIANLIB_ORT_LIB ${DRAGONIANLIB_LIB}OrtLib)
-	message("")
 endif()
 
 if(DRAGONIANLIB_TENSORRT)
@@ -457,7 +457,6 @@ if(DRAGONIANLIB_TENSORRT)
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${TENSORRT_LIBRARIES})
 	add_subdirectory(TensorRT)
 	set(DRAGONIANLIB_TRT_LIB ${DRAGONIANLIB_LIB}TRTLib)
-	message("")
 endif()
 
 if(DRAGONIANLIB_NCNN)
@@ -468,8 +467,9 @@ if(DRAGONIANLIB_NCNN)
 	target_link_directories(${DRAGONIANLIB_LIB} PRIVATE ${NCNN_LIBRARIES})
 	add_subdirectory(NCNNLibrary)
 	set(DRAGONIANLIB_NCNN_LIB ${DRAGONIANLIB_LIB}NCNNLib)
-	message("")
 endif()
+
+message("")
 
 #C++ Standard
 if (CMAKE_VERSION VERSION_GREATER 3.12)

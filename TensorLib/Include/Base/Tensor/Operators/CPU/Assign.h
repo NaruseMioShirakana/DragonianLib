@@ -50,12 +50,12 @@ void AssignTensorCont(
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-template<typename _TypeDest, typename _TypeSrc>
+template<typename _TypeDest, typename _TypeSrc, size_t _NRank>
 void AssignTensor(
 	_TypeDest* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	const _TypeSrc* _Src,
-	std::shared_ptr<OperatorParameter> _SrcInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld,
 	void*
 )
 {
@@ -64,9 +64,8 @@ void AssignTensor(
 		(_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
 		)
 	{
-		const OperatorParameter& _DestInfo = *_DestInfoOld;
-		const OperatorParameter& _SrcInfo = *_SrcInfoOld;
-		SizeType ViewRank = _DestInfo.GetRank();
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
+		const OperatorParameter<_NRank>& _SrcInfo = *_SrcInfoOld;
 
 		const auto Func = [&](int64_t _IndexA, int64_t _IndexB)
 			{
@@ -84,141 +83,67 @@ void AssignTensor(
 		const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data();
 		const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data();
 
-		if (ViewRank == 1)
-			DoubleTensorLoop<1, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 2)
-			DoubleTensorLoop<2, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 3)
-			DoubleTensorLoop<3, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 4)
-			DoubleTensorLoop<4, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 5)
-			DoubleTensorLoop<5, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 6)
-			DoubleTensorLoop<6, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 7)
-			DoubleTensorLoop<7, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 8)
-			DoubleTensorLoop<8, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 9)
-			DoubleTensorLoop<9, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else if (ViewRank == 10)
-			DoubleTensorLoop<10, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-				0, 0,
-				Shape, Begin,
-				ViewStep, ViewLeft, ViewStride,
-				SrcViewStep, SrcViewLeft, SrcViewStride,
-				Func
-			);
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
+			0, 0,
+			Shape, Begin,
+			ViewStep, ViewLeft, ViewStride,
+			SrcViewStep, SrcViewLeft, SrcViewStride,
+			Func
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 template <typename _Type>
-template <typename _TypeSrc>
+template <typename _TypeSrc, size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplCast(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _TypeSrc* _Src,
-	const OperatorParameter& _SrcInfo,
+	const OperatorParameter<_NRank>& _SrcInfo,
 	bool Continuous
 )
 {
 	if constexpr (_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_Type, _TypeSrc> && std::is_move_assignable_v<_Type>)
 	{
-		ImplMultiThreadDouble<_Type, _TypeSrc, void*>(
-		   _Dest,
-		   _DestInfo,
-		   _Src,
-		   _SrcInfo,
-		   nullptr,
-		   Continuous,
-		   AssignTensor<_Type, _TypeSrc>,
-		   AssignTensorCont<_Type, _TypeSrc>
-	   );
+		ImplMultiThreadDouble(
+			_Dest,
+			_DestInfo,
+			_Src,
+			_SrcInfo,
+			nullptr,
+			Continuous,
+			AssignTensor<_Type, _TypeSrc, _NRank>,
+			AssignTensorCont<_Type, _TypeSrc>
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAssignTensor(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type* _Src,
-	const OperatorParameter& _SrcInfo,
+	const OperatorParameter<_NRank>& _SrcInfo,
 	bool Continuous
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		ImplMultiThreadDouble<_Type, _Type, void*>(
-		   _Dest,
-		   _DestInfo,
-		   _Src,
-		   _SrcInfo,
-		   nullptr,
-		   Continuous,
-		   AssignTensor<_Type, _Type>,
-		   AssignTensorCont<_Type, _Type>
-	   );
+		ImplMultiThreadDouble(
+			_Dest,
+			_DestInfo,
+			_Src,
+			_SrcInfo,
+			nullptr,
+			Continuous,
+			AssignTensor<_Type, _Type, _NRank>,
+			AssignTensorCont<_Type, _Type>
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -266,21 +191,21 @@ void AssignBufferCont(
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void AssignBuffer(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	_Struct_Buffer<_Type> _Value
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		const OperatorParameter& _DestInfo = *_DestInfoOld;
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 		SizeType ViewRank = _DestInfo.GetRank();
 
 		const auto End = _Value._Src + _Value._Count;
 		const _Type* _Src;
-		if(std::ranges::count(_DestInfo.Begin, 0) == ViewRank)
+		if (std::ranges::count(_DestInfo.Begin, 0) == ViewRank)
 			_Src = _Value._Src;
 		else if (std::ranges::count(_DestInfo.Begin, 0) == ViewRank - 1)
 		{
@@ -365,9 +290,10 @@ void AssignBuffer(
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAssignBuffer(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type* _Src,
 	SizeType _Count,
 	bool Continuous
@@ -381,7 +307,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignBuffer(
 			_DestInfo,
 			_Value,
 			Continuous,
-			AssignBuffer<_Type>,
+			AssignBuffer<_Type, _NRank>,
 			AssignBufferCont<_Type>
 		);
 	}
@@ -427,17 +353,16 @@ void AssignScalarCont(
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void AssignScalar(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	std::shared_ptr<_Type> _ValPtr
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		const OperatorParameter& _DestInfo = *_DestInfoOld;
-		SizeType ViewRank = _DestInfo.GetRank();
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 		const auto& _Value = *_ValPtr;
 
 		const auto Func = [&](int64_t _Index) { _Dest[_Index] = _Value; };
@@ -447,71 +372,33 @@ void AssignScalar(
 		const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data();
 		const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data();
 
-		if (ViewRank == 1)
-			SingleTensorLoop<1, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 2)
-			SingleTensorLoop<2, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 3)
-			SingleTensorLoop<3, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 4)
-			SingleTensorLoop<4, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 5)
-			SingleTensorLoop<5, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 6)
-			SingleTensorLoop<6, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 7)
-			SingleTensorLoop<7, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 8)
-			SingleTensorLoop<8, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 9)
-			SingleTensorLoop<9, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else if (ViewRank == 10)
-			SingleTensorLoop<10, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-				0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-			);
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
+			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAssignScalar(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type& _Value,
 	bool Continuous
 )
 {
 	if constexpr (std::is_constructible_v<_Type>)
 	{
-		ImplMultiThreadSingle<_Type, std::shared_ptr<_Type>>(
-		   _Dest,
-		   _DestInfo,
-		   std::make_shared<_Type>(_Value),
-		   Continuous,
-		   AssignScalar<_Type>,
-		   AssignScalarCont<_Type>
-	   );
+		ImplMultiThreadSingle(
+			_Dest,
+			_DestInfo,
+			std::make_shared<_Type>(_Value),
+			Continuous,
+			AssignScalar<_Type, _NRank>,
+			AssignScalarCont<_Type>
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -562,18 +449,17 @@ void AssignRandnCont(
 	}
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void AssignRandn(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	RandomSettings<_Type> Settings
 )
 {
 	auto RandomDevice = _Valdef_My_Thread_Pool.GetRandomEngine(Settings._ThreadId);
 	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings._Mean, Settings._Sigma);
-	
-	const OperatorParameter& _DestInfo = *_DestInfoOld;
-	SizeType ViewRank = _DestInfo.GetRank();
+
+	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data();
 	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data();
@@ -587,54 +473,17 @@ void AssignRandn(
 			else
 				_Dest[_Index] = (_Type)NormalDistribution(RandomDevice);
 		};
-	if (ViewRank == 1)
-		SingleTensorLoop<1, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 2)
-		SingleTensorLoop<2, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 3)
-		SingleTensorLoop<3, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 4)
-		SingleTensorLoop<4, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 5)
-		SingleTensorLoop<5, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 6)
-		SingleTensorLoop<6, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 7)
-		SingleTensorLoop<7, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 8)
-		SingleTensorLoop<8, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 9)
-		SingleTensorLoop<9, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 10)
-		SingleTensorLoop<10, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else
-		_D_Dragonian_Lib_Not_Implemented_Error;
+
+	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
+		0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+	);
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAssignRandn(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	double _Mean,
 	double _Sigma,
 	bool Continuous
@@ -651,7 +500,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRandn(
 			_DestInfo,
 			RandomSettings<_Type>{ (RandomType)0, (RandomType)0, (RandomNormalType)_Mean, (RandomNormalType)_Sigma},
 			Continuous,
-			AssignRandn<_Type>,
+			AssignRandn<_Type, _NRank>,
 			AssignRandnCont<_Type>
 		);
 	}
@@ -698,15 +547,15 @@ void AssignRandomCont(
 			_Dest[i + 6] = (_Type)Distribution(RandomDevice);
 			_Dest[i + 7] = (_Type)Distribution(RandomDevice);
 		}
-		for (;i < DestSize; ++i)
+		for (; i < DestSize; ++i)
 			_Dest[i] = (_Type)Distribution(RandomDevice);
 	}
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void AssignRandom(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	RandomSettings<_Type> Settings
 )
 {
@@ -714,8 +563,7 @@ void AssignRandom(
 	using RandomDistributionType = _Impl_Dragonian_Lib_Random_Distribution_Type<_Type>;
 	RandomDistributionType Distribution(Settings._Min, Settings._Max);
 
-	const OperatorParameter& _DestInfo = *_DestInfoOld;
-	SizeType ViewRank = _DestInfo.GetRank();
+	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data();
@@ -731,54 +579,16 @@ void AssignRandom(
 				_Dest[_Index] = (_Type)Distribution(RandomDevice);
 		};
 
-	if (ViewRank == 1)
-		SingleTensorLoop<1, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 2)
-		SingleTensorLoop<2, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 3)
-		SingleTensorLoop<3, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 4)
-		SingleTensorLoop<4, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 5)
-		SingleTensorLoop<5, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 6)
-		SingleTensorLoop<6, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 7)
-		SingleTensorLoop<7, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 8)
-		SingleTensorLoop<8, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 9)
-		SingleTensorLoop<9, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else if (ViewRank == 10)
-		SingleTensorLoop<10, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
-		);
-	else
-		_D_Dragonian_Lib_Not_Implemented_Error;
+	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
+		0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+	);
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type& _Min,
 	const _Type& _Max,
 	bool Continuous
@@ -796,11 +606,11 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 				_Dest,
 				_DestInfo,
 				RandomSettings<_Type>{
-					(RandomType)_Min.real(), (RandomType)_Max.real(),
-					(RandomNormalType)0., (RandomNormalType)0.
-				},
+			(RandomType)_Min.real(), (RandomType)_Max.real(),
+				(RandomNormalType)0., (RandomNormalType)0.
+		},
 				Continuous,
-				AssignRandom<_Type>,
+				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>
 			);
 		else
@@ -808,11 +618,11 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 				_Dest,
 				_DestInfo,
 				RandomSettings<_Type>{
-					(RandomType)_Min, (RandomType)_Max,
-					(RandomNormalType)0., (RandomNormalType)0.
-				},
+			(RandomType)_Min, (RandomType)_Max,
+				(RandomNormalType)0., (RandomNormalType)0.
+		},
 				Continuous,
-				AssignRandom<_Type>,
+				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>
 			);
 	}
@@ -843,7 +653,7 @@ void ArangeImpCont(
 	int64_t i = 0;
 	if constexpr (_Impl_Dragonian_Lib_Is_Avx256_Supported_v<_Type>)
 	{
-		if(DestSize >= LoopStride)
+		if (DestSize >= LoopStride)
 		{
 			for (int64_t j = 1; j < LoopStride; ++j)
 				_Dest[j] = _Dest[j - 1] + _Value._Step;
@@ -876,10 +686,10 @@ void ArangeImpCont(
 		_Dest[i] = _Dest[i - 1] + _Value._Step;
 }
 
-template<typename _Type>
+template<typename _Type, size_t _NRank>
 void ArangeImp(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	ArangeParams<_Type> Settings
 )
 {
@@ -887,9 +697,10 @@ void ArangeImp(
 }
 
 template<typename _Type>
+template<size_t _NRank>
 void OperatorsBase<_Type, Device::CPU>::ImplArange(
 	_Type* _Dest,
-	const OperatorParameter& _DestInfo,
+	const OperatorParameter<_NRank>& _DestInfo,
 	const _Type& _Start,
 	const _Type& _Step,
 	bool Continuous
@@ -907,7 +718,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 			_DestInfo,
 			_Value,
 			Continuous,
-			ArangeImp<_Type>,
+			ArangeImp<_Type, _NRank>,
 			ArangeImpCont<_Type>
 		);
 	}

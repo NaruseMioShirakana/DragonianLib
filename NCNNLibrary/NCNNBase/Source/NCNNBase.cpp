@@ -58,27 +58,67 @@ NCNNModel::NCNNModel(
 }
 
 std::vector<Tensor> NCNNModel::Run(
-	const std::vector<Tensor>& _Input,
-	const std::vector<std::wstring>& _InputNames,
-	const std::vector<std::wstring>& _OutputNames
+	const std::vector<Tensor>& _Input
 ) const
 {
-	std::vector<ncnn::Mat> InputMat;
-	for (const auto& Input : _Input)
+	auto Context = m_NCNNNet->create_extractor();
+	auto OutputIndices = m_NCNNNet->output_indexes();
 	{
-		ncnn::Mat Mat;
-		switch (Input.Rank)
+		int Index = 0;
+		for (const auto& Input : _Input)
 		{
-		case 1:
-			Mat = ncnn::Mat(Input.Shape[0]);
-			std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
-			break;
-		case 2:
-			Mat = ncnn::Mat(Input.Shape[1], Input.Shape[0]);
-			std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
-			break;
+			ncnn::Mat Mat;
+			switch (Input.Rank)
+			{
+			case 1:
+				Mat = ncnn::Mat(Input.Shape[0], 4ull);
+				std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
+				break;
+			case 2:
+				Mat = ncnn::Mat(Input.Shape[0], Input.Shape[1], 4ull);
+				std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
+				break;
+			case 3:
+				Mat = ncnn::Mat(Input.Shape[0], Input.Shape[1], Input.Shape[2], 4ull);
+				std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
+				break;
+			case 4:
+				Mat = ncnn::Mat(Input.Shape[0], Input.Shape[1], Input.Shape[2], Input.Shape[3], 4ull);
+				std::memcpy(Mat.data, Input.Buffer, Input.BufferSize);
+				break;
+			default:
+				_D_Dragonian_Lib_Throw_Exception("Invalid rank");
+			}
+			if (Context.input(Index++, Mat))
+				_D_Dragonian_Lib_Throw_Exception("Failed to set input");
 		}
 	}
+	std::vector<Tensor> Output;
+	Output.reserve(OutputIndices.size());
+	for(const auto Index : OutputIndices)
+	{
+		ncnn::Mat Mat;
+		if(Context.extract(Index, Mat))
+			_D_Dragonian_Lib_Throw_Exception("Failed to extract output");
+		switch (Mat.dims)
+		{
+		case 1:
+			Output.emplace_back(Mat.data, { Mat.w }, 1, Mat.w * 4ull, Mat);
+			break;
+		case 2:
+			Output.emplace_back(Mat.data, { Mat.h, Mat.w }, 2, 4ull * Mat.w * Mat.h, Mat);
+			break;
+		case 3:
+			Output.emplace_back(Mat.data, { Mat.c, Mat.h, Mat.w }, 3, 4ull * Mat.w * Mat.h * Mat.c, Mat);
+			break;
+		case 4:
+			Output.emplace_back(Mat.data, { Mat.c, Mat.d, Mat.h, Mat.w }, 4, 4ull * Mat.w * Mat.h * Mat.c * Mat.d, Mat);
+			break;
+		default:
+			_D_Dragonian_Lib_Throw_Exception("Invalid rank");
+		}
+	}
+	return Output;
 }
 
 

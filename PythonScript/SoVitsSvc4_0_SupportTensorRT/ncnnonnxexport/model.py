@@ -320,20 +320,23 @@ class SynthesizerTrn(nn.Module):
             spkidx = speakers_mix[key]
             speaker_map[i] = self.emb_g(torch.LongTensor([[spkidx]]))
             i = i + 1
-        speaker_map = speaker_map.unsqueeze(0)
-        self.register_buffer("speaker_map", speaker_map)
+        speaker_map = speaker_map.unsqueeze(0).squeeze(-2).squeeze(-2)
+        self.register_buffer("speaker_map", speaker_map) #[1, S, H]
         self.export_mix = True
 
-    def forward(self, c, f0, mel2ph, uv, noise=None, g=None, vol = None):
-        decoder_inp = F.pad(c, [0, 0, 1, 0])
-        mel2ph_ = mel2ph.unsqueeze(2).repeat([1, 1, c.shape[-1]])
-        c = torch.gather(decoder_inp, 1, mel2ph_).transpose(1, 2)  # [B, T, H]
-        
-        if self.export_mix:   # [N, S]  *  [S, B, 1, H]
-            g = g.reshape((g.shape[0], g.shape[1], 1, 1, 1))  # [N, S, B, 1, 1]
-            g = g * self.speaker_map  # [N, S, B, 1, H]
-            g = torch.sum(g, dim=1) # [N, 1, B, 1, H]
-            g = g.transpose(0, -1).transpose(0, -2).squeeze(0) # [B, H, N]
+    def forward(self, c, f0, uv, noise=None, g=None, vol = None):
+        c = c.unsqueeze(0)
+        f0 = f0.unsqueeze(0)
+        uv = uv.unsqueeze(0)
+        noise = noise.permute(1, 0).unsqueeze(0)
+        if vol is not None:
+            vol = vol.unsqueeze(0)
+
+        if self.export_mix:             #[N, S]     *   [1, S, H]
+            g = g.unsqueeze(-1)         #[N, S, 1]  
+            g = g * self.speaker_map    #[N, S, 1]  *   [1, S, H]
+            g = torch.sum(g, dim=1)     #[N, H]
+            g = g.permute(1, 0).unsqueeze(0)
         else:
             if g.dim() == 1:
                 g = g.unsqueeze(0)

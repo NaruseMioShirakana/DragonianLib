@@ -1020,4 +1020,9 @@ public:
 	}
 };
 
+template <typename Type>
+constexpr bool _Impl_Dragonian_Lib_Is_Vectorized_v = false;
+template <typename Type>
+constexpr bool _Impl_Dragonian_Lib_Is_Vectorized_v<Vectorized<Type>> = true;
+
 _D_Dragonian_Lib_Operator_Space_End

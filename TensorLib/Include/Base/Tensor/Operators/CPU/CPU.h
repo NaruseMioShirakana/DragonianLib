@@ -14,304 +14,336 @@ class OperatorsBase<_Type, Device::CPU>
 {
 	OperatorsBase() = delete;
 public:
-	template<typename _TypeSrc>
+	template<typename _TypeSrc, size_t _NRank>
 	static void ImplCast(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _TypeSrc* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAssignTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAssignScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAssignBuffer(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
 		SizeType _Count,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAssignRandn(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		double _Mean,
 		double _Sigma,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAssignRand(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type& _Min,
 		const _Type& _Max,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAddScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplSubScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplMulScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplDivScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAddTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplSubTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplMulTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplDivTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplEqualScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplNotEqualScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplGreaterScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplGreaterEqualScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplLessScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplLessEqualScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplEqualTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplNotEqualTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplGreaterTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplGreaterEqualTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplLessTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplLessEqualTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAndScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplOrScalar(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplAndTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplOrTensor(
 		bool* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplPowScalar(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
-		const OperatorParameter& _SrcInfo,
+		const OperatorParameter<_NRank>& _SrcInfo,
 		const _Type& _Value,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplPowTensor(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src1,
-		const OperatorParameter& _SrcInfo1,
+		const OperatorParameter<_NRank>& _SrcInfo1,
 		const _Type* _Src2,
-		const OperatorParameter& _SrcInfo2,
+		const OperatorParameter<_NRank>& _SrcInfo2,
 		bool Continuous
 	);
 
+	template<size_t _NRank>
 	static void ImplArange(
 		_Type* _Dest,
-		const OperatorParameter& _DestInfo,
+		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type& _Start,
 		const _Type& _Step,
 		bool Continuous
@@ -323,8 +355,8 @@ struct RandomSettings
 {
 	using RandomNormalType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) >= sizeof(double), double, float>;
 	using NormalDistributionType = std::normal_distribution<RandomNormalType>;
-	using RandomType = _Impl_Dragonian_Lib_Constexpr_Decltype_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
-	using RandomDistributionType = _Impl_Dragonian_Lib_Constexpr_Decltype_t<
+	using RandomType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
+	using RandomDistributionType = _Impl_Dragonian_Lib_Conditional_t<
 		_Impl_Dragonian_Lib_Is_Integer_v<_Type>,
 		std::uniform_int_distribution<RandomType>,
 		std::uniform_real_distribution<RandomType>
@@ -341,8 +373,8 @@ struct RandomSettings<std::complex<_Type>>
 {
 	using RandomNormalType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) >= sizeof(double), double, float>;
 	using NormalDistributionType = std::normal_distribution<RandomNormalType>;
-	using RandomType = _Impl_Dragonian_Lib_Constexpr_Decltype_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
-	using RandomDistributionType = _Impl_Dragonian_Lib_Constexpr_Decltype_t<
+	using RandomType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
+	using RandomDistributionType = _Impl_Dragonian_Lib_Conditional_t<
 		_Impl_Dragonian_Lib_Is_Integer_v<_Type>,
 		std::uniform_int_distribution<RandomType>,
 		std::uniform_real_distribution<RandomType>
@@ -371,10 +403,12 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 	_Fn _Func
 )
 {
+	Value += *Left * *Step;
+	const auto StepStride = *Stride * *Step;
 	if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
-			const auto Val = Value + ((i * *Stride) + *Left) * *Step;
+			const auto Val = Value + i * StepStride;
 			SingleTensorLoop<LoopCount - 1, LoopUnfold>(
 				Val,
 				Shape + 1, LoopBegin + 1,
@@ -389,14 +423,14 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 		{
 			for (int64_t j = 0; j < LoopUnfold; ++j)
 			{
-				const auto Val = Value + ((i * *Stride) + *Left) * *Step;
+				const auto Val = Value + i * StepStride;
 				_Func(Val);
 				++i;
 			}
 		}
 		while (i < *Shape)
 		{
-			const auto Val = Value + ((i * *Stride) + *Left) * *Step;
+			const auto Val = Value + i * StepStride;
 			_Func(Val);
 			++i;
 		}
@@ -412,11 +446,15 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 	_Fn _Func
 )
 {
+	Value1 += *Left1 * *Step1;
+	Value2 += *Left2 * *Step2;
+	const auto StepStride1 = *Stride1 * *Step1;
+	const auto StepStride2 = *Stride2 * *Step2;
 	if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
-			const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-			const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
+			const auto Val1 = Value1 + i * StepStride1;
+			const auto Val2 = Value2 + i * StepStride2;
 			DoubleTensorLoop<LoopCount - 1, LoopUnfold>(
 				Val1, Val2,
 				Shape + 1, LoopBegin + 1,
@@ -432,16 +470,16 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 		{
 			for (int64_t j = 0; j < LoopUnfold; ++j)
 			{
-				const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-				const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
+				const auto Val1 = Value1 + i * StepStride1;
+				const auto Val2 = Value2 + i * StepStride2;
 				_Func(Val1, Val2);
 				++i;
 			}
 		}
 		while (i < *Shape)
 		{
-			const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-			const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
+			const auto Val1 = Value1 + i * StepStride1;
+			const auto Val2 = Value2 + i * StepStride2;
 			_Func(Val1, Val2);
 			++i;
 		}
@@ -458,12 +496,18 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 	_Fn _Func
 )
 {
+	Value1 += *Left1 * *Step1;
+	Value2 += *Left2 * *Step2;
+	Value3 += *Left3 * *Step3;
+	const auto StepStride1 = *Stride1 * *Step1;
+	const auto StepStride2 = *Stride2 * *Step2;
+	const auto StepStride3 = *Stride3 * *Step3;
 	if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
-			const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-			const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
-			const auto Val3 = Value3 + ((i * *Stride3) + *Left3) * *Step3;
+			const auto Val1 = Value1 + i * StepStride1;
+			const auto Val2 = Value2 + i * StepStride2;
+			const auto Val3 = Value3 + i * StepStride3;
 			TripleTensorLoop<LoopCount - 1, LoopUnfold>(
 				Val1, Val2, Val3,
 				Shape + 1, LoopBegin + 1,
@@ -480,18 +524,18 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 		{
 			for (int64_t j = 0; j < LoopUnfold; ++j)
 			{
-				const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-				const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
-				const auto Val3 = Value3 + ((i * *Stride3) + *Left3) * *Step3;
+				const auto Val1 = Value1 + i * StepStride1;
+				const auto Val2 = Value2 + i * StepStride2;
+				const auto Val3 = Value3 + i * StepStride3;
 				_Func(Val1, Val2, Val3);
 				++i;
 			}
 		}
 		while (i < *Shape)
 		{
-			const auto Val1 = Value1 + ((i * *Stride1) + *Left1) * *Step1;
-			const auto Val2 = Value2 + ((i * *Stride2) + *Left2) * *Step2;
-			const auto Val3 = Value3 + ((i * *Stride3) + *Left3) * *Step3;
+			const auto Val1 = Value1 + i * StepStride1;
+			const auto Val2 = Value2 + i * StepStride2;
+			const auto Val3 = Value3 + i * StepStride3;
 			_Func(Val1, Val2, Val3);
 			++i;
 		}
@@ -513,10 +557,10 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
  * @param _ContFunction Continuous function.
  * @return void.
  */
-template<typename _Type, typename _Parameter, typename _Fn, typename _ContFn, SizeType OperatorDims = 0> 
+template<typename _Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
 std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 	_Type* _Dest,
-	const OperatorParameter& _DestParameter,
+	const OperatorParameter<_NRank>& _DestParameter,
 	_Parameter _UserParameter,
 	bool Continuous,
 	_Fn _Function,
@@ -618,13 +662,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 			SizeType ShapeIndex = 0;
 			while (ShapeIndex < TotalTaskCount - Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
 
@@ -665,13 +703,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 			{
 				if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Remove_ARPCV_t<_Parameter>, RandomSettings<_Type>>)
 					_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + Remainder;
 
@@ -716,7 +748,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 				_Valdef_My_Thread_Pool.Commit(
 					_ContFunction,
 					_Dest,
-					std::make_shared<OperatorParameter>(_DestParameter),
+					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 					_UserParameter
 				),
 				std::vector{
@@ -730,7 +762,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 			_Valdef_My_Thread_Pool.Commit(
 				_Function,
 				_Dest,
-				std::make_shared<OperatorParameter>(_DestParameter),
+				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 				_UserParameter
 			),
 			std::vector{
@@ -758,12 +790,12 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
  * @param _ContFunction Continuous function.
  * @return void.
  */
-template<typename _DstType, typename _SrcType, typename _Parameter, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
+template<typename _DstType, typename _SrcType, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
 std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 	_DstType* _Dest,
-	const OperatorParameter& _DestParameter,
+	const OperatorParameter<_NRank>& _DestParameter,
 	const _SrcType* _Src,
-	const OperatorParameter& _SrcParameter,
+	const OperatorParameter<_NRank>& _SrcParameter,
 	_Parameter _UserParameter,
 	bool Continuous,
 	_Fn _Function,
@@ -866,13 +898,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 			SizeType ShapeIndex = 0;
 			while (ShapeIndex < TotalTaskCount - Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
 
@@ -885,7 +911,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 								_Dest,
 								Info,
 								_Src,
-								std::make_shared<OperatorParameter>(_SrcParameter),
+								std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 								_UserParameter
 							),
 							std::vector{
@@ -902,7 +928,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 							_Dest,
 							Info,
 							_Src,
-							std::make_shared<OperatorParameter>(_SrcParameter),
+							std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 							_UserParameter
 						),
 						std::vector{
@@ -916,13 +942,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 			}
 			if (Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + Remainder;
 
@@ -935,7 +955,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 								_Dest,
 								Info,
 								_Src,
-								std::make_shared<OperatorParameter>(_SrcParameter),
+								std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 								_UserParameter
 							),
 							std::vector{
@@ -952,7 +972,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 							_Dest,
 							Info,
 							_Src,
-							std::make_shared<OperatorParameter>(_SrcParameter),
+							std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 							_UserParameter
 						),
 						std::vector{
@@ -973,9 +993,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 				_Valdef_My_Thread_Pool.Commit(
 					_ContFunction,
 					_Dest,
-					std::make_shared<OperatorParameter>(_DestParameter),
+					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 					_Src,
-					std::make_shared<OperatorParameter>(_SrcParameter),
+					std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 					_UserParameter
 				),
 				std::vector{
@@ -990,9 +1010,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 			_Valdef_My_Thread_Pool.Commit(
 				_Function,
 				_Dest,
-				std::make_shared<OperatorParameter>(_DestParameter),
+				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 				_Src,
-				std::make_shared<OperatorParameter>(_SrcParameter),
+				std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
 				_UserParameter
 			),
 			std::vector{
@@ -1024,14 +1044,14 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
  * @param _ContFunction Continuous function.
  * @return void.
  */
-template<typename _DstType, typename _Src1Type, typename _Src2Type, typename _Parameter, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
+template<typename _DstType, typename _Src1Type, typename _Src2Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
 std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 	_DstType* _Dest,
-	const OperatorParameter& _DestParameter,
+	const OperatorParameter<_NRank>& _DestParameter,
 	const _Src1Type* _Src1,
-	const OperatorParameter& _Src1Parameter,
+	const OperatorParameter<_NRank>& _Src1Parameter,
 	const _Src2Type* _Src2,
-	const OperatorParameter& _Src2Parameter,
+	const OperatorParameter<_NRank>& _Src2Parameter,
 	_Parameter _UserParameter,
 	bool Continuous,
 	_Fn _Function,
@@ -1140,13 +1160,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 			SizeType ShapeIndex = 0;
 			while (ShapeIndex < TotalTaskCount - Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
 
@@ -1159,9 +1173,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 								_Dest,
 								Info,
 								_Src1,
-								std::make_shared<OperatorParameter>(_Src1Parameter),
+								std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 								_Src2,
-								std::make_shared<OperatorParameter>(_Src2Parameter),
+								std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 								_UserParameter
 							),
 							std::vector{
@@ -1179,9 +1193,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 							_Dest,
 							Info,
 							_Src1,
-							std::make_shared<OperatorParameter>(_Src1Parameter),
+							std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 							_Src2,
-							std::make_shared<OperatorParameter>(_Src2Parameter),
+							std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 							_UserParameter
 						),
 						std::vector{
@@ -1196,13 +1210,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 			}
 			if (Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter>(
-					Vector{ _DestParameter.Shape.Begin(), _DestParameter.Shape.End(), _DestParameter.Shape.GetAllocator() },
-					Vector{ _DestParameter.Begin.Begin(), _DestParameter.Begin.End(), _DestParameter.Begin.GetAllocator() },
-					Vector{ _DestParameter.ViewStep.Begin(), _DestParameter.ViewStep.End(), _DestParameter.ViewStep.GetAllocator() },
-					Vector{ _DestParameter.ViewLeft.Begin(), _DestParameter.ViewLeft.End(), _DestParameter.ViewLeft.GetAllocator() },
-					Vector{ _DestParameter.ViewStride.Begin(), _DestParameter.ViewStride.End(), _DestParameter.ViewStride.GetAllocator() }
-				);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + Remainder;
 
@@ -1215,9 +1223,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 								_Dest,
 								Info,
 								_Src1,
-								std::make_shared<OperatorParameter>(_Src1Parameter),
+								std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 								_Src2,
-								std::make_shared<OperatorParameter>(_Src2Parameter),
+								std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 								_UserParameter
 							),
 							std::vector{
@@ -1235,9 +1243,9 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 							_Dest,
 							Info,
 							_Src1,
-							std::make_shared<OperatorParameter>(_Src1Parameter),
+							std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 							_Src2,
-							std::make_shared<OperatorParameter>(_Src2Parameter),
+							std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 							_UserParameter
 						),
 						std::vector{
@@ -1259,11 +1267,11 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 				_Valdef_My_Thread_Pool.Commit(
 					_ContFunction,
 					_Dest,
-					std::make_shared<OperatorParameter>(_DestParameter),
+					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 					_Src1,
-					std::make_shared<OperatorParameter>(_Src1Parameter),
+					std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 					_Src2,
-					std::make_shared<OperatorParameter>(_Src2Parameter),
+					std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 					_UserParameter
 				),
 				std::vector{
@@ -1279,11 +1287,11 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 			_Valdef_My_Thread_Pool.Commit(
 				_Function,
 				_Dest,
-				std::make_shared<OperatorParameter>(_DestParameter),
+				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
 				_Src1,
-				std::make_shared<OperatorParameter>(_Src1Parameter),
+				std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
 				_Src2,
-				std::make_shared<OperatorParameter>(_Src2Parameter),
+				std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
 				_UserParameter
 			),
 			std::vector{

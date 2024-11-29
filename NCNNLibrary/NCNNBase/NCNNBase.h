@@ -13,6 +13,7 @@ struct Tensor final
 	int Shape[4];
 	int Rank = 0;
 	size_t BufferSize = 0;
+	ncnn::Mat Mat;
 };
 
 class NCNNModel final
@@ -29,9 +30,7 @@ public:
 	);
 
 	std::vector<Tensor> Run(
-		const std::vector<Tensor>& _Input,
-		const std::vector<std::wstring>& _InputNames,
-		const std::vector<std::wstring>& _OutputNames
+		const std::vector<Tensor>& _Input
 	) const;
 
 protected:
