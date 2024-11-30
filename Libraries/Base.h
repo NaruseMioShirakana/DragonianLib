@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <unordered_map>
+#include "TypeTraits.h"
 
 // Define UNUSED macro for unused variables
 #ifndef UNUSED
@@ -85,661 +86,6 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-/**
- * @struct float16_t
- * @brief Half precision floating point struct
- */
-struct float16_t {
-	float16_t(float _Val);
-	float16_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val[2];
-	static uint16_t float32_to_float16(uint32_t f32);
-	static uint32_t float16_to_float32(uint16_t f16);
-};
-
-/**
- * @struct float8_t
- * @brief 8-bit floating point struct
- */
-struct float8_t
-{
-	float8_t(float _Val);
-	float8_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val;
-};
-
-/**
- * @struct bfloat16_t
- * @brief bfloat16 struct
- */
-struct bfloat16_t
-{
-	bfloat16_t(float _Val);
-	bfloat16_t& operator=(float _Val);
-	operator float() const;
-private:
-	unsigned char Val[2];
-};
-
-using Int8 = int8_t; ///< 8-bit integer
-using Int16 = int16_t; ///< 16-bit integer
-using Int32 = int32_t; ///< 32-bit integer
-using Int64 = int64_t; ///< 64-bit integer
-using Float8 = float8_t; ///< 8-bit floating point
-using BFloat16 = bfloat16_t; ///< bfloat16
-using Float16 = float16_t; ///< Half precision floating point
-using Float32 = float; ///< 32-bit floating point
-using Float64 = double; ///< 64-bit floating point
-using Byte = unsigned char; ///< Byte
-using LPVoid = void*; ///< Pointer to void
-using CPVoid = const void*; ///< Constant pointer to void
-using UInt8 = uint8_t; ///< 8-bit unsigned integer
-using UInt16 = uint16_t; ///< 16-bit unsigned integer
-using UInt32 = uint32_t; ///< 32-bit unsigned integer
-using UInt64 = uint64_t; ///< 64-bit unsigned integer
-using Complex32 = std::complex<float>; ///< 32-bit complex
-using Complex64 = std::complex<double>; ///< 64-bit complex
-struct NoneType {}; ///< None type
-static constexpr NoneType None; ///< None constant
-
-template<typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Va_List { constexpr static int64_t _Size = sizeof...(_ArgTypes); };
-
-template <bool _Test, typename _Tyt = void, typename _Tyf = void>
-struct _Impl_Dragonian_Lib_Conditional;
-template <typename _Tyt, typename _Tyf>
-struct _Impl_Dragonian_Lib_Conditional<true, _Tyt, _Tyf> { using _Mytype = _Tyt; };
-template <typename _Tyt, typename _Tyf>
-struct _Impl_Dragonian_Lib_Conditional<false, _Tyt, _Tyf> { using _Mytype = _Tyf; };
-template <bool _Test, typename _Tyt = void, typename _Tyf = void>
-using _Impl_Dragonian_Lib_Conditional_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Conditional<_Test, _Tyt, _Tyf>::_Mytype;
-template <bool _Test, typename _Tyt = void, typename _Tyf = void>
-using _Impl_Dragonian_Lib_Conditional_t = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Conditional_t<_Test, _Tyt, _Tyf>;
-
-template <typename _Ty1, typename _Ty2>
-struct _Impl_Dragonian_Lib_Constexpr_Is_Same_Type { constexpr static bool _IsSame = false; };
-template <typename _Ty1>
-struct _Impl_Dragonian_Lib_Constexpr_Is_Same_Type<_Ty1, _Ty1> { constexpr static bool _IsSame = true; };
-template <typename _Ty1, typename _Ty2>
-constexpr bool _Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Is_Same_Type<_Ty1, _Ty2>::_IsSame;
-
-template <typename _Ty1, typename ..._Types>
-struct _Impl_Dragonian_Lib_Is_Any_Of { constexpr static bool _IsAnyOf = false; };
-template <typename _Ty1, typename _Ty2, typename ..._Types>
-struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Ty2, _Types...> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Ty1, _Ty2> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf; };
-template <typename _Ty1, typename ..._Types>
-struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Impl_Dragonian_Lib_Va_List<_Types...>> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf; };
-template <typename _Ty1>
-struct _Impl_Dragonian_Lib_Is_Any_Of<_Ty1> { constexpr static bool _IsAnyOf = false; };
-template <typename _Ty1, typename ..._Types>
-constexpr bool _Impl_Dragonian_Lib_Is_Any_Of_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of<_Ty1, _Types...>::_IsAnyOf;
-
-template <bool _Condition, typename _Type>
-struct _Impl_Dragonian_Lib_Enable_If {};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Enable_If<true, _Type> { using _Mytype = _Type; };
-template <bool _Condition, typename _Type = void>
-using _Impl_Dragonian_Lib_Enable_If_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Enable_If<_Condition, _Type>::_Mytype;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_LValue_Reference { constexpr static bool _IsLValueReference = false; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_LValue_Reference<_Type&> { constexpr static bool _IsLValueReference = true; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_LValue_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_LValue_Reference<_Type>::_IsLValueReference;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_RValue_Reference { constexpr static bool _IsRValueReference = false; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_RValue_Reference<_Type&&> { constexpr static bool _IsRValueReference = true; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_RValue_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_RValue_Reference<_Type>::_IsRValueReference;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Reference { constexpr static bool _IsReference = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_LValue_Reference_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_RValue_Reference_v<_Type>; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Reference_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Reference<_Type>::_IsReference;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Pointer { constexpr static bool _IsPointer = false; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Pointer<_Type*> { constexpr static bool _IsPointer = true; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Pointer<_Type* const> { constexpr static bool _IsPointer = true; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Pointer<_Type* volatile> { constexpr static bool _IsPointer = true; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Pointer<_Type* const volatile> { constexpr static bool _IsPointer = true; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Pointer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Pointer<_Type>::_IsPointer;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Const { constexpr static bool _IsConst = false; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Const<const _Type> { constexpr static bool _IsConst = true; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Const_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Const<_Type>::_IsConst;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Volatile { constexpr static bool _IsVolatile = false; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_Volatile<volatile _Type> { constexpr static bool _IsVolatile = true; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Volatile_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Volatile<_Type>::_IsVolatile;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Is_ARPCV { constexpr static bool _IsARPCV = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Const_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Volatile_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Pointer_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Reference_v<_Type>; };
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_ARPCV_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_ARPCV<_Type>::_IsARPCV;
-
-struct _Impl_Dragonian_Lib_Always_False_Struct;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Always_False
-{
-	bool Value = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Always_False_Struct, _Type>;
-};
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Always_False_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Always_False<_Type>::value;
-
-template <typename _Type>
-constexpr _Type _Impl_Dragonian_Lib_Instance_Of()
-{
-	throw std::exception("Invalid Instance Of!");
-}
-
-template <typename _TypeDst, typename _TypeSrc>
-class _Impl_Dragonian_Lib_Could_Be_Converted_From_Class
-{
-	template <typename _SrcT>
-	static constexpr auto Check(int) -> decltype(_TypeDst(_Impl_Dragonian_Lib_Instance_Of<_SrcT>()), std::true_type()) { return{}; }
-	template <typename>
-	static constexpr std::false_type Check(...) { return{}; }
-public:
-	static constexpr bool _Condition = decltype(Check<_TypeSrc>(0))::value;
-};
-template <typename _TypeDst, typename _TypeSrc>
-constexpr auto _Impl_Dragonian_Lib_Could_Be_Converted_From_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Could_Be_Converted_From_Class<_TypeDst, _TypeSrc>::_Condition;
-template <typename _TypeSrc, typename _TypeDst>
-constexpr auto _Impl_Dragonian_Lib_Could_Be_Converted_To_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Could_Be_Converted_From_v<_TypeDst, _TypeSrc>;
-
-template<bool _Condition1, bool _Condition2>
-constexpr auto _Impl_Dragonian_Lib_And_v = _Condition1 && _Condition2;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Pointer { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Pointer<_Type*> { using _Mytype = _Type; };
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_Pointer_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Pointer<_Type>::_Mytype;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Reference { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Reference<_Type&> { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Reference<_Type&&> { using _Mytype = _Type; };
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_Reference_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Reference<_Type>::_Mytype;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Volatile { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Volatile<volatile _Type> { using _Mytype = _Type; };
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_Volatile_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Volatile<_Type>::_Mytype;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Const { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_Const<const _Type> { using _Mytype = _Type; };
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_Const_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Const<_Type>::_Mytype;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Reference
-{
-	using _SrcType = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Reference_t<_Type>;
-	using _LReference = _SrcType&;
-	using _RReference = _SrcType&&;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Lvalue_Reference_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Reference<_Type>::_LReference;
-template <typename _Type>
-using _Impl_Dragonian_Lib_Rvalue_Reference_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Reference<_Type>::_RReference;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Add_Pointer
-{
-	using _Pointer = _Type*;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Add_Pointer_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Add_Pointer<_Type>::_Pointer;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Pointer
-{
-	using _SrcType = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Pointer_t<_Type>;
-	using _Pointer = _SrcType*;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Pointer_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Pointer<_Type>::_Pointer;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Add_Const
-{
-	using _SrcType = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Const_t<_Type>;
-	using _Const = const _SrcType;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Const_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Add_Const<_Type>::_Const;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Add_Volatile
-{
-	using _SrcType = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Volatile_t<_Type>;
-	using _Volatile = volatile _SrcType;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Volatile_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Add_Volatile<_Type>::_Volatile;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_CV
-{
-	using _Mytype = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Const_t<_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_Volatile_t<_Type>>;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_CV_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_CV<_Type>::_Mytype;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV { using _Mytype = _Type; };
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <const _Type>;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <volatile _Type>;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type*>;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type&>;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type&&>;
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <const _Type>
-{
-	using _Mytype = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <volatile _Type>
-{
-	using _Mytype = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type*>
-{
-	using _Mytype = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type&>
-{
-	using _Mytype = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Remove_ARPCV <_Type&&>
-{
-	using _Mytype = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Remove_ARPCV_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV<_Type>::_Mytype;
-
-template <typename Type>
-class _Impl_Dragonian_Lib_Is_Callable_Object
-{
-	template <typename Objty>
-	static constexpr auto Check(int) -> decltype(&Objty::operator(), std::true_type()) { return{}; }
-	template <typename>
-	static constexpr std::false_type Check(...) { return{}; }
-public:
-	static constexpr bool _IsCallable = decltype(Check<Type>(0))::value;
-};
-template <typename Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Callable_Object_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Callable_Object<Type>::_IsCallable;
-
-template<typename Objt>
-struct _Impl_Dragonian_Lib_Is_Callable { constexpr static bool _IsCallable = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Callable_Object<Objt>::_IsCallable; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(*)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(*&)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(*&&)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(&)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Is_Callable<_Ret(&&)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
-template<typename Objt>
-constexpr bool _Impl_Dragonian_Lib_Is_Callable_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Callable<Objt>::_IsCallable;
-
-template<typename Objt>
-struct _Impl_Dragonian_Lib_Get_Callable
-{
-	static_assert(_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Callable_Object<Objt>::_IsCallable, "Type is not callable!");
-	using _Callable = decltype(Objt::operator());
-};
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Get_Callable<_Ret(_ArgTypes...)>
-{
-	using _Callable = _Ret(_ArgTypes...);
-	using _ReturnType = _Ret;
-	using _ArgumentTypes = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Va_List<_ArgTypes...>;
-};
-template<typename _Ret, typename ..._ArgTypes>
-struct _Impl_Dragonian_Lib_Get_Callable<_Ret(_ArgTypes...) const>
-{
-	using _Callable = _Ret(_ArgTypes...);
-	using _ReturnType = _Ret;
-	using _ArgumentTypes = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Va_List<_ArgTypes...>;
-};
-template<typename Objt>
-struct _Impl_Dragonian_Lib_Get_Callable_Info
-{
-	using _Obj = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<Objt>;
-	using _My_Callable = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Callable<_Obj>;
-	using _Callable = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<typename _My_Callable::_Callable>;
-	using _ReturnType = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Callable<_Callable>::_ReturnType;
-	using _ArgumentTypes = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Callable<_Callable>::_ArgumentTypes;
-};
-template<typename Objt>
-using _Impl_Dragonian_Lib_Callable_t = typename _D_Dragonian_Lib_Namespace
-_Impl_Dragonian_Lib_Get_Callable_Info<Objt>::_Callable;
-template<typename Objt>
-using _Impl_Dragonian_Lib_Return_Type_t = typename _D_Dragonian_Lib_Namespace
-_Impl_Dragonian_Lib_Get_Callable_Info<Objt>::_ReturnType;
-template<typename Objt>
-using _Impl_Dragonian_Lib_Argument_Types_t = typename _D_Dragonian_Lib_Namespace
-_Impl_Dragonian_Lib_Get_Callable_Info<Objt>::_ArgumentTypes;
-
-template<typename FunType, typename ...ArgTypes>
-class _Impl_Dragonian_Lib_Is_Invokeable
-{
-	template<typename _FunType, typename ..._ArgTypes>
-	static constexpr auto Check(int) -> decltype(std::declval<_FunType>()(std::declval<_ArgTypes>()...), std::true_type()) { return{}; }
-	template<typename, typename ...>
-	static constexpr std::false_type Check(...) { return{}; }
-public:
-	static constexpr bool _IsInvokeable = decltype(Check<FunType, ArgTypes...>(0))::value;
-};
-template<typename FunType, typename ...ArgTypes>
-constexpr bool _Impl_Dragonian_Lib_Is_Invokeable_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Invokeable<FunType, ArgTypes...>::_IsInvokeable;
-
-template <int64_t Idx, int64_t Range>
-struct _Impl_Dragonian_Lib_Calculate_Index
-{
-	static_assert((Idx < 0 && Idx >= -Range) || (Idx >= 0 && Idx < Range));
-	constexpr static int64_t Index = Idx < 0 ? (Range + Idx) : Idx;
-};
-template <int64_t Idx, int64_t Range>
-constexpr int64_t _Impl_Dragonian_Lib_Calculate_Index_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index<Idx, Range>::Index;
-
-template <int64_t Idx, typename First, typename ...Rest>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl;
-template <typename First, typename ...Rest>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<0, First, Rest...> { using _Type = First; };
-template <int64_t Idx, typename First, typename ...Rest>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<Idx, First, Rest...> { using _Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<Idx - 1, Rest...>::_Type; };
-template <int64_t Idx, typename ...Types>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type
-{
-	constexpr static auto Size = sizeof...(Types);
-	constexpr static auto Index = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index_v<Idx, Size>;
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<Index, Types...>::_Type;
-};
-template <int64_t Idx, typename ...Types>
-struct _Impl_Dragonian_Lib_Get_Va_List_Type<Idx, _Impl_Dragonian_Lib_Va_List<Types...>>
-{
-	constexpr static auto Size = sizeof...(Types);
-	constexpr static auto Index = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index_v<Idx, Size>;
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Va_List_Type_Inl<Index, Types...>::_Type;
-};
-template <int64_t Idx, typename ...Types>
-using _Impl_Dragonian_Lib_Get_Va_List_Type_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Va_List_Type<Idx, Types...>::Type;
-
-template <int64_t Index, typename First, typename... Rest>
-struct _Impl_Dragonian_Lib_Get_Value_At_Index;
-template <int64_t Index, typename First, typename... Rest>
-struct _Impl_Dragonian_Lib_Get_Value_At_Index<Index, First, Rest...> {
-	static constexpr auto Get(First, Rest... rest) {
-		return _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Value_At_Index<Index - 1, Rest...>::Get(rest...);
-	}
-};
-template <typename First, typename... Rest>
-struct _Impl_Dragonian_Lib_Get_Value_At_Index<0, First, Rest...> {
-	static constexpr First Get(First first, Rest...) {
-		return first;
-	}
-};
-template <int64_t Index, typename... Types>
-struct _Impl_Dragonian_Lib_Get_Value_At_Index<Index, _Impl_Dragonian_Lib_Va_List<Types...>> {
-	static constexpr auto Get(Types... rest) {
-		return _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Value_At_Index<Index - 1, Types...>::Get(rest...);
-	}
-};
-template <int64_t Index, typename... Types>
-constexpr auto _Impl_Dragonian_Lib_Get_Value_At_Index_v(Types... args) {
-	constexpr static auto Size = sizeof...(Types);
-	constexpr static auto Idx = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Calculate_Index_v<Index, Size>;
-	return _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Get_Value_At_Index<Idx, Types...>::Get(args...);
-}
-
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Floating_Point_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, float, double, long double, Float16, Float8, BFloat16>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, bool, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Signed_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, bool, Int8, Int16, Int32, Int64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Unsigned_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, UInt8, UInt16, UInt32, UInt64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Complex_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Complex32, Complex64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Bool_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, bool>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Arithmetic_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Floating_Point_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Integer_v<_Type> || _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Complex_v<_Type> || _Impl_Dragonian_Lib_Is_Bool_v<_Type>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_Floating_Point_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Float32, Float64>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Is_Avx256_Supported_Integer_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Any_Of_v<_Impl_Dragonian_Lib_Remove_CV_t<_Type>, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
-
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank = 0;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank<_Type[]> = 1 + _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Array_Rank<_Type>;
-template <typename _Type, size_t _Size>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank<_Type[_Size]> = 1 + _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Array_Rank<_Type>;
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank<_ObjType<_ValueType, _ValueSize>> = 1 + _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Array_Rank<_ValueType>;
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank<_ObjType<_ValueSize, _ValueType>> = 1 + _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Array_Rank<_ValueType>;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Array_Rank_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Array_Rank<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>;
-
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array = false;
-template <typename _Type, size_t _Size>
-constexpr bool _Impl_Dragonian_Lib_Is_Array<_Type[_Size]> = true;
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array<_Type[]> = true;
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Array<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>;
-
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like = false;
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like<_Type[]> = true;
-template <typename _Type, size_t _Size>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like<_Type[_Size]> = true;
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like<_ObjType<_ValueType, _ValueSize>> = true;
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like<_ObjType<_ValueSize, _ValueType>> = true;
-template <typename _Type>
-constexpr bool _Impl_Dragonian_Lib_Is_Array_Like_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Is_Array_Like<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Extract_Array_Type;
-template <typename _Type, size_t _Size>
-struct _Impl_Dragonian_Lib_Extract_Array_Type<_Type[_Size]>
-{
-	using Type = _Type;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-struct _Impl_Dragonian_Lib_Extract_Array_Type<_ObjType<_ValueType, _ValueSize>>
-{
-	using Type = _ValueType;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-struct _Impl_Dragonian_Lib_Extract_Array_Type<_ObjType<_ValueSize, _ValueType>>
-{
-	using Type = _ValueType;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Extract_Array_Type_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>::Type;
-
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Extract_Inner_Array_Type
-{
-	using Type = _Type;
-};
-template <typename _Type, size_t _Size>
-struct _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_Type[_Size]>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_Type>::Type;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-struct _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_ObjType<_ValueType, _ValueSize>>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_ValueType>::Type;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-struct _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_ObjType<_ValueSize, _ValueType>>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Inner_Array_Type<_ValueType>::Type;
-};
-template <typename _Type>
-using _Impl_Dragonian_Lib_Extract_Inner_Array_Type_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Inner_Array_Type<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>::Type;
-
-template <typename _Type, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At
-{
-	using Type = _Type;
-};
-template <typename _Type, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type[], _Index>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type, _Index - 1>::Type;
-};
-template <typename _Type, size_t _Size, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type[_Size], _Index>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type, _Index - 1>::Type;
-};
-template <typename _Type, size_t _Size>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type[_Size], 0>
-{
-	using Type = _Type;
-};
-template <typename _Type>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_Type[], 0>
-{
-	using Type = _Type;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_ObjType<_ValueType, _ValueSize>, _Index>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type_At<_ValueType, _Index - 1>::Type;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_ObjType<_ValueSize, _ValueType>, _Index>
-{
-	using Type = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type_At<_ValueType, _Index - 1>::Type;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_ObjType<_ValueType, _ValueSize>, 0>
-{
-	using Type = _ValueType;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-struct _Impl_Dragonian_Lib_Extract_Array_Type_At<_ObjType<_ValueSize, _ValueType>, 0>
-{
-	using Type = _ValueType;
-};
-template <typename _Type, size_t _Index>
-using _Impl_Dragonian_Lib_Extract_Array_Type_At_t = typename _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Type_At<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>, _Index>::Type;
-
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size = 0;
-template <typename _Type, size_t _Size>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size<_Type[_Size]> = _Size;
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size<_ObjType<_ValueType, _ValueSize>> = _ValueSize;
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size<_ObjType<_ValueSize, _ValueType>> = _ValueSize;
-template <typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Size<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>>;
-
-template <typename _Type, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At;
-template <typename _Type, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_Type[], _Index>
-{
-	static_assert(true, "_Type[] has no size.");
-};
-template <typename _Type, size_t _Size, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_Type[_Size], _Index>
-{
-	static constexpr auto Size = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Size_At<_Type, _Index - 1>::Size;
-};
-template <typename _Type, size_t _Size>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_Type[_Size], 0>
-{
-	static constexpr auto Size = _Size;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_ObjType<_ValueType, _ValueSize>, _Index>
-{
-	static constexpr auto Size = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Size_At<_ValueType, _Index - 1>::Size;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType, size_t _Index>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_ObjType<_ValueSize, _ValueType>, _Index>
-{
-	static constexpr auto Size = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Size_At<_ValueType, _Index - 1>::Size;
-};
-template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_ObjType<_ValueType, _ValueSize>, 0>
-{
-	static constexpr auto Size = _ValueSize;
-};
-template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-struct _Impl_Dragonian_Lib_Extract_Array_Size_At<_ObjType<_ValueSize, _ValueType>, 0>
-{
-	static constexpr auto Size = _ValueSize;
-};
-template <typename _Type, size_t _Index>
-constexpr auto _Impl_Dragonian_Lib_Extract_Array_Size_At_v = _D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Extract_Array_Size_At<
-	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Remove_ARPCV_t<_Type>, _Index>::Size;
-
 //***************************************************Types*********************************************************//
 
 template <typename _ValueType, size_t _Rank>
@@ -768,8 +114,8 @@ struct IDLArray
 	}
 	template <typename _Type = _ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>&&
-		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Type, _ValueType>,
+		TypeTraits::IsArithmeticValue<_Type>&&
+		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
 		_ValueType> Sum() const
 	{
 		_ValueType _Sum = 0;
@@ -779,8 +125,8 @@ struct IDLArray
 	}
 	template <typename _Type = _ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>&&
-		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Type, _ValueType>,
+		TypeTraits::IsArithmeticValue<_Type>&&
+		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
 		_ValueType> InnerProduct(const IDLArray<_Type, _Rank>& _Right) const
 	{
 		_ValueType _Sum = 0;
@@ -790,8 +136,8 @@ struct IDLArray
 	}
 	template <typename _Type = _ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>&&
-		_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Type, _ValueType>,
+		TypeTraits::IsArithmeticValue<_Type>&&
+		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
 		_ValueType> Multiply() const
 	{
 		_ValueType _Sum = 1;
@@ -982,11 +328,11 @@ template <typename _Type>
 struct _Impl_Static_Array_Type<_Type, 0> {};
 
 template <typename _Type>
-struct _Impl_Array_Extract_All_Shapes;
+struct ExtractAllShapesOfArrayLikeType;
 template <typename _Type, size_t _Size>
-struct _Impl_Array_Extract_All_Shapes<_Type[_Size]>
+struct ExtractAllShapesOfArrayLikeType<_Type[_Size]>
 {
-	static constexpr size_t Rank = _Impl_Dragonian_Lib_Array_Rank_v<_Type> + 1;
+	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_Type> + 1;
 	template <typename = std::enable_if_t<(Rank > 0)>>
 		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
 	{
@@ -999,16 +345,16 @@ struct _Impl_Array_Extract_All_Shapes<_Type[_Size]>
 		{
 			static _Impl_Static_Array_Type<int64_t, Rank> Shape(
 				static_cast<int64_t>(_Size),
-				_Impl_Array_Extract_All_Shapes<_Type>::GetShape()
+				ExtractAllShapesOfArrayLikeType<_Type>::GetShape()
 			);
 			return Shape;
 		}
 	}
 };
 template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
-struct _Impl_Array_Extract_All_Shapes<_ObjType<_ValueType, _ValueSize>>
+struct ExtractAllShapesOfArrayLikeType<_ObjType<_ValueType, _ValueSize>>
 {
-	static constexpr size_t Rank = _Impl_Dragonian_Lib_Array_Rank_v<_ValueType> +1;
+	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
 	template <typename = std::enable_if_t<(Rank > 0)>>
 		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
 	{
@@ -1021,16 +367,16 @@ struct _Impl_Array_Extract_All_Shapes<_ObjType<_ValueType, _ValueSize>>
 		{
 			static _Impl_Static_Array_Type<int64_t, Rank> Shape(
 				static_cast<int64_t>(_ValueSize),
-				_Impl_Array_Extract_All_Shapes<_ValueType>::GetShape()
+				ExtractAllShapesOfArrayLikeType<_ValueType>::GetShape()
 			);
 			return Shape;
 		}
 	}
 };
 template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
-struct _Impl_Array_Extract_All_Shapes<_ObjType<_ValueSize, _ValueType>>
+struct ExtractAllShapesOfArrayLikeType<_ObjType<_ValueSize, _ValueType>>
 {
-	static constexpr size_t Rank = _Impl_Dragonian_Lib_Array_Rank_v<_ValueType> +1;
+	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
 	template <typename = std::enable_if_t<(Rank > 0)>>
 		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
 	{
@@ -1043,14 +389,14 @@ struct _Impl_Array_Extract_All_Shapes<_ObjType<_ValueSize, _ValueType>>
 		{
 			static _Impl_Static_Array_Type<int64_t, Rank> Shape(
 				static_cast<int64_t>(_ValueSize),
-				_Impl_Array_Extract_All_Shapes<_ValueType>::GetShape()
+				ExtractAllShapesOfArrayLikeType<_ValueType>::GetShape()
 			);
 			return Shape;
 		}
 	}
 };
-template <typename _Type, typename = std::enable_if_t<_Impl_Dragonian_Lib_Is_Array_Like_v<_Type>>>
-const auto& _Impl_Array_Extract_All_Shapes_v = _D_Dragonian_Lib_Namespace _Impl_Array_Extract_All_Shapes<_Type>::GetShape().Data;
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArrayLikeValue<_Type>>>
+const auto& GetAllShapesOfArrayLikeType = _D_Dragonian_Lib_Namespace ExtractAllShapesOfArrayLikeType<_Type>::GetShape().Data;
 
 
 //***************************************************Base*********************************************************//
@@ -1076,36 +422,6 @@ _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Imp
 		return Prefix.substr(0, Prefix.length() - 2) + "\n " + Message.substr(1);
 	}
 	return Prefix + ' ' + Message;
-}
-
-template <size_t _Size>
-struct _Impl_Dragonian_Lib_Type_Name
-{
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Dragonian_Lib_Type_Name(const char* _Name)
-	{
-		auto Begin = _Name + 65;
-		for (size_t i = 0; i < _Size; ++i)
-			Name[i] = Begin[i];
-		Name[_Size] = '\0';
-	}
-	char Name[_Size + 1];
-};
-
-template <typename _Ty>
-_D_Dragonian_Lib_Constexpr_Force_Inline const char* __cdecl _Impl_Dragonian_Lib_TypenameOf()
-{
-#ifdef _MSC_VER
-	static const _Impl_Dragonian_Lib_Type_Name<sizeof(_D_Dragonian_Lib_Function_Signature) - 73> Ret(_D_Dragonian_Lib_Function_Signature);
-#elif defined(__GNUC__) || defined(__clang__)
-	static_assert("Not Supported!");
-#endif
-	return Ret.Name;
-}
-
-template <typename _Ty>
-_D_Dragonian_Lib_Constexpr_Force_Inline const char* __cdecl _Impl_Dragonian_Lib_TypenameOf(const _Ty& _Object)
-{
-	return _Impl_Dragonian_Lib_TypenameOf<_Ty>();
 }
 
 #ifdef _MSC_VER

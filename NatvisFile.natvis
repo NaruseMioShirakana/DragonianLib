@@ -149,6 +149,7 @@
 					</Synthetic>
 				</Expand>
 			</Synthetic>
+			<Item Name="[ExecutingTasks]">_MyFutures</Item>
 		</Expand>
 	</Type>
 

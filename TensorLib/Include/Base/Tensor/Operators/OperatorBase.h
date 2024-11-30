@@ -3,11 +3,14 @@
 #include <random>
 #include "../TensorBase.h"
 #include "OperatorMarco.h"
+#include "CPU/Unary.h"
 
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
 
 _D_Dragonian_Lib_Operator_Space_Begin
+
+using namespace TypeTraits;
 
 template<SizeType Rank>
 struct OperatorParameterND
@@ -139,357 +142,6 @@ public:
 	}
 
 	template<size_t _NRank>
-	static void ImplAddScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplSubScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplMulScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplDivScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplAddTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplSubTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplMulTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplDivTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplNotEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplGreaterScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplGreaterEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplLessScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplLessEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplNotEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplGreaterTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplGreaterEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplLessTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplLessEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplAndScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplOrScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplAndTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplOrTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplPowScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplPowTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
 	static void ImplArange(
 		_Type* _Dest,
 		const OperatorParameter<_NRank>& _DestInfo,
@@ -501,16 +153,73 @@ public:
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
-	template<typename _ResultType, size_t _NRank> static void UnaryOperator(
-		_ResultType* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
+	_D_Dragonian_Lib_Operator_Binary_Define(Add) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Sub) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Mul) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Div) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Mod) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(And) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Or) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Xor) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(LShift) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(RShift) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Pow) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(BinaryOr) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(BinaryAnd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Add) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Sub) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Mul) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Div) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Mod) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(And) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Or) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Xor) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShift) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShift) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Comparison_Define(Equal) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define(Greater) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define(GreaterEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define(Less) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define(LessEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Equal) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(NotEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Greater) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Less) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Unary_Define(Sqrt) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(RSqrt) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Reciprocal) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Abs) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Sin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Cos) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Tan) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ASin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ACos) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ATan) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Sinh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Cosh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Tanh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ASinh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ACosh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ATanh) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Exp) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Log) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Log2) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Log10) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Ceil) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Floor) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Round) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Trunc) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Frac) { _D_Dragonian_Lib_Not_Implemented_Error; }
 };
 
 _D_Dragonian_Lib_Operator_Space_End

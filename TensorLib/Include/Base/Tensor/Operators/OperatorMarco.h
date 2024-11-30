@@ -261,3 +261,59 @@ for (SizeType _Loop_Value_##_NDim = (_Info_1).Shape[_Dim]; _Loop_Value_##_NDim >
 		_D_Dragonian_Lib_Operator_Loop_Quad(_I1, _I2, _I3, _I4, (_D) + 4, 4##_DN, _B4, IndexAxis3##_DN##A, IndexAxis3##_DN##B, IndexAxis3##_DN##C, IndexAxis3##_DN##D,	\
 		_D_Dragonian_Lib_Operator_Loop_Quad(_I1, _I2, _I3, _I4, (_D) + 5, 5##_DN, _B5, IndexAxis4##_DN##A, IndexAxis4##_DN##B, IndexAxis4##_DN##C, IndexAxis4##_DN##D, _F))))))	\
  	} while (0)
+
+#define _D_Dragonian_Lib_Operator_Binary_Define(_Function) \
+template<size_t _NRank> \
+static void Impl##_Function##Tensor(\
+	_Type* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src1, \
+	const OperatorParameter<_NRank>& _SrcInfo1, \
+	const _Type* _Src2, \
+	const OperatorParameter<_NRank>& _SrcInfo2, \
+	bool Continuous \
+)
+
+#define _D_Dragonian_Lib_Operator_Binary_Define_Scalar(_Function) \
+template<size_t _NRank> \
+static void Impl##_Function##Scalar( \
+	_Type* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	const _Type& _Value, \
+	bool Continuous \
+)
+
+#define _D_Dragonian_Lib_Operator_Comparison_Define(_Function) \
+template<size_t _NRank> \
+static void Impl##_Function##Tensor(\
+	bool* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src1, \
+	const OperatorParameter<_NRank>& _SrcInfo1, \
+	const _Type* _Src2, \
+	const OperatorParameter<_NRank>& _SrcInfo2, \
+	bool Continuous \
+)
+
+#define _D_Dragonian_Lib_Operator_Comparison_Define_Scalar(_Function) \
+template<size_t _NRank> \
+static void Impl##_Function##Scalar( \
+	bool* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	const _Type& _Value, \
+	bool Continuous \
+)
+
+#define _D_Dragonian_Lib_Operator_Unary_Define(_Function) \
+template<typename _ResultType, size_t _NRank> \
+static void Impl##_Function##Unary( \
+	_ResultType* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	bool Continuous \
+)

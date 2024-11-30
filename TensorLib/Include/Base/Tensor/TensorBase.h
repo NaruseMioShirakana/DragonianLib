@@ -99,10 +99,10 @@ class TensorIterator
 {
 public:
 	static_assert(_Rank > 0, "Rank must be greater than 0.");
-	using value_type = _Impl_Dragonian_Lib_Conditional_t<_Rank == 1, _Type, TensorIterator<_Type, _Rank>>;
+	using value_type = TypeTraits::ConditionalType<_Rank == 1, _Type, TensorIterator<_Type, _Rank>>;
 	using difference_type = ptrdiff_t;
-	using pointer = _Impl_Dragonian_Lib_Conditional_t<_Rank == 1, _Type*, TensorIterator<_Type, _Rank - 1>>;
-	using reference = _Impl_Dragonian_Lib_Conditional_t<_Rank == 1, _Type&, TensorIterator<_Type, _Rank>>;
+	using pointer = TypeTraits::ConditionalType<_Rank == 1, _Type*, TensorIterator<_Type, _Rank - 1>>;
+	using reference = TypeTraits::ConditionalType<_Rank == 1, _Type&, TensorIterator<_Type, _Rank>>;
 	using iterator_category = std::random_access_iterator_tag;
 
 	TensorIterator(

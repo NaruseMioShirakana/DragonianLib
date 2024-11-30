@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "CPU.h"
+
 _D_Dragonian_Lib_Operator_Space_Begin
 
 constexpr int64_t _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold = 8;
@@ -15,14 +16,14 @@ void AssignTensorCont(
 	void*
 )
 {
-	if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc> && std::is_standard_layout_v<_TypeSrc>)
+	if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_trivially_copy_assignable_v<_TypeSrc>)
 	{
 		DestSize *= sizeof(_TypeDest);
 		Vectorized<_TypeDest>::DragonianLibMemCpy(_Dest, _Src, DestSize);
 	}
 	else if constexpr (
-		(_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_TypeDest, _TypeSrc> && std::is_move_assignable_v<_TypeDest>) ||
-		(_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
+		(TypeTraits::CouldBeConvertedFromValue<_TypeDest, _TypeSrc> && std::is_move_assignable_v<_TypeDest>) ||
+		(TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
 		)
 	{
 		int64_t i = 0;
@@ -30,7 +31,7 @@ void AssignTensorCont(
 		{
 			for (int64_t j = 0; j < _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold; ++j)
 			{
-				if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc>)
+				if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc>)
 					_Dest[i] = _Src[i];
 				else
 					_Dest[i] = _TypeDest(_Src[i]);
@@ -39,7 +40,7 @@ void AssignTensorCont(
 		}
 		while (i < DestSize)
 		{
-			if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc>)
+			if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc>)
 				_Dest[i] = _Src[i];
 			else
 				_Dest[i] = _TypeDest(_Src[i]);
@@ -60,8 +61,8 @@ void AssignTensor(
 )
 {
 	if constexpr (
-		(_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_TypeDest, _TypeSrc> && std::is_move_assignable_v<_TypeDest>) ||
-		(_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
+		(TypeTraits::CouldBeConvertedFromValue<_TypeDest, _TypeSrc> && std::is_move_assignable_v<_TypeDest>) ||
+		(TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
 		)
 	{
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
@@ -69,7 +70,7 @@ void AssignTensor(
 
 		const auto Func = [&](int64_t _IndexA, int64_t _IndexB)
 			{
-				if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_TypeDest, _TypeSrc>)
+				if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc>)
 					_Dest[_IndexA] = _Src[_IndexB];
 				else
 					_Dest[_IndexA] = _TypeDest(_Src[_IndexB]);
@@ -105,7 +106,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplCast(
 	bool Continuous
 )
 {
-	if constexpr (_Impl_Dragonian_Lib_Could_Be_Converted_From_v<_Type, _TypeSrc> && std::is_move_assignable_v<_Type>)
+	if constexpr (TypeTraits::CouldBeConvertedFromValue<_Type, _TypeSrc> && std::is_move_assignable_v<_Type>)
 	{
 		ImplMultiThreadDouble(
 			_Dest,
@@ -168,7 +169,7 @@ void AssignBufferCont(
 	if (Index >= _Value._Count) return;
 	DestSize = std::min(DestSize, _Value._Count - Index);
 	const auto _SrcPtr = _Value._Src + Index;
-	if constexpr (std::is_standard_layout_v<_Type>)
+	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
 		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
 	else if constexpr (std::is_copy_assignable_v<_Type>)
 	{
@@ -331,7 +332,7 @@ void AssignScalarCont(
 
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		if constexpr (_Impl_Dragonian_Lib_Is_Avx256_Supported_v<_Type>)
+		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>)
 		{
 			auto _VectorizedValue1 = Vectorized<_Type>(_Value);
 			auto _VectorizedValue2 = Vectorized<_Type>(_Value);
@@ -415,7 +416,7 @@ void AssignRandnCont(
 	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings._Mean, Settings._Sigma);
 
 	SizeType i = 0;
-	if constexpr (_Impl_Dragonian_Lib_Is_Complex_v<_Type>)
+	if constexpr (TypeTraits::IsComplexValue<_Type>)
 	{
 		for (; i < DestSize - 8; i += 8)
 		{
@@ -468,7 +469,7 @@ void AssignRandn(
 
 	const auto Func = [&](int64_t _Index)
 		{
-			if constexpr (_Impl_Dragonian_Lib_Is_Complex_v<_Type>)
+			if constexpr (TypeTraits::IsComplexValue<_Type>)
 				_Dest[_Index] = _Type(NormalDistribution(RandomDevice), NormalDistribution(RandomDevice));
 			else
 				_Dest[_Index] = (_Type)NormalDistribution(RandomDevice);
@@ -489,7 +490,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRandn(
 	bool Continuous
 )
 {
-	if constexpr (!_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>)
+	if constexpr (!TypeTraits::IsArithmeticValue<_Type>)
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	else
 	{
@@ -518,7 +519,7 @@ void AssignRandomCont(
 	RandomDistributionType Distribution(Settings._Min, Settings._Max);
 
 	SizeType i = 0;
-	if constexpr (_Impl_Dragonian_Lib_Is_Complex_v<_Type>)
+	if constexpr (TypeTraits::IsComplexValue<_Type>)
 	{
 		for (; i < DestSize - 8; i += 8)
 		{
@@ -573,7 +574,7 @@ void AssignRandom(
 
 	const auto Func = [&](int64_t _Index)
 		{
-			if constexpr (_Impl_Dragonian_Lib_Is_Complex_v<_Type>)
+			if constexpr (TypeTraits::IsComplexValue<_Type>)
 				_Dest[_Index] = _Type(Distribution(RandomDevice), Distribution(RandomDevice));
 			else
 				_Dest[_Index] = (_Type)Distribution(RandomDevice);
@@ -594,14 +595,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 	bool Continuous
 )
 {
-	if constexpr (!_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>)
+	if constexpr (!TypeTraits::IsArithmeticValue<_Type>)
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	else
 	{
 		using RandomType = _Impl_Dragonian_Lib_Random_Type<_Type>;
 		using RandomNormalType = _Impl_Dragonian_Lib_Random_Normal_Type<_Type>;
 
-		if constexpr (_Impl_Dragonian_Lib_Is_Complex_v<_Type>)
+		if constexpr (TypeTraits::IsComplexValue<_Type>)
 			ImplMultiThreadSingle<_Type>(
 				_Dest,
 				_DestInfo,
@@ -651,7 +652,7 @@ void ArangeImpCont(
 	constexpr int64_t LoopStride = OpThroughput * Stride;
 
 	int64_t i = 0;
-	if constexpr (_Impl_Dragonian_Lib_Is_Avx256_Supported_v<_Type>)
+	if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>)
 	{
 		if (DestSize >= LoopStride)
 		{
@@ -706,7 +707,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 	bool Continuous
 )
 {
-	if constexpr (!_Impl_Dragonian_Lib_Is_Arithmetic_v<_Type>)
+	if constexpr (!TypeTraits::IsArithmeticValue<_Type>)
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	else
 	{

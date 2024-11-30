@@ -68,279 +68,6 @@ public:
 	);
 
 	template<size_t _NRank>
-	static void ImplAddScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplSubScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplMulScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplDivScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplAddTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplSubTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplMulTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplDivTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplNotEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplGreaterScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplGreaterEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplLessScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplLessEqualScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplNotEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplGreaterTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplGreaterEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplLessTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplLessEqualTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplAndScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplOrScalar(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplAndTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplOrTensor(
-		bool* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplPowScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _Type& _Value,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplPowTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src1,
-		const OperatorParameter<_NRank>& _SrcInfo1,
-		const _Type* _Src2,
-		const OperatorParameter<_NRank>& _SrcInfo2,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
 	static void ImplArange(
 		_Type* _Dest,
 		const OperatorParameter<_NRank>& _DestInfo,
@@ -348,16 +75,85 @@ public:
 		const _Type& _Step,
 		bool Continuous
 	);
+
+	_D_Dragonian_Lib_Operator_Binary_Define(Add);
+	_D_Dragonian_Lib_Operator_Binary_Define(Sub);
+	_D_Dragonian_Lib_Operator_Binary_Define(Mul);
+	_D_Dragonian_Lib_Operator_Binary_Define(Div);
+	_D_Dragonian_Lib_Operator_Binary_Define(Mod);
+	_D_Dragonian_Lib_Operator_Binary_Define(And);
+	_D_Dragonian_Lib_Operator_Binary_Define(Or);
+	_D_Dragonian_Lib_Operator_Binary_Define(Xor);
+	_D_Dragonian_Lib_Operator_Binary_Define(LShift);
+	_D_Dragonian_Lib_Operator_Binary_Define(RShift);
+	_D_Dragonian_Lib_Operator_Binary_Define(Pow);
+	_D_Dragonian_Lib_Operator_Binary_Define(BinaryOr);
+	_D_Dragonian_Lib_Operator_Binary_Define(BinaryAnd);
+
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Add);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Sub);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Mul);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Div);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Mod);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(And);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Or);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Xor);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShift);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShift);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd);
+
+	_D_Dragonian_Lib_Operator_Comparison_Define(Equal);
+	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual);
+	_D_Dragonian_Lib_Operator_Comparison_Define(Greater);
+	_D_Dragonian_Lib_Operator_Comparison_Define(GreaterEqual);
+	_D_Dragonian_Lib_Operator_Comparison_Define(Less);
+	_D_Dragonian_Lib_Operator_Comparison_Define(LessEqual);
+
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Equal);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(NotEqual);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Greater);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqual);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Less);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqual);
+
+	_D_Dragonian_Lib_Operator_Unary_Define(Sqrt);
+	_D_Dragonian_Lib_Operator_Unary_Define(RSqrt);
+	_D_Dragonian_Lib_Operator_Unary_Define(Reciprocal);
+	_D_Dragonian_Lib_Operator_Unary_Define(Abs);
+	_D_Dragonian_Lib_Operator_Unary_Define(Sin);
+	_D_Dragonian_Lib_Operator_Unary_Define(Cos);
+	_D_Dragonian_Lib_Operator_Unary_Define(Tan);
+	_D_Dragonian_Lib_Operator_Unary_Define(ASin);
+	_D_Dragonian_Lib_Operator_Unary_Define(ACos);
+	_D_Dragonian_Lib_Operator_Unary_Define(ATan);
+	_D_Dragonian_Lib_Operator_Unary_Define(Sinh);
+	_D_Dragonian_Lib_Operator_Unary_Define(Cosh);
+	_D_Dragonian_Lib_Operator_Unary_Define(Tanh);
+	_D_Dragonian_Lib_Operator_Unary_Define(ASinh);
+	_D_Dragonian_Lib_Operator_Unary_Define(ACosh);
+	_D_Dragonian_Lib_Operator_Unary_Define(ATanh);
+	_D_Dragonian_Lib_Operator_Unary_Define(Exp);
+	_D_Dragonian_Lib_Operator_Unary_Define(Log);
+	_D_Dragonian_Lib_Operator_Unary_Define(Log2);
+	_D_Dragonian_Lib_Operator_Unary_Define(Log10);
+	_D_Dragonian_Lib_Operator_Unary_Define(Ceil);
+	_D_Dragonian_Lib_Operator_Unary_Define(Floor);
+	_D_Dragonian_Lib_Operator_Unary_Define(Round);
+	_D_Dragonian_Lib_Operator_Unary_Define(Trunc);
+	_D_Dragonian_Lib_Operator_Unary_Define(Frac);
+
 };
 
 template <typename _Type>
 struct RandomSettings
 {
-	using RandomNormalType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) >= sizeof(double), double, float>;
+	using RandomNormalType = ConditionalType<sizeof(_Type) >= sizeof(double), double, float>;
 	using NormalDistributionType = std::normal_distribution<RandomNormalType>;
-	using RandomType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
-	using RandomDistributionType = _Impl_Dragonian_Lib_Conditional_t<
-		_Impl_Dragonian_Lib_Is_Integer_v<_Type>,
+	using RandomType = ConditionalType<sizeof(_Type) == sizeof(char), Int16, _Type>;
+	using RandomDistributionType = ConditionalType<
+		IsIntegerValue<_Type>,
 		std::uniform_int_distribution<RandomType>,
 		std::uniform_real_distribution<RandomType>
 	>;
@@ -371,11 +167,11 @@ struct RandomSettings
 template <typename _Type>
 struct RandomSettings<std::complex<_Type>>
 {
-	using RandomNormalType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) >= sizeof(double), double, float>;
+	using RandomNormalType = ConditionalType<sizeof(_Type) >= sizeof(double), double, float>;
 	using NormalDistributionType = std::normal_distribution<RandomNormalType>;
-	using RandomType = _Impl_Dragonian_Lib_Conditional_t<sizeof(_Type) == sizeof(char), Int16, _Type>;
-	using RandomDistributionType = _Impl_Dragonian_Lib_Conditional_t<
-		_Impl_Dragonian_Lib_Is_Integer_v<_Type>,
+	using RandomType = ConditionalType<sizeof(_Type) == sizeof(char), Int16, _Type>;
+	using RandomDistributionType = ConditionalType<
+		IsIntegerValue<_Type>,
 		std::uniform_int_distribution<RandomType>,
 		std::uniform_real_distribution<RandomType>
 	>;
@@ -396,7 +192,7 @@ template <typename _Type>
 using _Impl_Dragonian_Lib_Normal_Distribution_Type = typename RandomSettings<_Type>::NormalDistributionType;
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> SingleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> SingleTensorLoop(
 	int64_t Value,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Step, const int64_t* __restrict Left, const int64_t* __restrict Stride,
@@ -438,7 +234,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> DoubleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> DoubleTensorLoop(
 	int64_t Value1, int64_t Value2,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Step1, const int64_t* __restrict Left1, const int64_t* __restrict Stride1,
@@ -487,7 +283,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> TripleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> TripleTensorLoop(
 	int64_t Value1, int64_t Value2, int64_t Value3,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Step1, const int64_t* __restrict Left1, const int64_t* __restrict Stride1,
@@ -558,7 +354,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<_Impl_Dragonian_Lib_Is_
  * @return void.
  */
 template<typename _Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
+std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadSingle(
 	_Type* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	_Parameter _UserParameter,
@@ -573,7 +369,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
-	if constexpr (_Impl_Dragonian_Lib_Is_Callable_v<_ContFn> && OperatorDims == 0)
+	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
 	{
 		if (Continuous)
 		{
@@ -604,7 +400,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 				SizeType i = 0;
 				for (; i < TaskCount; ++i)
 				{
-					if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Remove_ARPCV_t<_Parameter>, RandomSettings<_Type>>)
+					if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
 						_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
 					_DestParameter.ThreadPool->emplace_back(
 						_Valdef_My_Thread_Pool.Commit(
@@ -620,7 +416,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 				}
 				if (Remainder)
 				{
-					if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Remove_ARPCV_t<_Parameter>, RandomSettings<_Type>>)
+					if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
 						_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
 					_DestParameter.ThreadPool->emplace_back(
 						_Valdef_My_Thread_Pool.Commit(
@@ -666,7 +462,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
 
-				if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Remove_ARPCV_t<_Parameter>, RandomSettings<_Type>>)
+				if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
 					_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
 				if (Continuous)
 				{
@@ -701,7 +497,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
 			}
 			if (Remainder)
 			{
-				if constexpr (_Impl_Dragonian_Lib_Constexpr_Is_Same_Type_v<_Impl_Dragonian_Lib_Remove_ARPCV_t<_Parameter>, RandomSettings<_Type>>)
+				if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
 					_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
 				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
 				Info->Begin[TaskDim] = ShapeIndex;
@@ -791,7 +587,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadSingle(
  * @return void.
  */
 template<typename _DstType, typename _SrcType, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
+std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadDouble(
 	_DstType* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	const _SrcType* _Src,
@@ -808,7 +604,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
 	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
-	if constexpr (_Impl_Dragonian_Lib_Is_Callable_v<_ContFn> && OperatorDims == 0)
+	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
 	{
 		if (Continuous)
 		{
@@ -1045,7 +841,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadDouble(
  * @return void.
  */
 template<typename _DstType, typename _Src1Type, typename _Src2Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
+std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadTriple(
 	_DstType* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	const _Src1Type* _Src1,
@@ -1064,7 +860,7 @@ std::enable_if_t<_Impl_Dragonian_Lib_Is_Callable_v<_Fn>> ImplMultiThreadTriple(
 	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
-	if constexpr (_Impl_Dragonian_Lib_Is_Callable_v<_ContFn> && OperatorDims == 0)
+	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
 	{
 		if (Continuous)
 		{
