@@ -4,8 +4,12 @@
 int main()
 {
 	using namespace DragonianLib;
-	auto Tensor1 = Functional::Randn<Complex32>(IDim(1, 9, 1, 9)).Eval();
-	auto Tensor2 = Functional::Randn<bool>(IDim(1, 9, 1, 9)).Eval();
+	auto Tensor1 = Functional::Randn<Complex32>(IDim(1, 9, 1, 9)).EvalMove();
+	auto Tensor2 = Functional::Zeros<bool>(IDim(1, 9, 1, 9)).EvalMove();
+
+	Tensor2(0, Range{0, -2}, 0, 0) = true;
+	Tensor2.Eval();
+
 	for (auto i : Tensor1)
 		for (auto j : i)
 			for (auto k : j)

@@ -39,6 +39,8 @@ struct Range
 	SizeType End = 0; ///< End value
 	bool IsNone = true; ///< Flag indicating if it is none
 
+	Range() = default;
+
 	/**
 	 * @brief Constructor for a none range.
 	 * @param _NoneVal The none value to initialize the range.
@@ -108,6 +110,16 @@ struct Range
 	 */
 	bool operator==(const NoneType& _NoneVal) const { UNUSED(_NoneVal); return IsNone; }
 };
+
+namespace TypeTraits
+{
+	template <typename _Type>
+	struct IsRange : std::false_type {};
+	template <>
+	struct IsRange<Range> : std::true_type {};
+	template <typename _Type>
+	constexpr bool IsRangeValue = IsRange<std::remove_cv_t<_Type>>::value;
+}
 
 /**
  * @brief Enum class representing padding types.
@@ -499,23 +511,34 @@ public:
 		return ViewDimensions(_Indice);
 	}
 
-	ValueType& operator[](const Dimensions<_NRank>& _Indice) const
-	{
-		return *Data(_Indice);
-	}
-
-	template <
-		typename _FirstType, typename ..._ArgTypes,
-		typename = std::enable_if_t<(sizeof...(_ArgTypes) < _NRank) && TypeTraits::IsIntegerValue<_FirstType>>
-		>
+	template <size_t _SliceDim = 0, typename _FirstType, typename ..._ArgTypes,
+		typename = std::enable_if_t<(sizeof...(_ArgTypes) < _NRank) && 
+		TypeTraits::IsIntegerValue<_FirstType> && (_SliceDim < _NRank)>>
 		decltype(auto) operator()(_FirstType _Index, _ArgTypes ..._Args) const
 	{
-		if constexpr (_NRank == 1)
+		if constexpr (_SliceDim)
+		{
+			_Index = CalcIndex(_Index, _MyShape[_SliceDim]);
+			return operator() < _SliceDim > (Range{ _Index, _Index + 1 }, _Args...);
+		}
+		else if constexpr (_NRank == 1)
 			return Get(static_cast<SizeType>(_Index));
 		else if constexpr (sizeof...(_ArgTypes))
-			return operator[](static_cast<SizeType>(_Index))(_Args...);
+			return operator[](static_cast<SizeType>(_Index)).template operator() < 0 > (_Args...);
 		else
 			return operator[](static_cast<SizeType>(_Index));
+	}
+
+	template <size_t _SliceDim = 0, typename ..._ArgTypes,
+		typename = std::enable_if_t<(sizeof...(_ArgTypes) < _NRank) && (_SliceDim < _NRank)>>
+		decltype(auto) operator()(Range _Range, _ArgTypes ..._Args) const
+	{
+		SliceOptions<_NRank> SliceOptions;
+		SliceOptions[_SliceDim] = _Range;
+		if constexpr (sizeof...(_ArgTypes))
+			return Slice(SliceOptions).template operator() < _SliceDim + 1 > (_Args...);
+		else
+			return Slice(SliceOptions);
 	}
 
 	//****************************************************Constructor****************************************************//
