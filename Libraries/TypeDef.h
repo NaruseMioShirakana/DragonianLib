@@ -77,4 +77,37 @@ namespace DragonianLib
 		else
 			return false;
 	}
+
+	namespace TypeDef
+	{
+		template <typename _Type, size_t _Rank>
+		struct _Impl_NDInitilizerListType
+		{
+			using Type = std::initializer_list<typename _Impl_NDInitilizerListType<_Type, _Rank - 1>::Type>;
+		};
+		template <typename _Type>
+		struct _Impl_NDInitilizerListType<_Type, 0>
+		{
+			using Type = _Type;
+		};
+
+		template <typename _Type, size_t _Rank, size_t _Size, size_t ..._RSize>
+		struct _Impl_NDArray
+		{
+			static_assert(_Size > 0, "Size must be greater than 0");
+			static_assert(sizeof...(_RSize) == _Rank - 1, "Rank must be equal to the number of sizes");
+			static_assert(_Rank > 0, "Rank must be greater than 0");
+			using Type = _Impl_NDArray<_Type, _Rank - 1, _RSize...>[_Size];
+		};
+		template <typename _Type, size_t _Size, size_t ..._RSize>
+		struct _Impl_NDArray<_Type, 1, _Size, _RSize...>
+		{
+			static_assert(_Size > 0, "Size must be greater than 0");
+			static_assert(sizeof...(_RSize) == 0, "Rank must be equal to the number of sizes");
+			using Type = _Type[_Size];
+		};
+	}
+
+	template <typename _Type, size_t _Rank>
+	using NDInitilizerList = typename ::DragonianLib::TypeDef::_Impl_NDInitilizerListType<_Type, _Rank>::Type;
 }

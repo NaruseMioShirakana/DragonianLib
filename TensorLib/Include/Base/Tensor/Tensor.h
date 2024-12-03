@@ -23,6 +23,7 @@
 #include <ranges>
 #include <mdspan>
 #include "Operators.h"
+#include "Libraries/Util/StringPreprocess.h"
 #include "Libraries/Util/ThreadPool.h"
 
 _D_Dragonian_Lib_Space_Begin
@@ -36,8 +37,9 @@ struct Range
 {
 	SizeType Begin = 0; ///< Begin value
 	SizeType Step = 1; ///< Step value
-	SizeType End = 0; ///< End value
+	SizeType End = -1; ///< End value
 	bool IsNone = true; ///< Flag indicating if it is none
+	bool IsValue = false; ///< Flag indicating if it is a value
 
 	Range() = default;
 
@@ -46,6 +48,30 @@ struct Range
 	 * @param _NoneVal The none value to initialize the range.
 	 */
 	Range(NoneType _NoneVal) { UNUSED(_NoneVal); }
+
+	/**
+	 * @brief Constructor for a range with begin, step, and end values.
+	 * @param _RangeArgs The range arguments.
+	 */
+	Range(const char* _RangeArgs);
+
+	/**
+	 * @brief Constructor for a range with begin, step, and end values.
+	 * @param _RangeArgs The range arguments.
+	 */
+	Range(const wchar_t* _RangeArgs);
+
+	/**
+	 * @brief Constructor for a range with begin, step, and end values.
+	 * @param _RangeArgs The range arguments.
+	 */
+	Range(const std::string& _RangeArgs);
+
+	/**
+	 * @brief Constructor for a range with begin, step, and end values.
+	 * @param _RangeArgs The range arguments.
+	 */
+	Range(const std::wstring& _RangeArgs);
 
 	/**
 	 * @brief Constructor for a range with begin, step, and end values.
@@ -96,7 +122,7 @@ struct Range
 	 * @param _Begin The begining value.
 	 * @param _NoneVal The none value.
 	 */
-	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin), End(-1), IsNone(false) { UNUSED(_NoneVal); }
+	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin), IsNone(false) { UNUSED(_NoneVal); }
 
 	/**
 	 * @brief Reverse the range.
@@ -109,6 +135,20 @@ struct Range
 	 * @return True if the range is none, false otherwise.
 	 */
 	bool operator==(const NoneType& _NoneVal) const { UNUSED(_NoneVal); return IsNone; }
+
+	std::string ToString() const
+	{
+		if (IsNone)
+			return "[:]";
+		return "[" + std::to_string(Begin) + ":" + std::to_string(Step) + ":" + std::to_string(End) + "]";
+	}
+
+	std::wstring ToWString() const
+	{
+		if (IsNone)
+			return L"[:]";
+		return L"[" + std::to_wstring(Begin) + L":" + std::to_wstring(Step) + L":" + std::to_wstring(End) + L"]";
+	}
 };
 
 namespace TypeTraits
@@ -271,18 +311,82 @@ public:
 		return std::move(*this);
 	}
 
+	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
+		std::string> CastToString() const
+	{
+		return CastToString(TotalSize());
+	}
+
+	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
+		std::string> to_string() const
+	{
+		return CastToString(TotalSize());
+	}
+
+	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
+		std::wstring> CastToWideString() const
+	{
+		return UTF8ToWideString(CastToString(TotalSize()));
+	}
+
 protected:
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr;
 	RawPointer _MyData = nullptr;
 	Dimensions<_NRank> _MyShape;
-	Dimensions<_NRank> _MyViewStep;
-	Dimensions<_NRank> _MyViewLeft;
 	Dimensions<_NRank> _MyViewStride;
 	_MyMultiThreadSyncP _MyFutures = nullptr;
-	bool IsBroadCasted_ = false;
+	bool _MyShapeIsBroadCasted = false;
 
 private:
+
+	template <typename _ValType = _TensorType>
+	std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
+		std::string> CastToString(SizeType _MyTotalSize) const
+	{
+		if constexpr (_NRank > 1)
+		{
+			if (_MyShape.Front() > 4)
+				return "[" +
+				operator[](0).CastToString(_MyTotalSize) + ",\n" +
+				operator[](1).CastToString(_MyTotalSize) + ",\n" +
+				" ... ,\n" +
+				operator[](-2).CastToString(_MyTotalSize) + ",\n" +
+				operator[](-1).CastToString(_MyTotalSize) +
+				"]";
+			std::string Ret = "[";
+			for (SizeType i = 0; i < _MyShape.Front(); ++i)
+				Ret += operator[](0).CastToString(_MyTotalSize) + ",\n";
+			Ret.pop_back(); Ret.pop_back();
+			Ret += "]";
+			return Ret;
+		}
+		else
+		{
+			if (_MyShape.Front() > 6 && _MyTotalSize > 100)
+				return "[" +
+				CvtToString(Get(0)) + ", " +
+				CvtToString(Get(1)) + ", " +
+				CvtToString(Get(2)) + ", ... , " +
+				CvtToString(Get(-3)) + ", " +
+				CvtToString(Get(-2)) + ", " +
+				CvtToString(Get(-1)) +
+				"]";
+			std::string Ret = "[";
+			for (SizeType i = 0; i < _MyShape.Front(); ++i)
+				Ret += CvtToString(Get(i)) + ", ";
+			Ret.pop_back(); Ret.pop_back();
+			Ret += "]";
+			return Ret;
+		}
+	}
 
 	template <size_t _TmpTank = _NRank>
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
@@ -294,16 +398,14 @@ private:
 		Tensor<_TensorType, _TmpTank - 1, _MyDevice> Ret;
 
 		Ret._MyShape.Assign(_MyShape.begin() + 1);
-		Ret._MyViewStep.Assign(_MyViewStep.begin() + 1);
-		Ret._MyViewLeft.Assign(_MyViewLeft.begin() + 1);
 		Ret._MyViewStride.Assign(_MyViewStride.begin() + 1);
 
-		auto Index = (_MyViewLeft.Front() + (Idx * _MyViewStride.Front())) * _MyViewStep.Front();
+		auto Index = Idx * _MyViewStride.Front();
 		Ret._MyFirst = _MyFirst;
 		Ret._MyData = _MyData + Index;
 		Ret._MyLast = _MyLast;
 		Ret._MyFutures = _MyFutures;
-		Ret.IsBroadCasted_ = IsBroadCasted_;
+		Ret._MyShapeIsBroadCasted = _MyShapeIsBroadCasted;
 		return Ret;
 	}
 
@@ -315,15 +417,13 @@ private:
 	{
 		Tensor<_TensorType, _NRank - _TRank, _MyDevice> Ret;
 		Ret._MyShape.Assign(_MyShape.begin() + _TRank);
-		Ret._MyViewStep.Assign(_MyViewStep.begin() + _TRank);
-		Ret._MyViewLeft.Assign(_MyViewLeft.begin() + _TRank);
 		Ret._MyViewStride.Assign(_MyViewStride.begin() + _TRank);
 
 		Ret._MyFirst = _MyFirst;
 		Ret._MyData = Data(_Indice);
 		Ret._MyLast = _MyLast;
 		Ret._MyFutures = _MyFutures;
-		Ret.IsBroadCasted_ = IsBroadCasted_;
+		Ret._MyShapeIsBroadCasted = _MyShapeIsBroadCasted;
 		return Ret;
 	}
 
@@ -346,17 +446,15 @@ private:
 		auto& First = Ret.first;
 		auto& Second = Ret.second;
 		First._MyShape.AssignConstant(1);				Second._MyShape.AssignConstant(1);
-		First._MyViewStep.AssignConstant(1);			Second._MyViewStep.AssignConstant(1);
-		First._MyViewLeft.AssignConstant(0);			Second._MyViewLeft.AssignConstant(0);
 		First._MyViewStride.AssignConstant(0);			Second._MyViewStride.AssignConstant(0);
 		First._MyFirst = _A._MyFirst;						Second._MyFirst = _B._MyFirst;
 		First._MyLast = _A._MyLast;							Second._MyLast = _B._MyLast;
 		First._MyFutures = _A._MyFutures;					Second._MyFutures = _B._MyFutures;
 		First._MyData = _A._MyData;							Second._MyData = _B._MyData;
 		if constexpr (CurrentRank != _Rank1)
-			First.IsBroadCasted_ = true;
+			First._MyShapeIsBroadCasted = true;
 		if constexpr (CurrentRank != _Rank2)
-			Second.IsBroadCasted_ = true;
+			Second._MyShapeIsBroadCasted = true;
 
 		for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
 		{
@@ -366,15 +464,15 @@ private:
 			if (CurrentIndex < _Rank1)
 			{
 				const auto i = _Rank1 - CurrentIndex - 1;
-				First._MyShape[idx] = _A._MyShape[i];		First._MyViewStride[idx] = _A._MyViewStride[i];
-				First._MyViewStep[idx] = _A._MyViewStep[i];	First._MyViewLeft[idx] = _A._MyViewLeft[i];
+				First._MyShape[idx] = _A._MyShape[i];
+				First._MyViewStride[idx] = _A._MyViewStride[i];
 				XSize = _A._MyShape[i];
 			}
 			if (CurrentIndex < _Rank2)
 			{
 				const auto i = _Rank2 - CurrentIndex - 1;
-				Second._MyShape[idx] = _B._MyShape[i];		Second._MyViewStride[idx] = _B._MyViewStride[i];
-				Second._MyViewStep[idx] = _B._MyViewStep[i]; Second._MyViewLeft[idx] = _B._MyViewLeft[i];
+				Second._MyShape[idx] = _B._MyShape[i];
+				Second._MyViewStride[idx] = _B._MyViewStride[i];
 				YSize = _B._MyShape[i];
 			}
 			if (XSize == YSize)
@@ -389,12 +487,12 @@ private:
 					);
 
 				First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
-				First.IsBroadCasted_ = true;
+				First._MyShapeIsBroadCasted = true;
 			}
 			else if (YSize == 1)
 			{
 				Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
-				Second.IsBroadCasted_ = true;
+				Second._MyShapeIsBroadCasted = true;
 			}
 			else
 				_D_Dragonian_Lib_Throw_Exception(
@@ -516,10 +614,12 @@ public:
 		TypeTraits::IsIntegerValue<_FirstType> && (_SliceDim < _NRank)>>
 		decltype(auto) operator()(_FirstType _Index, _ArgTypes ..._Args) const
 	{
-		if constexpr (_SliceDim)
+		if constexpr (TypeTraits::IsStringValue<_FirstType>)
+			return operator() < _SliceDim > (Range(_Index), _Args...);
+		else if constexpr (_SliceDim)
 		{
-			_Index = CalcIndex(_Index, _MyShape[_SliceDim]);
-			return operator() < _SliceDim > (Range{ _Index, _Index + 1 }, _Args...);
+			_Index = static_cast<_FirstType>(CalcIndex(static_cast<SizeType>(_Index), _MyShape[_SliceDim]));
+			return operator() < _SliceDim > (Range{ static_cast<SizeType>(_Index), static_cast<SizeType>(_Index + 1) }, _Args...);
 		}
 		else if constexpr (_NRank == 1)
 			return Get(static_cast<SizeType>(_Index));
@@ -859,8 +959,8 @@ private:
 	)
 	{
 		_MyShape = MyShape;
-		auto _Begin = _MyViewStep.ReversedBegin();
-		auto _End = _MyViewStep.ReversedEnd();
+		auto _Begin = _MyViewStride.ReversedBegin();
+		const auto _End = _MyViewStride.ReversedEnd();
 		auto _Iter = _MyShape.ReversedBegin();
 		*_Begin-- = 1;
 		while (_Begin != _End)
@@ -868,8 +968,6 @@ private:
 			*_Begin = *(_Begin + 1) * *_Iter--;
 			--_Begin;
 		}
-		_MyViewLeft.AssignConstant(0ll);
-		_MyViewStride.AssignConstant(1ll);
 	}
 
 	Tensor() = default;
@@ -932,6 +1030,25 @@ private:
 	{
 		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignBuffer(
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Buffer,
+			_Count,
+			!IsBroadCasted() && IsContinuous()
+		);
+	}
+
+	template <typename _CurValueType = ValueType>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_CurValueType, _CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>
+		> MoveAssign(const ValueType* _Buffer, SizeType _Count)
+	{
+		Eval();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMoveBuffer(
 			_MyData,
 			GetDefaultOperatorParameter(),
 			_Buffer,
@@ -1053,10 +1170,7 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
 		decltype(auto) Data() const
 	{
-		if constexpr (TypeTraits::IsSameTypeValue<_TensorType, bool>)
-			return (bool*)_MyData;
-		else
-			return _MyData;
+		return _MyData;
 	}
 
 	/**
@@ -1073,12 +1187,9 @@ public:
 		for (size_t i = 0; i < _Indices.Size(); ++i)
 		{
 			const SizeType Idx = CalcIndex(_Indices[i], _MyShape[i]);
-			Index += ((Idx * _MyViewStride[i]) + _MyViewLeft[i]) * _MyViewStep[i];
+			Index += (Idx * _MyViewStride[i]);
 		}
-		if constexpr (TypeTraits::IsSameTypeValue<_TensorType, bool>)
-			return (bool*)(_MyData + Index);
-		else
-			return _MyData + Index;
+		return _MyData + Index;
 	}
 
 	/**
@@ -1089,10 +1200,7 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
 		decltype(auto) Get(SizeType Index) const
 	{
-		if constexpr (TypeTraits::IsSameTypeValue<_TensorType, bool>)
-			return *(bool*)Data<1>({ Index });
-		else
-			return *Data<1>({ Index });
+		return *Data<1>({ Index });
 	}
 
 	/**
@@ -1114,10 +1222,7 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
 		decltype(auto) Item() const
 	{
-		if constexpr (TypeTraits::IsSameTypeValue<_TensorType, bool>)
-			return *(bool*)(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
-		else
-			return *(_MyData + _MyViewLeft[0] * _MyViewStep[0]);
+		return *_MyData;
 	}
 
 	/**
@@ -1127,7 +1232,7 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
 		decltype(auto) ItemPointer() const
 	{
-		return _MyData + _MyViewLeft[0] * _MyViewStep[0];
+		return _MyData;
 	}
 
 	//******************************************************Operator******************************************************//
@@ -1198,6 +1303,24 @@ public:
 		Tensor&> Fix(const ValueType* _Buffer, SizeType _Count)
 	{
 		Assign(_Buffer, _Count);
+		return *this;
+	}
+
+	/**
+	 * @brief Fix the tensor with a buffer (move).
+	 * @param _Buffer The buffer.
+	 * @param _Count Data count of the buffer.
+	 * @return Reference of this.
+	 */
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_CurValueType, _CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> MoveFix(const ValueType* _Buffer, SizeType _Count)
+	{
+		MoveAssign(_Buffer, _Count);
 		return *this;
 	}
 
@@ -1635,7 +1758,7 @@ public:
 		Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
 		_TRank <= _NRank>,
-		Tensor&> operator+=(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
+		Tensor&> operator+=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
 		_Right.Eval();
@@ -1662,7 +1785,7 @@ public:
 		Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
 		_TRank <= _NRank>,
-		Tensor&> operator-=(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
+		Tensor&> operator-=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
 		_Right.Eval();
@@ -1689,7 +1812,7 @@ public:
 		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
 		_TRank <= _NRank>,
-		Tensor&> operator*=(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
+		Tensor&> operator*=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
 		_Right.Eval();
@@ -1716,7 +1839,7 @@ public:
 		Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
 		_TRank <= _NRank>,
-		Tensor&> operator/=(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
+		Tensor&> operator/=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
 		_Right.Eval();
@@ -1742,7 +1865,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		TypeTraits::IsSameTypeValue<bool, _CurValueType>>,
 		Tensor<ValueType, MaxOf(_NRank, _TRank), _MyDevice>
-		> operator&&(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
+		> operator&&(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
 	{
 		Eval();
 		_Right.Eval();
@@ -1767,7 +1890,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		TypeTraits::IsSameTypeValue<bool, _CurValueType>>,
 		Tensor<ValueType, MaxOf(_NRank, _TRank), _MyDevice>
-		> operator||(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
+		> operator||(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const
 	{
 		Eval();
 		_Right.Eval();
@@ -1969,7 +2092,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> Pow(const Tensor& _InputA, ValueType _Val)
+		Tensor> Pow(const Tensor& _InputA, const ValueType& _Val)
 	{
 		_InputA.Eval();
 		auto Ret = Tensor<ValueType, _NRank, _MyDevice>::New(_InputA.Shape());
@@ -2003,7 +2126,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> Pow(ValueType _Val) const
+		Tensor> Pow(const ValueType& _Val) const
 	{
 		return Pow(*this, _Val);
 	}
@@ -2044,7 +2167,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasInplaceOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor&> PowInplace(ValueType _Val)
+		Tensor&> PowInplace(const ValueType& _Val)
 	{
 		Eval();
 		if (IsBroadCasted())
@@ -2166,7 +2289,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::XorBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> operator^(const ValueType& _Right)
+		Tensor> operator^(const ValueType& _Right) const
 	{
 		Eval();
 		auto Ret = Tensor::New(_MyShape);
@@ -2264,7 +2387,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::BinaryOrBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> operator|(const ValueType& _Right)
+		Tensor> operator|(const ValueType& _Right) const
 	{
 		Eval();
 		auto Ret = Tensor::New(_MyShape);
@@ -2362,7 +2485,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::BinaryAndBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> operator&(const ValueType& _Right)
+		Tensor> operator&(const ValueType& _Right) const
 	{
 		Eval();
 		auto Ret = Tensor::New(_MyShape);
@@ -2460,7 +2583,7 @@ public:
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		Operators::BinaryOperators::SubBinary::HasInplaceOperatorValue<_CurValueType>&&
+		Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
 		Tensor> operator-() const
 	{
@@ -2482,13 +2605,28 @@ public:
 		return Ret == *this;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::BinaryOperators::SubBinary::HasInplaceOperatorValue<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>>,
+		Tensor&> NegativeInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		auto Ret = ZerosLike(*this);
+		Ret -= *this;
+		return *this = std::move(Ret);
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::SqrtUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Sqrt() const
 	{
 		Eval();
@@ -2504,13 +2642,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::RSqrtUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> RSqrt() const
 	{
 		Eval();
@@ -2526,13 +2663,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ReciprocalUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Reciprocal() const
 	{
 		Eval();
@@ -2548,13 +2684,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Abs() const
 	{
 		Eval();
@@ -2570,13 +2705,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::SinUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Sin() const
 	{
 		Eval();
@@ -2592,13 +2726,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::CosUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Cos() const
 	{
 		Eval();
@@ -2614,13 +2747,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::TanUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Tan() const
 	{
 		Eval();
@@ -2636,13 +2768,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ASinUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ASin() const
 	{
 		Eval();
@@ -2658,13 +2789,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ACosUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ACos() const
 	{
 		Eval();
@@ -2680,13 +2810,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ATanUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ATan() const
 	{
 		Eval();
@@ -2702,13 +2831,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::SinhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Sinh() const
 	{
 		Eval();
@@ -2724,13 +2852,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::CoshUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Cosh() const
 	{
 		Eval();
@@ -2746,13 +2873,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::TanhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Tanh() const
 	{
 		Eval();
@@ -2768,13 +2894,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ASinhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ASinh() const
 	{
 		Eval();
@@ -2790,13 +2915,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ACoshUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ACosh() const
 	{
 		Eval();
@@ -2812,13 +2936,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ATanhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> ATanh() const
 	{
 		Eval();
@@ -2834,13 +2957,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::ExpUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Exp() const
 	{
 		Eval();
@@ -2856,13 +2978,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Log() const
 	{
 		Eval();
@@ -2878,13 +2999,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::Log2Unary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Log2() const
 	{
 		Eval();
@@ -2900,13 +3020,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::Log10Unary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Log10() const
 	{
 		Eval();
@@ -2922,13 +3041,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::CeilUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Ceil() const
 	{
 		Eval();
@@ -2944,13 +3062,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::FloorUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Floor() const
 	{
 		Eval();
@@ -2966,13 +3083,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::RoundUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Round() const
 	{
 		Eval();
@@ -2988,13 +3104,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::TruncUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Trunc() const
 	{
 		Eval();
@@ -3010,13 +3125,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, Device _CurDevice = Device::CPU>
+	template <typename _CurValueType = ValueType>
 	std::enable_if_t<
 		TypeTraits::AndValue <
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_copy_assignable_v<_CurValueType>&&
-		_CurDevice == _MyDevice &&
-		_CurDevice == Device::CPU>,
+		Operators::UnaryOperators::FracUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
 		Tensor> Frac() const
 	{
 		Eval();
@@ -3052,8 +3166,6 @@ public:
 		Ret.Begin.AssignConstant(0);
 		Ret.Shape.Assign(_MyShape.Data() + _Begin);
 		Ret.ViewStride.Assign(_MyViewStride.Data() + _Begin);
-		Ret.ViewStep.Assign(_MyViewStep.Data() + _Begin);
-		Ret.ViewLeft.Assign(_MyViewLeft.Data() + _Begin);
 		for (size_t i = 0; i < CurrentRank; ++i)
 			Ret.IsContinuous[i] = IsContinuous(_Begin + i, _End);
 		Ret.ThreadPool = _MyFutures;
@@ -3127,24 +3239,6 @@ public:
 	}
 
 	/**
-	 * @brief Get the steps of the tensor.
-	 * @return The steps of the tensor.
-	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions<_NRank>& ViewSteps() const
-	{
-		return _MyViewStep;
-	}
-
-	/**
-	 * @brief Get the left indices of the tensor.
-	 * @return The left indices of the tensor.
-	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions<_NRank>& ViewLeft() const
-	{
-		return _MyViewLeft;
-	}
-
-	/**
 	 * @brief Get the default slice vector of the tensor.
 	 * @return The default slice vector of the tensor.
 	 */
@@ -3169,7 +3263,7 @@ public:
 		std::vector<std::pair<SizeType, SizeType>> Ret;
 		Ret.reserve(Dims);
 		for (SizeType i = 0; i < Dims; ++i)
-			Ret.emplace_back(_MyViewStep[i], i);
+			Ret.emplace_back(_MyViewStride[i], i);
 		std::ranges::sort(Ret);
 		std::ranges::reverse(Ret);
 		Dimensions<_NRank> Rtn;
@@ -3217,11 +3311,12 @@ public:
 	template <size_t _Begin = 0, size_t _End = _NRank>
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous() const
 	{
-		for (size_t i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
-				return false;
+		static_assert(_End <= _NRank);
+
+		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
+
 		for (size_t i = _Begin + 1; i < _End; ++i)
-			if (_MyViewStep[i - 1] / _MyShape[i] != _MyViewStep[i])
+			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
 	}
@@ -3237,44 +3332,11 @@ public:
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcRange(_End, Rank());
 
-		for (SizeType i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
-				return false;
+		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = _Begin + 1; i < _End; ++i)
-			if (_MyViewStep[i - 1] / _MyShape[i] != _MyViewStep[i])
+			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
-		return true;
-	}
 
-	/**
-	 * @brief Check if the tensor is not sliced in the specified range.
-	 * @tparam _Begin start axis
-	 * @tparam _End end axis
-	 * @return True if the tensor is not sliced, false otherwise.
-	 */
-	template <size_t _Begin = 0, size_t _End = _NRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsNotSliced() const
-	{
-		for (size_t i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
-				return false;
-		return true;
-	}
-
-	/**
-	 * @brief Check if the tensor is not sliced in the specified range.
-	 * @param _Begin start axis
-	 * @param _End end axis
-	 * @return True if the tensor is not sliced, false otherwise.
-	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsNotSliced(SizeType _Begin = 0, SizeType _End = _NRank) const
-	{
-		_Begin = CalcIndex(_Begin, Rank());
-		_End = CalcRange(_End, Rank());
-
-		for (SizeType i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i] != 1 || _MyViewLeft[i] != 0)
-				return false;
 		return true;
 	}
 
@@ -3293,7 +3355,19 @@ public:
 	 */
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsBroadCasted() const
 	{
-		return IsBroadCasted_;
+		return _MyShapeIsBroadCasted;
+	}
+
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
+	{
+		_Begin = CalcIndex(_Begin, Rank());
+		_End = CalcRange(_End, Rank());
+
+		for (SizeType i = _Begin; i < _End; ++i)
+			if (!_MyViewStride[i])
+				return true;
+
+		return false;
 	}
 
 private:
@@ -3319,7 +3393,7 @@ public:
 			TypeTraits::IsSameTypeValue<_TensorType, bool>
 			, bool, ValueType>;
 		return TensorIterator<RetType, _NRank>(
-			(RetType*)_MyData, _MyShape.Data(), _MyViewStep.Data(), _MyViewLeft.Data(), _MyViewStride.Data()
+			(RetType*)_MyData, _MyShape.Data(), _MyViewStride.Data()
 		);
 	}
 
@@ -3441,10 +3515,10 @@ public:
 	 */
 	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Ceil(SizeType _Left, SizeType _Right)
 	{
-		auto Mul = _Left / _Right;
-		if (_Left > (Mul * _Right))
-			++Mul;
-		return Mul;
+		auto Div = _Left / _Right;
+		if (_Left > (Div * _Right))
+			++Div;
+		return Div;
 	}
 
 	//*********************************************************View*********************************************************//
@@ -3467,17 +3541,34 @@ public:
 		{
 			if (_SliceOptions[i].IsNone)
 				continue;
-			const auto SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
-			auto SliceEndPos = CalcRange(_SliceOptions[i].End, _MyShape[i]);
+
+			SizeType SliceBeginPos, SliceStep, SliceEndPos;
+
+			if (_SliceOptions[i].IsValue)
+			{
+				SliceBeginPos = CalcIndex(_SliceOptions[i].Step, _MyShape[i]);
+				SliceStep = 1;
+				SliceEndPos = SliceBeginPos + 1;
+			}
+			else
+			{
+				SliceStep = _SliceOptions[i].Step;
+				if (SliceStep == 0)
+					_D_Dragonian_Lib_Throw_Exception("SliceStep Should Not Be Zero!");
+				SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
+				SliceEndPos = CalcRange(_SliceOptions[i].End, _MyShape[i]);
+			}
+
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
-				_D_Dragonian_Lib_Throw_Exception("Slice Length Must > 0");
-			if (SliceLength > 0 && _SliceOptions[i].Step < 0 ||
-				SliceLength < 0 && _SliceOptions[i].Step > 0)
+				_D_Dragonian_Lib_Throw_Exception("(SliceEnd - SliceBegin) Should Not Be Zero!");
+			const auto SlicedShape = Ceil(abs(SliceLength), abs(SliceStep));
+			if (SlicedShape < 0)
 				_D_Dragonian_Lib_Throw_Exception("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
-			Ret._MyViewLeft[i] += SliceBeginPos * Ret._MyViewStride[i];
-			Ret._MyShape[i] = Ceil(abs(SliceLength), abs(_SliceOptions[i].Step));
-			Ret._MyViewStride[i] *= _SliceOptions[i].Step;
+
+			Ret._MyData += SliceBeginPos * Ret._MyViewStride[i];
+			Ret._MyShape[i] = SlicedShape;
+			Ret._MyViewStride[i] *= SliceStep;
 		}
 		return Ret;
 	}
@@ -3516,8 +3607,6 @@ public:
 		for (size_t i = 0; i < _PremuteOrder.Size(); ++i)
 		{
 			Ret._MyShape[i] = _MyShape[_PremuteOrder[i]];
-			Ret._MyViewStep[i] = _MyViewStep[_PremuteOrder[i]];
-			Ret._MyViewLeft[i] = _MyViewLeft[_PremuteOrder[i]];
 			Ret._MyViewStride[i] = _MyViewStride[_PremuteOrder[i]];
 		}
 		return Ret;
@@ -3539,12 +3628,8 @@ public:
 		if (_Axis1 == _Axis2)
 			return Ret;
 		Ret._MyShape[_Axis2] = _MyShape[_Axis1];
-		Ret._MyViewStep[_Axis2] = _MyViewStep[_Axis1];
-		Ret._MyViewLeft[_Axis2] = _MyViewLeft[_Axis1];
 		Ret._MyViewStride[_Axis2] = _MyViewStride[_Axis1];
 		Ret._MyShape[_Axis1] = _MyShape[_Axis2];
-		Ret._MyViewStep[_Axis1] = _MyViewStep[_Axis2];
-		Ret._MyViewLeft[_Axis1] = _MyViewLeft[_Axis2];
 		Ret._MyViewStride[_Axis1] = _MyViewStride[_Axis2];
 		return Ret;
 	}
@@ -3559,16 +3644,14 @@ public:
 		ThrowOnNotEnabled();
 		Tensor<_TensorType, _NRank + 1, _MyDevice> Ret;
 		_Dim = CalcRange(_Dim, Rank());
-		const auto _Value = _Dim == Rank() ? 1 : _MyViewStep[_Dim] * _MyShape[_Dim];
+		const auto _Value = _Dim == Rank() ? 1 : _MyViewStride[_Dim] * _MyShape[_Dim];
 		Ret._MyShape = _MyShape.Insert(1, _Dim);
-		Ret._MyViewStep = _MyViewStep.Insert(_Value, _Dim);
-		Ret._MyViewLeft = _MyViewLeft.Insert(0, _Dim);
-		Ret._MyViewStride = _MyViewStride.Insert(1, _Dim);
+		Ret._MyViewStride = _MyViewStride.Insert(_Value, _Dim);
 		Ret._MyFirst = _MyFirst;
 		Ret._MyData = _MyData;
 		Ret._MyLast = _MyLast;
 		Ret._MyFutures = _MyFutures;
-		Ret.IsBroadCasted_ = IsBroadCasted_;
+		Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
 		return Ret;
 	}
 
@@ -3577,22 +3660,27 @@ public:
 	 * @param _Dim The specified position.
 	 * @return A squeezed tensor(view).
 	 */
-	template <size_t _TRank = _NRank>
-	std::enable_if_t<(_TRank > 1) && _TRank == _NRank, Tensor<_TensorType, _NRank - 1, _MyDevice>> Squeeze(SizeType _Dim) const
+	template <size_t _TRank = _NRank, typename = std::enable_if_t<_TRank == _NRank>>
+	decltype(auto) Squeeze(SizeType _Dim) const
 	{
 		ThrowOnNotEnabled();
-		Tensor<_TensorType, _NRank - 1, _MyDevice> Ret;
-		_Dim = CalcIndex(_Dim, SizeType(Ret._MyShape.Size()));
-		if (Ret._MyShape[_Dim] != 1)
-			_D_Dragonian_Lib_Throw_Exception("The Dim Must Be 1!");
-
-		if (Ret._MyViewLeft[_Dim])
-			_MyData += _MyViewLeft[_Dim] * _MyViewStep[_Dim];
-		Ret._MyShape.Erase(Ret._MyShape.begin() + _Dim);
-		Ret._MyViewStep.Erase(Ret._MyViewStep.begin() + _Dim);
-		Ret._MyViewLeft.Erase(Ret._MyViewLeft.begin() + _Dim);
-		Ret._MyViewStride.Erase(Ret._MyViewStride.begin() + _Dim);
-		return Ret;
+		if constexpr (_TRank == 1)
+			return View();
+		else
+		{
+			_Dim = CalcIndex(_Dim, SizeType(_MyShape.Size()));
+			if (_MyShape[_Dim] != 1)
+				_D_Dragonian_Lib_Throw_Exception("The Shape Of Dim Must Be 1!");
+			Tensor<_TensorType, _NRank - 1, _MyDevice> Ret;
+			Ret._MyShape = _MyShape.Erase(_Dim);
+			Ret._MyViewStride = _MyViewStride.Erase(_Dim);
+			Ret._MyFirst = _MyFirst;
+			Ret._MyData = _MyData;
+			Ret._MyLast = _MyLast;
+			Ret._MyFutures = _MyFutures;
+			Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
+			return Ret;
+		}
 	}
 
 	/**
@@ -3614,33 +3702,42 @@ public:
 	{
 		if (!IsContinuous())
 			_D_Dragonian_Lib_Throw_Exception("View Should Be Continuous!");
-		if (std::ranges::count(_ViewShape.begin(), _ViewShape.end(), -1) > 1)
-			_D_Dragonian_Lib_Throw_Exception("Count Of Dynamic Axis Should <= 1!");
+		if (std::ranges::count(_ViewShape, -1) > 1)
+			_D_Dragonian_Lib_Throw_Exception("Count Of Dynamic Axis Should Be <= 1!");
 		for (const auto i : _ViewShape)
 			if (i <= 0 && i != -1)
-				_D_Dragonian_Lib_Throw_Exception("Count Of Size Should > 0 Or = -1 (Dynamic Axis)!");
-		Tensor<_TensorType, _TRank, _MyDevice> Ret(_ViewShape);
-		const auto SrcSize = Ret._MyShape.Multiply();
-		const auto DstSize = _ViewShape.Multiply();
-		if ((DstSize < 0 && (SrcSize % abs(DstSize)) != 0) || (DstSize > 0 && (SrcSize != DstSize)))
-			_D_Dragonian_Lib_Throw_Exception("Size MisMatch!");
+				_D_Dragonian_Lib_Throw_Exception("Count Of Size Should Be Greater Than 0 Or Equal -1 (Dynamic Axis)!");
+		
+		const auto SrcSize = _MyShape.Multiply();
+		const auto DstSize = std::abs(_ViewShape.Multiply());
+
+		const auto Remainder = SrcSize % DstSize;
 		const auto DynamicAxes = SrcSize / DstSize;
 
+		if (Remainder)
+			_D_Dragonian_Lib_Throw_Exception("Could Not View The Tensor With Size["
+				+ std::to_string(SrcSize) + "] To Size[" + std::to_string(DstSize) + "]!");
+
+		Tensor<_TensorType, _TRank, _MyDevice> Ret;
 		Ret._MyShape = _ViewShape;
-		for (auto& i : Ret._MyShape)
-			if (i == -1)
-			{
-				i = abs(DynamicAxes);
-				break;
-			}
-		Ret._MyViewStep.Resize(Ret._MyShape.Size());
-		auto _Begin = Ret._MyViewStep.ReversedBegin();
-		auto _End = Ret._MyViewStep.ReversedEnd();
+		if (DynamicAxes > 1)
+			*std::ranges::find(Ret._MyShape, -1) = DynamicAxes;
+		auto _Begin = Ret._MyViewStride.ReversedBegin();
+		const auto _End = Ret._MyViewStride.ReversedEnd();
 		auto _Iter = Ret._MyShape.ReversedBegin();
 		*_Begin-- = 1;
-		while (_Begin != _End) *_Begin-- = *_Iter--;
-		_MyViewLeft.AssignConstant(0ll);
-		_MyViewStride.AssignConstant(1ll);
+		while (_Begin != _End)
+		{
+			*_Begin = *(_Begin + 1) * *_Iter--;
+			--_Begin;
+		}
+
+		Ret._MyFirst = _MyFirst;
+		Ret._MyData = _MyData;
+		Ret._MyLast = _MyLast;
+		Ret._MyFutures = _MyFutures;
+		Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
+
 		return Ret;
 	}
 

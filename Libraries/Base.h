@@ -18,7 +18,6 @@
 */
 
 #pragma once
-#include <complex>
 #include <cstdint>
 #include <filesystem>
 #include <unordered_map>
@@ -398,6 +397,30 @@ struct ExtractAllShapesOfArrayLikeType<_ObjType<_ValueSize, _ValueType>>
 template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArrayLikeValue<_Type>>>
 const auto& GetAllShapesOfArrayLikeType = _D_Dragonian_Lib_Namespace ExtractAllShapesOfArrayLikeType<_Type>::GetShape().Data;
 
+template <typename _ValueType>
+struct ExtractAllShapesOfInitializerList;
+template <typename _ValueType>
+struct ExtractAllShapesOfInitializerList<std::initializer_list<_ValueType>>
+{
+	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
+	template <typename = std::enable_if_t<(Rank > 0)>>
+		static constexpr _Impl_Static_Array_Type<int64_t, Rank> GetShape(const std::initializer_list<_ValueType>& _Val)
+	{
+		if constexpr (Rank == 1)
+		{
+			_Impl_Static_Array_Type<int64_t, 1> Shape{ static_cast<int64_t>(_Val.size()) };
+			return Shape;
+		}
+		else
+		{
+			_Impl_Static_Array_Type<int64_t, Rank> Shape(
+				static_cast<int64_t>(_Val.size()),
+				ExtractAllShapesOfArrayLikeType<_ValueType>::GetShape()
+			);
+			return Shape;
+		}
+	}
+};
 
 //***************************************************Base*********************************************************//
 
@@ -545,5 +568,18 @@ enum class FloatPrecision
 	Float16,
 	Float32
 };
+
+template <typename _Type>
+decltype(auto) CvtToString(const _Type& _Value)
+{
+	if constexpr (TypeTraits::IsComplexValue<_Type>)
+		return std::to_string(_Value.real()) + " + " + std::to_string(_Value.imag()) + "i";
+	else if constexpr (TypeTraits::IsArithmeticValue<_Type>)
+		return std::to_string(_Value);
+	else if constexpr (TypeTraits::IsStringValue<_Type>)
+		return _Value;
+	else
+		return _Value.to_string();
+}
 
 _D_Dragonian_Lib_Space_End

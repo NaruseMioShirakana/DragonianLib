@@ -3,7 +3,6 @@
 #include <random>
 #include "../TensorBase.h"
 #include "OperatorMarco.h"
-#include "CPU/Unary.h"
 
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
@@ -11,33 +10,6 @@
 _D_Dragonian_Lib_Operator_Space_Begin
 
 using namespace TypeTraits;
-
-template<SizeType Rank>
-struct OperatorParameterND
-{
-	SizeType Shape[Rank], ViewStep[Rank], ViewLeft[Rank], ViewStride[Rank];
-	bool IsContinuousND[Rank];
-	std::shared_ptr<std::deque<std::future<void>>> ThreadPool;
-	SizeType ViewRank = 1;
-	OperatorParameterND()
-	{
-		for (SizeType i = 0; i < Rank; i++)
-		{
-			Shape[i] = 0;
-			ViewStep[i] = 0;
-			ViewLeft[i] = 0;
-			ViewStride[i] = 0;
-			IsContinuousND[i] = false;
-		}
-	}
-	SizeType GetSize() const
-	{
-		SizeType Size = 1;
-		for (SizeType i = 0; i < Rank; ++i) Size *= Shape[i];
-		return Size;
-	}
-	constexpr static SizeType StructRank = Rank;
-};
 
 template<size_t _NRank>
 struct OperatorParameter
@@ -47,9 +19,7 @@ struct OperatorParameter
 
 	IDLArray<SizeType, _NRank> Shape; ///< Shape: The [view end/shape] of the tensor.
 	IDLArray<SizeType, _NRank> Begin; ///< Begin: The [view begin] of the tensor.
-	IDLArray<SizeType, _NRank> ViewStep; ///< ViewStep: The step of the view.
-	IDLArray<SizeType, _NRank> ViewLeft; ///< ViewLeft: The left of the view.
-	IDLArray<SizeType, _NRank> ViewStride; ///< ViewStride: The stride of the view.
+	IDLArray<SizeType, _NRank> ViewStride; ///< ViewStep: The step of the view.
 	IDLArray<bool, _NRank> IsContinuous; ///< IsContinuous: The continuous flag of the view.
 	_MyMultiThreadSyncP ThreadPool = nullptr; ///< ThreadPool: The futures of the tensor.
 	void* UserParameter = nullptr; ///< UserParameter: The user parameter.
@@ -88,6 +58,18 @@ public:
 		const OperatorParameter<_NRank>& _DestInfo,
 		const _Type* _Src,
 		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void ImplMoveBuffer(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		SizeType _Count,
 		bool Continuous
 	)
 	{
@@ -220,6 +202,7 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Round) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Trunc) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Negative) { _D_Dragonian_Lib_Not_Implemented_Error; }
 };
 
 _D_Dragonian_Lib_Operator_Space_End

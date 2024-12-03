@@ -101,7 +101,7 @@ public:
 		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
 			_mm256_store_pd(reinterpret_cast<double*>(_Dest), *this);
 		else
-			_mm256_store_si256((const __m256i*)_Dest, _YMMX);
+			_mm256_store_si256((__m256i*)_Dest, _YMMX);
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
 	{
@@ -126,14 +126,14 @@ public:
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void StoreBool(void* _Dest) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex64>)
 		{
 			const auto Mask = _mm256_movemask_ps(*this);
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 8; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (std::is_same_v<Type, double>)
 		{
 			const auto Mask = _mm256_movemask_pd(*this);
 			auto Dest = (bool*)_Dest;
@@ -147,7 +147,7 @@ public:
 			for (int i = 0; i < 32; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (std::is_same_v<Type, int16_t> || std::is_same_v<Type, Complex32>)
 		{
 			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi16_epi8(*this)));
 			auto Dest = (bool*)_Dest;
@@ -202,9 +202,9 @@ public:
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LT_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_LT_OQ);
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			return _mm256_cmpgt_epi8(_Right, *this);
@@ -219,18 +219,18 @@ public:
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<=(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LE_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_LE_OQ);
 		else
 			return *this < _Right || *this == _Right;
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GT_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_GT_OQ);
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			return _mm256_cmpgt_epi8(*this, _Right);
@@ -245,9 +245,9 @@ public:
 	}
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>=(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GE_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (std::is_same_v<Type, double>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_GE_OQ);
 		else
 			return *this > _Right || *this == _Right;
@@ -293,15 +293,6 @@ public:
 		}
 		else
 			return _mm256_xor_si256(*this, _Right);
-	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized NotEqual(const Vectorized& _Right, const Vectorized& _Mask) const
-	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
-			return _mm256_cmp_ps(*this, _Right, _CMP_NEQ_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
-			return _mm256_cmp_pd(*this, _Right, _CMP_NEQ_OQ);
-		else
-			return (*this == _Right).Not(_Mask);
 	}
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator+(const Vectorized& _Right) const
@@ -509,20 +500,37 @@ public:
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Not(const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Not() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
-			return _mm256_cmp_ps(*this, _Mask, _CMP_EQ_OQ);
+			return _mm256_cmp_ps(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type), _CMP_EQ_OQ);
 		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
-			return _mm256_cmp_pd(*this, _Mask, _CMP_EQ_OQ);
+			return _mm256_cmp_pd(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type), _CMP_EQ_OQ);
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			return _mm256_cmpeq_epi8(*this, _Mask);
+			return _mm256_cmpeq_epi8(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
 		else if constexpr (std::is_same_v<Type, int16_t>)
-			return _mm256_cmpeq_epi16(*this, _Mask);
+			return _mm256_cmpeq_epi16(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
 		else if constexpr (std::is_same_v<Type, int32_t>)
-			return _mm256_cmpeq_epi32(*this, _Mask);
+			return _mm256_cmpeq_epi32(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
 		else if constexpr (std::is_same_v<Type, int64_t>)
-			return _mm256_cmpeq_epi64(*this, _Mask);
+			return _mm256_cmpeq_epi64(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
+		else
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+	}
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Negative() const
+	{
+		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+			return _mm256_xor_ps(*this, _mm256_set1_ps(-0.0f));
+		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+			return _mm256_xor_pd(*this, _mm256_set1_pd(-0.0));
+		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+			return _mm256_sub_epi8(_mm256_setzero_si256(), *this);
+		else if constexpr (std::is_same_v<Type, int16_t>)
+			return _mm256_sub_epi16(_mm256_setzero_si256(), *this);
+		else if constexpr (std::is_same_v<Type, int32_t>)
+			return _mm256_sub_epi32(_mm256_setzero_si256(), *this);
+		else if constexpr (std::is_same_v<Type, int64_t>)
+			return _mm256_sub_epi64(_mm256_setzero_si256(), *this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
@@ -1140,11 +1148,35 @@ public:
 			return _mm256_sinh_pd(*this);
 		else if constexpr (std::is_same_v<Type, Complex32>)
 		{
+			__m256 a = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
+			__m256 b = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 
+			__m256 sinh_a = _mm256_sinh_ps(a);
+			__m256 cos_b = _mm256_cos_ps(b);
+
+			__m256 cosh_a = _mm256_cosh_ps(a);
+			__m256 sin_b = _mm256_sin_ps(b);
+
+			__m256 real_part = _mm256_mul_ps(sinh_a, cos_b);
+			__m256 imag_part = _mm256_mul_ps(cosh_a, sin_b);
+
+			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
 		else if constexpr (std::is_same_v<Type, Complex64>)
 		{
+			__m256d a = _mm256_movedup_pd(*this);
+			__m256d b = _mm256_permute_pd(*this, 0b0101);
 
+			__m256d sinh_a = _mm256_sinh_pd(a);
+			__m256d cos_b = _mm256_cos_pd(b);
+
+			__m256d cosh_a = _mm256_cosh_pd(a);
+			__m256d sin_b = _mm256_sin_pd(b);
+
+			__m256d real_part = _mm256_mul_pd(sinh_a, cos_b);
+			__m256d imag_part = _mm256_mul_pd(cosh_a, sin_b);
+
+			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -1165,11 +1197,35 @@ public:
 			return _mm256_cosh_pd(*this);
 		else if constexpr (std::is_same_v<Type, Complex32>)
 		{
+			__m256 a = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
+			__m256 b = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 
+			__m256 cosh_a = _mm256_cosh_ps(a);
+			__m256 cos_b = _mm256_cos_ps(b);
+
+			__m256 sinh_a = _mm256_sinh_ps(a);
+			__m256 sin_b = _mm256_sin_ps(b);
+
+			__m256 real_part = _mm256_mul_ps(cosh_a, cos_b);
+			__m256 imag_part = _mm256_mul_ps(sinh_a, sin_b);
+
+			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
 		else if constexpr (std::is_same_v<Type, Complex64>)
 		{
+			__m256d a = _mm256_movedup_pd(*this);
+			__m256d b = _mm256_permute_pd(*this, 0b0101);
 
+			__m256d cosh_a = _mm256_cosh_pd(a);
+			__m256d cos_b = _mm256_cos_pd(b);
+
+			__m256d sinh_a = _mm256_sinh_pd(a);
+			__m256d sin_b = _mm256_sin_pd(b);
+
+			__m256d real_part = _mm256_mul_pd(cosh_a, cos_b);
+			__m256d imag_part = _mm256_mul_pd(sinh_a, sin_b);
+
+			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;

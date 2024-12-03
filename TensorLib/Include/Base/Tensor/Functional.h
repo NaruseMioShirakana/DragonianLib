@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Tensor.h"
+#include <ostream>
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -338,9 +339,10 @@ namespace Functional
 		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>,
 		Tensor<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>,
 		TypeTraits::ExtractRankValue<_MyArrayLike>,
-		_MyDevice>> FromArrayLike(const _MyArrayLike& _Array)
+		_MyDevice>> CopyFromArrayLike(const _MyArrayLike& _Array)
 	{
 		using ValueType = TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>;
+		static_assert(std::is_copy_assignable_v<ValueType>, "The value type of the array-like object must be copy assignable.");
 		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
 
 		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
@@ -355,6 +357,43 @@ namespace Functional
 		return Ret;
 	}
 
+	template <Device _MyDevice = Device::CPU, typename _MyArrayLike>
+	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>,
+		Tensor<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>,
+		TypeTraits::ExtractRankValue<_MyArrayLike>,
+		_MyDevice>> MoveFromArrayLike(const _MyArrayLike& _Array)
+	{
+		using ValueType = TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>;
+		static_assert(std::is_move_assignable_v<ValueType>, "The value type of the array-like object must be move constructible.");
+		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
+
+		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
+		auto Ret = Empty<ValueType, Rank, _MyDevice>(_Shape);
+		const auto TotalSize = _Shape.Multiply();
+		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike>)
+			Ret.MoveFix(&_Array[0], TotalSize);
+		else if (sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
+			Ret.MoveFix((const ValueType*)&_Array, TotalSize);
+		else
+			_D_Dragonian_Lib_Throw_Exception("The array-like object is not compatible with the tensor.");
+		return Ret;
+	}
+
+}
+
+template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+std::ostream& operator<<(std::ostream& _OStream, const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+{
+	_OStream << _Tensor.CastToString();
+	return _OStream;
+}
+
+template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+std::wostream& operator<<(std::wostream& _OStream, const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+{
+	_OStream << _Tensor.CastToWideString();
+	return _OStream;
 }
 
 _D_Dragonian_Lib_Space_End

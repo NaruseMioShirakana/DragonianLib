@@ -2,44 +2,14 @@
 #include "CPU.h"
 #include "Libraries/Util/Logger.h"
 
-_D_Dragonian_Lib_Operator_Space_Begin
-
 #define _D_Dragonian_Lib_Operator_Binary_Function_Def(_Function, Unfold) namespace BinaryOperators { namespace _Function##Binary { \
  \
 constexpr int64_t _D_Dragonian_Lib_Operator_Binary_Unfold = 8; \
  \
 template <typename Type> \
-class HasOperator \
-{ \
-	template <typename Objty> \
-	static constexpr auto Check(int) -> decltype(_Function(InstanceOf<Objty>(), InstanceOf<Objty>()), std::true_type()) \
-	{ \
-		return{}; \
-	} \
-	template <typename> \
-	static constexpr std::false_type Check(...) { return{}; } \
-public: \
-	static constexpr bool _HasOperator = decltype(Check<Type>(0))::value; \
-}; \
- \
+constexpr bool HasOperatorValue = decltype(TypeTraits::IsInvokableWith::CheckConst(_Function##<Type>, InstanceOf<Type>(), InstanceOf<Type>()))::value; \
 template <typename Type> \
-class HasInplaceOperator \
-{ \
-	template <typename Objty> \
-	static constexpr auto Check(int) -> decltype(_Function##Inplace(InstanceOf<Objty>(), InstanceOf<Objty>()), std::true_type()) \
-	{ \
-		return{}; \
-	} \
-	template <typename> \
-	static constexpr std::false_type Check(...) { return{}; } \
-public: \
-	static constexpr bool _HasOperator = decltype(Check<Type>(0))::value; \
-}; \
- \
-template <typename Type> \
-constexpr bool HasOperatorValue = HasOperator<Type>::_HasOperator; \
-template <typename Type> \
-constexpr bool HasInplaceOperatorValue = HasInplaceOperator<Type>::_HasOperator; \
+constexpr bool HasInplaceOperatorValue = decltype(TypeTraits::IsInvokableWith::CheckConst(_Function##Inplace<Type>, InstanceOf<Type>(), InstanceOf<Type>()))::value; \
  \
 template<typename _Type> \
 void BinaryScalarInplaceCont( \
@@ -59,7 +29,7 @@ void BinaryScalarInplaceCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Dest + i), Vectorized<_Type>(_Dest + i)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -113,12 +83,10 @@ void BinaryScalarInplace( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
  \
 	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
-		0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func \
+		0, Shape, Begin, ViewStride, Func \
 	); \
 } \
  \
@@ -141,7 +109,7 @@ void BinaryScalarCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Dest + i), Vectorized<_Type>(_Dest + i)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -198,18 +166,13 @@ void BinaryScalar( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict SrcViewStep = _SrcInfo.ViewStep.Data(); \
-	const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data(); \
 	const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data(); \
  \
 	DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
 		0, 0, \
 		Shape, Begin, \
-		ViewStep, ViewLeft, ViewStride, \
-		SrcViewStep, SrcViewLeft, SrcViewStride, \
+		ViewStride, SrcViewStride, \
 		Func \
 	); \
 } \
@@ -232,7 +195,7 @@ void BinaryTensorInplaceCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Dest + i), Vectorized<_Type>(_Dest + i)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -286,18 +249,13 @@ void BinaryTensorInplace( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict SrcViewStep = _SrcInfo.ViewStep.Data(); \
-	const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data(); \
 	const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data(); \
  \
 	DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
 		0, 0, \
 		Shape, Begin, \
-		ViewStep, ViewLeft, ViewStride, \
-		SrcViewStep, SrcViewLeft, SrcViewStride, \
+		ViewStride, SrcViewStride, \
 		Func \
 	); \
 } \
@@ -321,7 +279,7 @@ void BinaryTensorCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Dest + i), Vectorized<_Type>(_Dest + i)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -378,22 +336,14 @@ void BinaryTensor( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict Src1ViewStep = _Src1Info.ViewStep.Data(); \
-	const SizeType* __restrict Src1ViewLeft = _Src1Info.ViewLeft.Data(); \
 	const SizeType* __restrict Src1ViewStride = _Src1Info.ViewStride.Data(); \
-	const SizeType* __restrict Src2ViewStep = _Src2Info.ViewStep.Data(); \
-	const SizeType* __restrict Src2ViewLeft = _Src2Info.ViewLeft.Data(); \
 	const SizeType* __restrict Src2ViewStride = _Src2Info.ViewStride.Data(); \
  \
 	TripleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
 		0, 0, 0, \
 		Shape, Begin, \
-		ViewStep, ViewLeft, ViewStride, \
-		Src1ViewStep, Src1ViewLeft, Src1ViewStride, \
-		Src2ViewStep, Src2ViewLeft, Src2ViewStride, \
+		ViewStride, Src1ViewStride, Src2ViewStride, \
 		Func \
 	); \
 } \
@@ -413,7 +363,7 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
 { \
 	try \
 	{ \
-		_Type Test = _Function(*_Src, _Value); \
+		_Type Test = BinaryOperators::_Function(*_Src, _Value); \
 	} \
 	catch (std::exception& e) \
 	{ \
@@ -462,7 +412,7 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 { \
 	try \
 	{ \
-		_Type Test = _Function(*_Src1, *_Src2); \
+		_Type Test = BinaryOperators::_Function(*_Src1, *_Src2); \
 	} \
 	catch (std::exception& e) \
 	{ \
@@ -499,62 +449,73 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 		BinaryOperators::_Function##Binary::BinaryTensor<_Type, _NRank>, \
 		BinaryOperators::_Function##Binary::BinaryTensorCont<_Type> \
 	); \
-} 
+}
+
+_D_Dragonian_Lib_Operator_Space_Begin
 
 namespace BinaryOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Add(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Add(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left + _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& AddInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		AddInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left += _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Sub(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Sub(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left - _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& SubInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		SubInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left -= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Mul(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Mul(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left * _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& MulInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		MulInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left *= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Div(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Div(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left / _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& DivInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		DivInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left /= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Mod(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Mod(const _Type& _Left, const _Type& _Right)
 	{
 		if constexpr (IsFloatingPointValue<_Type>)
 			return std::fmod(_Left, _Right);
@@ -563,7 +524,8 @@ namespace BinaryOperators
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& ModInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		ModInplace(_Type& _Left, const _Type& _Right)
 	{
 		if constexpr (IsFloatingPointValue<_Type>)
 			return _Left = std::fmod(_Left, _Right);
@@ -572,91 +534,102 @@ namespace BinaryOperators
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type And(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		And(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left && _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& AndInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		AndInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left = _Left && _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Or(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Or(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left || _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& OrInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		OrInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left = _Left || _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type BinaryAnd(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		BinaryAnd(_Type& _Left, const _Type& _Right)
 	{
 		return _Left & _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& BinaryAndInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&> BinaryAndInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left &= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type BinaryOr(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		BinaryOr(_Type& _Left, const _Type& _Right)
 	{
 		return _Left | _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& BinaryOrInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&> BinaryOrInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left |= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Xor(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Xor(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left ^ _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& XorInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		XorInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left ^= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type LShift(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		LShift(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left << _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& LShiftInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&> LShiftInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left <<= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type RShift(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		RShift(const _Type& _Left, const _Type& _Right)
 	{
 		return _Left >> _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& RShiftInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&> RShiftInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left >>= _Right;
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type Pow(const _Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+		Pow(const _Type& _Left, const _Type& _Right)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
 			return _Left.Pow(_Right);
@@ -665,7 +638,8 @@ namespace BinaryOperators
 	}
 
 	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& PowInplace(_Type& _Left, const _Type& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type&>
+		PowInplace(_Type& _Left, const _Type& _Right)
 	{
 		return _Left = Pow(_Left, _Right);
 	}
@@ -685,6 +659,6 @@ _D_Dragonian_Lib_Operator_Binary_Function_Def(LShift, 8);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(RShift, 8);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Pow, 8);
 
-#undef _D_Dragonian_Lib_Operator_Binary_Function_Def
-
 _D_Dragonian_Lib_Operator_Space_End
+
+#undef _D_Dragonian_Lib_Operator_Binary_Function_Def

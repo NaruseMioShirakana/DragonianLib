@@ -106,13 +106,8 @@ public:
 	using iterator_category = std::random_access_iterator_tag;
 
 	TensorIterator(
-		_Type* _Data, const int64_t* _Shape, const int64_t* _Step,
-		const int64_t* _Left, const int64_t* _Stride)
-		: _MyShape(_Shape), _MyStep(_Step), _MyLeft(_Left), _MyStride(_Stride)
-	{
-		_MyData = _Data + *_Left * *_Step;
-		_MyStepStride = *_Step * *_Stride;
-	}
+		_Type* _Data, const int64_t* _Shape, const int64_t* _Stride)
+		: _MyData(_Data), _MyShape(_Shape), _MyStride(_Stride), _MyStepStride(*_Stride) {}
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator& operator++()
 	{
@@ -227,16 +222,6 @@ public:
 		return *_MyShape;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t Step() const
-	{
-		return *_MyStep;
-	}
-
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t Left() const
-	{
-		return *_MyLeft;
-	}
-
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t Stride() const
 	{
 		return *_MyStride;
@@ -250,16 +235,6 @@ public:
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* ShapePtr() const
 	{
 		return _MyShape;
-	}
-
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* StepPtr() const
-	{
-		return _MyStep;
-	}
-
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* LeftPtr() const
-	{
-		return _MyLeft;
 	}
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* StridePtr() const
@@ -282,7 +257,7 @@ public:
 		if constexpr (_Rank == 1)
 			return _MyData;
 		else
-			return TensorIterator<_Type, _Rank - 1>(_MyData, _MyShape + 1, _MyStep + 1, _MyLeft + 1, _MyStride + 1);
+			return TensorIterator<_Type, _Rank - 1>(_MyData, _MyShape + 1, _MyStride + 1);
 	}
 
 	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline pointer End() const
@@ -311,8 +286,6 @@ public:
 protected:
 	_Type* _MyData;
 	const int64_t* _MyShape;
-	const int64_t* _MyStep;
-	const int64_t* _MyLeft;
 	const int64_t* _MyStride;
 	int64_t _MyStepStride;
 };

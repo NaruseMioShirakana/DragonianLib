@@ -2,28 +2,11 @@
 #include "CPU.h"
 #include "Libraries/Util/Logger.h"
 
-_D_Dragonian_Lib_Operator_Space_Begin
-
 #define _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(_Function, Unfold) namespace ComparisonOperators { namespace _Function##Binary { \
  \
 constexpr int64_t _D_Dragonian_Lib_Operator_Binary_Unfold = 8; \
- \
 template <typename Type> \
-class HasOperator \
-{ \
-	template <typename Objty> \
-	static constexpr auto Check(int) -> decltype(_Function(InstanceOf<Objty>(), InstanceOf<Objty>()), std::true_type()) \
-	{ \
-		return{}; \
-	} \
-	template <typename> \
-	static constexpr std::false_type Check(...) { return{}; } \
-public: \
-	static constexpr bool _HasOperator = decltype(Check<Type>(0))::value; \
-}; \
- \
-template <typename Type> \
-constexpr bool HasOperatorValue = HasOperator<Type>::_HasOperator; \
+constexpr bool HasOperatorValue = decltype(TypeTraits::IsInvokableWith::CheckConst(_Function##<Type>, InstanceOf<Type>(), InstanceOf<Type>()))::value; \
  \
 template<typename _Type> \
 void BinaryScalarCont( \
@@ -101,18 +84,13 @@ void BinaryScalar( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict SrcViewStep = _SrcInfo.ViewStep.Data(); \
-	const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data(); \
 	const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data(); \
  \
 	DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
 		0, 0, \
 		Shape, Begin, \
-		ViewStep, ViewLeft, ViewStride, \
-		SrcViewStep, SrcViewLeft, SrcViewStride, \
+		ViewStride, SrcViewStride, \
 		Func \
 	); \
 } \
@@ -193,22 +171,14 @@ void BinaryTensor( \
 		}; \
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data(); \
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data(); \
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict Src1ViewStep = _Src1Info.ViewStep.Data(); \
-	const SizeType* __restrict Src1ViewLeft = _Src1Info.ViewLeft.Data(); \
 	const SizeType* __restrict Src1ViewStride = _Src1Info.ViewStride.Data(); \
-	const SizeType* __restrict Src2ViewStep = _Src2Info.ViewStep.Data(); \
-	const SizeType* __restrict Src2ViewLeft = _Src2Info.ViewLeft.Data(); \
 	const SizeType* __restrict Src2ViewStride = _Src2Info.ViewStride.Data(); \
  \
 	TripleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Binary_Unfold>( \
 		0, 0, 0, \
 		Shape, Begin, \
-		ViewStep, ViewLeft, ViewStride, \
-		Src1ViewStep, Src1ViewLeft, Src1ViewStride, \
-		Src2ViewStep, Src2ViewLeft, Src2ViewStride, \
+		ViewStride, Src1ViewStride, Src2ViewStride, \
 		Func \
 	); \
 } \
@@ -284,43 +254,50 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 	); \
 } 
 
+_D_Dragonian_Lib_Operator_Space_Begin
 
 namespace ComparisonOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
 	template <typename Type>
-	bool Equal(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		Equal(const Type& A, const Type& B)
 	{
 		return A == B;
 	}
 
 	template <typename Type>
-	bool NotEqual(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		NotEqual(const Type& A, const Type& B)
 	{
 		return A != B;
 	}
 
 	template <typename Type>
-	bool Greater(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		Greater(const Type& A, const Type& B)
 	{
 		return A > B;
 	}
 
 	template <typename Type>
-	bool GreaterEqual(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		GreaterEqual(const Type& A, const Type& B)
 	{
 		return A >= B;
 	}
 
 	template <typename Type>
-	bool Less(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		Less(const Type& A, const Type& B)
 	{
 		return A < B;
 	}
 
 	template <typename Type>
-	bool LessEqual(const Type& A, const Type& B)
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+		LessEqual(const Type& A, const Type& B)
 	{
 		return A <= B;
 	}
@@ -333,6 +310,6 @@ _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(GreaterEqual, 0)
 _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(Less, 0)
 _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(LessEqual, 0)
 
-#undef _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def
-
 _D_Dragonian_Lib_Operator_Space_End
+
+#undef _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def

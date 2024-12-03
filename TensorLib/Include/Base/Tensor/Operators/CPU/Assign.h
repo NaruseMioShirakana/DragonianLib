@@ -77,18 +77,13 @@ void AssignTensor(
 			};
 		const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 		const SizeType* __restrict Begin = _DestInfo.Begin.Data();
-		const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data();
-		const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data();
 		const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data();
-		const SizeType* __restrict SrcViewStep = _SrcInfo.ViewStep.Data();
-		const SizeType* __restrict SrcViewLeft = _SrcInfo.ViewLeft.Data();
 		const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data();
 
 		DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
 			0, 0,
 			Shape, Begin,
-			ViewStep, ViewLeft, ViewStride,
-			SrcViewStep, SrcViewLeft, SrcViewStride,
+			ViewStride, SrcViewStride,
 			Func
 		);
 	}
@@ -202,16 +197,15 @@ void AssignBuffer(
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
-		SizeType ViewRank = _DestInfo.GetRank();
 
 		const auto End = _Value._Src + _Value._Count;
 		const _Type* _Src;
-		if (std::ranges::count(_DestInfo.Begin, 0) == ViewRank)
+		if (std::ranges::count(_DestInfo.Begin, 0) == _NRank)
 			_Src = _Value._Src;
-		else if (std::ranges::count(_DestInfo.Begin, 0) == ViewRank - 1)
+		else if (std::ranges::count(_DestInfo.Begin, 0) == _NRank - 1)
 		{
 			SizeType TaskIndex = 1;
-			for (SizeType i = 0; i < ViewRank; ++i)
+			for (SizeType i = 0; i < _NRank; ++i)
 				if (_DestInfo.Begin[i] != 0)
 					TaskIndex *= _DestInfo.Begin[i];
 				else
@@ -221,70 +215,125 @@ void AssignBuffer(
 		else
 			_D_Dragonian_Lib_Not_Implemented_Error;
 		if (_Src >= End) return;
-		const SizeType* __restrict Begin = _DestInfo.Begin.Data();
 
-		if (ViewRank == 1)
-			_D_Dragonian_Lib_Operator_Loop_S_0(
-				_DestInfo,
-				0,
-				F, Begin[0], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis0FA] = *(_Src++);
-				}
-			);
-		else if (ViewRank == 2)
-			_D_Dragonian_Lib_Operator_Loop_S_1(
-				_DestInfo,
-				0,
-				F, Begin[0], Begin[1], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis1FA] = *(_Src++);
-				}
-			);
-		else if (ViewRank == 3)
-			_D_Dragonian_Lib_Operator_Loop_S_2(
-				_DestInfo,
-				0,
-				F, Begin[0], Begin[1], Begin[2], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis2FA] = *(_Src++);
-				}
-			);
-		else if (ViewRank == 4)
-			_D_Dragonian_Lib_Operator_Loop_S_3(
-				_DestInfo,
-				0,
-				F, Begin[0], Begin[1], Begin[2], Begin[3], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis3FA] = *(_Src++);
-				}
-			);
-		else if (ViewRank == 5)
-			_D_Dragonian_Lib_Operator_Loop_S_4(
-				_DestInfo,
-				0,
-				F, Begin[0], Begin[1], Begin[2], Begin[3], Begin[4], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis4FA] = *(_Src++);
-				}
-			);
-		else if (ViewRank == 6)
-			_D_Dragonian_Lib_Operator_Loop_S_5(
-				_DestInfo,
-				0,
-				F, Begin[0], Begin[1], Begin[2], Begin[3], Begin[4], Begin[5], 0,
-				{
-					if (_Src >= End) return;
-					_Dest[IndexAxis5FA] = *(_Src++);
-				}
-			);
+		const auto Func = [&](int64_t _Index)
+			{
+				if (_Src >= End) return;
+				_Dest[_Index] = *(_Src++);
+			};
+
+		SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
+			0, 
+			_DestInfo.Shape.Data(), _DestInfo.Begin.Data(),
+			_DestInfo.ViewStride.Data(),
+			Func
+		);
+	}
+	else
+		_D_Dragonian_Lib_Not_Implemented_Error;
+}
+
+template<typename _Type>
+void MoveBufferCont(
+	_Type* _Dest,
+	SizeType DestSize,
+	_Struct_Buffer<_Type> _Value
+)
+{
+	const auto Index = _Dest - _Value._DestBegin;
+	if (Index >= _Value._Count) return;
+	DestSize = std::min(DestSize, _Value._Count - Index);
+	const auto _SrcPtr = _Value._Src + Index;
+	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
+		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
+	else if constexpr (std::is_move_assignable_v<_Type>)
+	{
+		int64_t i = 0;
+		while (i < DestSize - _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold)
+		{
+			for (int64_t j = 0; j < _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold; ++j)
+			{
+				_Dest[i] = std::move(_SrcPtr[i]);
+				++i;
+			}
+		}
+		while (i < DestSize)
+		{
+			_Dest[i] = std::move(_SrcPtr[i]);
+			++i;
+		}
+	}
+	else
+		_D_Dragonian_Lib_Not_Implemented_Error;
+}
+
+template<typename _Type, size_t _NRank>
+void MoveBuffer(
+	_Type* _Dest,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	_Struct_Buffer<_Type> _Value
+)
+{
+	if constexpr (std::is_move_assignable_v<_Type>)
+	{
+		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
+
+		const auto End = _Value._Src + _Value._Count;
+		const _Type* _Src;
+		if (std::ranges::count(_DestInfo.Begin, 0) == _NRank)
+			_Src = _Value._Src;
+		else if (std::ranges::count(_DestInfo.Begin, 0) == _NRank - 1)
+		{
+			SizeType TaskIndex = 1;
+			for (SizeType i = 0; i < _NRank; ++i)
+				if (_DestInfo.Begin[i] != 0)
+					TaskIndex *= _DestInfo.Begin[i];
+				else
+					TaskIndex *= _DestInfo.Shape[i];
+			_Src = _Value._Src + TaskIndex;
+		}
 		else
 			_D_Dragonian_Lib_Not_Implemented_Error;
+		if (_Src >= End) return;
+
+		const auto Func = [&](int64_t _Index)
+			{
+				if (_Src >= End) return;
+				_Dest[_Index] = std::move(*(_Src++));
+			};
+
+		SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
+			0,
+			_DestInfo.Shape.Data(), _DestInfo.Begin.Data(),
+			_DestInfo.ViewStride.Data(),
+			Func
+		);
+	}
+	else
+		_D_Dragonian_Lib_Not_Implemented_Error;
+}
+
+template<typename _Type>
+template<size_t _NRank>
+void OperatorsBase<_Type, Device::CPU>::ImplMoveBuffer(
+	_Type* _Dest,
+	const OperatorParameter<_NRank>& _DestInfo,
+	const _Type* _Src,
+	SizeType _Count,
+	bool Continuous
+)
+{
+	if constexpr (std::is_move_assignable_v<_Type>)
+	{
+		_Struct_Buffer<_Type> _Value = { _Dest, _Src, _Count };
+		ImplMultiThreadSingle<_Type, _Struct_Buffer<_Type>>(
+			_Dest,
+			_DestInfo,
+			_Value,
+			Continuous,
+			MoveBuffer<_Type, _NRank>,
+			MoveBufferCont<_Type>
+		);
 	}
 	else
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -369,12 +418,10 @@ void AssignScalar(
 		const auto Func = [&](int64_t _Index) { _Dest[_Index] = _Value; };
 		const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 		const SizeType* __restrict Begin = _DestInfo.Begin.Data();
-		const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data();
-		const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data();
 		const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data();
 
 		SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Scalar_Unfold>(
-			0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+			0, Shape, Begin, ViewStride, Func
 		);
 	}
 	else
@@ -463,8 +510,6 @@ void AssignRandn(
 	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data();
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data();
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data();
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data();
 
 	const auto Func = [&](int64_t _Index)
@@ -476,7 +521,7 @@ void AssignRandn(
 		};
 
 	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Randn_Unfold>(
-		0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+		0, Shape, Begin, ViewStride, Func
 	);
 }
 
@@ -568,8 +613,6 @@ void AssignRandom(
 
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data();
 	const SizeType* __restrict Begin = _DestInfo.Begin.Data();
-	const SizeType* __restrict ViewStep = _DestInfo.ViewStep.Data();
-	const SizeType* __restrict ViewLeft = _DestInfo.ViewLeft.Data();
 	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data();
 
 	const auto Func = [&](int64_t _Index)
@@ -581,7 +624,7 @@ void AssignRandom(
 		};
 
 	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Random_Unfold>(
-		0, Shape, Begin, ViewStep, ViewLeft, ViewStride, Func
+		0, Shape, Begin, ViewStride, Func
 	);
 }
 
@@ -606,10 +649,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 			ImplMultiThreadSingle<_Type>(
 				_Dest,
 				_DestInfo,
-				RandomSettings<_Type>{
-			(RandomType)_Min.real(), (RandomType)_Max.real(),
-				(RandomNormalType)0., (RandomNormalType)0.
-		},
+				RandomSettings<_Type>{(RandomType)_Min.real(), (RandomType)_Max.real(), (RandomNormalType)0., (RandomNormalType)0.},
 				Continuous,
 				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>
@@ -618,10 +658,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 			ImplMultiThreadSingle<_Type>(
 				_Dest,
 				_DestInfo,
-				RandomSettings<_Type>{
-			(RandomType)_Min, (RandomType)_Max,
-				(RandomNormalType)0., (RandomNormalType)0.
-		},
+				RandomSettings<_Type>{(RandomType)_Min, (RandomType)_Max, (RandomNormalType)0., (RandomNormalType)0.},
 				Continuous,
 				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>

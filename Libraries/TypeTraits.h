@@ -427,8 +427,14 @@ namespace DragonianLib
 		template <typename _Type>
 		constexpr auto IsAvx256SupportedFloatingPointValue = _D_Dragonian_Lib_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64>;
 		template <typename _Type>
-		constexpr auto IsAvx256SupportedIntegerValue = _D_Dragonian_Lib_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
-
+		constexpr auto IsAvx256SupportedIntegerValue = _D_Dragonian_Lib_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, bool, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+		template <typename _Type>
+		constexpr auto IsCppStringValue = _D_Dragonian_Lib_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, std::string, std::wstring>;
+		template <typename _Type>
+		constexpr auto IsCStringValue = _D_Dragonian_Lib_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, const char*, const wchar_t*>;
+		template <typename _Type>
+		constexpr auto IsStringValue = _D_Dragonian_Lib_Traits_Namespace IsCppStringValue<_Type> || _D_Dragonian_Lib_Traits_Namespace IsCStringValue<_Type>;
+		
 		template <typename _Type>
 		constexpr auto ExtractRank = 0;
 		template <typename _Type>
@@ -441,6 +447,14 @@ namespace DragonianLib
 		constexpr auto ExtractRank<_ObjType<_ValueSize, _ValueType>> = 1 + _D_Dragonian_Lib_Traits_Namespace ExtractRank<_ValueType>;
 		template <typename _Type>
 		constexpr auto ExtractRankValue = _D_Dragonian_Lib_Traits_Namespace ExtractRank<
+			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>>;
+
+		template <typename _Type>
+		constexpr auto ExtractInitializerListRank = 0;
+		template <typename _Type>
+		constexpr auto ExtractInitializerListRank<std::initializer_list<_Type>> = 1 + _D_Dragonian_Lib_Traits_Namespace ExtractInitializerListRank<_Type>;
+		template <typename _Type>
+		constexpr auto ExtractInitializerListRankValue = _D_Dragonian_Lib_Traits_Namespace ExtractInitializerListRank<
 			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>>;
 
 		template <typename _Type>
@@ -466,6 +480,18 @@ namespace DragonianLib
 		template <typename _Type>
 		constexpr bool IsArrayLikeValue = _D_Dragonian_Lib_Traits_Namespace IsArrayLike<
 			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>>;
+
+		template <typename _Type>
+		constexpr bool IsInitializerList = false;
+		template <typename _Type>
+		constexpr bool IsInitializerList<std::initializer_list<_Type>> = true;
+		template <typename _Type>
+		constexpr bool IsInitializerListValue = _D_Dragonian_Lib_Traits_Namespace IsInitializerList<
+			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>>;
+
+		template <typename _Type>
+		constexpr auto IsArrayLikeOrInitializerList = _D_Dragonian_Lib_Traits_Namespace IsArrayLikeValue<_Type> ||
+			_D_Dragonian_Lib_Traits_Namespace IsInitializerListValue<_Type>;
 
 		template <typename _Type>
 		struct ExtractTypeOfArray;
@@ -561,6 +587,25 @@ namespace DragonianLib
 		using ExtractTypeOfArrayAtType = typename _D_Dragonian_Lib_Traits_Namespace ExtractTypeOfArrayAt<
 			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>, _Index>::Type;
 
+		template <typename _Type, size_t _Index>
+		struct ExtractTypeOfInitializerListAt
+		{
+			using Type = _Type;
+		};
+		template <typename _Type, size_t _Index>
+		struct ExtractTypeOfInitializerListAt<std::initializer_list<_Type>, _Index>
+		{
+			using Type = typename _D_Dragonian_Lib_Traits_Namespace ExtractTypeOfInitializerListAt<_Type, _Index - 1>::Type;
+		};
+		template <typename _Type>
+		struct ExtractTypeOfInitializerListAt<std::initializer_list<_Type>, 0>
+		{
+			using Type = _Type;
+		};
+		template <typename _Type, size_t _Index>
+		using ExtractTypeOfInitializerListAtType = typename _D_Dragonian_Lib_Traits_Namespace ExtractTypeOfInitializerListAt<
+			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>, _Index>::Type;
+
 		template <typename _Type>
 		constexpr auto ExtractArraySize = 0;
 		template <typename _Type, size_t _Size>
@@ -613,6 +658,27 @@ namespace DragonianLib
 		template <typename _Type, size_t _Index>
 		constexpr auto ExtractArraySizeAtValue = _D_Dragonian_Lib_Traits_Namespace ExtractArraySizeAt<
 			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<_Type>, _Index>::Size;
+
+		template <typename _Type>
+		using ExtractInnerInitializerListType = _D_Dragonian_Lib_Traits_Namespace ExtractTypeOfInitializerListAtType<
+			_Type, _D_Dragonian_Lib_Traits_Namespace ExtractInitializerListRankValue<_Type>>;
+
+		template <typename _Type>
+		using InitializerListType = ::DragonianLib::NDInitilizerList<
+			ExtractInnerInitializerListType<_Type>, ExtractInitializerListRankValue<_Type>>;
+
+		struct IsInvokableWith
+		{
+			template <typename _FunType, typename ..._ArgTypes>
+			static constexpr auto CheckConst(const _FunType& _Fun, _ArgTypes... _Args)
+				-> decltype(_Fun(_Args...), std::true_type()) {
+				return{};
+			}
+
+			static constexpr std::false_type CheckConst(...) {
+				return{};
+			}
+		};
 	}
 }
 
