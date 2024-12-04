@@ -1,13 +1,14 @@
 ﻿#pragma once
 #include "ModelBase.hpp"
 #include "Libraries/Dict/Dict.hpp"
+
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 
 class FireflyArchitecture : public LibTTSModule
 {
 public:
 
-	
+
 
 
 
@@ -22,12 +23,6 @@ class Llama : public LibTTSModule
 {
 public:
 
-	static void EncodeTokens(
-		const Dict::Tokenizer& _MyTokenizer,
-		const std::wstring _Text
-		//PromptTokens = None,
-		//long NumCodebooks = 4
-	);
 
 
 
@@ -38,7 +33,29 @@ public:
 
 };
 
+class FishSpeech : public LibTTSModule
+{
+public:
+	static void EncodeTokens(
+		const DragonianLibSTL::Vector<Int64>& _PromptIds,
+		const DragonianLibSTL::Vector<Int64>& _PromptTokens,
+		long _NumCodebooks = 4,
+		Dict::Tokenizer::TokenizerMethod _Method = Dict::Tokenizer::Maximum,
+		bool _SkipNonLatin = true,
+		size_t _MaximumTokenLength = 32,
+		Int64 _PadID = 0
+	)
+	{
+		DragonianLibSTL::Vector PromptIdsInt64(_NumCodebooks * _PromptIds.Size(), _PadID);
 
+	}
+
+
+
+
+
+
+};
 
 
 

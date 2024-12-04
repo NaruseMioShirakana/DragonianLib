@@ -353,7 +353,7 @@ private:
 	{
 		if constexpr (_NRank > 1)
 		{
-			if (_MyShape.Front() > 4)
+			if (_MyShape.Front() > 10)
 				return "[" +
 				operator[](0).CastToString(_MyTotalSize) + ",\n" +
 				operator[](1).CastToString(_MyTotalSize) + ",\n" +
@@ -363,14 +363,14 @@ private:
 				"]";
 			std::string Ret = "[";
 			for (SizeType i = 0; i < _MyShape.Front(); ++i)
-				Ret += operator[](0).CastToString(_MyTotalSize) + ",\n";
+				Ret += operator[](i).CastToString(_MyTotalSize) + ",\n";
 			Ret.pop_back(); Ret.pop_back();
 			Ret += "]";
 			return Ret;
 		}
 		else
 		{
-			if (_MyShape.Front() > 6 && _MyTotalSize > 100)
+			if (_MyShape.Front() > 10 && _MyTotalSize > 1000)
 				return "[" +
 				CvtToString(Get(0)) + ", " +
 				CvtToString(Get(1)) + ", " +
@@ -389,7 +389,7 @@ private:
 	}
 
 	template <size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		(_TmpTank > 1) && _TmpTank == _NRank,
 		Tensor<_TensorType, _TmpTank - 1, _MyDevice>>
 		ViewFirstDim(SizeType _Index) const
@@ -524,7 +524,7 @@ public:
 	 * @param _Left Source tensor
 	 * @return Reference of this
 	 */
-	template <size_t _TRank>
+	template <size_t _TRank, typename = std::enable_if_t<_NRank >= _TRank>>
 	constexpr Tensor& operator=(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
 	{
 		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
@@ -579,7 +579,7 @@ public:
 	}
 
 	template <size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		(_TmpTank <= 1) && _TmpTank == _NRank,
 		ValueType&> operator[](SizeType _Index) const
 	{
@@ -937,8 +937,18 @@ public:
 		return Ret;
 	}
 
+	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)
+	{
+		return Tensor(MyShape, Buffer, BufferSize, Alloc);
+	}
+
+	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize)
+	{
+		return Tensor(MyShape, Buffer, BufferSize);
+	}
+
 private:
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool AllocateMemory(
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool AllocateMemory(
 		const Dimensions<_NRank>& MyShape, Allocator MyAlloc
 	)
 	{
@@ -954,7 +964,7 @@ private:
 		return true;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ConstructViewInfo(
+	_D_Dragonian_Lib_Constexpr_Force_Inline void ConstructViewInfo(
 		const Dimensions<_NRank>& MyShape
 	)
 	{
@@ -1001,8 +1011,46 @@ private:
 		}
 	}
 
+	Tensor(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)
+	{
+		auto TSize = static_cast<size_t>(MyShape.Multiply());
+		if (MyShape.Empty())
+			return;
+		if (BufferSize < TSize)
+			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
+		if (!Alloc)
+			_D_Dragonian_Lib_Throw_Exception("Allocator Is Null!");
+		if (BufferSize > TSize)
+			LogWarn(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!");
+		_MyFirst = Pointer(
+			Buffer,
+			[Alloc](void* _Pointer) { Alloc->Free(_Pointer); }
+		);
+		_MyData = (RawPointer)_MyFirst.get();
+		_MyLast = _MyData + BufferSize;
+		ConstructViewInfo(MyShape);
+	}
+
+	Tensor(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize)
+	{
+		auto TSize = MyShape.Multiply();
+		if (MyShape.Empty())
+			return;
+		if (BufferSize < TSize)
+			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
+		if (BufferSize > TSize)
+			LogWarn(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!");
+		_MyFirst = Pointer(
+			Buffer,
+			[](void*) {}
+		);
+		_MyData = (RawPointer)_MyFirst.get();
+		_MyLast = _MyData + BufferSize;
+		ConstructViewInfo(MyShape);
+	}
+
 	template <typename _CurValueType = ValueType>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1020,7 +1068,7 @@ private:
 	}
 
 	template <typename _CurValueType = ValueType>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1039,7 +1087,7 @@ private:
 	}
 
 	template <typename _CurValueType = ValueType>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1058,7 +1106,7 @@ private:
 	}
 
 	template <typename _CurValueType = ValueType, size_t _TRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1083,7 +1131,7 @@ private:
 	}
 
 	template <typename _CurValueType = ValueType>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1101,7 +1149,7 @@ private:
 	}
 
 	template <typename _CurValueType = ValueType>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
@@ -1127,7 +1175,7 @@ public:
 	 * @brief Get the alignment size of the value type.
 	 * @return The alignment size of the value type.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	static _D_Dragonian_Lib_Constexpr_Force_Inline
 		SizeType GetAlignSize()
 	{
 		return alignof(ValueType);
@@ -1137,7 +1185,7 @@ public:
 	 * @brief Get the device of the tensor.
 	 * @return The device of the tensor.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	static _D_Dragonian_Lib_Constexpr_Force_Inline
 		Device GetDevice()
 	{
 		return _Device;
@@ -1147,7 +1195,7 @@ public:
 	 * @brief Get the allocator of the tensor.
 	 * @return The allocator of the tensor.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	static _D_Dragonian_Lib_Constexpr_Force_Inline
 		Allocator GetAllocator()
 	{
 		return GetMemoryProvider(_MyDevice);
@@ -1157,7 +1205,7 @@ public:
 	 * @brief Get the buffer of the tensor.
 	 * @return The buffer of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Buffer()
 	{
 		return _MyFirst;
@@ -1167,7 +1215,7 @@ public:
 	 * @brief Get the data pointer of the tensor.
 	 * @return The data pointer of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Data() const
 	{
 		return _MyData;
@@ -1179,7 +1227,7 @@ public:
 	 * @return The data pointer of the tensor.
 	 */
 	template <size_t _TRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Data(const Dimensions<_TRank>& _Indices) const
 	{
 		static_assert(_TRank <= _NRank, "The rank of the indices must be less than or equal to the rank of the tensor!");
@@ -1197,7 +1245,7 @@ public:
 	 * @param Index The index.
 	 * @return The val.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Get(SizeType Index) const
 	{
 		return *Data<1>({ Index });
@@ -1209,7 +1257,7 @@ public:
 	 * @return The val.
 	 */
 	template <size_t _TRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Item(const Dimensions<_TRank>& _Indices) const
 	{
 		return *Data(_Indices);
@@ -1219,7 +1267,7 @@ public:
 	 * @brief Get the first val of the tensor.
 	 * @return The val.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) Item() const
 	{
 		return *_MyData;
@@ -1229,7 +1277,7 @@ public:
 	 * @brief Get the pointer of the first val of the tensor.
 	 * @return The pointer.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		decltype(auto) ItemPointer() const
 	{
 		return _MyData;
@@ -2060,17 +2108,17 @@ public:
 	}
 
 	template <typename _CurValueType = ValueType, size_t _TRank>
-	static std::enable_if_t<
+	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
 		Tensor<ValueType, MaxOf(_NRank, _TRank), _MyDevice>
-		> Pow(const Tensor& _InputA, const Tensor& _InputB)
+		> Pow(const Tensor<ValueType, _TRank, _MyDevice>& _InputB) const
 	{
-		_InputA.Eval();
+		Eval();
 		_InputB.Eval();
-		auto BroadCasted = BroadCast(_InputA, _InputB);
+		auto BroadCasted = BroadCast(*this, _InputB);
 		auto Ret = Tensor<ValueType, MaxOf(_NRank, _TRank), _MyDevice>::New(BroadCasted.first.Shape());
 		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowTensor
 		(
@@ -2087,23 +2135,23 @@ public:
 	}
 
 	template <typename _CurValueType = ValueType>
-	static std::enable_if_t<
+	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> Pow(const Tensor& _InputA, const ValueType& _Val)
+		Tensor> Pow(const ValueType& _Val) const
 	{
-		_InputA.Eval();
-		auto Ret = Tensor<ValueType, _NRank, _MyDevice>::New(_InputA.Shape());
+		Eval();
+		auto Ret = Tensor<ValueType, _NRank, _MyDevice>::New(Shape());
 		Operators::OperatorsBase<ValueType, _MyDevice>::ImplPowScalar
 		(
 			Ret.Data(),
 			Ret.GetDefaultOperatorParameter(),
-			_InputA.Data(),
-			_InputA.GetDefaultOperatorParameter(),
+			Data(),
+			GetDefaultOperatorParameter(),
 			_Val,
-			_InputA.IsContinuous() && !_InputA.IsBroadCasted()
+			IsContinuous() && !IsBroadCasted()
 		);
 		return Ret;
 	}
@@ -2112,37 +2160,13 @@ public:
 	std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
-		Tensor<ValueType, MaxOf(_NRank, _TRank), _MyDevice>
-		> Pow(const Tensor& _InputB) const
-	{
-		return Pow(*this, _InputB);
-	}
-
-	template <typename _CurValueType = ValueType>
-	std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
-		Tensor> Pow(const ValueType& _Val) const
-	{
-		return Pow(*this, _Val);
-	}
-
-	template <typename _CurValueType = ValueType>
-	std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::PowBinary::HasInplaceOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
-		Tensor&> PowInplace(const Tensor& _InputB)
+		std::is_move_assignable_v<_CurValueType>>&&
+		_TRank <= _NRank,
+		Tensor&> PowInplace(const Tensor<ValueType, _TRank, _MyDevice>& _InputB)
 	{
 		Eval();
 		_InputB.Eval();
-		if (_InputB.IsScalar())
-			return PowInplace(_InputB.Item());
 		if (IsBroadCasted())
 			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
 		auto BroadCasted = BroadCast(_InputB);
@@ -2262,7 +2286,8 @@ public:
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::ModBinary::HasInplaceOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
+		std::is_move_assignable_v<_CurValueType>>&&
+		_TRank <= _NRank,
 		Tensor&> operator%=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
@@ -2360,7 +2385,8 @@ public:
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::XorBinary::HasInplaceOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
+		std::is_move_assignable_v<_CurValueType>>&&
+		_TRank <= _NRank,
 		Tensor&> operator^=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
@@ -2458,7 +2484,8 @@ public:
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::BinaryOrBinary::HasInplaceOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
+		std::is_move_assignable_v<_CurValueType>>&&
+		_TRank <= _NRank,
 		Tensor&> operator|=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
@@ -2556,7 +2583,8 @@ public:
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		Operators::BinaryOperators::BinaryAndBinary::HasInplaceOperatorValue<_CurValueType>&&
-		std::is_move_assignable_v<_CurValueType>>,
+		std::is_move_assignable_v<_CurValueType>>&&
+		_TRank <= _NRank,
 		Tensor&> operator&=(const Tensor<ValueType, _TRank, _MyDevice>& _Right)
 	{
 		Eval();
@@ -3177,7 +3205,7 @@ public:
 	 * @brief Get the shape of the tensor.
 	 * @return The shape of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions<_NRank>& Shape() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const Dimensions<_NRank>& Shape() const
 	{
 		return _MyShape;
 	}
@@ -3187,7 +3215,7 @@ public:
 	 * @param _Index
 	 * @return
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
 	{
 		return _MyShape[_Index];
 	}
@@ -3196,7 +3224,7 @@ public:
 	 * @brief Get the shape of the tensor.
 	 * @return The shape of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions<_NRank>& Size() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const Dimensions<_NRank>& Size() const
 	{
 		return _MyShape;
 	}
@@ -3205,7 +3233,7 @@ public:
 	 * @brief Get the total size of the tensor.
 	 * @return The total size of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType TotalSize() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType TotalSize() const
 	{
 		return _MyShape.Multiply();
 	}
@@ -3215,7 +3243,7 @@ public:
 	 * @param _Index
 	 * @return
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
 	{
 		return _MyShape[_Index];
 	}
@@ -3224,7 +3252,7 @@ public:
 	 * @brief Get the rank of the tensor.
 	 * @return The rank of the tensor.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Rank()
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Rank()
 	{
 		return _NRank;
 	}
@@ -3233,7 +3261,7 @@ public:
 	 * @brief Get the strides of the tensor.
 	 * @return The strides of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const Dimensions<_NRank>& ViewStrides() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const Dimensions<_NRank>& ViewStrides() const
 	{
 		return _MyViewStride;
 	}
@@ -3279,7 +3307,7 @@ public:
 	 * @brief Check if the tensor is enabled.
 	 * @return True if the tensor is enabled, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsEnabled() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsEnabled() const
 	{
 		return _MyData != nullptr;
 	}
@@ -3288,7 +3316,7 @@ public:
 	 * @brief Check if the tensor is scalar.
 	 * @return True if the tensor is scalar, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsScalar() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsScalar() const
 	{
 		return _MyShape.Size() == 1 && _MyShape[0] == 1;
 	}
@@ -3297,7 +3325,7 @@ public:
 	 * @brief Check if the tensor is vector.
 	 * @return True if the tensor is vector, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsVector() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsVector() const
 	{
 		return _MyShape.Size() == 1;
 	}
@@ -3309,7 +3337,7 @@ public:
 	 * @return True if the tensor is continuous, false otherwise.
 	 */
 	template <size_t _Begin = 0, size_t _End = _NRank>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
 	{
 		static_assert(_End <= _NRank);
 
@@ -3327,7 +3355,7 @@ public:
 	 * @param _End end axis
 	 * @return True if the tensor is continuous, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = _NRank) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = _NRank) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcRange(_End, Rank());
@@ -3344,7 +3372,7 @@ public:
 	 * @brief Check if the tensor is view.
 	 * @return True if the tensor is view, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsView() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsView() const
 	{
 		return _MyData != (RawPointer)_MyFirst.get() || !IsContinuous<0, _NRank>();
 	}
@@ -3353,12 +3381,12 @@ public:
 	 * @brief Check if the tensor is broadcasted.
 	 * @return True if the tensor is broadcasted, false otherwise.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsBroadCasted() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted() const
 	{
 		return _MyShapeIsBroadCasted;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcRange(_End, Rank());
@@ -3372,7 +3400,7 @@ public:
 
 private:
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void ThrowOnNotEnabled() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline void ThrowOnNotEnabled() const
 	{
 		if (!IsEnabled())
 			_D_Dragonian_Lib_Fatal_Error;
@@ -3385,7 +3413,7 @@ public:
 	 * @brief Get the begining iterator of the tensor.
 	 * @return The begining iterator of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		TensorIterator<ValueType, _NRank> Begin() const
 	{
 		ThrowOnNotEnabled();
@@ -3401,7 +3429,7 @@ public:
 	 * @brief Get the ending iterator of the tensor.
 	 * @return The ending iterator of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		TensorIterator<ValueType, _NRank> End() const
 	{
 		ThrowOnNotEnabled();
@@ -3412,7 +3440,7 @@ public:
 	 * @brief Get the begining iterator of the tensor.
 	 * @return The begining iterator of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		TensorIterator<ValueType, _NRank> begin() const
 	{
 		return Begin();
@@ -3422,7 +3450,7 @@ public:
 	 * @brief Get the ending iterator of the tensor.
 	 * @return The ending iterator of the tensor.
 	 */
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		TensorIterator<ValueType, _NRank> end() const
 	{
 		return End();
@@ -3483,7 +3511,7 @@ public:
 	 * @param _Max The max index.
 	 * @return The transformed index.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max)
 	{
 		if (_Index < 0)
 			_Index += _Max;
@@ -3498,7 +3526,7 @@ public:
 	 * @param _Max The max index.
 	 * @return The transformed index.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType CalcRange(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcRange(SizeType _Index, SizeType _Max)
 	{
 		if (_Index < 0)
 			_Index += _Max + 1;
@@ -3513,7 +3541,7 @@ public:
 	 * @param _Right The right number.
 	 * @return The ceil of the division.
 	 */
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Ceil(SizeType _Left, SizeType _Right)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Ceil(SizeType _Left, SizeType _Right)
 	{
 		auto Div = _Left / _Right;
 		if (_Left > (Div * _Right))
@@ -3612,13 +3640,19 @@ public:
 		return Ret;
 	}
 
+	template <typename... _Args, typename = std::enable_if_t<sizeof...(_Args) == _NRank>>
+	Tensor Permute(_Args... _Order) const
+	{
+		return Permute(Dimensions<_NRank>{_Order...});
+	}
+
 	/**
 	 * @brief Transpose the tensor, swap the axes at the specified positions. for example, we have a tensor with [N, C, H] shape, we can transpose it with Transpose(1, 2) to get a tensor with [N, H, C] shape.
 	 * @param _Axis1 The first axis.
 	 * @param _Axis2 The second axis.
 	 * @return A transposed tensor(view).
 	 */
-	Tensor Transpose(SizeType _Axis1, SizeType _Axis2) const
+	Tensor Transpose(SizeType _Axis1 = -1, SizeType _Axis2 = -2) const
 	{
 		ThrowOnNotEnabled();
 		const auto AxisCount = (SizeType)_MyShape.Size();
@@ -3744,14 +3778,13 @@ public:
 	/**
 	 * @brief View the tensor with the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can view it with View(N, -1) to get a tensor with [N, C * H * W] shape.
 	 * @tparam _Args The specified shape.
-	 * @param _Shape0 The first shape.
-	 * @param _Shape The rest shapes.
+	 * @param _Shape The shapes.
 	 * @return A viewed tensor(view).
 	 */
 	template <typename... _Args>
-	Tensor View(SizeType _Shape0, _Args... _Shape) const
+	decltype(auto) View(_Args... _Shape) const
 	{
-		Dimensions _ViewShape{ _Shape0, _Shape... };
+		Dimensions<sizeof...(_Args)> _ViewShape{_Shape...};
 		return View(_ViewShape);
 	}
 

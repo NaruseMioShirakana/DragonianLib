@@ -238,10 +238,10 @@ namespace DragonianLib
 		template <typename _Type>
 		struct AlwaysFalse
 		{
-			bool Value = _D_Dragonian_Lib_Traits_Namespace IsSameTypeValue<AlwaysFalseStruct, _Type>;
+			static constexpr bool Value = _D_Dragonian_Lib_Traits_Namespace IsSameTypeValue<AlwaysFalseStruct, _Type>;
 		};
 		template <typename _Type>
-		constexpr bool AlwaysFalseValue = _D_Dragonian_Lib_Traits_Namespace AlwaysFalse<_Type>::value;
+		constexpr bool AlwaysFalseValue = _D_Dragonian_Lib_Traits_Namespace AlwaysFalse<_Type>::Value;
 
 		template <typename _Type>
 		constexpr LReferenceType<_Type> InstanceOf()

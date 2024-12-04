@@ -109,4 +109,73 @@ void FileGuard::Close()
 	file_ = nullptr;
 }
 
+void FileGuard::Seek(long _Offset, int _Origin) const
+{
+	if (file_)
+		fseek(file_, _Offset, _Origin);
+}
+
+size_t FileGuard::Tell() const
+{
+	if (file_)
+		return ftell(file_);
+	return 0;
+}
+
+size_t FileGuard::Read(void* _Buffer, size_t _BufferSize, size_t _ElementSize, size_t _Count) const
+{
+	if (file_)
+		return fread_s(_Buffer, _BufferSize, _ElementSize, _Count, file_);
+	return 0;
+}
+
+size_t FileGuard::Write(const void* _Buffer, size_t _ElementSize, size_t _Count) const
+{
+	if (file_)
+		return fwrite(_Buffer, _ElementSize, _Count, file_);
+	return 0;
+}
+
+FileGuard& FileGuard::operator<<(char _Ch)
+{
+	if (file_)
+		fputc(_Ch, file_);
+	return *this;
+}
+
+FileGuard& FileGuard::operator<<(const char* _Str)
+{
+	if (file_)
+		fputs(_Str, file_);
+	return *this;
+}
+
+FileGuard& FileGuard::operator<<(const std::string& _Str)
+{
+	if (file_)
+		fputs(_Str.c_str(), file_);
+	return *this;
+}
+
+FileGuard& FileGuard::operator<<(wchar_t _Ch)
+{
+	if (file_)
+		fputwc(_Ch, file_);
+	return *this;
+}
+
+FileGuard& FileGuard::operator<<(const wchar_t* _Str)
+{
+	if (file_)
+		fputws(_Str, file_);
+	return *this;
+}
+
+FileGuard& FileGuard::operator<<(const std::wstring& _Str)
+{
+	if (file_)
+		fputws(_Str.c_str(), file_);
+	return *this;
+}
+
 _D_Dragonian_Lib_Space_End

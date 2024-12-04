@@ -1,36 +1,63 @@
 ﻿#pragma once
 #include "Tensor.h"
+#include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include <ostream>
 
 _D_Dragonian_Lib_Space_Begin
 
 template <typename ..._TIndices>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) IDim(_TIndices&& ..._Indices)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IDim(_TIndices&& ..._Indices)
 {
 	return Dimensions<sizeof...(_TIndices)>({ std::forward<_TIndices>(_Indices)... });
 }
 
 template <typename ..._ValueTypes>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) IArray(_ValueTypes&& ..._Values)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IArray(_ValueTypes&& ..._Values)
 {
 	return IDLArray<TypeTraits::GetVaListTypeAtType<0, _ValueTypes...>, sizeof...(_ValueTypes)>({ std::forward<_ValueTypes>(_Values)... });
 }
 
 template <typename ..._ArgTypes>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) IRanges(_ArgTypes&& ..._Args)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IRanges(_ArgTypes&& ..._Args)
 {
 	return VRanges<sizeof...(_ArgTypes)>({ std::forward<_ArgTypes>(_Args)... });
 }
 
 namespace Functional
 {
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+	void NumpySave(
+		const std::wstring& _Path,
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor
+	)
+	{
+		NumpyFileFormat::SaveNumpyFile(_Path, _Tensor.Shape(), _Tensor.Data(), _Tensor.TotalSize());
+	}
+
+	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	Tensor<_MyValueType, _NRank, _MyDevice> NumpyLoad(const std::wstring& _Path)
+	{
+		auto [VecShape, VecData] = NumpyFileFormat::LoadNumpyFile(_Path);
+
+		Dimensions<_NRank> Shape;
+		if (VecShape.Size() != _NRank)
+			_D_Dragonian_Lib_Throw_Exception("The rank of the tensor is not compatible with the numpy file.");
+		Shape.Assign(VecShape.Data());
+		auto Alloc = VecData.GetAllocator();
+		auto Ret = VecData.Release();
+		Ret.second /= sizeof(_MyValueType);
+		if (Ret.second != static_cast<size_t>(Shape.Multiply()))
+			_D_Dragonian_Lib_Throw_Exception("The data size of the tensor is not compatible with the numpy file.");
+		return Tensor<_MyValueType, _NRank, _MyDevice>::FromBuffer(Shape, (_MyValueType*)Ret.first, Ret.second, Alloc);
+	}
+
 	/**
 	 * @brief Create a new tensor with the specified shape.
 	 * @param MyShape The shape of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_trivial_v<_MyValueType> ||
 		std::is_constructible_v<_MyValueType>,
 		Tensor<_MyValueType, _NRank, _MyDevice>> Empty(
@@ -48,7 +75,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU, typename _First, typename ...Rest>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_constructible_v<_MyValueType, _First, Rest...>,
 		Tensor<_MyValueType, _NRank, _MyDevice>> ConstructTensor(
 			const Dimensions<_NRank>& MyShape,
@@ -64,7 +91,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_trivial_v<_MyValueType>,
 		Tensor<_MyValueType, _NRank, _MyDevice>> EmptyTensor()
 	{
@@ -77,7 +104,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_constructible_v<_MyValueType, _MyValueType>,
 		Tensor<_MyValueType, 1, _MyDevice>> NewScalar(
 			const _MyValueType& _Val
@@ -92,7 +119,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -111,7 +138,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -131,7 +158,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -152,7 +179,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::IsArithmeticValue<_MyValueType>>,
@@ -173,7 +200,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::IsArithmeticValue<_MyValueType>>,
@@ -192,7 +219,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -211,7 +238,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -231,7 +258,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
@@ -252,7 +279,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::IsArithmeticValue<_MyValueType>>,
@@ -273,7 +300,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		TypeTraits::IsArithmeticValue<_MyValueType>>,
@@ -292,7 +319,7 @@ namespace Functional
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		std::is_trivial_v<_MyValueType>>,
@@ -304,7 +331,7 @@ namespace Functional
 	}
 
 	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
 		Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&&
@@ -321,7 +348,7 @@ namespace Functional
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
+	_D_Dragonian_Lib_Constexpr_Force_Inline
 		std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -335,8 +362,9 @@ namespace Functional
 	}
 
 	template <Device _MyDevice = Device::CPU, typename _MyArrayLike>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
-		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>,
+	_D_Dragonian_Lib_Constexpr_Force_Inline
+		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>&&
+		std::is_copy_assignable_v<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>>,
 		Tensor<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>,
 		TypeTraits::ExtractRankValue<_MyArrayLike>,
 		_MyDevice>> CopyFromArrayLike(const _MyArrayLike& _Array)
@@ -358,8 +386,9 @@ namespace Functional
 	}
 
 	template <Device _MyDevice = Device::CPU, typename _MyArrayLike>
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline
-		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>,
+	_D_Dragonian_Lib_Constexpr_Force_Inline
+		std::enable_if_t<TypeTraits::IsArrayLikeValue<_MyArrayLike>&&
+		std::is_move_assignable_v<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>>,
 		Tensor<TypeTraits::ExtractInnerTypeOfArrayType<_MyArrayLike>,
 		TypeTraits::ExtractRankValue<_MyArrayLike>,
 		_MyDevice>> MoveFromArrayLike(const _MyArrayLike& _Array)
@@ -380,6 +409,98 @@ namespace Functional
 		return Ret;
 	}
 
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice,
+		typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>>>
+	decltype(auto) Copy(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	{
+		return _Tensor.Clone();
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice,
+		typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>>>
+	decltype(auto) Clone(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	{
+		return _Tensor.Clone();
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice,
+		typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>>>
+	decltype(auto) MakeContinuous(Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	{
+		return _Tensor.MakeContinuous();
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice,
+		typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>>>
+	decltype(auto) Continuous(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	{
+		return _Tensor.Continuous();
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, size_t _TRank>
+	decltype(auto) View(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		const Dimensions<_TRank>& _ViewShape
+	)
+	{
+		return _Tensor.View(_ViewShape);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename... _Args>
+	decltype(auto) View(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		_Args... _ViewShape
+	)
+	{
+		if constexpr (sizeof...(_Args) == 0)
+			return _Tensor.View();
+		else
+			return _Tensor.View( _ViewShape... );
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+	decltype(auto) UnSqueeze(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		size_t _Axis
+	)
+	{
+		return _Tensor.UnSqueeze(_Axis);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+	decltype(auto) Squeeze(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor, size_t _Axis)
+	{
+		return _Tensor.Squeeze(_Axis);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice,
+		typename = std::enable_if_t<(_NRank > 1)>>
+	decltype(auto) Transpose(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		SizeType _Axis1 = -1, SizeType _Axis2 = -2
+	)
+	{
+		return _Tensor.Transpose(_Axis1, _Axis2);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+	decltype(auto) Permute(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		const Dimensions<_NRank>& _PremuteOrder
+	)
+	{
+		return _Tensor.Permute(_PremuteOrder);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename... _Args,
+		typename = std::enable_if_t<sizeof...(_Args) == _NRank>>
+	decltype(auto) Permute(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		_Args... _PremuteOrder
+	)
+	{
+		return _Tensor.Permute( _PremuteOrder... );
+	}
 }
 
 template <typename _MyValueType, size_t _NRank, Device _MyDevice>
@@ -395,5 +516,7 @@ std::wostream& operator<<(std::wostream& _OStream, const Tensor<_MyValueType, _N
 	_OStream << _Tensor.CastToWideString();
 	return _OStream;
 }
+
+
 
 _D_Dragonian_Lib_Space_End

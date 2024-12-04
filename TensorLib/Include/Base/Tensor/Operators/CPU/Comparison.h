@@ -27,7 +27,7 @@ void BinaryScalarCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Src), Vectorized<_Type>(_Src)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -114,7 +114,7 @@ void BinaryTensorCont( \
 	try \
 	{ \
 		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
+			_Function(Vectorized<_Type>(_Src1), Vectorized<_Type>(_Src1)); \
 	} \
 	catch (std::exception&) \
 	{ \
@@ -261,42 +261,48 @@ namespace ComparisonOperators
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		Equal(const Type& A, const Type& B)
 	{
-		return A == B;
+		if constexpr (IsAnyOfValue<Type, float, double>)
+			return std::fabs(A - B) <= std::numeric_limits<Type>::epsilon();
+		else
+			return A == B;
 	}
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		NotEqual(const Type& A, const Type& B)
 	{
-		return A != B;
+		if constexpr (IsAnyOfValue<Type, float, double>)
+			return std::fabs(A - B) > std::numeric_limits<Type>::epsilon();
+		else
+			return A != B;
 	}
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		Greater(const Type& A, const Type& B)
 	{
 		return A > B;
 	}
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		GreaterEqual(const Type& A, const Type& B)
 	{
 		return A >= B;
 	}
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		Less(const Type& A, const Type& B)
 	{
 		return A < B;
 	}
 
 	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>, bool>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
 		LessEqual(const Type& A, const Type& B)
 	{
 		return A <= B;

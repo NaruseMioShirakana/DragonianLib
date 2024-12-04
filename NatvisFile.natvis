@@ -117,8 +117,6 @@
 				</DisplayString>
 				<Expand>
 					<Item Name="[ViewShape]" ExcludeView="simple">_MyShape</Item>
-					<Item Name="[ViewStep]" ExcludeView="simple">_MyViewStep</Item>
-					<Item Name="[ViewLeft]" ExcludeView="simple">_MyViewLeft</Item>
 					<Item Name="[ViewStride]" ExcludeView="simple">_MyViewStride</Item>
 				</Expand>
 			</Synthetic>
@@ -137,7 +135,7 @@
 						</Expand>
 					</Synthetic>
 					<Synthetic Name="[ContinuousView]" Condition="(bool)_MyData">
-						<DisplayString>{{ Step: { _MyViewStep }  }}</DisplayString>
+						<DisplayString>{{ Step: { _MyViewStride }  }}</DisplayString>
 						<Expand>
 							<ArrayItems>
 								<Direction>Forward</Direction>

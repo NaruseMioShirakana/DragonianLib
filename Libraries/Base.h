@@ -544,6 +544,19 @@ public:
 	 */
 	_D_Dragonian_Lib_No_Discard bool Enabled() const;
 
+	void Seek(long _Offset, int _Origin) const;
+	size_t Tell() const;
+
+	size_t Read(void* _Buffer, size_t _BufferSize, size_t _ElementSize, size_t _Count = 1) const;
+	size_t Write(const void* _Buffer, size_t _ElementSize, size_t _Count = 1) const;
+
+	FileGuard& operator<<(const std::string& _Str);
+	FileGuard& operator<<(const std::wstring& _Str);
+	FileGuard& operator<<(const char* _Str);
+	FileGuard& operator<<(const wchar_t* _Str);
+	FileGuard& operator<<(char _Ch);
+	FileGuard& operator<<(wchar_t _Ch);
+
 private:
 	FILE* file_ = nullptr;
 };
@@ -578,6 +591,12 @@ decltype(auto) CvtToString(const _Type& _Value)
 		return std::to_string(_Value);
 	else if constexpr (TypeTraits::IsStringValue<_Type>)
 		return _Value;
+	else if constexpr (TypeTraits::CouldBeConvertedFromValue<std::string, _Type> ||
+		TypeTraits::CouldBeConvertedFromValue<const char*, _Type>)
+		return std::string(_Value);
+	else if constexpr (TypeTraits::CouldBeConvertedFromValue<std::wstring, _Type> ||
+		TypeTraits::CouldBeConvertedFromValue<const wchar_t*, _Type>)
+		return std::wstring(_Value);
 	else
 		return _Value.to_string();
 }
