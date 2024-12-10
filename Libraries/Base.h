@@ -265,6 +265,31 @@ struct IDLArray
 			_Tmp._MyData[i - 1] = _MyData[i];
 		return _Tmp;
 	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::string ToString() const
+	{
+		std::string _Str = "[";
+		for (size_t i = 0; i < _Rank; ++i)
+		{
+			_Str += std::to_string(_MyData[i]);
+			if (i != _Rank - 1)
+				_Str += ", ";
+		}
+		_Str += "]";
+		return _Str;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::wstring ToWString() const
+	{
+		std::wstring _Str = L"[";
+		for (size_t i = 0; i < _Rank; ++i)
+		{
+			_Str += std::to_wstring(_MyData[i]);
+			if (i != _Rank - 1)
+				_Str += L", ";
+		}
+		_Str += L"]";
+		return _Str;
+	}
+
 	_ValueType _MyData[_Rank]; ///< Data of the dimensions
 };
 

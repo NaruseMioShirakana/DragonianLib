@@ -5,16 +5,16 @@ _D_Dragonian_Lib_Space_Begin
 
 std::regex _Valdef_Dragonian_Lib_Begin_Step_End_Regex_Token(R"([ ]*([0-9]*)[ ]*(:){0,1}[ ]*([0-9]*)[ ]*(:){0,1}[ ]*([0-9]*)[ ]*)");
 std::wregex _Valdef_Dragonian_Lib_Begin_Step_End_Regexw_Token(LR"([ ]*([0-9]*)[ ]*(:){0,1}[ ]*([0-9]*)[ ]*(:){0,1}[ ]*([0-9]*)[ ]*)");
-std::regex _Valdef_Dragonian_Lib_Begin_Step_End_Regex(R"([ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*)");
-std::wregex _Valdef_Dragonian_Lib_Begin_Step_End_Regexw(LR"([ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*)");
-std::regex _Valdef_Dragonian_Lib_Begin_End_Regex(R"([ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*)");
-std::wregex _Valdef_Dragonian_Lib_Begin_End_Regexw(LR"([ ]*([0-9]+)[ ]*:[ ]*([0-9]+)[ ]*)");
-std::regex _Valdef_Dragonian_Lib_End_Regex(R"([ ]*:[ ]*([0-9]+)[ ]*)");
-std::wregex _Valdef_Dragonian_Lib_End_Regexw(LR"([ ]*:[ ]*([0-9]+)[ ]*)");
-std::regex _Valdef_Dragonian_Lib_Begin_Regex(R"([ ]*([0-9]+)[ ]*:[ ]*)");
-std::wregex _Valdef_Dragonian_Lib_Begin_Regexw(LR"([ ]*([0-9]+)[ ]*:[ ]*)");
-std::regex _Valdef_Dragonian_Lib_Value_Regex(R"([ ]*([0-9]+)[ ]*)");
-std::wregex _Valdef_Dragonian_Lib_Value_Regexw(LR"([ ]*([0-9]+)[ ]*)");
+std::regex _Valdef_Dragonian_Lib_Begin_Step_End_Regex(R"([ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::wregex _Valdef_Dragonian_Lib_Begin_Step_End_Regexw(LR"([ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::regex _Valdef_Dragonian_Lib_Begin_End_Regex(R"([ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::wregex _Valdef_Dragonian_Lib_Begin_End_Regexw(LR"([ ]*(-{0,1}\d+)[ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::regex _Valdef_Dragonian_Lib_End_Regex(R"([ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::wregex _Valdef_Dragonian_Lib_End_Regexw(LR"([ ]*:[ ]*(-{0,1}\d+)[ ]*)");
+std::regex _Valdef_Dragonian_Lib_Begin_Regex(R"([ ]*(-{0,1}\d+)[ ]*:[ ]*)");
+std::wregex _Valdef_Dragonian_Lib_Begin_Regexw(LR"([ ]*(-{0,1}\d+)[ ]*:[ ]*)");
+std::regex _Valdef_Dragonian_Lib_Value_Regex(R"([ ]*(-{0,1}\d+)[ ]*)");
+std::wregex _Valdef_Dragonian_Lib_Value_Regexw(LR"([ ]*(-{0,1}\d+)[ ]*)");
 
 void SetRandomSeed(SizeType _Seed)
 {
@@ -44,7 +44,7 @@ void EnableInstantRun(bool _Enable)
 	Operators::_Flag_Instant_Run = _Enable;
 }
 
-Range::Range(const char* _RangeArgs) : IsNone(false)
+Range::Range(const char* _RangeArgs)
 {
 	std::cmatch _Match;
 	if (strcmp(_RangeArgs, ":") == 0)
@@ -52,7 +52,8 @@ Range::Range(const char* _RangeArgs) : IsNone(false)
 	if (std::regex_match(_RangeArgs, _Match, _Valdef_Dragonian_Lib_Value_Regex))
 	{
 		Step = std::stoll(_Match[1].str());
-		IsValue = true;
+		Begin = Step;
+		End = Step;
 	}
 	else if (std::regex_match(_RangeArgs, _Match, _Valdef_Dragonian_Lib_Begin_End_Regex))
 	{
@@ -73,7 +74,7 @@ Range::Range(const char* _RangeArgs) : IsNone(false)
 		_D_Dragonian_Lib_Throw_Exception("Illegal Parameters!");
 }
 
-Range::Range(const wchar_t* _RangeArgs) : IsNone(false)
+Range::Range(const wchar_t* _RangeArgs)
 {
 	std::wcmatch _Match;
 	if (wcscmp(_RangeArgs, L":") == 0)
@@ -81,7 +82,8 @@ Range::Range(const wchar_t* _RangeArgs) : IsNone(false)
 	if (std::regex_match(_RangeArgs, _Match, _Valdef_Dragonian_Lib_Value_Regexw))
 	{
 		Step = std::stoll(_Match[1].str());
-		IsValue = true;
+		Begin = Step;
+		End = Step;
 	}
 	else if (std::regex_match(_RangeArgs, _Match, _Valdef_Dragonian_Lib_Begin_End_Regexw))
 	{
@@ -110,7 +112,8 @@ Range::Range(const std::string& _RangeArgs)
 	if (std::regex_match(_RangeArgs.c_str(), _Match, _Valdef_Dragonian_Lib_Value_Regex))
 	{
 		Step = std::stoll(_Match[1].str());
-		IsValue = true;
+		Begin = Step;
+		End = Step;
 	}
 	else if (std::regex_match(_RangeArgs.c_str(), _Match, _Valdef_Dragonian_Lib_Begin_End_Regex))
 	{
@@ -139,7 +142,8 @@ Range::Range(const std::wstring& _RangeArgs)
 	if (std::regex_match(_RangeArgs.c_str(), _Match, _Valdef_Dragonian_Lib_Value_Regexw))
 	{
 		Step = std::stoll(_Match[1].str());
-		IsValue = true;
+		Begin = Step;
+		End = Step;
 	}
 	else if (std::regex_match(_RangeArgs.c_str(), _Match, _Valdef_Dragonian_Lib_Begin_End_Regexw))
 	{

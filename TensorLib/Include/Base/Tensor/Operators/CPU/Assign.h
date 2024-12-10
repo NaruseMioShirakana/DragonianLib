@@ -698,8 +698,8 @@ void ArangeImpCont(
 
 			Vectorized<_Type> _VectorizedValue1(_Dest);
 			Vectorized<_Type> _VectorizedValue2(_Dest + Stride);
-			Vectorized<_Type> _VectorizedStep1(_Value._Step * LoopStride);
-			Vectorized<_Type> _VectorizedStep2(_Value._Step * LoopStride);
+			Vectorized<_Type> _VectorizedStep1(_Value._Step * static_cast<_Type>(LoopStride));
+			Vectorized<_Type> _VectorizedStep2(_Value._Step * static_cast<_Type>(LoopStride));
 			for (; i < DestSize - LoopStride; i += LoopStride)
 			{
 				_VectorizedValue1.Store(_Dest + i);
@@ -708,6 +708,8 @@ void ArangeImpCont(
 				_VectorizedValue2 += _VectorizedStep2;
 			}
 		}
+		else
+			++i;
 	}
 	else
 	{
@@ -719,6 +721,8 @@ void ArangeImpCont(
 				for (int64_t j = 0; j < LoopStride; ++j)
 					_Dest[i + j] = _Dest[i + j - 1] + _Value._Step;
 		}
+		else
+			++i;
 	}
 	for (; i < DestSize; ++i)
 		_Dest[i] = _Dest[i - 1] + _Value._Step;

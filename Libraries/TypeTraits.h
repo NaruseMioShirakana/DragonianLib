@@ -295,7 +295,8 @@ namespace DragonianLib
 		template<typename _Ret, typename ..._ArgTypes>
 		struct IsCallable<_Ret(&&)(_ArgTypes...)> { constexpr static bool _IsCallable = true; };
 		template<typename Objt>
-		constexpr bool IsCallableValue = _D_Dragonian_Lib_Traits_Namespace IsCallable<Objt>::_IsCallable;
+		constexpr bool IsCallableValue = _D_Dragonian_Lib_Traits_Namespace IsCallable<
+			_D_Dragonian_Lib_Traits_Namespace RemoveARPCVType<Objt>>::_IsCallable;
 
 		template<typename Objt>
 		struct ExtractCallableTypeInfo

@@ -28,7 +28,9 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-static inline double DoubleZero = 0.; ///< Static inline double zero
+static inline constexpr SizeType RangeBeginPos = INT64_MAX; ///< Begin index
+static inline constexpr SizeType RangeEndPos = INT64_MIN; ///< End index
+static inline SizeType ZeroConstantVal = 0; ///< None index
 
 /**
  * @brief Struct representing a range with begin, step, and end values.
@@ -37,9 +39,7 @@ struct Range
 {
 	SizeType Begin = 0; ///< Begin value
 	SizeType Step = 1; ///< Step value
-	SizeType End = -1; ///< End value
-	bool IsNone = true; ///< Flag indicating if it is none
-	bool IsValue = false; ///< Flag indicating if it is a value
+	SizeType End = RangeEndPos; ///< End value
 
 	Range() = default;
 
@@ -79,76 +79,49 @@ struct Range
 	 * @param _Step The step value.
 	 * @param _End The end value.
 	 */
-	Range(SizeType _Begin, SizeType _Step, SizeType _End) :Begin(_Begin), Step(_Step), End(_End), IsNone(false) {}
-
-	/**
-	 * @brief Constructor for a range with none, step, and end values.
-	 * @param _NoneVal The none value.
-	 * @param _Step The step value.
-	 * @param _End The end value.
-	 */
-	Range(NoneType _NoneVal, SizeType _Step, SizeType _End) :Begin(_Step > 0 ? 0 : -1), Step(_Step), End(_End), IsNone(false)
-	{
-		UNUSED(_NoneVal);
-	}
-
-	/**
-	 * @brief Constructor for a range with begin, step, and none values.
-	 * @param _Begin The begining value.
-	 * @param _Step The step value.
-	 * @param _NoneVal The none value.
-	 */
-	Range(SizeType _Begin, SizeType _Step, NoneType _NoneVal) :Begin(_Begin), Step(_Step), End(_Step > 0 ? -1 : 0), IsNone(false)
-	{
-		UNUSED(_NoneVal);
-	}
+	Range(SizeType _Begin, SizeType _Step, SizeType _End) :Begin(_Begin), Step(_Step), End(_End) {}
 
 	/**
 	 * @brief Constructor for a range with begin and end values.
 	 * @param _Begin The begining value.
 	 * @param _End The end value.
 	 */
-	Range(SizeType _Begin, SizeType _End) :Begin(_Begin), End(_End), IsNone(false) {}
+	Range(SizeType _Begin, SizeType _End) :Begin(_Begin), End(_End) {}
 
 	/**
 	 * @brief Constructor for a range with none and end values.
 	 * @param _NoneVal The none value.
 	 * @param _End The end value.
 	 */
-	Range(NoneType _NoneVal, SizeType _End) :End(_End), IsNone(false) { UNUSED(_NoneVal); }
+	Range(NoneType _NoneVal, SizeType _End) :End(_End) { UNUSED(_NoneVal); }
 
 	/**
 	 * @brief Constructor for a range with begin and none values.
 	 * @param _Begin The begining value.
 	 * @param _NoneVal The none value.
 	 */
-	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin), IsNone(false) { UNUSED(_NoneVal); }
+	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin) { UNUSED(_NoneVal); }
 
 	/**
 	 * @brief Reverse the range.
 	 */
 	void Reverse() { std::swap(Begin, End); Step = -Step; }
 
-	/**
-	 * @brief Equality operator for NoneType.
-	 * @param _NoneVal The none value.
-	 * @return True if the range is none, false otherwise.
-	 */
-	bool operator==(const NoneType& _NoneVal) const { UNUSED(_NoneVal); return IsNone; }
-
 	std::string ToString() const
 	{
-		if (IsNone)
-			return "[:]";
-		return "[" + std::to_string(Begin) + ":" + std::to_string(Step) + ":" + std::to_string(End) + "]";
+		return "[" + std::to_string(Begin) + ":" + std::to_string(Step) + ":" +
+			(End == RangeEndPos ? std::string("EndPos") : std::to_string(End)) +
+			"]";
 	}
 
 	std::wstring ToWString() const
 	{
-		if (IsNone)
-			return L"[:]";
-		return L"[" + std::to_wstring(Begin) + L":" + std::to_wstring(Step) + L":" + std::to_wstring(End) + L"]";
+		return L"[" + std::to_wstring(Begin) + L":" + std::to_wstring(Step) + L":" +
+			(End == RangeEndPos ? std::wstring(L"EndPos") : std::to_wstring(End)) +
+			L"]";
 	}
+
+	Range operator-() const { return { End, -Step, Begin }; }
 };
 
 namespace TypeTraits
@@ -311,15 +284,15 @@ public:
 		return std::move(*this);
 	}
 
-	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	template <typename _ValType = _TensorType>
 	std::enable_if_t<
 		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::string> CastToString() const
+		std::string> CastToString(bool _Fold = true) const
 	{
-		return CastToString(TotalSize());
+		return CastToString(TotalSize(), _Fold);
 	}
 
-	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	template <typename _ValType = _TensorType>
 	std::enable_if_t<
 		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
 		std::string> to_string() const
@@ -327,12 +300,12 @@ public:
 		return CastToString(TotalSize());
 	}
 
-	template <typename _ValType = _TensorType, size_t _TRank = _NRank>
+	template <typename _ValType = _TensorType>
 	std::enable_if_t<
 		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::wstring> CastToWideString() const
+		std::wstring> CastToWideString(bool _Fold = true) const
 	{
-		return UTF8ToWideString(CastToString(TotalSize()));
+		return UTF8ToWideString(CastToString(TotalSize()), _Fold);
 	}
 
 protected:
@@ -349,11 +322,11 @@ private:
 	template <typename _ValType = _TensorType>
 	std::enable_if_t<
 		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::string> CastToString(SizeType _MyTotalSize) const
+		std::string> CastToString(SizeType _MyTotalSize, bool _Fold = true) const
 	{
 		if constexpr (_NRank > 1)
 		{
-			if (_MyShape.Front() > 10)
+			if (_MyShape.Front() > 10 && _Fold)
 				return "[" +
 				operator[](0).CastToString(_MyTotalSize) + ",\n" +
 				operator[](1).CastToString(_MyTotalSize) + ",\n" +
@@ -370,7 +343,7 @@ private:
 		}
 		else
 		{
-			if (_MyShape.Front() > 10 && _MyTotalSize > 1000)
+			if (_MyShape.Front() > 10 && _MyTotalSize > 1000 && _Fold)
 				return "[" +
 				CvtToString(Get(0)) + ", " +
 				CvtToString(Get(1)) + ", " +
@@ -505,7 +478,7 @@ private:
 	}
 
 	template <size_t _Rank2>
-	std::enable_if_t<
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		_Rank2 <= _NRank,
 		Tensor> BroadCast(const Tensor<_TensorType, _Rank2, _MyDevice>& _Other) const
 	{
@@ -655,17 +628,6 @@ public:
 		std::is_trivial_v<_CurValueType> ||
 		std::is_constructible_v<_CurValueType>>,
 		Tensor> New(const Dimensions<_NRank>& MyShape)
-	{
-		return Tensor(MyShape);
-	}
-
-	template <typename _CurValueType = ValueType>
-	static constexpr std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_trivial_v<_CurValueType> ||
-		std::is_constructible_v<_CurValueType>>,
-		Tensor> New(const SizeType(&MyShape)[_NRank])
 	{
 		return Tensor(MyShape);
 	}
@@ -909,10 +871,10 @@ public:
 		return Tensor(_ShapeReference._MyShape);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
 	static constexpr std::enable_if_t<
 		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1,
 		Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&&
 		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
@@ -935,6 +897,19 @@ public:
 			!Ret.IsBroadCasted() && Ret.IsContinuous()
 		);
 		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
+	static constexpr std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1,
+		Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&&
+		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&&
+		std::is_move_assignable_v<_CurValueType>&&
+		std::is_constructible_v<ValueType>>,
+		Tensor> Linspace(ValueType _Begin, ValueType _End, size_t _Count)
+	{
+		return Arange(_Begin, _End, (_End - _Begin) / ValueType(_Count));
 	}
 
 	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)
@@ -3528,11 +3503,13 @@ public:
 	 */
 	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcRange(SizeType _Index, SizeType _Max)
 	{
-		if (_Index < 0)
-			_Index += _Max + 1;
-		if (_Index > _Max || _Index < -1)
-			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
-		return _Index;
+		if (_Index == RangeEndPos)
+			return _Max;
+		if (_Index == RangeBeginPos)
+			return -1;
+		if (_Index == _Max)
+			return _Max;
+		return CalcIndex(_Index, _Max);
 	}
 
 	/**
@@ -3567,12 +3544,13 @@ public:
 		Tensor Ret = View();
 		for (size_t i = 0; i < _SliceOptions.Size(); ++i)
 		{
-			if (_SliceOptions[i].IsNone)
+			if (_SliceOptions[i].Begin == 0 && _SliceOptions[i].Step == 1 &&
+				(_SliceOptions[i].End == RangeEndPos || _SliceOptions[i].End == _MyShape[i]))
 				continue;
 
 			SizeType SliceBeginPos, SliceStep, SliceEndPos;
 
-			if (_SliceOptions[i].IsValue)
+			if (_SliceOptions[i].Begin == _SliceOptions[i].Step && _SliceOptions[i].Begin == _SliceOptions[i].End)
 			{
 				SliceBeginPos = CalcIndex(_SliceOptions[i].Step, _MyShape[i]);
 				SliceStep = 1;
@@ -3590,6 +3568,8 @@ public:
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
 				_D_Dragonian_Lib_Throw_Exception("(SliceEnd - SliceBegin) Should Not Be Zero!");
+			if (SliceLength / SliceStep < 0)
+				_D_Dragonian_Lib_Throw_Exception("Step Error!");
 			const auto SlicedShape = Ceil(abs(SliceLength), abs(SliceStep));
 			if (SlicedShape < 0)
 				_D_Dragonian_Lib_Throw_Exception("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
@@ -3784,7 +3764,7 @@ public:
 	template <typename... _Args>
 	decltype(auto) View(_Args... _Shape) const
 	{
-		Dimensions<sizeof...(_Args)> _ViewShape{_Shape...};
+		Dimensions<sizeof...(_Args)> _ViewShape{ _Shape... };
 		return View(_ViewShape);
 	}
 
@@ -3839,22 +3819,45 @@ public:
 		return *this = Clone();
 	}
 
+	template <typename _CurValueType = ValueType, size_t _TRank>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor<_TensorType, _TRank, _MyDevice>> ReShape(const Dimensions<_TRank>& _ViewShape) const
+	{
+		if (IsContinuous())
+			return View(_ViewShape);
+		return Clone().View(_ViewShape);
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_CurValueType, _CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>>, typename... _Args>
+		decltype(auto) ReShape(_Args... _Shape) const
+	{
+		Dimensions<sizeof...(_Args)> _ViewShape{ _Shape... };
+		return ReShape(_ViewShape);
+	}
+
 	//********************************************************Operation********************************************************//
 
 	template <size_t _UnfoldDim, size_t _UnfoldCount, typename InvokeFnType>
-	static std::enable_if_t<TypeTraits::IsCallableValue<InvokeFnType>> Invoke(Tensor& _Tensor, InvokeFnType _Fn)
+	static std::enable_if_t<TypeTraits::IsCallableValue<InvokeFnType>> Invoke(Tensor& _Tensor, const InvokeFnType& _Fn)
 	{
 		const auto Parameter = _Tensor.GetDefaultOperatorParameter();
 		auto Data = _Tensor.Data();
+		const auto ShapeInfo = Parameter.Shape.Data();
+		const auto BeginInfo = Parameter.Begin.Data();
+		const auto ViewStrideInfo = Parameter.ViewStride.Data();
 		auto Function = [=](int64_t _Index)
 			{
-				_Fn(Data + _Index);
+				_Fn(Data + _Index, ShapeInfo, ViewStrideInfo);
 			};
-		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(
-			0,
-			Parameter.Shape.Data(), Parameter.Begin.Data(),
-			Parameter.ViewStep.Data(), Parameter.ViewLeft.Data(),
-			Parameter.ViewStride.Data(), Function);
+		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(0, ShapeInfo, BeginInfo, ViewStrideInfo, Function);
 	}
 
 	template <typename _CurValueType = ValueType>
@@ -3888,33 +3891,158 @@ public:
 		return Ret;
 	}
 
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		_TRank <= _NRank && std::is_copy_assignable_v<_CurValueType>
+		>> decltype(auto) Padding(
+			const IDLArray<Range, _TRank>& _PaddingCount,
+			PaddingType _Type,
+			std::optional<ValueType> _Val = std::nullopt
+		)
+	{
+		auto Shape = _MyShape;
+		SliceOptions<_NRank> NewTensorSlice;
+		for (size_t i = 0; i < _TRank; ++i)
+		{
+			if (_PaddingCount[i].Begin == 0 && _PaddingCount[i].Step == 1 && _PaddingCount[i].End == RangeEndPos)
+				continue;
+			if ((_PaddingCount[i].Begin) < 0 || (_PaddingCount[i].End) < 0)
+				_D_Dragonian_Lib_Throw_Exception("Padding Should Not Be Negative, Using Slice Instead!");
+			Shape[i] += _PaddingCount[i].Begin + _PaddingCount[i].End;
+			NewTensorSlice[i].Begin = _PaddingCount[i].Begin;
+			NewTensorSlice[i].End = _PaddingCount[i].Begin + _MyShape[i];
+		}
+
+		auto Ret = New(Shape);
+		Ret[NewTensorSlice] = *this;
+		if (_Type == PaddingType::Zero)
+		{
+			_Type = PaddingType::Constant;
+			if (TypeTraits::CouldBeConvertedFromValue<ValueType, SizeType>)
+				_Val = ValueType(ZeroConstantVal);
+		}
+
+		for (size_t i = _TRank - 1; i < _TRank; --i)
+		{
+			if (!(_PaddingCount[i].Begin == 0 && _PaddingCount[i].Step == 1 && _PaddingCount[i].End == RangeEndPos))
+			{
+				SliceOptions<_NRank> RngFront, RngBack;
+				SliceOptions<_NRank> SrcFront, SrcBack;
+
+				if (_Type == PaddingType::Constant)
+				{
+					if (_Val.has_value())
+					{
+						if (_PaddingCount[i].Begin > 0)
+						{
+							RngFront[i] = { 0, _PaddingCount[i].Begin };
+							Ret[RngFront].Assign(_Val.value());
+						}
+						if (_PaddingCount[i].End > 0)
+						{
+							RngBack[i] = { _MyShape[i] + _PaddingCount[i].Begin, RangeEndPos };
+							Ret[RngBack].Assign(_Val.value());
+						}
+					}
+					else
+						_D_Dragonian_Lib_Throw_Exception("Constant Padding Should Have A Value!");
+				}
+				else if (_Type == PaddingType::Replicate)
+				{
+					if (_PaddingCount[i].Begin > 0)
+					{
+						RngFront[i] = { 0, _PaddingCount[i].Begin };
+						SrcFront[i] = { _PaddingCount[i].Begin, _PaddingCount[i].Begin + 1 };
+						Ret[RngFront].Assign(Ret[SrcFront]);
+					}
+					if (_PaddingCount[i].End > 0)
+					{
+						RngBack[i] = { _MyShape[i] + _PaddingCount[i].Begin, RangeEndPos };
+						SrcBack[i] = { _MyShape[i] + _PaddingCount[i].Begin - 1, _MyShape[i] + _PaddingCount[i].Begin };
+						Ret[RngBack].Assign(Ret[SrcBack]);
+					}
+				}
+				else if (_Type == PaddingType::Cicular)
+				{
+					if (_PaddingCount[i].Begin > 0)
+					{
+						auto PaddingPos = _PaddingCount[i].Begin;
+						const auto ConstantPaddingPos = PaddingPos;
+						RngFront[i] = { 0, 0 };
+						while (PaddingPos)
+						{
+							const auto _ThisCount = PaddingPos < _MyShape[i] ? PaddingPos : _MyShape[i];
+							const auto _Remainder = _MyShape[i] - _ThisCount;
+							SrcFront[i] = { ConstantPaddingPos + _Remainder, ConstantPaddingPos + _Remainder + _ThisCount };
+							RngFront[i].End = RngFront[i].Begin + _ThisCount;
+							Ret[RngFront].Assign(Ret.Slice(SrcFront));
+							RngFront[i].Begin += _ThisCount;
+							PaddingPos -= _ThisCount;
+						}
+					}
+					if (_PaddingCount[i].End > 0)
+					{
+						auto PaddingPos = _PaddingCount[i].End;
+						const auto ConstantPaddingPos = _PaddingCount[i].Begin;
+						RngBack[i] = { _MyShape[i] + ConstantPaddingPos, 0 };
+						while (PaddingPos)
+						{
+							const auto _ThisCount = PaddingPos < _MyShape[i] ? PaddingPos : _MyShape[i];
+							SrcBack[i] = { ConstantPaddingPos, ConstantPaddingPos + _ThisCount };
+							RngBack[i].End = RngBack[i].Begin + _ThisCount;
+							Ret[RngBack].Assign(Ret.Slice(SrcBack));
+							RngBack[i].Begin += _ThisCount;
+							PaddingPos -= _ThisCount;
+						}
+					}
+				}
+				else if (_Type == PaddingType::Reflect)
+				{
+					if(_PaddingCount[i].Begin >= _MyShape[i] || _PaddingCount[i].End >= _MyShape[i])
+						_D_Dragonian_Lib_Throw_Exception("Reflect Padding Should Not Be Greater Than The Shape!");
+					if (_PaddingCount[i].Begin > 0)
+					{
+						RngFront[i] = { 0, _PaddingCount[i].Begin };
+						SrcFront[i] = { _PaddingCount[i].Begin * 2, -1, _PaddingCount[i].Begin };
+						Ret[RngFront].Assign(Ret.Slice(SrcFront));
+					}
+					if (_PaddingCount[i].End > 0)
+					{
+						RngBack[i] = { _MyShape[i] + _PaddingCount[i].Begin, RangeEndPos };
+						SrcBack[i] = { RngBack[i].Begin - 2, -1, RngBack[i].Begin - _PaddingCount[i].End - 2 };
+						Ret[RngBack].Assign(Ret.Slice(SrcBack));
+					}
+				}
+			}
+		}
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		_TRank <= _NRank && std::is_copy_assignable_v<_CurValueType>
+		>> decltype(auto) Pad(
+			const IDLArray<Range, _TRank>& _PaddingCount,
+			PaddingType _Type,
+			std::optional<ValueType> _Val = std::nullopt
+		)
+	{
+		IDLArray<Range, _NRank> PaddingC;
+		for (size_t i = 0; i < _TRank; ++i)
+			PaddingC[_NRank - 1 - i] = _PaddingCount[i];
+		return Padding(PaddingC, _Type, std::move(_Val));
+	}
+
+	decltype(auto) Reverse(SizeType _Axis = 0) const
+	{
+		_Axis = CalcIndex(_Axis, Rank());
+		auto Ret = View();
+		Ret._MyData += (_MyShape[_Axis] - 1) * _MyViewStride[_Axis];
+		Ret._MyViewStride[_Axis] = -_MyViewStride[_Axis];
+		return Ret;
+	}
+
 	/*
-
-	static Tensor Padding(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		PaddingType _Type,
-		const ValueType& _Val
-	);
-
-	static Tensor Pad(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		PaddingType _Type,
-		const ValueType& _Val
-	);
-
-	static Tensor Padding(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		PaddingType _Type = PaddingType::Zero
-	);
-
-	static Tensor Pad(
-		const Tensor& _Input,
-		const Vector<Range>& _Pad,
-		PaddingType _Type = PaddingType::Zero
-	);
 
 	static Tensor Repeat(
 		const Tensor& _Input,

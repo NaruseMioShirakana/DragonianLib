@@ -330,7 +330,7 @@ namespace Functional
 		return Empty<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape());
 	}
 
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -338,13 +338,30 @@ namespace Functional
 		Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&&
 		std::is_move_assignable_v<_MyValueType>&&
 		std::is_constructible_v<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> Arange(
+		Tensor<_MyValueType, 1, _MyDevice>> Arange(
 			_MyValueType _Begin,
 			_MyValueType _End,
 			_MyValueType _Step
 		)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::Arange(_Begin, _End, _Step);
+		return Tensor<_MyValueType, 1, _MyDevice>::Arange(_Begin, _End, _Step);
+	}
+
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&&
+		Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&&
+		std::is_move_assignable_v<_MyValueType>&&
+		std::is_constructible_v<_MyValueType>>,
+		Tensor<_MyValueType, 1, _MyDevice>> Linspace(
+			_MyValueType _Begin,
+			_MyValueType _End,
+			size_t _Count
+		)
+	{
+		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count);
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
@@ -517,6 +534,18 @@ std::wostream& operator<<(std::wostream& _OStream, const Tensor<_MyValueType, _N
 	return _OStream;
 }
 
+template <typename _MyValueType, size_t _NRank>
+std::ostream& operator<<(std::ostream& _OStream, const IDLArray<_MyValueType, _NRank>& _Array)
+{
+	_OStream << _Array.ToString();
+	return _OStream;
+}
 
+template <typename _MyValueType, size_t _NRank>
+std::wostream& operator<<(std::wostream& _OStream, const IDLArray<_MyValueType, _NRank>& _Array)
+{
+	_OStream << _Array.ToWString();
+	return _OStream;
+}
 
 _D_Dragonian_Lib_Space_End
