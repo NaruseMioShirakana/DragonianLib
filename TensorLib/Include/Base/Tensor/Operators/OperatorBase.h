@@ -11,6 +11,15 @@ _D_Dragonian_Lib_Operator_Space_Begin
 
 using namespace TypeTraits;
 
+_D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndexOp(SizeType _Index, SizeType _Max)
+{
+	if (_Index < 0)
+		_Index += _Max;
+	if (_Index >= _Max || _Index < 0)
+		_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+	return _Index;
+}
+
 template<size_t _NRank>
 struct OperatorParameter
 {
@@ -130,6 +139,19 @@ public:
 		const _Type& _Start,
 		const _Type& _Step,
 		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<typename _IndexType, size_t _NRank, size_t _Dim>
+	static void ImplGather(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		const _IndexType* _Index,
+		const OperatorParameter<_NRank>& _IndexInfo
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;

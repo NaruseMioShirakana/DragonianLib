@@ -766,4 +766,99 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 	}
 }
 
+template<int64_t LoopCount, int64_t LoopUnfold, int64_t _Dim, typename _Fn>
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> GatherLoop(
+	int64_t Value1, int64_t Value2, int64_t Value3,
+	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
+	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2, const int64_t* __restrict Stride3,
+	_Fn _Func
+)
+{
+	if constexpr (LoopCount - 1)
+		for (int64_t i = *LoopBegin; i < *Shape; ++i)
+		{
+			const auto Val1 = Value1 + i * *Stride1;
+			const auto Val2 = _Dim == 0 ? Value2 : Value2 + i * *Stride2;
+			const auto Val3 = Value3 + i * *Stride3;
+			GatherLoop<LoopCount - 1, LoopUnfold, _Dim - 1>(
+				Val1, Val2, Val3,
+				Shape + 1, LoopBegin + 1,
+				Stride1 + 1, Stride2 + 1, Stride3 + 1,
+				_Func
+			);
+		}
+	else
+	{
+		int64_t i = *LoopBegin;
+		while (i < *Shape - LoopUnfold)
+		{
+			for (int64_t j = 0; j < LoopUnfold; ++j)
+			{
+				const auto Val1 = Value1 + i * *Stride1;
+				const auto Val2 = Value2 + i * *Stride2;
+				const auto Val3 = Value3 + i * *Stride3;
+				_Func(Val1, Val2, Val3);
+				++i;
+			}
+		}
+		while (i < *Shape)
+		{
+			const auto Val1 = Value1 + i * *Stride1;
+			const auto Val2 = Value2 + i * *Stride2;
+			const auto Val3 = Value3 + i * *Stride3;
+			_Func(Val1, Val2, Val3);
+			++i;
+		}
+	}
+}
+
+template<typename _Type, typename _IndexType, size_t _NRank, size_t _Dim>
+void GatherOp(
+	_Type* _Dest,
+	std::shared_ptr<OperatorParameter<_NRank>> _DestInfo,
+	const _Type* _Src,
+	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfo,
+	const _IndexType* _Index,
+	std::shared_ptr<OperatorParameter<_NRank>> _IndexInfo,
+	void*
+)
+{
+	const auto Func = [&](int64_t _IndexDst, int64_t _IndexSrc, int64_t _IndexIdx)
+		{
+			const auto Index = CalcIndexOp((SizeType)_Index[_IndexIdx], _SrcInfo->Shape[_Dim]) *
+				_SrcInfo->ViewStride[_Dim];
+			_Dest[_IndexDst] = _Src[_IndexSrc + Index];
+		};
+	GatherLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold, _Dim>(
+		0, 0, 0,
+		_DestInfo->Shape.Data(), _DestInfo->Begin.Data(),
+		_DestInfo->ViewStride.Data(), _SrcInfo->ViewStride.Data(), _IndexInfo->ViewStride.Data(),
+		Func
+	);
+}
+template<typename _Type>
+template<typename _IndexType, size_t _NRank, size_t _Dim>
+void OperatorsBase<_Type, Device::CPU>::ImplGather(
+	_Type* _Dest,
+	const OperatorParameter<_NRank>& _DestInfo,
+	const _Type* _Src,
+	const OperatorParameter<_NRank>& _SrcInfo,
+	const _IndexType* _Index,
+	const OperatorParameter<_NRank>& _IndexInfo
+)
+{
+	ImplMultiThreadTriple(
+		_Dest,
+		_DestInfo,
+		_Src,
+		_SrcInfo,
+		_Index,
+		_IndexInfo,
+		nullptr,
+		false,
+		GatherOp<_Type, _IndexType, _NRank, _Dim>,
+		nullptr
+	);
+}
+
 _D_Dragonian_Lib_Operator_Space_End

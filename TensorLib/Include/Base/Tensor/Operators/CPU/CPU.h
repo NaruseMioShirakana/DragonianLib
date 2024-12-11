@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Simd.h"
+#include "Libraries/Util/Logger.h"
 #include "Libraries/Util/ThreadPool.h"
 
 _D_Dragonian_Lib_Operator_Space_Begin
@@ -83,6 +84,16 @@ public:
 		const _Type& _Start,
 		const _Type& _Step,
 		bool Continuous
+	);
+
+	template<typename _IndexType, size_t _NRank, size_t _Dim>
+	static void ImplGather(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		const _IndexType* _Index,
+		const OperatorParameter<_NRank>& _IndexInfo
 	);
 
 	_D_Dragonian_Lib_Operator_Binary_Define(Add);
@@ -346,7 +357,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> T
  * @return void.
  */
 template<typename _Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadSingle(
+void ImplMultiThreadSingle(
 	_Type* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	_Parameter _UserParameter,
@@ -425,6 +436,12 @@ std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadSingle(
 			}
 			return;
 		}
+	}
+
+	if constexpr (!IsCallableValue<_Fn>)
+	{
+		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
+		return;
 	}
 
 	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
@@ -579,7 +596,7 @@ std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadSingle(
  * @return void.
  */
 template<typename _DstType, typename _SrcType, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadDouble(
+void ImplMultiThreadDouble(
 	_DstType* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	const _SrcType* _Src,
@@ -661,6 +678,12 @@ std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadDouble(
 			}
 			return;
 		}
+	}
+
+	if constexpr (!IsCallableValue<_Fn>)
+	{
+		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
+		return;
 	}
 
 	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
@@ -833,7 +856,7 @@ std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadDouble(
  * @return void.
  */
 template<typename _DstType, typename _Src1Type, typename _Src2Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadTriple(
+void ImplMultiThreadTriple(
 	_DstType* _Dest,
 	const OperatorParameter<_NRank>& _DestParameter,
 	const _Src1Type* _Src1,
@@ -923,6 +946,12 @@ std::enable_if_t<IsCallableValue<_Fn>> ImplMultiThreadTriple(
 			}
 			return;
 		}
+	}
+
+	if constexpr(!IsCallableValue<_Fn>)
+	{
+		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
+		return;
 	}
 
 	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)

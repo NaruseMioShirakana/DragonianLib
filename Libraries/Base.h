@@ -293,6 +293,9 @@ struct IDLArray
 	_ValueType _MyData[_Rank]; ///< Data of the dimensions
 };
 
+template <typename _ValueType, size_t _Size>
+using MArray = IDLArray<_ValueType, _Size>;
+
 template <typename _Type, size_t _Rank>
 struct _Impl_Static_Array_Type
 {

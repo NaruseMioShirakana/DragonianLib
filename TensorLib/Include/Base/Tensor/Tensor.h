@@ -222,7 +222,7 @@ constexpr const _Type& MinOf(const _Type& _Left, const _Type& _Right) { return _
  * @tparam _NRank The rank of the tensor.
  * @tparam _MyDevice The device of the tensor.
  */
-template <typename _TensorType = float, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+template <typename _TensorType, size_t _NRank, Device _MyDevice>
 class Tensor : public Value
 {
 public:
@@ -241,6 +241,8 @@ public:
 	using _MyMultiThreadSyncP = typename Operators::OperatorParameter<_NRank>::_MyMultiThreadSyncP;
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
+
+	Tensor() = default;
 
 	void Eval() const
 	{
@@ -326,14 +328,15 @@ private:
 	{
 		if constexpr (_NRank > 1)
 		{
-			if (_MyShape.Front() > 10 && _Fold)
+			if (_MyShape.Front() > 10 && _MyTotalSize > 1000 && _Fold)
 				return "[" +
 				operator[](0).CastToString(_MyTotalSize) + ",\n" +
 				operator[](1).CastToString(_MyTotalSize) + ",\n" +
-				" ... ,\n" +
+				operator[](2).CastToString(_MyTotalSize) + "\n" +
+				"[...]\n" +
+				operator[](-3).CastToString(_MyTotalSize) + ",\n" +
 				operator[](-2).CastToString(_MyTotalSize) + ",\n" +
-				operator[](-1).CastToString(_MyTotalSize) +
-				"]";
+				operator[](-1).CastToString(_MyTotalSize) + "]";
 			std::string Ret = "[";
 			for (SizeType i = 0; i < _MyShape.Front(); ++i)
 				Ret += operator[](i).CastToString(_MyTotalSize) + ",\n";
@@ -510,6 +513,19 @@ public:
 			_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
+	template <size_t _TRank, typename = std::enable_if_t<_NRank >= _TRank>>
+	constexpr Tensor& TAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
+	{
+		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
+		{
+			if ((const void*)this != (const void*)&_Left)
+				Assign(_Left);
+			return *this;
+		}
+		else
+			_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
 	constexpr Tensor& operator=(const Tensor& _Left)
 	{
 		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
@@ -583,7 +599,7 @@ public:
 	}
 
 	template <size_t _SliceDim = 0, typename _FirstType, typename ..._ArgTypes,
-		typename = std::enable_if_t<(sizeof...(_ArgTypes) < _NRank) && 
+		typename = std::enable_if_t<(sizeof...(_ArgTypes) < _NRank) &&
 		TypeTraits::IsIntegerValue<_FirstType> && (_SliceDim < _NRank)>>
 		decltype(auto) operator()(_FirstType _Index, _ArgTypes ..._Args) const
 	{
@@ -907,8 +923,13 @@ public:
 		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&&
 		std::is_move_assignable_v<_CurValueType>&&
 		std::is_constructible_v<ValueType>>,
-		Tensor> Linspace(ValueType _Begin, ValueType _End, size_t _Count)
+		Tensor> Linspace(ValueType _Begin, ValueType _End, size_t _Count, bool _EndPoint = false)
 	{
+		if (_EndPoint)
+		{
+			const auto Step = (_End - _Begin) / ValueType(_Count - 1);
+			return Arange(_Begin, _End + Step, Step);
+		}
 		return Arange(_Begin, _End, (_End - _Begin) / ValueType(_Count));
 	}
 
@@ -954,8 +975,6 @@ private:
 			--_Begin;
 		}
 	}
-
-	Tensor() = default;
 
 	Tensor(const Dimensions<_NRank>& MyShape) : _MyFutures(new _MyMultiThreadSyncT)
 	{
@@ -3149,6 +3168,581 @@ public:
 		return Ret;
 	}
 
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::SqrtUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> SqrtInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplSqrtUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::RSqrtUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> RSqrtInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplRSqrtUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ReciprocalUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ReciprocalInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplReciprocalUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> AbsInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplAbsUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::SinUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> SinInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplSinUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::CosUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> CosInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplCosUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::TanUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> TanInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplTanUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ASinUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ASinInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplASinUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ACosUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ACosInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplACosUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ATanUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ATanInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplATanUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::SinhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> SinhInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplSinhUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::CoshUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> CoshInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplCoshUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::TanhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> TanhInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplTanhUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ASinhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ASinhInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplASinhUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ACoshUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ACoshInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplACoshUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ATanhUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ATanhInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplATanhUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::ExpUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> ExpInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplExpUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> LogInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplLogUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::Log2Unary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> Log2Inplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplLog2Unary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::Log10Unary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> Log10Inplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplLog10Unary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::CeilUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> CeilInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplCeilUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::FloorUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> FloorInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplFloorUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::RoundUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> RoundInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplRoundUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::TruncUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> TruncInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplTruncUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _CurValueType = ValueType>
+	std::enable_if_t<
+		TypeTraits::AndValue <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
+		Operators::UnaryOperators::FracUnary::HasOperatorValue<_CurValueType>&&
+		std::is_copy_assignable_v<_CurValueType>>,
+		Tensor&> FracInplace()
+	{
+		Eval();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
+		const auto MyParameter = GetDefaultOperatorParameter();
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplFracUnary
+		(
+			_MyData,
+			MyParameter,
+			_MyData,
+			MyParameter,
+			!IsBroadCasted() && IsContinuous()
+		);
+		return *this;
+	}
+
 	//*********************************************************Info*********************************************************//
 
 	/**
@@ -3333,7 +3927,7 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = _NRank) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
-		_End = CalcRange(_End, Rank());
+		_End = CalcIterator(_End, Rank());
 
 		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = _Begin + 1; i < _End; ++i)
@@ -3364,7 +3958,7 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
-		_End = CalcRange(_End, Rank());
+		_End = CalcIterator(_End, Rank());
 
 		for (SizeType i = _Begin; i < _End; ++i)
 			if (!_MyViewStride[i])
@@ -3484,7 +4078,7 @@ public:
 	 * @brief Transform the index which is negative to the positive index and check if it is out of range.
 	 * @param _Index The index to transform.
 	 * @param _Max The max index.
-	 * @return The transformed index.
+	 * @return The transformed index. (0 ~ (Max - 1))
 	 */
 	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max)
 	{
@@ -3496,12 +4090,19 @@ public:
 	}
 
 	/**
-	 * @brief Transform the range index which is negative to the positive range index and check if it is out of range.
+	 * @brief Transform the range index which is negative to the positive end index and check if it is out of range.
+	 * this function has reverse condition, so the index should be in the range of [-1, Max].
+	 * e.g. if a container has 5 elements[|(begin)|v1|v2|v3|v4|v5|(end)],
+	 * it has 7 index positions[-1(begin)0(v1)1(v2)2(v3)3(v4)4(v5)5(end)](as '|'),
+	 * _Max means size of the container(5), _Index means the index position(-5 ~ 4 | RangeEndPos | RangeBeginPos),
+	 * if _Index is RangeEndPos, it means the end of the container(5(end)),
+	 * if _Index is RangeBeginPos, it means the end of the reversed container(-1(begin)),
+	 * if _Index is negative, it means the position from the end of the element(4(v5)),
 	 * @param _Index The index to transform.
 	 * @param _Max The max index.
-	 * @return The transformed index.
+	 * @return The transformed index. (-1 ~ Max)
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcRange(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcEndPos(SizeType _Index, SizeType _Max)
 	{
 		if (_Index == RangeEndPos)
 			return _Max;
@@ -3510,6 +4111,32 @@ public:
 		if (_Index == _Max)
 			return _Max;
 		return CalcIndex(_Index, _Max);
+	}
+
+	/**
+	 * @brief Transform the iterator index which is negative to the positive index and check if it is out of range,
+	 * this function has no reverse condition, so the index should be in the range of [0, Max].
+	 * e.g. if a container has 5 elements[|v1|v2|v3|v4|v5|end],
+	 * it has 6 iterator positions[0(v1)1(v2)2(v3)3(v4)4(v5)5(end)](as '|'),
+	 * _Max means size of the container(5), _Index means the iterator position(-6 ~ 5),
+	 * if _Index is negative, it means the position from the end of the container,
+	 * so -1 means back of v5(5), -2 means back of v4(4), and so on.
+	 * @param _Index The index to transform.
+	 * @param _Max The max index.
+	 * @return The transformed index. (0 ~ Max)
+	 */
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIterator(SizeType _Index, SizeType _Max)
+	{
+		if (_Index == RangeEndPos)
+			return _Max;
+		if (_Index == _Max)
+			return _Max;
+
+		if (_Index < 0)
+			_Index += _Max + 1;
+		if (_Index > _Max || _Index < 0)
+			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+		return _Index;
 	}
 
 	/**
@@ -3562,7 +4189,7 @@ public:
 				if (SliceStep == 0)
 					_D_Dragonian_Lib_Throw_Exception("SliceStep Should Not Be Zero!");
 				SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
-				SliceEndPos = CalcRange(_SliceOptions[i].End, _MyShape[i]);
+				SliceEndPos = CalcEndPos(_SliceOptions[i].End, _MyShape[i]);
 			}
 
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
@@ -3657,7 +4284,7 @@ public:
 	{
 		ThrowOnNotEnabled();
 		Tensor<_TensorType, _NRank + 1, _MyDevice> Ret;
-		_Dim = CalcRange(_Dim, Rank());
+		_Dim = CalcIterator(_Dim, Rank());
 		const auto _Value = _Dim == Rank() ? 1 : _MyViewStride[_Dim] * _MyShape[_Dim];
 		Ret._MyShape = _MyShape.Insert(1, _Dim);
 		Ret._MyViewStride = _MyViewStride.Insert(_Value, _Dim);
@@ -3721,7 +4348,7 @@ public:
 		for (const auto i : _ViewShape)
 			if (i <= 0 && i != -1)
 				_D_Dragonian_Lib_Throw_Exception("Count Of Size Should Be Greater Than 0 Or Equal -1 (Dynamic Axis)!");
-		
+
 		const auto SrcSize = _MyShape.Multiply();
 		const auto DstSize = std::abs(_ViewShape.Multiply());
 
@@ -3860,16 +4487,36 @@ public:
 		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(0, ShapeInfo, BeginInfo, ViewStrideInfo, Function);
 	}
 
-	template <typename _CurValueType = ValueType>
-	std::enable_if_t<
+	template <SizeType _Axis = 0, typename _CurValueType = ValueType, typename _IndexType,
+		typename = std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
 		TypeTraits::CouldBeConvertedFromValue<_CurValueType, _CurValueType>&&
-		std::is_copy_assignable_v<_CurValueType>>,
-		Tensor> Gather(
-			const Tensor& _Indices,
-			SizeType _Axis = 0
-		) const;
+		TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 &&
+		std::is_copy_assignable_v<_CurValueType>>>>
+		decltype(auto) Gather(
+			const Tensor<_IndexType, _NRank, _MyDevice>& _Indices
+		) const
+	{
+		for (size_t i = 0; i < _NRank; ++i)
+			if (i != _Axis && _MyShape[i] != _Indices.Shape()[i])
+				_D_Dragonian_Lib_Throw_Exception("Shape Mismatch!");
+
+		_Indices.Eval();
+		Eval();
+		constexpr auto _Dim = TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank));
+		auto Ret = New(_Indices.Shape());
+		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplGather<_IndexType, _NRank, _Dim>
+			(
+				Ret.Data(),
+				Ret.GetDefaultOperatorParameter(),
+				Data(),
+				GetDefaultOperatorParameter(),
+				_Indices.Data(),
+				_Indices.GetDefaultOperatorParameter()
+			);
+		return Ret;
+	}
 
 	template <typename _Type>
 	std::enable_if_t<
@@ -3898,7 +4545,7 @@ public:
 			const IDLArray<Range, _TRank>& _PaddingCount,
 			PaddingType _Type,
 			std::optional<ValueType> _Val = std::nullopt
-		)
+		) const
 	{
 		auto Shape = _MyShape;
 		SliceOptions<_NRank> NewTensorSlice;
@@ -3998,7 +4645,7 @@ public:
 				}
 				else if (_Type == PaddingType::Reflect)
 				{
-					if(_PaddingCount[i].Begin >= _MyShape[i] || _PaddingCount[i].End >= _MyShape[i])
+					if (_PaddingCount[i].Begin >= _MyShape[i] || _PaddingCount[i].End >= _MyShape[i])
 						_D_Dragonian_Lib_Throw_Exception("Reflect Padding Should Not Be Greater Than The Shape!");
 					if (_PaddingCount[i].Begin > 0)
 					{
@@ -4025,7 +4672,7 @@ public:
 			const IDLArray<Range, _TRank>& _PaddingCount,
 			PaddingType _Type,
 			std::optional<ValueType> _Val = std::nullopt
-		)
+		) const
 	{
 		IDLArray<Range, _NRank> PaddingC;
 		for (size_t i = 0; i < _TRank; ++i)
@@ -4042,23 +4689,37 @@ public:
 		return Ret;
 	}
 
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>>>
+		decltype(auto) Repeat(
+			const IDLArray<SizeType, _NRank>& _Repeat
+		) const
+	{
+		IDLArray<Range, _NRank> _PaddingCount;
+		for (size_t i = 0; i < _NRank; ++i)
+		{
+			if (_Repeat[i] <= 1)
+				continue;
+			_PaddingCount[i].End = (_Repeat[i] - 1) * _MyShape[i];
+		}
+		return Padding(_PaddingCount, PaddingType::Cicular);
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>>>
+		decltype(auto) Repeat(
+			SizeType _Axis,
+			SizeType _Repeat
+		) const
+	{
+		IDLArray<Range, _NRank> _PaddingCount;
+		_Axis = CalcIndex(_Axis, Rank());
+		_PaddingCount[_Axis].End = (_Repeat - 1) * _MyShape[_Axis];
+		return Padding(_PaddingCount, PaddingType::Cicular);
+	}
+
 	/*
-
-	static Tensor Repeat(
-		const Tensor& _Input,
-		const Vector<std::pair<SizeType, SizeType>>& _Repeat
-	);
-
-	static Tensor Stack(
-		const Vector<Tensor>& _Inputs,
-		SizeType _Dim = 0
-	);
-
-	static Tensor Cat(
-		const Vector<Tensor>& _Inputs,
-		SizeType _Dim = 0
-	);
-
+	
 	static Tensor Gather(
 		const Tensor& _Input,
 		const Tensor& _Indices,
@@ -4110,5 +4771,8 @@ DragonianLibTensorFnDef(Floor);
 DragonianLibTensorFnDef(Ceil);
 DragonianLibTensorFnDef(Round);*/
 };
+
+template <typename _TensorType = float, Device _MyDevice = Device::CPU, size_t _NRank = 1>
+using ITensor = Tensor<_TensorType, _NRank, _MyDevice>;
 
 _D_Dragonian_Lib_Space_End

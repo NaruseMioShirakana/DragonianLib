@@ -3,6 +3,8 @@
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include <ostream>
 
+#define DMIODLETT(_MyTensor) decltype(_MyTensor)::ValueType, decltype(_MyTensor)::Rank(), decltype(_MyTensor)::GetDevice()
+
 _D_Dragonian_Lib_Space_Begin
 
 template <typename ..._TIndices>
@@ -34,7 +36,7 @@ namespace Functional
 		NumpyFileFormat::SaveNumpyFile(_Path, _Tensor.Shape(), _Tensor.Data(), _Tensor.TotalSize());
 	}
 
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, size_t _NRank, Device _MyDevice = Device::CPU>
 	Tensor<_MyValueType, _NRank, _MyDevice> NumpyLoad(const std::wstring& _Path)
 	{
 		auto [VecShape, VecData] = NumpyFileFormat::LoadNumpyFile(_Path);
@@ -56,7 +58,7 @@ namespace Functional
 	 * @param MyShape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_trivial_v<_MyValueType> ||
 		std::is_constructible_v<_MyValueType>,
@@ -74,7 +76,7 @@ namespace Functional
 	 * @param Args The rest values.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU, typename _First, typename ...Rest>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename _First, typename ...Rest>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_constructible_v<_MyValueType, _First, Rest...>,
 		Tensor<_MyValueType, _NRank, _MyDevice>> ConstructTensor(
@@ -90,7 +92,7 @@ namespace Functional
 	 * @brief Create an empty new tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		std::is_trivial_v<_MyValueType>,
 		Tensor<_MyValueType, _NRank, _MyDevice>> EmptyTensor()
@@ -118,7 +120,7 @@ namespace Functional
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -137,7 +139,7 @@ namespace Functional
 	 * @param _Shape The shape of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -157,7 +159,7 @@ namespace Functional
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -178,7 +180,7 @@ namespace Functional
 	 * @param Max The maximum value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -199,7 +201,7 @@ namespace Functional
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
@@ -211,123 +213,6 @@ namespace Functional
 		)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::Randn(_Shape, _Mean, _Sigma);
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with ones.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
-		TypeTraits::CouldBeConvertedFromValue<_MyValueType, decltype(1)>&&
-		std::is_copy_assignable_v<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> OnesLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
-		)
-	{
-		return Ones<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape());
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with zeros.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
-		TypeTraits::CouldBeConvertedFromValue<_MyValueType, decltype(0)>&&
-		std::is_copy_assignable_v<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> ZerosLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
-		)
-	{
-		return Zeros<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape());
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with a constant value.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @param _Val The constant value to fix the tensor.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
-		std::is_copy_assignable_v<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> ConstantLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
-			const _MyValueType& _Val
-		)
-	{
-		return ConstantOf<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape(), _Val);
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @param Min The minimum value of the random values.
-	 * @param Max The maximum value of the random values.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		TypeTraits::IsArithmeticValue<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> RandLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
-			const _MyValueType& Min,
-			const _MyValueType& Max
-		)
-	{
-		return Rand<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape(), Min, Max);
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @param _Mean The mean value of the random values.
-	 * @param _Sigma The sigma value of the random values.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		TypeTraits::IsArithmeticValue<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> RandnLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
-			double _Mean = 0.,
-			double _Sigma = 1.
-		)
-	{
-		return Randn<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape(), _Mean, _Sigma);
-	}
-
-	/**
-	 * @brief Create a new tensor with the same shape as the specified tensor.
-	 * @param _ShapeReference The tensor to reference the shape.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, size_t _NRank = 2, Device _MyDevice = Device::CPU>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::AndValue<
-		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
-		std::is_trivial_v<_MyValueType>>,
-		Tensor<_MyValueType, _NRank, _MyDevice>> EmptyLike(
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
-		)
-	{
-		return Empty<_MyValueType, _NRank, _MyDevice>(_ShapeReference.Shape());
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
@@ -358,10 +243,128 @@ namespace Functional
 		Tensor<_MyValueType, 1, _MyDevice>> Linspace(
 			_MyValueType _Begin,
 			_MyValueType _End,
-			size_t _Count
+			size_t _Count,
+			bool _EndPoint = false
 		)
 	{
-		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count);
+		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count, _EndPoint);
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		std::is_trivial_v<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> EmptyLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
+		)
+	{
+		return Empty<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with ones.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
+		TypeTraits::CouldBeConvertedFromValue<_MyValueType, decltype(1)>&&
+		std::is_copy_assignable_v<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> OnesLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
+		)
+	{
+		return Ones<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with zeros.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
+		TypeTraits::CouldBeConvertedFromValue<_MyValueType, decltype(0)>&&
+		std::is_copy_assignable_v<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> ZerosLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
+		)
+	{
+		return Zeros<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with a constant value.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param _Val The constant value to fix the tensor.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		TypeTraits::CouldBeConvertedFromValue<_MyValueType, _MyValueType>&&
+		std::is_copy_assignable_v<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> ConstantLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
+			const _MyValueType& _Val
+		)
+	{
+		return ConstantOf<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Val);
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param Min The minimum value of the random values.
+	 * @param Max The maximum value of the random values.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		TypeTraits::IsArithmeticValue<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> RandLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
+			const _MyValueType& Min,
+			const _MyValueType& Max
+		)
+	{
+		return Rand<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), Min, Max);
+	}
+
+	/**
+	 * @brief Create a new tensor with the same shape as the specified tensor, and fix the tensor with random values.
+	 * @param _ShapeReference The tensor to reference the shape.
+	 * @param _Mean The mean value of the random values.
+	 * @param _Sigma The sigma value of the random values.
+	 * @return The new tensor.
+	 */
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
+		TypeTraits::AndValue<
+		TypeTraits::IsSameTypeValue<_MyValueType, _MyValueType>,
+		TypeTraits::IsArithmeticValue<_MyValueType>>,
+		Tensor<_MyValueType, _NRank, _MyDevice>> RandnLike(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
+			double _Mean = 0.,
+			double _Sigma = 1.
+		)
+	{
+		return Randn<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Mean, _Sigma);
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
@@ -373,7 +376,7 @@ namespace Functional
 		std::is_copy_assignable_v<_MyValueType>>,
 		Tensor<_MyValueType, 1, _MyDevice>> FromBuffer(const _MyValueType* _Buffer, SizeType _Count)
 	{
-		auto Ret = Empty<_MyValueType, 1, _MyDevice>(IDim(_Count));
+		auto Ret = Empty<_MyValueType, _MyDevice, 1>(IDim(_Count));
 		Ret.Fix(_Buffer, _Count);
 		return Ret;
 	}
@@ -391,11 +394,9 @@ namespace Functional
 		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
 
 		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
-		auto Ret = Empty<ValueType, Rank, _MyDevice>(_Shape);
+		auto Ret = Empty<ValueType, _MyDevice, Rank>(_Shape);
 		const auto TotalSize = _Shape.Multiply();
-		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike>)
-			Ret.Fix(&_Array[0], TotalSize);
-		else if (sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
+		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike> || sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
 			Ret.Fix((const ValueType*)&_Array, TotalSize);
 		else
 			_D_Dragonian_Lib_Throw_Exception("The array-like object is not compatible with the tensor.");
@@ -415,11 +416,9 @@ namespace Functional
 		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
 
 		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
-		auto Ret = Empty<ValueType, Rank, _MyDevice>(_Shape);
+		auto Ret = Empty<ValueType, _MyDevice, Rank>(_Shape);
 		const auto TotalSize = _Shape.Multiply();
-		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike>)
-			Ret.MoveFix(&_Array[0], TotalSize);
-		else if (sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
+		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike> || sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
 			Ret.MoveFix((const ValueType*)&_Array, TotalSize);
 		else
 			_D_Dragonian_Lib_Throw_Exception("The array-like object is not compatible with the tensor.");
@@ -517,6 +516,165 @@ namespace Functional
 	)
 	{
 		return _Tensor.Permute( _PremuteOrder... );
+	}
+
+	template <typename _Type, typename _MyValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<
+		TypeTraits::CouldBeConvertedFromValue<_Type, _MyValueType>&&
+		TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&&
+		std::is_copy_assignable_v<_Type>>>
+		decltype(auto) Cast(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	{
+		return _Tensor.template Cast<_Type>();
+	}
+
+	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<
+		_TRank <= _NRank && std::is_copy_assignable_v<ValueType>>>
+		decltype(auto) Padding(
+			const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
+			const VRanges<_TRank>& _Padding,
+			PaddingType _PaddingType = PaddingType::Zero,
+			std::optional<ValueType> _ConstantValue = std::nullopt
+		)
+	{
+		return _Tensor.Padding(_Padding, _PaddingType, std::move(_ConstantValue));
+	}
+
+	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<
+		_TRank <= _NRank && std::is_copy_assignable_v<ValueType>>>
+		decltype(auto) Pad(
+			const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
+			const VRanges<_TRank>& _Padding,
+			PaddingType _PaddingType = PaddingType::Zero,
+			std::optional<ValueType> _ConstantValue = std::nullopt
+		)
+	{
+		return _Tensor.Pad(_Padding, _PaddingType, std::move(_ConstantValue));
+	}
+
+	template <typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<std::is_copy_assignable_v<ValueType>>>
+	decltype(auto) Repeat(
+		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
+		const IDLArray<SizeType, _NRank>& _Repeats
+	)
+	{
+		return _Tensor.Repeat(_Repeats);
+	}
+
+	template <typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<std::is_copy_assignable_v<ValueType>>>
+	decltype(auto) Repeat(
+		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
+		SizeType _Axis,
+		SizeType _Repeat
+	)
+	{
+		return _Tensor.Repeat(_Axis, _Repeat);
+	}
+
+	template <size_t _TensorCount, typename ValueType, size_t _NRank, Device _MyDevice>
+	struct TensorReferences
+	{
+		using Pointer = Tensor<ValueType, _NRank, _MyDevice>*;
+
+		template <size_t _Index, typename ..._Args>
+		decltype(auto) Assign(Tensor<ValueType, _NRank, _MyDevice>& _First, _Args&& ..._Tensors)
+		{
+			Tensors[_Index] = &_First;
+			if constexpr (sizeof...(_Tensors) > 0)
+				Assign<_Index + 1>(std::forward<_Args>(_Tensors)...);
+		}
+
+		template <typename ..._Args>
+		TensorReferences(Tensor<ValueType, _NRank, _MyDevice>& _First, _Args&& ..._Tensors)
+		{
+			Assign<0>(_First, std::forward<_Args>(_Tensors)...);
+		}
+
+		Tensor<ValueType, _NRank, _MyDevice>& operator[](size_t _Index)
+		{
+			return *Tensors[_Index];
+		}
+
+		Pointer Tensors[_TensorCount];
+	};
+
+	template <size_t _TensorCount, typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<std::is_copy_assignable_v<ValueType>>>
+	decltype(auto) Stack(
+		TensorReferences<_TensorCount, ValueType, _NRank, _MyDevice> _Inputs,
+		SizeType _Dim = 0
+	)
+	{
+		if constexpr (_TensorCount == 1)
+			return _Inputs[0].Clone().UnSqueeze(0);
+
+		const auto& FShape = _Inputs[0].Shape();
+		const auto NDims = _Inputs[0].Rank();
+		_Dim = TypeTraits::RemoveARPCVType<decltype(_Inputs[0])>::CalcIterator(_Dim, NDims);
+		for (size_t i = 1; i < _TensorCount; ++i)
+		{
+			const auto& CurShape = _Inputs[i].Shape();
+			for (SizeType j = 0; j < NDims; ++j)
+				if (FShape[j] != CurShape[j])
+					_D_Dragonian_Lib_Throw_Exception("Shape MisMatch!");
+		}
+
+		auto Shape = FShape.Insert((SizeType)_TensorCount, _Dim);
+		auto Ret = Empty<ValueType, _MyDevice, _NRank + 1>(Shape);
+
+		SliceOptions<_NRank + 1> _MySliceOption;
+		auto& CurSlice = _MySliceOption[_Dim];
+		for (SizeType i = 0; i < (SizeType)_TensorCount; ++i)
+		{
+			CurSlice = { i , i + 1 };
+			Ret[_MySliceOption].TAssign(_Inputs[i].UnSqueeze(_Dim));
+		}
+
+		return Ret;
+	}
+
+	template <size_t _TensorCount, typename ValueType, size_t _NRank, Device _MyDevice, typename =
+		std::enable_if_t<std::is_copy_assignable_v<ValueType>>>
+	decltype(auto) Cat(
+		TensorReferences<_TensorCount, ValueType, _NRank, _MyDevice> _Inputs,
+		SizeType _Dim = 0
+	)
+	{
+		if constexpr (_TensorCount == 1)
+			return _Inputs[0].Clone();
+
+		const auto& FShape = _Inputs[0].Shape();
+		const auto NDims = _Inputs[0].Rank();
+		_Dim = TypeTraits::RemoveARPCVType<decltype(_Inputs[0])>::CalcIndex(_Dim, NDims);
+		auto Shape = FShape;
+		for (size_t i = 1; i < _TensorCount; ++i)
+		{
+			const auto& CurShape = _Inputs[i].Shape();
+			for (SizeType j = 0; j < NDims; ++j)
+			{
+				if (j == _Dim)
+					Shape[j] += CurShape[j];
+				else if (FShape[j] != CurShape[j])
+					_D_Dragonian_Lib_Throw_Exception("Shape MisMatch!");
+			}
+		}
+
+		auto Ret = Empty<ValueType, _MyDevice, _NRank>(Shape);
+		SliceOptions<_NRank> _MySliceOption;
+		auto& CurSlice = _MySliceOption[_Dim];
+		CurSlice = { 0, 0 };
+		for (SizeType i = 0; i < (SizeType)_TensorCount; ++i)
+		{
+			const auto& __Shape = _Inputs[i].Shape();
+			CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Dim] };
+			Ret[_MySliceOption].TAssign(_Inputs[i]);
+		}
+
+		return Ret;
 	}
 }
 

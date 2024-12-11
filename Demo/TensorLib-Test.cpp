@@ -2,6 +2,43 @@
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
 #include <iostream>
+#include "TensorLib/Include/Base/Module/Convolution.h"
+#include "TensorLib/Include/Base/Module/Embedding.h"
+#include "TensorLib/Include/Base/Module/Linear.h"
+
+class MyModule : public DragonianLib::Graph::Module
+{
+public:
+	MyModule() : Module(nullptr, L"MyModule"),
+		DragonianLibRegisterLayer(_List),
+		DragonianLibRegisterLayer(_Seq)
+	{
+		using emb = DragonianLib::Graph::Embedding<float, DragonianLib::Device::CPU>;
+		using linear = DragonianLib::Graph::Linear<float, DragonianLib::Device::CPU>;
+		using conv1d = DragonianLib::Graph::Conv1D<float, DragonianLib::Device::CPU>;
+		_List.Append(
+			DragonianLibLayerItem(
+				emb,
+				DragonianLib::Graph::EmbeddingParam{ 1919, 810 }
+			)
+		);
+		_List.Append(
+			DragonianLibLayerItem(
+				linear,
+				DragonianLib::Graph::LinearParam{ 514, 114 }
+			)
+		);
+		_List.Append(
+			DragonianLibLayerItem(
+				conv1d,
+				DragonianLib::Graph::Conv1DParam{ 114, 514, 9 }
+			)
+		);
+	}
+private:
+	DragonianLib::Graph::ModuleList _List;
+	DragonianLib::Graph::Sequential _Seq;
+};
 
 struct Integer
 {
@@ -15,24 +52,26 @@ std::enable_if_t<std::is_same_v<T, Integer>, std::string> DragonianLibCvtToStrin
 	return std::to_string(t.i);
 }
 
+template <typename Fn>
+void WithTimer(const Fn& fn)
+{
+	auto start = std::chrono::high_resolution_clock::now();
+	fn();
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
+}
+
 int main()
 {
 	using namespace DragonianLib;
-	auto Tensor1 = Functional::Randn<float>(IDim(1, 9, 1, 9)).EvalMove();
-	Functional::NumpySave(LR"(D:\114514.npy)", Tensor1);
-	auto Tensor2 = Functional::NumpyLoad<float, 4>(LR"(D:\114514.npy)");
-	auto Tensor3 = Functional::Linspace(0.f, 0.36f, 6);
-	auto Tensor4 = Tensor3.View(3, -1);
-	std::cout << Tensor4.Padding({ {{2, 1}} }, PaddingType::Reflect, 1.f).Eval().CastToString(false) << "\n\n";
-	std::cout << Tensor4 << "\n\n";
-	std::cout << Tensor4.Shape() << "\n\n";
-	Tensor2 = Functional::Permute(Tensor2, 0, 3, 2, 1);
-	std::cout << Tensor2 << "\n\n";
-	std::cout << Tensor1 << "\n\n";
-	std::cout << (Tensor2 == Tensor1).Eval() << "\n\n";
-	std::cout << Tensor1 << "\n\n";
-	(Tensor1 += Tensor1).Eval();
-	std::cout << Tensor1 << "\n\n";
-	Tensor1 = Tensor1.Tan().EvalMove();
-	std::cout << Tensor1 << "\n\n";
+
+	SetWorkerCount(16);
+	SetMaxTaskCountPerOperator(16);
+
+	auto Weight = Functional::Linspace(0.f, 100.f, 2048ll * 100);
+	auto Embedding = Weight.View(100, -1);
+	Embedding.Eval();
+	int array[][1] = { {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20} };
+	auto Indice = Functional::CopyFromArrayLike(array).EvalMove().View(-1, 4);
+	std::cout << Functional::Stack<4, DMIODLETT(Indice)>({ Indice, Indice, Indice, Indice }, 1).Eval();
 }

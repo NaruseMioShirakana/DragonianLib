@@ -680,6 +680,16 @@ namespace DragonianLib
 				return{};
 			}
 		};
+
+		template <typename _IndexType>
+		constexpr inline _IndexType BTCalcIndex(_IndexType _Index, _IndexType _Max)
+		{
+			if (_Index < 0)
+				_Index += _Max;
+			if (_Index >= _Max || _Index < 0)
+				return -1;
+			return _Index;
+		}
 	}
 }
 
