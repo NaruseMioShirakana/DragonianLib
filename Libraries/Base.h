@@ -24,36 +24,6 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-#ifdef _MSC_VER
-#pragma pack(push, 1)
-#else
-#pragma pack(1)
-#endif
-// Define WeightHeader struct
-struct WeightHeader
-{
-	Int64 Shape[8] = { 0,0,0,0,0,0,0,0 };
-	char LayerName[DRAGONIANLIB_NAME_MAX_SIZE];
-	char Type[16];
-};
-#ifdef _MSC_VER
-#pragma pack(pop)
-#else
-#pragma pack()
-#endif
-
-// Define WeightData struct
-struct WeightData
-{
-	WeightHeader Header_;
-	std::vector<Byte> Data_;
-	std::vector<Int64> Shape_;
-	std::string Type_, LayerName_;
-};
-
-// Type alias for dictionary
-using DictType = std::unordered_map<std::string, WeightData>;
-
 /**
  * @brief Get global enviroment folder
  * @return global enviroment folder

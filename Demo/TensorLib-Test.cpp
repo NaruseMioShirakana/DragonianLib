@@ -74,4 +74,7 @@ int main()
 	int array[][1] = { {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20} };
 	auto Indice = Functional::CopyFromArrayLike(array).EvalMove().View(-1, 4);
 	std::cout << Functional::Stack<4, DMIODLETT(Indice)>({ Indice, Indice, Indice, Indice }, 1).Eval();
+
+	std::cout << "\n";
+	system("pause");
 }
