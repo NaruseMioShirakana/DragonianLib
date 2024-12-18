@@ -18,14 +18,9 @@
 */
 #pragma once
 #include "Alloc.h"
+#include "Iterator.h"
 #include <initializer_list>
 #include <algorithm>
-#ifdef max
-#undef max
-#endif
-#ifdef min
-#undef min
-#endif
 
 #define _D_Dragonian_Lib_Stl_Throw(message) _Impl_Dragonian_Lib_Template_Library_Throw_Exception(message, __FILE__, __FUNCSIG__, __LINE__)
 
@@ -36,7 +31,7 @@ constexpr size_t _D_Dragonian_Lib_Stl_Unfold_Count = 8;
 [[noreturn]] void _Impl_Dragonian_Lib_Template_Library_Throw_Exception(const char* Message, const char* FILE, const char* FUN, int LINE);
 
 template <typename ValueType, typename ...ArgTypes>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_constructible_v<ValueType, ArgTypes...>,
     ValueType&
 > _Impl_Dragonian_Lib_Construct_At(ValueType& _Where, ArgTypes&&... _Args)
@@ -45,7 +40,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void
+_D_Dragonian_Lib_Constexpr_Force_Inline void
 _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
 {
     if (_First >= _Last)
@@ -65,7 +60,7 @@ _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_default_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Default_Construct(ValueType* _Ptr, size_t _Count)
 {
@@ -84,7 +79,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename DestType, typename SrcType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_assignable_v<DestType, SrcType>
 > _Impl_Dragonian_Lib_Iterator_Cast(DestType* _Dest, const SrcType* _Src, size_t _Count)
 {
@@ -98,7 +93,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
 {
@@ -117,7 +112,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Copy_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
 {
@@ -131,7 +126,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_move_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -150,7 +145,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
 {
@@ -164,7 +159,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_move_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -178,7 +173,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
 {
@@ -192,7 +187,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t <
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
     std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -206,7 +201,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t <
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
 {
@@ -225,7 +220,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
 {
@@ -239,7 +234,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -258,7 +253,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Offset(ValueType* _Src, size_t _Count, int64_t Offset)
 {
@@ -282,7 +277,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Offset_Construct(ValueType* _Src, size_t _Count, int64_t Offset)
 {
@@ -306,7 +301,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Offset_Copy(ValueType* _Src, size_t _Count, int64_t Offset)
 {
@@ -320,7 +315,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 	std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -331,7 +326,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t <
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
 	std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Try_Move_Assign(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
@@ -365,7 +360,7 @@ public:
 	static_assert(std::is_copy_constructible_v<ValueType>, "ValueType Must Be Copy Constructible!");
 
 protected:
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void _Tidy() noexcept
+    _D_Dragonian_Lib_Constexpr_Force_Inline void _Tidy() noexcept
     {
         _Impl_Dragonian_Lib_Destroy_Range(_MyFirst, _MyLast);
         if (_MyFirst && _MyOwner)
@@ -377,13 +372,13 @@ protected:
     }
 
 private:
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Destory() noexcept
+    _D_Dragonian_Lib_Constexpr_Force_Inline void Destory() noexcept
     {
         _Tidy();
         _MyAllocator = nullptr;
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void AllocateMemory(SizeType _Size)
+	_D_Dragonian_Lib_Constexpr_Force_Inline void AllocateMemory(SizeType _Size)
 	{
         if (_Size == 0)
         {
@@ -549,7 +544,7 @@ public:
         return *this;
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ConstReference operator[](SizeType _Index) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline ConstReference operator[](SizeType _Index) const
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (size_t(_Index) >= Size())
@@ -558,7 +553,7 @@ public:
         return _MyFirst[_Index];
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference operator[](SizeType _Index)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Reference operator[](SizeType _Index)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
@@ -567,7 +562,7 @@ public:
 		return _MyFirst[_Index];
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ConstReference At(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline ConstReference At(SizeType _Index) const
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
@@ -576,7 +571,7 @@ public:
 		return _MyFirst[_Index];
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference At(SizeType _Index)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Reference At(SizeType _Index)
 	{
 #ifdef DRAGONIANLIB_DEBUG
 		if (size_t(_Index) >= Size())
@@ -586,117 +581,117 @@ public:
 	}
 
 public:
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Begin()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin()
     {
 		return Iterator(_MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) End()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End()
     {
 		return Iterator(_MyLast);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedBegin()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedBegin()
     {
 		return ReversedIterator(_MyLast - 1);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedEnd()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedEnd()
     {
 		return ReversedIterator(_MyFirst - 1);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) begin()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin()
     {
         return Iterator(_MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) end()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end()
     {
 		return Iterator(_MyLast);
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) rbegin()
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin()
 	{
 		return ReversedIterator(_MyLast - 1);
 	}
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) rend()
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rend()
     {
 		return ReversedIterator(_MyFirst - 1);
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) Begin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const
 	{
 		return ConstIterator(_MyFirst);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) End() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const
 	{
 		return ConstIterator(_MyLast);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedBegin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedBegin() const
 	{
 		return ConstReversedIterator(_MyLast - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) ReversedEnd() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedEnd() const
 	{
 		return ConstReversedIterator(_MyFirst - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) begin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const
 	{
 		return ConstIterator(_MyFirst);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) end() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const
 	{
 		return ConstIterator(_MyLast);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) rbegin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin() const
 	{
 		return ConstReversedIterator(_MyLast - 1);
 	}
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) rend() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rend() const
     {
 		return ConstReversedIterator(_MyFirst - 1);
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) FrontReversedBegin()
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin()
 	{
 		return LinearIterator(_MyLast - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) FrontReversedEnd()
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd()
 	{
 		return LinearIterator(_MyFirst - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) FrontReversedBegin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin() const
 	{
 		return ConstLinearIterator(_MyLast - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline decltype(auto) FrontReversedEnd() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd() const
 	{
 		return ConstLinearIterator(_MyFirst - 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Size() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size() const
     {
         return static_cast<SizeType>(_MyLast - _MyFirst);
     }
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline SizeType Capacity() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Capacity() const
     {
         return static_cast<SizeType>(_MyEnd - _MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::pair<Pointer, SizeType> Release()
+    _D_Dragonian_Lib_Constexpr_Force_Inline std::pair<Pointer, SizeType> Release()
     {
         auto Ptr = _MyFirst;
         auto _Size = Size();
@@ -707,49 +702,47 @@ public:
         return { Ptr, _Size };
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ValueType* Data()
+    _D_Dragonian_Lib_Constexpr_Force_Inline ValueType* Data()
     {
         return std::_Unfancy_maybe_null(_MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const ValueType* Data() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline const ValueType* Data() const
     {
         return std::_Unfancy_maybe_null(_MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Allocator GetAllocator() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Allocator GetAllocator() const
     {
         return _MyAllocator;
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Back() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Reference Back() const
     {
         return *(_MyLast - 1);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Front() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Reference Front() const
     {
         return *(_MyFirst);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool Empty() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline bool Empty() const
     {
         return _MyFirst == _MyLast;
     }
 
 private:
     template<typename... _ArgsTy>
-    static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+    static _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
         std::is_constructible_v<ValueType, _ArgsTy...>,
         Reference> EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
     {
 		return _Impl_Dragonian_Lib_Construct_At(_Obj, std::forward<_ArgsTy>(_Args)...);
     }
 
-    template<typename... _ArgsTy>
-	std::enable_if_t<
-        std::is_constructible_v<ValueType, _ArgsTy...>
-    > EmplaceImpl(const ConstIterator& _Where, _ArgsTy&&... _Args)
+    template<typename... _ArgsTy, typename = std::enable_if_t<std::is_constructible_v<ValueType, _ArgsTy...>>>
+	decltype(auto) EmplaceImpl(const ConstIterator& _Where, _ArgsTy&&... _Args)
     {
         constexpr auto _Size = 1ll;
         const auto _MySize = _MyLast - _MyFirst;
@@ -1044,7 +1037,7 @@ public:
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
         std::is_constructible_v<ValueType, _ArgsTy...>,
         Reference> Emplace(const ConstIterator& _Where, _ArgsTy &&... _Args)
     {
@@ -1058,7 +1051,7 @@ public:
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
         std::is_constructible_v<ValueType, _ArgsTy...>,
         Reference> EmplaceBack(_ArgsTy &&... _Args)
     {
@@ -1067,7 +1060,7 @@ public:
 		return EmplaceImpl(*_MyLast++, std::forward<_ArgsTy>(_Args)...);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Reference Insert(const ConstIterator& _Where, const ValueType& _Value)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Reference Insert(const ConstIterator& _Where, const ValueType& _Value)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -1077,7 +1070,7 @@ public:
     }
 
     template <typename TmpTy = ValueType>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline std::enable_if_t<
+    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
         std::is_move_assignable_v<TmpTy>&& std::is_move_constructible_v<TmpTy>&& std::is_same_v<TmpTy, ValueType>,
         Reference> Insert(const ConstIterator& _Where, ValueType&& _Value)
     {
@@ -1088,7 +1081,7 @@ public:
         return Emplace(_Where, std::move(_Value));
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Insert(const ConstIterator& _Where, SizeType _Count, const ValueType& _Value)
+    _D_Dragonian_Lib_Constexpr_Force_Inline void Insert(const ConstIterator& _Where, SizeType _Count, const ValueType& _Value)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -1097,7 +1090,7 @@ public:
         InsertImpl(_Where, _Count, _Value);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Insert(const ConstIterator& _Where, const ConstIterator& _First, const ConstIterator& _Last)
+    _D_Dragonian_Lib_Constexpr_Force_Inline void Insert(const ConstIterator& _Where, const ConstIterator& _First, const ConstIterator& _Last)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -1108,7 +1101,7 @@ public:
 		InsertImpl(_Where, _First, _Last);
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void MoveTo(const ConstIterator& _Where, const Iterator& _First, const Iterator& _Last)
+    _D_Dragonian_Lib_Constexpr_Force_Inline void MoveTo(const ConstIterator& _Where, const Iterator& _First, const Iterator& _Last)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -1170,7 +1163,7 @@ public:
         _MyLast = _MyFirst;
     }
 
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void PopBack()
+    _D_Dragonian_Lib_Constexpr_Force_Inline void PopBack()
     {
         --_MyLast;
         if constexpr (!std::is_trivially_copyable_v<ValueType>)
@@ -1178,7 +1171,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator+(const _T& _Val) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector operator+(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -1188,7 +1181,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator-(const _T& _Val) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector operator-(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -1198,7 +1191,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator*(const _T& _Val) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector operator*(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -1208,7 +1201,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator/(const _T& _Val) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector operator/(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -1218,7 +1211,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector operator^(const _T& _Val) const
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector operator^(const _T& _Val) const
     {
         auto Temp = *this;
         auto Iter = Temp._MyFirst;
@@ -1228,7 +1221,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator+=(const _T& _Val)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector& operator+=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -1237,7 +1230,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator-=(const _T& _Val)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector& operator-=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -1246,7 +1239,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator*=(const _T& _Val)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector& operator*=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -1255,7 +1248,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator/=(const _T& _Val)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector& operator/=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -1264,7 +1257,7 @@ public:
     }
 
     template<typename _T>
-    _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector& operator^=(const _T& _Val)
+    _D_Dragonian_Lib_Constexpr_Force_Inline Vector& operator^=(const _T& _Val)
     {
         auto Iter = _MyFirst;
         while (Iter != _MyLast)
@@ -1272,126 +1265,6 @@ public:
         return *this;
     }
 };
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator+(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
-{
-    if (_ValA.Size() != _ValB.Size())
-        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
-    auto Temp = _ValA;
-    auto Iter = Temp.Data();
-    auto ValIter = _ValB.Data();
-    while (Iter != Temp.End())
-        *(Iter++) += _TypeA(*(ValIter++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator-(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
-{
-    if (_ValA.Size() != _ValB.Size())
-        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
-    auto Temp = _ValA;
-    auto Iter = Temp.Data();
-    auto ValIter = _ValB.Data();
-    while (Iter != Temp.End())
-        *(Iter++) -= _TypeA(*(ValIter++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator*(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
-{
-    if (_ValA.Size() != _ValB.Size())
-        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
-    auto Temp = _ValA;
-    auto Iter = Temp.Data();
-    auto ValIter = _ValB.Data();
-    while (Iter != Temp.End())
-        *(Iter++) *= _TypeA(*(ValIter++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator/(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
-{
-    if (_ValA.Size() != _ValB.Size())
-        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
-    auto Temp = _ValA;
-    auto Iter = Temp.Data();
-    auto ValIter = _ValB.Data();
-    while (Iter != Temp.End())
-        *(Iter++) /= _TypeA(*(ValIter++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator^(const Vector<_TypeA>& _ValA, const Vector<_TypeB>& _ValB)
-{
-    if (_ValA.Size() != _ValB.Size())
-        _D_Dragonian_Lib_Stl_Throw("Size MisMatch!");
-    auto Temp = _ValA;
-    auto Iter = Temp.Data();
-    auto ValIter = _ValB.Data();
-    while (Iter != Temp.End())
-        *(Iter++) = (_TypeA)pow(*(Iter++), *(ValIter++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator+(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
-{
-    Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
-    auto IterA = Temp.Data();
-    auto IterB = _ValB.Data();
-    while (IterA != Temp.End())
-        *(IterA++) = _ValA + (_TypeA)(*(IterB++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator-(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
-{
-    Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
-    auto IterA = Temp.Data();
-    auto IterB = _ValB.Data();
-    while (IterA != Temp.End())
-        *(IterA++) = _ValA + (_TypeA)(*(IterB++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator*(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
-{
-    Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
-    auto IterA = Temp.Data();
-    auto IterB = _ValB.Data();
-    while (IterA != Temp.End())
-        *(IterA++) = _ValA + (_TypeA)(*(IterB++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator/(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
-{
-    Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
-    auto IterA = Temp.Data();
-    auto IterB = _ValB.Data();
-    while (IterA != Temp.End())
-        *(IterA++) = _ValA + (_TypeA)(*(IterB++));
-    return Temp;
-}
-
-template <typename _TypeA, typename _TypeB>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator^(const _TypeA& _ValA, const Vector<_TypeB>& _ValB)
-{
-    Vector<_TypeA> Temp{ _ValB.Size(), _ValB.GetAllocator() };
-    auto IterA = Temp.Data();
-    auto IterB = _ValB.Data();
-    while (IterA != Temp.End())
-        *(IterA++) = (_TypeA)pow(_ValA, *(IterB++));
-    return Temp;
-}
 
 /**
  * @brief Generate an arithmetic progression within the range [Start, End) and step size Step.
@@ -1403,7 +1276,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_TypeA> operator^
  * @return
  */
 template <typename Type>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<Type> Arange(Type Start, Type End, Type Step = Type(1.), Type NDiv = Type(1.))
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<Type> Arange(Type Start, Type End, Type Step = Type(1.), Type NDiv = Type(1.))
 {
     Vector<Type> OutPut(size_t((End - Start) / Step));
     auto OutPutPtr = OutPut.Begin();
@@ -1424,7 +1297,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<Type> Arange(Type
  * @return Signal after mean filter.
  */
 template <typename _Type>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<_Type> MeanFliter(const Vector<_Type>& _Signal, size_t _WindowSize)
 {
     Vector<_Type> Result(_Signal.Size());
 
@@ -1460,7 +1333,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<_Type> MeanFliter
  * @return The average value of the elements in the range.
  */
 template<typename T>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline double Average(const T* Start, const T* End)
+_D_Dragonian_Lib_Constexpr_Force_Inline double Average(const T* Start, const T* End)
 {
     const auto Size = End - Start + 1;
     double Avg = (double)(*Start);
@@ -1491,7 +1364,7 @@ inline size_t CalculateResampledSize(size_t SrcSize, double SrcSamplingRate, dou
  * @param Div Division factor.
  */
 template<typename TypeInput, typename TypeOutput>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
+_D_Dragonian_Lib_Constexpr_Force_Inline void Resample(
     const TypeInput* SrcBuffer,
     size_t SrcSize,
     TypeOutput* DstBuffer,
@@ -1538,7 +1411,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
  * @param DstSize Destination signal size.
  */
 template<typename TypeInput, typename TypeOutput>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
+_D_Dragonian_Lib_Constexpr_Force_Inline void Resample(
     const TypeInput* SrcBuffer,
     size_t SrcSize,
     TypeOutput* DstBuffer,
@@ -1585,7 +1458,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Resample(
  * @return Resampled signal.
  */
 template<typename TypeOutput, typename TypeInput>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
     long SrcSamplingRate,
     long DstSamplingRate,
@@ -1607,7 +1480,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> Inter
  * @return Resampled signal.
  */
 template<typename TypeOutput, typename TypeInput>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
     long SrcSamplingRate,
     long DstSamplingRate
@@ -1626,7 +1499,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> Inter
  * @return Signal.
  */
 template<typename TypeOutput, typename TypeInput>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> SignalCast(
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> SignalCast(
     const Vector<TypeInput>& Data
 )
 {
@@ -1645,7 +1518,7 @@ _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<TypeOutput> Signa
  * @return Resampled signal.
  */
 template<typename T>
-_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vector<T> InterpFunc(
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<T> InterpFunc(
     const Vector<T>& _Data,
     long _SrcSamplingRate,
     long _DstSamplingRate

@@ -5,3 +5,5 @@
 #include "Operators/CPU/Binary.h"
 #include "Operators/CPU/Comparison.h"
 #include "Operators/CPU/Assign.h"
+#include "Operators/CPU/Interpolate.h"
+#include "Operators/CPU/Sum.h"

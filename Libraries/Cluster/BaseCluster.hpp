@@ -22,8 +22,8 @@
 #pragma once
 #include "Libraries/MyTemplateLibrary/Vector.h"
 
-#define _D_Dragonian_Lib_Cluster_Namespace_Begin namespace DragonianLib { namespace Cluster {
-#define _D_Dragonian_Lib_Cluster_Namespace_End } }
+#define _D_Dragonian_Lib_Cluster_Namespace_Begin _D_Dragonian_Lib_Space_Begin namespace Cluster {
+#define _D_Dragonian_Lib_Cluster_Namespace_End } _D_Dragonian_Lib_Space_End
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 

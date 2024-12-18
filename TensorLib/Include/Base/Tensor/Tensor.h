@@ -146,20 +146,6 @@ enum class PaddingType
 	Replicate ///< Replicate padding
 };
 
-/**
- * @brief Enum class representing interpolation types.
- */
-enum class InterpolateType
-{
-	Nearest1D, ///< Nearest neighbor interpolation for 1D
-	Nearest2D, ///< Nearest neighbor interpolation for 2D
-	Linear, ///< Linear interpolation
-	Bilinear, ///< Bilinear interpolation
-	Bicubic, ///< Bicubic interpolation
-	Trilinear, ///< Trilinear interpolation
-	Area, ///< Area interpolation
-};
-
 template <size_t _NRank>
 using SliceOptions = IDLArray<Range, _NRank>; ///< Alias for vector of ranges
 template <size_t _NRank>
@@ -3752,7 +3738,7 @@ public:
 	 * @return The shape info of the tensor.
 	 */
 	template <size_t _Begin = 0, size_t _End = _NRank>
-	Operators::OperatorParameter<_End - _Begin> GetDefaultOperatorParameter() const
+	Operators::OperatorParameter<_End - _Begin> GetDefaultOperatorParameter(bool _CheckIsContinuous = false) const
 	{
 		constexpr auto CurrentRank = _End - _Begin;
 		if constexpr (CurrentRank <= 0)
@@ -3763,8 +3749,9 @@ public:
 		Ret.Begin.AssignConstant(0);
 		Ret.Shape.Assign(_MyShape.Data() + _Begin);
 		Ret.ViewStride.Assign(_MyViewStride.Data() + _Begin);
-		for (size_t i = 0; i < CurrentRank; ++i)
-			Ret.IsContinuous[i] = IsContinuous(_Begin + i, _End);
+		if (_CheckIsContinuous)
+			for (size_t i = 0; i < CurrentRank; ++i)
+				Ret.IsContinuous[i] = IsContinuous(_Begin + i, _End);
 		Ret.ThreadPool = _MyFutures;
 		Ret.Data = _MyFirst;
 		return Ret;
@@ -4719,12 +4706,6 @@ public:
 	}
 
 	/*
-	
-	static Tensor Gather(
-		const Tensor& _Input,
-		const Tensor& _Indices,
-		SizeType _Axis = 0
-	);
 
 	static Tensor Sum(
 		const Tensor& _Input,
@@ -4746,30 +4727,7 @@ public:
 		SizeType _Axis = 0
 	);
 
-*/
-
-/*DragonianLibTensorFnDef(Abs);
-DragonianLibTensorFnDef(Sin);
-DragonianLibTensorFnDef(Sinh);
-DragonianLibTensorFnDef(Cos);
-DragonianLibTensorFnDef(Cosh);
-DragonianLibTensorFnDef(Tan);
-DragonianLibTensorFnDef(Tanh);
-DragonianLibTensorFnDef(ASin);
-DragonianLibTensorFnDef(ACos);
-DragonianLibTensorFnDef(ATan);
-DragonianLibTensorFnDef(ASinh);
-DragonianLibTensorFnDef(ACosh);
-DragonianLibTensorFnDef(ATanh);
-DragonianLibTensorFnDef(Exp);
-DragonianLibTensorFnDef(Exp2);
-DragonianLibTensorFnDef(Exp10);
-DragonianLibTensorFnDef(Log);
-DragonianLibTensorFnDef(Log2);
-DragonianLibTensorFnDef(Log10);
-DragonianLibTensorFnDef(Floor);
-DragonianLibTensorFnDef(Ceil);
-DragonianLibTensorFnDef(Round);*/
+	*/
 };
 
 template <typename _TensorType = float, Device _MyDevice = Device::CPU, size_t _NRank = 1>

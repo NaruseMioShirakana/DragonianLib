@@ -1,7 +1,7 @@
 ﻿#pragma once
-
 #include <string>
 #include "Libraries/Base.h"
+#include "Libraries/MyTemplateLibrary/Array.h"
 #include "Libraries/MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Space_Begin
@@ -46,7 +46,7 @@ namespace NumpyFileFormat
 	std::pair<Vector<int64_t>, Vector<Byte>> LoadNumpyFile(const std::wstring& _Path);
 
 	template <typename ValueType, size_t Rank>
-	void SaveNumpyFile(const std::wstring& _Path, const IDLArray<int64_t, Rank>& _Shape, const Vector<ValueType>& _Data)
+	void SaveNumpyFile(const std::wstring& _Path, const TemplateLibrary::Array<int64_t, Rank>& _Shape, const Vector<ValueType>& _Data)
 	{
 		if (_Shape.Multiply() != _Data.Size())
 			_D_Dragonian_Lib_Throw_Exception("Invalid shape");
@@ -73,7 +73,7 @@ namespace NumpyFileFormat
 	}
 
 	template <typename ValueType, size_t Rank>
-	void SaveNumpyFile(const std::wstring& _Path, const IDLArray<int64_t, Rank>& _Shape, const ValueType* _Buffer, size_t _ElementCount)
+	void SaveNumpyFile(const std::wstring& _Path, const TemplateLibrary::Array<int64_t, Rank>& _Shape, const ValueType* _Buffer, size_t _ElementCount)
 	{
 		if (_Shape.Multiply() != _ElementCount)
 			_D_Dragonian_Lib_Throw_Exception("Invalid shape");

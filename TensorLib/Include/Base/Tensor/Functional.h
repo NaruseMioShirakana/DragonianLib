@@ -393,7 +393,7 @@ namespace Functional
 		static_assert(std::is_copy_assignable_v<ValueType>, "The value type of the array-like object must be copy assignable.");
 		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
 
-		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
+		const auto& _Shape = TemplateLibrary::GetAllShapesOfArrayLikeType<_MyArrayLike>;
 		auto Ret = Empty<ValueType, _MyDevice, Rank>(_Shape);
 		const auto TotalSize = _Shape.Multiply();
 		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike> || sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)
@@ -415,7 +415,7 @@ namespace Functional
 		static_assert(std::is_move_assignable_v<ValueType>, "The value type of the array-like object must be move constructible.");
 		constexpr size_t Rank = TypeTraits::ExtractRankValue<_MyArrayLike>;
 
-		const auto& _Shape = GetAllShapesOfArrayLikeType<_MyArrayLike>;
+		const auto& _Shape = TemplateLibrary::GetAllShapesOfArrayLikeType<_MyArrayLike>;
 		auto Ret = Empty<ValueType, _MyDevice, Rank>(_Shape);
 		const auto TotalSize = _Shape.Multiply();
 		if constexpr (TypeTraits::IsArrayValue<_MyArrayLike> || sizeof(_MyArrayLike) == sizeof(ValueType) * TotalSize)

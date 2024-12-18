@@ -23,9 +23,12 @@
 #include <set>
 #include <unordered_map>
 #include "../Value.h"
-#include "Libraries/MyTemplateLibrary/Alloc.h"
+#include "Libraries/MyTemplateLibrary/Array.h"
 
 _D_Dragonian_Lib_Space_Begin
+
+template <typename _ValueType, size_t _Size>
+using IDLArray = TemplateLibrary::Array<_ValueType, _Size>;
 
 //using namespace DragonianLibSTL;
 using SizeType = Int64;
@@ -109,102 +112,102 @@ public:
 		_Type* _Data, const int64_t* _Shape, const int64_t* _Stride)
 		: _MyData(_Data), _MyShape(_Shape), _MyStride(_Stride), _MyStepStride(*_Stride) {}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator& operator++()
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator& operator++()
 	{
 		_MyData += _MyStepStride;
 		return *this;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator operator++(int)
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator operator++(int)
 	{
 		TensorIterator _Tmp = *this;
 		_MyData += _MyStepStride;
 		return _Tmp;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator& operator--()
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator& operator--()
 	{
 		_MyData -= _MyStepStride;
 		return *this;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator operator--(int)
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator operator--(int)
 	{
 		TensorIterator _Tmp = *this;
 		_MyData -= _MyStepStride;
 		return _Tmp;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator& operator+=(int64_t _Off)
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator& operator+=(int64_t _Off)
 	{
 		_MyData += _Off * _MyStepStride;
 		return *this;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator& operator-=(int64_t _Off)
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator& operator-=(int64_t _Off)
 	{
 		_MyData -= _Off * _MyStepStride;
 		return *this;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator operator+(int64_t _Off) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator operator+(int64_t _Off) const
 	{
 		TensorIterator _Tmp = *this;
 		_Tmp += _Off;
 		return _Tmp;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline TensorIterator operator-(int64_t _Off) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline TensorIterator operator-(int64_t _Off) const
 	{
 		TensorIterator _Tmp = *this;
 		_Tmp -= _Off;
 		return _Tmp;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t operator-(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline int64_t operator-(const TensorIterator& _Right) const
 	{
 		return (_MyData - _Right._MyData) / _MyStepStride;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator==(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator==(const TensorIterator& _Right) const
 	{
 		return _MyData == _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator!=(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator!=(const TensorIterator& _Right) const
 	{
 		return _MyData != _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator<(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator<(const TensorIterator& _Right) const
 	{
 		if (_MyStepStride < 0)
 			return _MyData > _Right._MyData;
 		return _MyData < _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator>(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator>(const TensorIterator& _Right) const
 	{
 		if (_MyStepStride < 0)
 			return _MyData < _Right._MyData;
 		return _MyData > _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator<=(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator<=(const TensorIterator& _Right) const
 	{
 		if (_MyStepStride < 0)
 			return _MyData >= _Right._MyData;
 		return _MyData <= _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool operator>=(const TensorIterator& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator>=(const TensorIterator& _Right) const
 	{
 		if (_MyStepStride < 0)
 			return _MyData <= _Right._MyData;
 		return _MyData >= _Right._MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline reference operator*() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline reference operator*() const
 	{
 		if constexpr (_Rank == 1)
 			return *_MyData;
@@ -212,47 +215,47 @@ public:
 			return *this;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline reference operator[](int64_t _Off) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline reference operator[](int64_t _Off) const
 	{
 		return *(*this + _Off);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t Shape() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline int64_t Shape() const
 	{
 		return *_MyShape;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t Stride() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline int64_t Stride() const
 	{
 		return *_MyStride;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline int64_t StepStride() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline int64_t StepStride() const
 	{
 		return _MyStepStride;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* ShapePtr() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const int64_t* ShapePtr() const
 	{
 		return _MyShape;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const int64_t* StridePtr() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const int64_t* StridePtr() const
 	{
 		return _MyStride;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline const _Type* DataPtr() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _Type* DataPtr() const
 	{
 		return _MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline _Type* DataPtr()
+	_D_Dragonian_Lib_Constexpr_Force_Inline _Type* DataPtr()
 	{
 		return _MyData;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline pointer Begin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline pointer Begin() const
 	{
 		if constexpr (_Rank == 1)
 			return _MyData;
@@ -260,7 +263,7 @@ public:
 			return TensorIterator<_Type, _Rank - 1>(_MyData, _MyShape + 1, _MyStride + 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline pointer End() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline pointer End() const
 	{
 		if constexpr (_Rank == 1)
 			return _MyData + 1;
@@ -268,17 +271,17 @@ public:
 			return Begin() + *(_MyShape + 1);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline pointer begin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline pointer begin() const
 	{
 		return Begin();
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline pointer end() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline pointer end() const
 	{
 		return End();
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline bool IsContinuous() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
 	{
 		return _MyStepStride == 1;
 	}

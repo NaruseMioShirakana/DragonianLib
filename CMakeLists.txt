@@ -22,10 +22,10 @@ option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conve
 option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					ON)
 option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			ON)
 
-option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				OFF)
-option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		OFF)
-option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					OFF)
-option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			OFF)
+option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				ON)
+option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		ON)
+option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					ON)
+option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			ON)
 
 option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				OFF)
 option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		OFF)

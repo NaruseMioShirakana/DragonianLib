@@ -4,7 +4,8 @@
 #include <regex>
 
 _D_Dragonian_Lib_Space_Begin
-	namespace NumpyFileFormat
+
+namespace NumpyFileFormat
 {
 	const auto NpHeaderRegex = std::regex(R"('descr':[ ]*'<(.*?)',[ ]*'fortran_order':[ ]*(.*?),[ ]*'shape':[ ]*\((.*?)\)\, \})");
 	const auto NumberRegex = std::regex(R"(\d+)");

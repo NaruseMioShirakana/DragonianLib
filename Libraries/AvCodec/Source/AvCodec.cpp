@@ -9,7 +9,9 @@ extern "C" {
 }
 #include <fstream>
 
-double DragonianLib::AvCodec::CalculateRMS(const float* Begin, const float* End)
+_D_Dragonian_Lib_Space_Begin
+
+double AvCodec::CalculateRMS(const float* Begin, const float* End)
 {
 	double sum = 0.0;
 	const double count = static_cast<double>(End - Begin);
@@ -20,14 +22,14 @@ double DragonianLib::AvCodec::CalculateRMS(const float* Begin, const float* End)
 	return sqrt(sqrt(sum / count));
 }
 
-double DragonianLib::AvCodec::CalculateDB(double RMS)
+double AvCodec::CalculateDB(double RMS)
 {
 	if (RMS <= 1e-10 || isnan(RMS))
 		return -std::numeric_limits<double>::infinity();
 	return 20.0 * log10(RMS);
 }
 
-double DragonianLib::AvCodec::CalculateDB(const float* Begin, const float* End)
+double AvCodec::CalculateDB(const float* Begin, const float* End)
 {
 	double sum = 0.0;
 	const double count = static_cast<double>(End - Begin);
@@ -38,7 +40,7 @@ double DragonianLib::AvCodec::CalculateDB(const float* Begin, const float* End)
 	return CalculateDB(sqrt(sum / count));
 }
 
-DragonianLibSTL::Vector<unsigned char> DragonianLib::AvCodec::AvCodec::Decode(
+DragonianLibSTL::Vector<unsigned char> AvCodec::AvCodec::Decode(
 	const char* AudioPath,
 	int OutSamplingRate,
 	int OutChannels,
@@ -215,7 +217,7 @@ DragonianLibSTL::Vector<unsigned char> DragonianLib::AvCodec::AvCodec::Decode(
 	return outData;
 }
 
-DragonianLibSTL::Vector<float> DragonianLib::AvCodec::AvCodec::DecodeFloat(
+DragonianLibSTL::Vector<float> AvCodec::AvCodec::DecodeFloat(
 	const char* AudioPath,
 	int OutSamplingRate,
 	int OutChannels,
@@ -236,7 +238,7 @@ DragonianLibSTL::Vector<float> DragonianLib::AvCodec::AvCodec::DecodeFloat(
 	return { &Ptr, Size, Alloc };
 }
 
-DragonianLibSTL::Vector<int16_t> DragonianLib::AvCodec::AvCodec::DecodeSigned16(
+DragonianLibSTL::Vector<int16_t> AvCodec::AvCodec::DecodeSigned16(
 	const char* AudioPath,
 	int OutSamplingRate,
 	int OutChannels,
@@ -257,7 +259,7 @@ DragonianLibSTL::Vector<int16_t> DragonianLib::AvCodec::AvCodec::DecodeSigned16(
 	return { &Ptr, Size, Alloc };
 }
 
-void DragonianLib::AvCodec::AvCodec::Encode(
+void AvCodec::AvCodec::Encode(
 	const char* OutPutPath,
 	const DragonianLibSTL::Vector<unsigned char>& PcmData,
 	int SrcSamplingRate,
@@ -273,7 +275,7 @@ void DragonianLib::AvCodec::AvCodec::Encode(
 	UNUSED(OutBuffer);
 }
 
-void DragonianLib::AvCodec::AvCodec::Release()
+void AvCodec::AvCodec::Release()
 {
 	if (Packet)
 		av_packet_free(&Packet);
@@ -298,7 +300,7 @@ void DragonianLib::AvCodec::AvCodec::Release()
 	Packet = nullptr;
 }
 
-void DragonianLib::AvCodec::AvCodec::Init()
+void AvCodec::AvCodec::Init()
 {
 	InFrame = av_frame_alloc();
 	SwrContext = swr_alloc();
@@ -313,17 +315,17 @@ void DragonianLib::AvCodec::AvCodec::Init()
 	}
 }
 
-DragonianLib::AvCodec::AvCodec::AvCodec()
+AvCodec::AvCodec::AvCodec()
 {
 	Init();
 }
 
-DragonianLib::AvCodec::AvCodec::~AvCodec()
+AvCodec::AvCodec::~AvCodec()
 {
 	Release();
 }
 
-void DragonianLib::AvCodec::WritePCMData(
+void AvCodec::WritePCMData(
 	const wchar_t* OutPutPath,
 	const DragonianLibSTL::Vector<unsigned char>& PcmData,
 	int SamplingRate,
@@ -353,7 +355,7 @@ void DragonianLib::AvCodec::WritePCMData(
 	fwrite(PcmData.Data(), 1, PcmData.Size(), File);
 }
 
-void DragonianLib::AvCodec::WritePCMData(
+void AvCodec::WritePCMData(
 	const wchar_t* OutPutPath,
 	const DragonianLibSTL::Vector<int16_t>& PcmData,
 	int SamplingRate,
@@ -382,7 +384,7 @@ void DragonianLib::AvCodec::WritePCMData(
 	fwrite(PcmData.Data(), 1, PcmData.Size() * sizeof(int16_t), File);
 }
 
-void DragonianLib::AvCodec::WritePCMData(
+void AvCodec::WritePCMData(
 	const wchar_t* OutPutPath,
 	const DragonianLibSTL::Vector<float>& PcmData,
 	int SamplingRate,
@@ -411,7 +413,7 @@ void DragonianLib::AvCodec::WritePCMData(
 	fwrite(PcmData.Data(), 1, PcmData.Size() * sizeof(float), File);
 }
 
-void DragonianLib::AvCodec::WritePCMData(
+void AvCodec::WritePCMData(
 	const wchar_t* OutPutPath,
 	const unsigned char* PcmData,
 	size_t BufferSize,
@@ -442,7 +444,7 @@ void DragonianLib::AvCodec::WritePCMData(
 	fwrite(PcmData, 1, BufferSize, File);
 }
 
-void DragonianLib::AvCodec::WriteMidiFile(
+void AvCodec::WriteMidiFile(
 	const std::wstring& Path,
 	const MidiTrack& Events,
 	long Begin,
@@ -482,7 +484,7 @@ void DragonianLib::AvCodec::WriteMidiFile(
 	Writer.write(OutputFileStream);
 }
 
-DragonianLibSTL::Vector<size_t> DragonianLib::AvCodec::SliceAudio(
+DragonianLibSTL::Vector<size_t> AvCodec::SliceAudio(
 	const DragonianLibSTL::Vector<float>& PcmData,
 	const SlicerSettings& SlicerSettings
 )
@@ -521,3 +523,5 @@ DragonianLibSTL::Vector<size_t> DragonianLib::AvCodec::SliceAudio(
 	SlicePos.EmplaceBack(PcmData.Size());
 	return SlicePos;
 }
+
+_D_Dragonian_Lib_Space_End

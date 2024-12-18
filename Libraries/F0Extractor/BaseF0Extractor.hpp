@@ -22,8 +22,8 @@
 #pragma once
 #include "Libraries/MyTemplateLibrary/Vector.h"
 
-#define _D_Dragonian_Lib_F0_Extractor_Header namespace DragonianLib { namespace F0Extractor {
-#define _D_Dragonian_Lib_F0_Extractor_End } }
+#define _D_Dragonian_Lib_F0_Extractor_Header _D_Dragonian_Lib_Space_Begin namespace F0Extractor {
+#define _D_Dragonian_Lib_F0_Extractor_End } _D_Dragonian_Lib_Space_End
 
 _D_Dragonian_Lib_F0_Extractor_Header
 

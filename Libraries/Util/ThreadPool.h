@@ -18,7 +18,7 @@
 */
 
 #pragma once
-#include "Libraries/Base.h"
+#include "Libraries/Util/TypeDef.h"
 #include <thread>
 #include <queue>
 #include <future>

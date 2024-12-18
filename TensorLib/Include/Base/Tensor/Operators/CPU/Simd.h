@@ -38,13 +38,13 @@ class Vectorized
 public:
 	static_assert(std::is_same_v<Type, T>);
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized() = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline ~Vectorized() = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Vectorized&) = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(Vectorized&&) = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(const Vectorized&) = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(const Type* _ValPtr)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized() = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline ~Vectorized() = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(const Vectorized&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(Vectorized&&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized& operator=(const Vectorized&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(const Type* _ValPtr)
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			_YMMX = _mm256_castps_si256(_mm256_load_ps(reinterpret_cast<float const*>(_ValPtr)));
@@ -53,10 +53,10 @@ public:
 		else
 			_YMMX = _mm256_load_si256((const __m256i*)_ValPtr);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256i _Val) : _YMMX(_Val) {}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(__m256d _Val) : _YMMX(_mm256_castpd_si256(_Val)) {}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized(Type _Val)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256i _Val) : _YMMX(_Val) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256d _Val) : _YMMX(_mm256_castpd_si256(_Val)) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(Type _Val)
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			_YMMX = _mm256_castps_si256(_mm256_set1_ps(_Val));
@@ -94,7 +94,7 @@ public:
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline void Store(Type* _Dest) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			_mm256_store_ps(reinterpret_cast<float*>(_Dest), *this);
@@ -103,7 +103,7 @@ public:
 		else
 			_mm256_store_si256((__m256i*)_Dest, _YMMX);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			_mm256_mask_storeu_ps(_Dest, _Mask >> 24, *this);
@@ -120,11 +120,11 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void MaskedStore(void* _Dest, const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline void MaskedStore(void* _Dest, const Vectorized& _Mask) const
 	{
 		_mm256_store_si256((__m256i*)_Dest, _mm256_and_si256(*this, _Mask));
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void StoreBool(void* _Dest) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline void StoreBool(void* _Dest) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex64>)
 		{
@@ -172,35 +172,35 @@ public:
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256i() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256i() const
 	{
 		static_assert(std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool> || std::is_same_v<Type, int16_t> || std::is_same_v<Type, int32_t> || std::is_same_v<Type, int64_t>);
 		return _YMMX;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256() const
 	{
 		static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>);
 		return _mm256_castsi256_ps(_YMMX);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __m256d() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256d() const
 	{
 		static_assert(std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>);
 		return _mm256_castsi256_pd(_YMMX);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask32() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __mmask32() const
 	{
 		return _mm256_movemask_epi8(_YMMX);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask16() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __mmask16() const
 	{
 		return _mm256_movemask_epi8(_YMMX) >> 16;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline operator __mmask8() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator __mmask8() const
 	{
 		return _mm256_movemask_epi8(_YMMX) >> 24;
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LT_OQ);
@@ -217,7 +217,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LE_OQ);
@@ -226,7 +226,7 @@ public:
 		else
 			return *this < _Right || *this == _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GT_OQ);
@@ -243,7 +243,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GE_OQ);
@@ -252,7 +252,7 @@ public:
 		else
 			return *this > _Right || *this == _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator==(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator==(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 		{
@@ -277,7 +277,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator!=(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator!=(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 		{
@@ -295,7 +295,7 @@ public:
 			return _mm256_xor_si256(*this, _Right);
 	}
 
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator+(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator+(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_add_ps(*this, _Right);
@@ -312,11 +312,11 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator+=(const Vectorized& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator+=(const Vectorized& _Right)
 	{
 		return *this = *this + _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator-(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator-(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_sub_ps(*this, _Right);
@@ -333,11 +333,11 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator-=(const Vectorized& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator-=(const Vectorized& _Right)
 	{
 		return *this = *this - _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator*(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator*(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_mul_ps(*this, _Right);
@@ -376,11 +376,11 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator*=(const Vectorized& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator*=(const Vectorized& _Right)
 	{
 		return *this = *this * _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator/(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator/(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_div_ps(*this, _Right);
@@ -425,7 +425,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator%(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator%(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			return _mm256_rem_epi8(*this, _Right);
@@ -442,31 +442,31 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator%=(const Vectorized& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator%=(const Vectorized& _Right)
 	{
 		return *this = *this % _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator/=(const Vectorized& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator/=(const Vectorized& _Right)
 	{
 		return *this = *this / _Right;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator&(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator&(const Vectorized& _Right) const
 	{
 		return _mm256_and_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator|(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator|(const Vectorized& _Right) const
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator^(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator^(const Vectorized& _Right) const
 	{
 		return _mm256_xor_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Complement(const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Complement(const Vectorized& _Mask) const
 	{
 		return _mm256_xor_si256(*this, _Mask);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator<<(const int _Count) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<<(const int _Count) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32> || std::is_same_v<Type, int32_t>)
 			return _mm256_slli_epi32(*this, _Count);
@@ -479,7 +479,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator>>(const int _Count) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>>(const int _Count) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32> || std::is_same_v<Type, int32_t>)
 			return _mm256_srli_epi32(*this, _Count);
@@ -492,15 +492,15 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator&&(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator&&(const Vectorized& _Right) const
 	{
 		return _mm256_and_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized operator||(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator||(const Vectorized& _Right) const
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Not() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Not() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_cmp_ps(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type), _CMP_EQ_OQ);
@@ -517,7 +517,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Negative() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Negative() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_xor_ps(*this, _mm256_set1_ps(-0.0f));
@@ -534,7 +534,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractAngle() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractAngle() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -553,7 +553,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractMagnitude() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractMagnitude() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -572,7 +572,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractReal() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractReal() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -589,7 +589,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractImag() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractImag() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -606,7 +606,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractAngle(
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractAngle(
 		const Vectorized& Real, const Vectorized& Imag
 	)
 	{
@@ -617,7 +617,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractMagnitude(
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractMagnitude(
 		const Vectorized& Real, const Vectorized& Imag
 	)
 	{
@@ -628,7 +628,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractReal(
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractReal(
 		const Vectorized& Magnitude, const Vectorized& Angle
 	)
 	{
@@ -639,7 +639,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ExtractImag(
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractImag(
 		const Vectorized& Magnitude, const Vectorized& Angle
 	)
 	{
@@ -650,7 +650,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Pow(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Pow(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_pow_ps(*this, _Right);
@@ -701,7 +701,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sqrt() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sqrt() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sqrt_ps(*this);
@@ -750,7 +750,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized RSqrt() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized RSqrt() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_rsqrt_ps(*this);
@@ -799,7 +799,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Reciprocal() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Reciprocal() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_rcp_ps(*this);
@@ -844,7 +844,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Abs(const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Abs(const Vectorized& _Mask) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_and_ps(*this, _Mask);
@@ -862,7 +862,7 @@ public:
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sin() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sin_ps(*this);
@@ -913,7 +913,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Cos() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Cos() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cos_ps(*this);
@@ -964,7 +964,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Tan() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tan() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_tan_ps(*this);
@@ -1015,7 +1015,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ASin() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ASin() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_asin_ps(*this);
@@ -1040,7 +1040,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ACos() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ACos() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_acos_ps(*this);
@@ -1065,7 +1065,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATan() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATan() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_atan_ps(*this);
@@ -1090,7 +1090,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATan2() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATan2() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -1115,7 +1115,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Tan2() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tan2() const
 	{
 		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
 		{
@@ -1140,7 +1140,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Sinh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sinh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_sinh_ps(*this);
@@ -1189,7 +1189,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Cosh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Cosh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_cosh_ps(*this);
@@ -1238,7 +1238,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Tanh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tanh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_tanh_ps(*this);
@@ -1263,7 +1263,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ASinh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ASinh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_asinh_ps(*this);
@@ -1288,7 +1288,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ACosh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ACosh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_acosh_ps(*this);
@@ -1313,7 +1313,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized ATanh() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATanh() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_atanh_ps(*this);
@@ -1338,7 +1338,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log_ps(*this);
@@ -1363,7 +1363,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log2() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log2() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log2_ps(*this);
@@ -1388,7 +1388,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Log10() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log10() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_log10_ps(*this);
@@ -1413,7 +1413,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp_ps(*this);
@@ -1438,7 +1438,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp2() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp2() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp2_ps(*this);
@@ -1463,7 +1463,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Exp10() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp10() const
 	{
 		if constexpr (std::is_same_v<Type, float>)
 			return _mm256_exp10_ps(*this);
@@ -1488,7 +1488,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Ceil() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Ceil() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_ceil_ps(*this);
@@ -1497,7 +1497,7 @@ public:
 		else
 			return *this;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Floor() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Floor() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_floor_ps(*this);
@@ -1506,7 +1506,7 @@ public:
 		else
 			return *this;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Round() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Round() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_NEAREST_INT);
@@ -1515,7 +1515,7 @@ public:
 		else
 			return *this;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Trunc() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Trunc() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_ZERO);
@@ -1524,7 +1524,7 @@ public:
 		else
 			return *this;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Frac() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Frac() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_sub_ps(*this, _mm256_floor_ps(*this));
@@ -1533,7 +1533,7 @@ public:
 		else
 			return *this;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Min(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Min(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_min_ps(*this, _Right);
@@ -1550,7 +1550,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Max(const Vectorized& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Max(const Vectorized& _Right) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_max_ps(*this, _Right);
@@ -1567,7 +1567,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Lerp(const Vectorized& _Right, const Vectorized& _Alpha) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Lerp(const Vectorized& _Right, const Vectorized& _Alpha) const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
 			return _mm256_add_ps(_mm256_mul_ps(_mm256_sub_ps(_Right, *this), _Alpha), *this);
@@ -1576,7 +1576,7 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline Vectorized Clamp(const Vectorized& _Min, const Vectorized& _Max) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Clamp(const Vectorized& _Min, const Vectorized& _Max) const
 	{
 		return Max(_Min).Min(_Max);
 	}
@@ -1586,7 +1586,7 @@ private:
 
 
 public:
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -1604,7 +1604,7 @@ public:
 		_mm256_store_si256(_Dst + 6, m6);
 		_mm256_store_si256(_Dst + 7, m7);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_4(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_4(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		const __m256i m2 = _mm256_load_si256(_Src + 2);
@@ -1614,18 +1614,18 @@ public:
 		_mm256_store_si256(_Dst + 2, m2);
 		_mm256_store_si256(_Dst + 3, m3);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_2(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_2(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		const __m256i m1 = _mm256_load_si256(_Src + 1);
 		_mm256_store_si256(_Dst + 0, m0);
 		_mm256_store_si256(_Dst + 1, m1);
 	}
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemcpy256_1(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_1(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
 		const __m256i m0 = _mm256_load_si256(_Src + 0);
 		_mm256_store_si256(_Dst + 0, m0);
 	}
 
-	static _D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline void DragonianLibMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
 	{
 		__m256i* __restrict _Dst_Ptr = (__m256i*)_Dst;
 		const __m256i* __restrict _Src_Ptr = (const __m256i*)_Src;

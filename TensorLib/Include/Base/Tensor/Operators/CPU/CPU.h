@@ -96,6 +96,42 @@ public:
 		const OperatorParameter<_NRank>& _IndexInfo
 	);
 
+	template<size_t _NRank>
+	static void ImplSum(
+		_Type* _Dest,
+		const OperatorParameter<_NRank - 1>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	);
+
+	template<size_t _NRank>
+	static void ImplCumSum(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	);
+
+	template<size_t _NRank>
+	static void ImplCumProd(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	);
+
+	template<size_t _NRank>
+	static void ImplDiff(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	);
+
 	_D_Dragonian_Lib_Operator_Binary_Define(Add);
 	_D_Dragonian_Lib_Operator_Binary_Define(Sub);
 	_D_Dragonian_Lib_Operator_Binary_Define(Mul);

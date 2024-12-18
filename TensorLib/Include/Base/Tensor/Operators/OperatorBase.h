@@ -40,7 +40,7 @@ struct OperatorParameter
 		for (size_t i = RangeBegin; i < RangeEnd; ++i) Size *= Shape[i];
 		return Size;
 	}
-	_D_Dragonian_Lib_Member_Function_Constexpr_Force_Inline static SizeType GetRank() { return (SizeType)_NRank; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline static SizeType GetRank() { return (SizeType)_NRank; }
 };
 
 template<typename _Type, Device _Device>
@@ -152,6 +152,54 @@ public:
 		const OperatorParameter<_NRank>& _SrcInfo,
 		const _IndexType* _Index,
 		const OperatorParameter<_NRank>& _IndexInfo
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void ImplSum(
+		_Type* _Dest,
+		const OperatorParameter<_NRank - 1>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void ImplCumSum(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void ImplCumProd(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void ImplDiff(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;

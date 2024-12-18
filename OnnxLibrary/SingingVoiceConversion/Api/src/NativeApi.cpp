@@ -50,11 +50,11 @@ using Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleAudio;
 using SingleSlice = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleSlice;
 using Params = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams;
 
-using DInt16Vector = DragonianLibSTL::Vector<int16_t>;
-using DFloat32Vector = DragonianLibSTL::Vector<float>;
-using DDFloat32Vector = DragonianLibSTL::Vector<DragonianLibSTL::Vector<float>>;
-using DUInt64Vector = DragonianLibSTL::Vector<size_t>;
-using MelContainer = std::pair<DragonianLibSTL::Vector<float>, int64_t>;
+using DInt16Vector = DragonianLib::TemplateLibrary::Vector<int16_t>;
+using DFloat32Vector = DragonianLib::TemplateLibrary::Vector<float>;
+using DDFloat32Vector = DragonianLib::TemplateLibrary::Vector<DragonianLib::TemplateLibrary::Vector<float>>;
+using DUInt64Vector = DragonianLib::TemplateLibrary::Vector<size_t>;
+using MelContainer = std::pair<DragonianLib::TemplateLibrary::Vector<float>, int64_t>;
 using DataContainer = Slices;
 using OrtModelType = std::shared_ptr<Ort::Session>*;
 using SvcModelType = DragonianLib::SingingVoiceConversion::SingingVoiceConversion*;
@@ -393,7 +393,7 @@ void LibSvcSetSpeakerMixDataSize(
 )
 {
 	auto& Obj = *(SingleSlice*)_Obj;
-	Obj.Speaker.Resize(_NSpeaker, DragonianLibSTL::Vector(Obj.F0.Size(), 0.f));
+	Obj.Speaker.Resize(_NSpeaker, DragonianLib::TemplateLibrary::Vector(Obj.F0.Size(), 0.f));
 }
 
 //Array Of Slice - MoeVoiceStudioSvcSlice
