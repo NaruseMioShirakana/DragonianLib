@@ -446,6 +446,18 @@ public:
         *_Block = nullptr;
     }
 
+    static Vector CreateView(Pointer _Block, SizeType _Size, Allocator _Alloc)
+	{
+        Vector _Result;
+        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
+        _Result._MyAllocator = _Alloc;
+        _Result._MyOwner = false;
+        _Result._MyFirst = _Block;
+        _Result._MyLast = _Result._MyFirst + _Size;
+        _Result._MyEnd = _Result._MyLast;
+        return _Result;
+	}
+
 	Vector(ConstPointer _Begin, ConstPointer _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
     {
         auto _Size = _End - _Begin;

@@ -296,6 +296,13 @@ public:
 		return UTF8ToWideString(CastToString(TotalSize()), _Fold);
 	}
 
+	TemplateLibrary::Vector<ValueType> ToVectorView() const
+	{
+		if (IsContinuous())
+			return TemplateLibrary::Vector<ValueType>::CreateView(_MyData, TotalSize(), GetAllocator());
+		_D_Dragonian_Lib_Throw_Exception("Could Not Convert Non-Continuous Tensor To Vector View!");
+	}
+
 protected:
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr;
@@ -476,7 +483,6 @@ private:
 	}
 
 public:
-	~Tensor() override = default;
 	Tensor(const Tensor& Left) = default;
 	Tensor(Tensor&& Right) noexcept = default;
 	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
@@ -627,7 +633,7 @@ public:
 	static constexpr std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_trivial_v<_CurValueType> ||
+		std::is_trivially_copy_assignable_v<_CurValueType> ||
 		std::is_constructible_v<_CurValueType>>,
 		Tensor> New(const Dimensions<_NRank>& MyShape)
 	{
@@ -652,7 +658,7 @@ public:
 	static constexpr std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_trivial_v<_CurValueType>>,
+		std::is_trivially_copy_assignable_v<_CurValueType>>,
 		Tensor> New()
 	{
 		return Tensor();
@@ -852,7 +858,7 @@ public:
 	static constexpr std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_trivial_v<_CurValueType>>,
+		std::is_trivially_copy_assignable_v<_CurValueType>>,
 		Tensor> Empty(const Dimensions<_NRank>& _Shape)
 	{
 		return Tensor(_Shape);
@@ -867,7 +873,7 @@ public:
 	static constexpr std::enable_if_t<
 		TypeTraits::AndValue<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>,
-		std::is_trivial_v<_CurValueType>>,
+		std::is_trivially_copy_assignable_v<_CurValueType>>,
 		Tensor> EmptyLike(const Tensor& _ShapeReference)
 	{
 		return Tensor(_ShapeReference._MyShape);
@@ -929,6 +935,20 @@ public:
 		return Tensor(MyShape, Buffer, BufferSize);
 	}
 
+	~Tensor() override
+	{
+		if constexpr (!std::is_trivially_copy_assignable_v<ValueType>)
+		{
+			if (_MyFirst.use_count() <= 1)
+			{
+				Eval();
+				auto IterData = (RawPointer)_MyFirst.get();
+				while (IterData != _MyLast)
+					IterData++->~ValueType();
+			}
+		}
+	}
+
 private:
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool AllocateMemory(
 		const Dimensions<_NRank>& MyShape, Allocator MyAlloc
@@ -967,7 +987,7 @@ private:
 		if (AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
 		{
 			ConstructViewInfo(MyShape);
-			if constexpr (!std::is_trivial_v<ValueType> && std::is_constructible_v<ValueType>)
+			if constexpr (!std::is_trivially_copy_assignable_v<ValueType> && std::is_constructible_v<ValueType>)
 			{
 				auto IterData = _MyData;
 				while (IterData != _MyLast)
@@ -1056,6 +1076,8 @@ private:
 		std::is_copy_assignable_v<_CurValueType>>
 		> Assign(const ValueType* _Buffer, SizeType _Count)
 	{
+		if (_Count != ElementCount())
+			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
 		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignBuffer(
 			_MyData,
@@ -1075,6 +1097,8 @@ private:
 		std::is_move_assignable_v<_CurValueType>>
 		> MoveAssign(const ValueType* _Buffer, SizeType _Count)
 	{
+		if(_Count != ElementCount())
+			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
 		Eval();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMoveBuffer(
 			_MyData,
@@ -3790,6 +3814,15 @@ public:
 	 * @return The total size of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType TotalSize() const
+	{
+		return _MyShape.Multiply();
+	}
+
+	/**
+	 * @brief Get the element count of the tensor.
+	 * @return The element count of the tensor.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType ElementCount() const
 	{
 		return _MyShape.Multiply();
 	}

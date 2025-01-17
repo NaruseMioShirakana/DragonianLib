@@ -1,10 +1,36 @@
 ﻿#include "TensorLib/Include/Base/Tensor/Functional.h"
-#include "Libraries/NumpySupport/NumpyFileFormat.h"
-#include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
-#include <iostream>
 #include "TensorLib/Include/Base/Module/Convolution.h"
 #include "TensorLib/Include/Base/Module/Embedding.h"
 #include "TensorLib/Include/Base/Module/Linear.h"
+#include <iostream>
+
+auto MyLastTime = std::chrono::high_resolution_clock::now();
+size_t TotalStep = 0;
+void ShowProgressBar(size_t progress) {
+	int barWidth = 70;
+	float progressRatio = static_cast<float>(progress) / float(TotalStep);
+	int pos = static_cast<int>(float(barWidth) * progressRatio);
+
+	std::cout << "\r";
+	std::cout.flush();
+	auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - MyLastTime).count();
+	MyLastTime = std::chrono::high_resolution_clock::now();
+	std::cout << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
+	std::cout << "[";
+	for (int i = 0; i < barWidth; ++i) {
+		if (i < pos) std::cout << "=";
+		else if (i == pos) std::cout << ">";
+		else std::cout << " ";
+	}
+	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
+}
+
+void ProgressCb(size_t a, size_t b)
+{
+	if (a == 0)
+		TotalStep = b;
+	ShowProgressBar(a);
+}
 
 class MyModule : public DragonianLib::Graph::Module
 {
@@ -52,6 +78,13 @@ std::enable_if_t<std::is_same_v<T, Integer>, std::string> DragonianLibCvtToStrin
 	return std::to_string(t.i);
 }
 
+struct my_struct
+{
+	int	a = 0;
+	int	b = 0;
+	int c = 0;
+};
+
 template <typename Fn>
 void WithTimer(const Fn& fn)
 {
@@ -68,6 +101,8 @@ int main()
 	SetWorkerCount(16);
 	SetMaxTaskCountPerOperator(16);
 
+	TypeTraits::MemberCountOf<my_struct>();
+
 	auto Weight = Functional::Linspace(0.f, 100.f, 2048ll * 100);
 	auto Embedding = Weight.View(100, -1);
 	Embedding.Eval();
@@ -77,4 +112,5 @@ int main()
 
 	std::cout << "\n";
 	system("pause");
+
 }

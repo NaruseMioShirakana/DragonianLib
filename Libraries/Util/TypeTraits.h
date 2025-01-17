@@ -9,10 +9,6 @@ _D_Dragonian_Lib_Type_Traits_Namespace_Begin
 
 // ReSharper disable all
 
-//********************************************** Wrap VaList **********************************************//
-template<typename ..._ArgTypes>
-struct IVaList { constexpr static int64_t _Size = sizeof...(_ArgTypes); };
-
 //*********************************** Reference Pointer Const Volatile ************************************//
 template <typename _Type>
 struct RemovePointer { using _MyType = _Type; };
@@ -172,7 +168,7 @@ struct IsAnyOf { constexpr static bool _IsAnyOf = false; };
 template <typename _Ty1, typename _Ty2, typename ..._Types>
 struct IsAnyOf<_Ty1, _Ty2, _Types...> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_Ty1, _Ty2> || _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOf<_Ty1, _Types...>::_IsAnyOf; };
 template <typename _Ty1, typename ..._Types>
-struct IsAnyOf<_Ty1, IVaList<_Types...>> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOf<_Ty1, _Types...>::_IsAnyOf; };
+struct IsAnyOf<_Ty1, _D_Dragonian_Lib_Namespace GeneralizedList<_Types...>> { constexpr static bool _IsAnyOf = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOf<_Ty1, _Types...>::_IsAnyOf; };
 template <typename _Ty1>
 struct IsAnyOf<_Ty1> { constexpr static bool _IsAnyOf = false; };
 template <typename _Ty1, typename ..._Types>
@@ -311,14 +307,14 @@ struct ExtractCallableTypeInfo<_Ret(_ArgTypes...)>
 {
 	using _Callable = _Ret(_ArgTypes...);
 	using _ReturnType = _Ret;
-	using _ArgumentTypes = _D_Dragonian_Lib_Type_Traits_Namespace IVaList<_ArgTypes...>;
+	using _ArgumentTypes = _D_Dragonian_Lib_Namespace GeneralizedList<_ArgTypes...>;
 };
 template<typename _Ret, typename ..._ArgTypes>
 struct ExtractCallableTypeInfo<_Ret(_ArgTypes...) const>
 {
 	using _Callable = _Ret(_ArgTypes...);
 	using _ReturnType = _Ret;
-	using _ArgumentTypes = _D_Dragonian_Lib_Type_Traits_Namespace IVaList<_ArgTypes...>;
+	using _ArgumentTypes = _D_Dragonian_Lib_Namespace GeneralizedList<_ArgTypes...>;
 };
 template<typename Objt>
 struct ExtractCallableInfo
@@ -375,7 +371,7 @@ struct GetVaListTypeAt
 	using Type = typename _D_Dragonian_Lib_Type_Traits_Namespace GetVaListTypeAtIndex<Index, Types...>::_Type;
 };
 template <int64_t Idx, typename ...Types>
-struct GetVaListTypeAt<Idx, IVaList<Types...>>
+struct GetVaListTypeAt<Idx, _D_Dragonian_Lib_Namespace GeneralizedList<Types...>>
 {
 	constexpr static auto Size = sizeof...(Types);
 	constexpr static auto Index = _D_Dragonian_Lib_Type_Traits_Namespace CalculateIndexValue<Idx, Size>;
@@ -399,7 +395,7 @@ struct GetValueAt<0, First, Rest...> {
 	}
 };
 template <int64_t Index, typename... Types>
-struct GetValueAt<Index, IVaList<Types...>> {
+struct GetValueAt<Index, _D_Dragonian_Lib_Namespace GeneralizedList<Types...>> {
 	static constexpr auto Get(Types... rest) {
 		return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Index - 1, Types...>::Get(rest...);
 	}
@@ -692,5 +688,51 @@ constexpr inline _IndexType BTCalcIndex(_IndexType _Index, _IndexType _Max)
 		return -1;
 	return _Index;
 }
+
+template <typename _Type, typename ..._ArgTypes>
+constexpr auto IsConstructibleValue = std::is_constructible<_Type, _ArgTypes...>::value;
+
+struct AnyConvertible
+{
+	template <typename ..._SrcType>
+	constexpr AnyConvertible(_SrcType&& ..._Src) {}
+	template <typename _DstType>
+	constexpr operator _DstType&() const;
+	template <typename _DstType>
+	constexpr operator _DstType&&() const;
+};
+
+template<typename _Type, size_t N>
+constexpr auto MemberCountLowerThan()
+{
+	return []<size_t... I>(IndexSequence<I...>)
+	{
+		return requires{ _Type{ AnyConvertible(I)... }; };
+	}(MakeIndexSequence<N>{});
+}
+
+template <typename _Type, size_t N = 0>
+constexpr size_t MemberCountOf()
+{
+	if constexpr (
+		_D_Dragonian_Lib_Type_Traits_Namespace MemberCountLowerThan<_Type, N>() &&
+		!_D_Dragonian_Lib_Type_Traits_Namespace MemberCountLowerThan<_Type, N + 1>()
+		)
+		return N;
+	else
+		return _D_Dragonian_Lib_Type_Traits_Namespace MemberCountOf<_Type, N + 1>();
+}
+
+template <typename _Type, size_t N1, size_t N2, size_t N3>
+constexpr size_t TryPlaceN2AtN1()
+{
+	return[]<size_t... I>(IndexSequence<I...>)
+	{
+		return requires{ _Type{ AnyConvertible(I)... }; };
+	}(MakeIndexSequence<N1>{});
+}
+
+template <typename _Type>
+constexpr size_t MemberCountOfValue = _D_Dragonian_Lib_Type_Traits_Namespace MemberCountOf<_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>, 0>();
 
 _D_Dragonian_Lib_Type_Traits_Namespace_End

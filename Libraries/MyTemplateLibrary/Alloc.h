@@ -45,6 +45,8 @@ public:
 	BaseAllocator& operator=(BaseAllocator&&) = default;
 	virtual unsigned char* Allocate(size_t _Size);
 	virtual void Free(void* _Block);
+	static void* allocate(size_t _Size);
+	static void deallocate(void* _Block);
 	Device GetDevice() const;
 	BaseAllocator(Device _Type) : Type_(_Type) {}
 	Device Type_;
@@ -61,6 +63,8 @@ public:
 	CPUAllocator& operator=(CPUAllocator&&) = default;
 	unsigned char* Allocate(size_t _Size) override;
 	void Free(void* _Block) override;
+	static void* allocate(size_t _Size);
+	static void deallocate(void* _Block);
 	CPUAllocator() : BaseAllocator(Device::CPU) {}
 };
 

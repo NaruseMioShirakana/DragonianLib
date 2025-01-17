@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <stdexcept>
 #include <string>
 #include <filesystem>

@@ -303,7 +303,7 @@ namespace DragonianLib
 			bool monotonic = true;
 			for (long i = 0; i < neighbour; ++i)
 			{
-				if (n - i < 0)
+				if (n - i < 0 || n + i + 1 >= long(x.Size()))
 					continue;
 				if (x[n - i][k] < x[n - i - 1][k] || x[n + i][k] < x[n + i + 1][k])
 					monotonic = false;

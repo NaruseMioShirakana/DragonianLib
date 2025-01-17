@@ -103,4 +103,51 @@ namespace TypeDef
 template <typename _Type, size_t _Rank>
 using NDInitilizerList = typename ::DragonianLib::TypeDef::_Impl_NDInitilizerListType<_Type, _Rank>::Type;
 
+template <typename _Type, bool _Cond>
+struct OptionalType {};
+template <typename _Type>
+struct OptionalType<_Type, true>
+{
+	_Type _MyValue;
+};
+
+template <typename _Type, _Type... _Values>
+struct BuildTimeList
+{
+	using value_type = _Type;
+	static constexpr size_t _MySize = sizeof...(_Values);
+	static constexpr size_t size() { return _MySize; }
+};
+
+template<typename ..._ArgTypes>
+struct GeneralizedList
+{
+	static constexpr int64_t _Size = sizeof...(_ArgTypes);
+	static constexpr size_t size() { return _Size; }
+};
+
+template <typename _IntegerType, size_t _Size, _IntegerType _Index, _IntegerType... _Indices>
+	requires(std::is_integral_v<_IntegerType>)
+struct __ImplMakeIntegerSequence
+{
+	using _MyType = typename ::DragonianLib::__ImplMakeIntegerSequence<_IntegerType, _Size - 1, _Index + 1, _Indices..., _Index>::_MyType;
+};
+
+template <typename _IntegerType, _IntegerType _Index, _IntegerType... _Indices>
+	requires(std::is_integral_v<_IntegerType>)
+struct __ImplMakeIntegerSequence<_IntegerType, 0, _Index, _Indices...>
+{
+	using _MyType = ::DragonianLib::BuildTimeList<_IntegerType, _Indices...>;
+};
+
+template <typename _IntegerType, size_t _Size>
+	requires(std::is_integral_v<_IntegerType>)
+using MakeIntegerSequence = typename ::DragonianLib::__ImplMakeIntegerSequence<_IntegerType, _Size, 0>::_MyType;
+
+template <size_t _Size>
+using MakeIndexSequence = ::DragonianLib::MakeIntegerSequence<size_t, _Size>;
+
+template <size_t ..._Indices>
+using IndexSequence = ::DragonianLib::BuildTimeList<size_t, _Indices...>;
+
 _D_Dragonian_Lib_Space_End
