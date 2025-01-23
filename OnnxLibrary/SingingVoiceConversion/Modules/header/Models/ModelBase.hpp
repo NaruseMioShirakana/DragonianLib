@@ -224,6 +224,16 @@ struct Hparams
      */
     float SpecMax = 2;
 
+	/**
+	 * @brief Minimum frequency of the spectrum
+	 */
+    float F0Min = 0.f;
+
+	/**
+	 * @brief Maximum frequency of the spectrum
+	 */
+	float F0Max = 1105.f;
+
     /**
      * @brief Scale factor
      */
@@ -297,6 +307,12 @@ public:
      * @return Reference to DragonianLibOrtEnv
      */
     [[nodiscard]] DragonianLibOrtEnv& GetDlEnv() { return *OrtApiEnv; }
+
+    /**
+     * @brief Gets the DragonianLibOrtEnv
+     * @return Pointer to DragonianLibOrtEnv
+     */
+	std::shared_ptr<DragonianLibOrtEnv>& GetDlEnvPtr() { return OrtApiEnv; }
 
     /**
      * @brief Gets the DragonianLibOrtEnv (const version)

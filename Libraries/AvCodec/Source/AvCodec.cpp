@@ -19,7 +19,7 @@ double AvCodec::CalculateRMS(const float* Begin, const float* End)
 		sum += static_cast<double>(*Begin) * static_cast<double>(*Begin);
 		++Begin;
 	}
-	return sqrt(sqrt(sum / count));
+	return sqrt(sum / count);
 }
 
 double AvCodec::CalculateDB(double RMS)
@@ -489,35 +489,33 @@ DragonianLibSTL::Vector<size_t> AvCodec::SliceAudio(
 	const SlicerSettings& SlicerSettings
 )
 {
-	if (PcmData.Size() < size_t(SlicerSettings.MinLength) * SlicerSettings.SamplingRate)
+	const auto MinSamples = size_t(SlicerSettings.MinLength) * SlicerSettings.SamplingRate;
+	if (PcmData.Size() < MinSamples)
 		return { 0, PcmData.Size() };
 
 	DragonianLibSTL::Vector<unsigned long long> SlicePos;
-	bool VocalPart = CalculateDB(PcmData.Begin(), PcmData.Begin() + SlicerSettings.WindowLength) > SlicerSettings.Threshold;
 	SlicePos.EmplaceBack(0);
 	auto TotalCount = static_cast<ptrdiff_t>(PcmData.Size() - SlicerSettings.WindowLength);
-	for (ptrdiff_t Pos = 0; Pos < TotalCount; Pos += SlicerSettings.HopSize)
+
+	ptrdiff_t LastPos = 0;
+	bool LastIsVocalPart = CalculateDB(PcmData.Begin(), PcmData.Begin() + SlicerSettings.WindowLength) > SlicerSettings.Threshold;
+	for (ptrdiff_t Pos = SlicerSettings.HopSize; Pos < TotalCount; Pos += SlicerSettings.HopSize)
 	{
 		const auto DB = CalculateDB(
 			PcmData.Begin() + Pos,
 			PcmData.Begin() + Pos + SlicerSettings.WindowLength
 		);
-		if (DB > SlicerSettings.Threshold)
+		const auto IsVocalPart = DB > SlicerSettings.Threshold;
+
+		if (Pos - LastPos < ptrdiff_t(MinSamples))
+			continue;
+		
+		if ((IsVocalPart && !LastIsVocalPart) || (!IsVocalPart && LastIsVocalPart))
 		{
-			if (!VocalPart)
-			{
-				SlicePos.EmplaceBack(Pos);
-				VocalPart = true;
-			}
+			SlicePos.EmplaceBack(Pos);
+			LastPos = Pos;
 		}
-		else
-		{
-			if (VocalPart)
-			{
-				SlicePos.EmplaceBack(Pos);
-				VocalPart = false;
-			}
-		}
+		LastIsVocalPart = IsVocalPart;
 	}
 
 	SlicePos.EmplaceBack(PcmData.Size());

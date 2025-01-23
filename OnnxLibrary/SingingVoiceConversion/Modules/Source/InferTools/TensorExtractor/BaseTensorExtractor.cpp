@@ -140,56 +140,49 @@ DragonianLibSTL::Vector<int64_t> LibSvcTensorExtractor::GetNSFF0(
 	return NSFF0;
 }
 
+
+DragonianLibSTL::Vector<float> InterpolateData(const DragonianLibSTL::Vector<float>& data) {
+	DragonianLibSTL::Vector<float> result = data;
+	constexpr float epsilon = std::numeric_limits<float>::epsilon();
+	const size_t dataSize = data.Size();
+
+	size_t firstNonZeroIndex = 0;
+	while (firstNonZeroIndex < dataSize && data[firstNonZeroIndex] < epsilon)
+		++firstNonZeroIndex;
+
+	if (firstNonZeroIndex == dataSize)
+		return result;
+	for (size_t i = 0; i < firstNonZeroIndex; ++i)
+		result[i] = data[firstNonZeroIndex];
+
+	size_t start = firstNonZeroIndex;
+	while (start < dataSize) {
+		size_t end = start + 1;
+		while (end < dataSize && data[end] < epsilon)
+			++end;
+		if (end < dataSize) {
+			float startValue = data[start];
+			float endValue = data[end];
+			size_t gap = end - start;
+			for (size_t i = 1; i < gap; ++i) {
+				result[start + i] = startValue + (endValue - startValue) * (float(i) / float(gap));
+			}
+			start = end;
+		}
+		else {
+			for (size_t i = start + 1; i < dataSize; ++i)
+				result[i] = data[start];
+			break;
+		}
+	}
+	return result;
+}
+
 DragonianLibSTL::Vector<float> LibSvcTensorExtractor::GetInterpedF0(
 	const DragonianLibSTL::Vector<float>& F0
 )
 {
-	const auto specLen = F0.Size();
-	DragonianLibSTL::Vector<float> Of0(specLen, 0.0);
-
-	float last_value = 0.0;
-	for (size_t i = 0; i < specLen; ++i)
-	{
-		if (F0[i] <= 0.f)
-		{
-			size_t j = i + 1;
-			for (; j < specLen; ++j)
-			{
-				if (F0[j] > 0.f)
-					break;
-			}
-			if (j < specLen - 1)
-			{
-				if (last_value > 0.f)
-				{
-					const auto step = (F0[j] - F0[i - 1]) / float(j - i);
-					for (size_t k = i; k < j; ++k)
-						Of0[k] = float(F0[i - 1] + step * float(k - i + 1));
-				}
-				else
-					for (size_t k = i; k < j; ++k)
-						Of0[k] = float(F0[j]);
-				i = j;
-			}
-			else
-			{
-				for (size_t k = i; k < specLen; ++k)
-					Of0[k] = float(last_value);
-				i = specLen;
-			}
-		}
-		else
-		{
-			if (i == 0)
-			{
-				Of0[i] = float(F0[i]);
-				continue;
-			}
-			Of0[i] = float(F0[i - 1]);
-			last_value = F0[i];
-		}
-	}
-	return Of0;
+	return InterpolateData(F0);
 }
 
 DragonianLibSTL::Vector<float> LibSvcTensorExtractor::InterpUVF0(

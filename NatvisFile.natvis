@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-	<Type Name="DragonianLibSTL::Vector&lt;*&gt;">
+	<Type Name="DragonianLib::TemplateLibrary::Vector&lt;*&gt;">
 		<DisplayString Condition="_MyLast - _MyFirst == 1">
 			{{ Size: {_MyLast - _MyFirst}, Capacity: {_MyEnd - _MyFirst}, Data: [ {_MyFirst[0]} ] }}
 		</DisplayString>

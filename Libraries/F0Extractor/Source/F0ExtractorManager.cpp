@@ -146,6 +146,42 @@ struct Init
 			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
 			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
 			});
+		F0ExtractorsList.emplace_back(L"Rmvpe");
+		RegisteredF0Extractors.emplace(L"Rmvpe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<RMVPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
+		F0ExtractorsList.emplace_back(L"Melpe");
+		RegisteredF0Extractors.emplace(L"Melpe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
+		F0ExtractorsList.emplace_back(L"Fcpe");
+		RegisteredF0Extractors.emplace(L"Fcpe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
+		F0ExtractorsList.emplace_back(L"RmvPe");
+		RegisteredF0Extractors.emplace(L"RmvPe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<RMVPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
+		F0ExtractorsList.emplace_back(L"MelPe");
+		RegisteredF0Extractors.emplace(L"MelPe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
+		F0ExtractorsList.emplace_back(L"FcPe");
+		RegisteredF0Extractors.emplace(L"FcPe", [](const void* UserParameter) -> F0Extractor {
+			auto Params = (const NetF0ExtractorSetting*)UserParameter;
+			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
+			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
+			});
 #endif
 		RegisterF0Extractor(GetCurrentFolder() + L"/Plugins/F0Extractor");
 	}

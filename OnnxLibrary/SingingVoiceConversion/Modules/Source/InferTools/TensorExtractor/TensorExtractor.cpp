@@ -510,7 +510,7 @@ LibSvcTensorExtractor::Inputs DiffusionSvcTensorExtractor::Extract(const Dragoni
 	//auto Padding = params.Padding * SvcTensors.Data.FrameShape[1] / F0.Size();
 	//if (params.Padding == size_t(-1))
 	//	Padding = size_t(-1);
-
+	
 	SvcTensors.Data.HiddenUnit = HiddenUnit;
 	SvcTensors.Data.F0 = InterpFunc(F0, long(F0.Size()), long(SvcTensors.Data.FrameShape[1]));
 	for (auto& it : SvcTensors.Data.F0)

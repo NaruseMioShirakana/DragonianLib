@@ -94,23 +94,96 @@ void WithTimer(const Fn& fn)
 	std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
+#include "OnnxLibrary/SingingVoiceConversion/Modules/Header/Models/ReflowSvc.hpp"
+#include "Libraries/AvCodec/AvCodec.h"
+
 int main()
 {
 	using namespace DragonianLib;
 
-	SetWorkerCount(16);
-	SetMaxTaskCountPerOperator(16);
+	SingingVoiceConversion::ReflowSvc Model{
+		{
+			L"ReflowSvc",
+			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
+			{},
+			{},
+			{
+				LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_encoder.onnx)",
+				LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_velocity.onnx)",
+				LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_after.onnx)",
+			},
+			{},
+			44100,
+			512,
+			768,
+			282,
+			true,
+			true,
+			false,
+			128,
+			0,
+			1000,
+			-12,
+			2,
+			65.f
+		},
+		ProgressCb,
+		SingingVoiceConversion::LibSvcModule::ExecutionProviders::DML,
+		1,
+		8
+	};
 
-	TypeTraits::MemberCountOf<my_struct>();
+	auto Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
+		R"(D:\VSGIT\MoeSS - Release\Testdata\testaudio114.wav)",
+		44100
+	);
 
-	auto Weight = Functional::Linspace(0.f, 100.f, 2048ll * 100);
-	auto Embedding = Weight.View(100, -1);
-	Embedding.Eval();
-	int array[][1] = { {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20} };
-	auto Indice = Functional::CopyFromArrayLike(array).EvalMove().View(-1, 4);
-	std::cout << Functional::Stack<4, DMIODLETT(Indice)>({ Indice, Indice, Indice, Indice }, 1).Eval();
+	AvCodec::SlicerSettings SlicerConfig{
+		44100,
+		-30.,
+		3.,
+		1024,
+		256
+	};
 
-	std::cout << "\n";
-	system("pause");
-
+	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams Params;
+	Params.VocoderSamplingRate = 44100;
+	Params.VocoderHopSize = 512;
+	Params.VocoderMelBins = 128;
+	Params.VocoderModel = DragonianLib::RefOrtCachedModel(
+		VocoderPath,
+		Model.GetDlEnv()
+	);
+	Params.Keys = -8;
+	const auto SliPos = TemplateLibrary::Arange(0ull, Audio.Size(), 441000ull);
+	//const auto PosSlice = AvCodec::SliceAudio(Audio, SlicerConfig);
+	auto Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(Audio, SliPos, 44100, -30.);
+	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(Slices, { 44100, 512 }, L"Rmvpe", {LR"(D:\VSGIT\MoeVS-SVC\Build\Release\F0Predictor\RMVPE.onnx)", &Model.GetDlEnvPtr()});
+	size_t Proc = 0;
+	Params.Step = 10;
+	Params.TBegin = 1.f;
+	DragonianLibSTL::Vector<float> OutAudio;
+	OutAudio.Reserve(Audio.Size() * 2);
+	TotalStep = Slices.Slices.Size() * Params.Step;
+	for (auto& Single : Slices.Slices)
+	{
+		Single.F0 = SingingVoiceConversion::TensorExtractor::LibSvcTensorExtractor::GetInterpedF0(Single.F0);
+		try
+		{
+			MyLastTime = std::chrono::high_resolution_clock::now();
+			auto Now = std::chrono::high_resolution_clock::now();
+			auto Out = Model.SliceInference(Single, Params, Proc);
+			std::cout << "Rtf: " << double(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - Now).count()) / 10000.0 << '\n';
+			DragonianLib::AvCodec::WritePCMData(
+				(LR"(D:/VSGIT/MoeSS - Release/Testdata/OutPut-PCM-)" + std::to_wstring(Proc / Params.Step) + L".wav").c_str(),
+				Out,
+				44100
+			);
+		}
+		catch (const std::exception& e)
+		{
+			std::wcout << e.what() << '\n';
+		}
+	}
 }

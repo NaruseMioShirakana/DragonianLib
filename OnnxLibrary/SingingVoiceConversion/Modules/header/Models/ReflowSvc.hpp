@@ -147,6 +147,8 @@ private:
     float SpecMax = 2; ///< Maximum spectrogram value
     float Scale = 1000.f; ///< Scale factor
     bool VaeMode = true; ///< VAE mode
+	float F0Min = 0.f; ///< Minimum frequency
+	float F0Max = 1105.f; ///< Maximum frequency
 
     std::wstring ReflowSvcVersion = L"ReflowSvc"; ///< Reflow svc version
 

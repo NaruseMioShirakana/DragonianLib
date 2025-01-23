@@ -3,6 +3,7 @@
 #include "Libraries/EnvManager.hpp"
 #include <providers/dml/dml_provider_factory.h>
 #include <thread>
+#include <ranges>
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
 
@@ -65,6 +66,10 @@ DragonianLibOrtEnv::~DragonianLibOrtEnv()
 		L" DeviceID: " + std::to_wstring(_MyDeviceID) +
 		L" ThreadCount: " + std::to_wstring(_MyThreadCount) + L']';
 	LogInfo(Message);
+	auto ID = std::to_wstring(uint64_t(this));
+	for (const auto& it : GlobalOrtModelCache | std::ranges::views::keys)
+		if (it.contains(ID))
+			GlobalOrtModelCache.erase(it);
 }
 
 DragonianLibOrtEnv::DragonianLibOrtEnv(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
@@ -180,7 +185,7 @@ std::shared_ptr<Ort::Session>& DragonianLibOrtEnv::RefOrtCachedModel(
 	const DragonianLibOrtEnv& Env_
 )
 {
-	const auto ID = L"EP:" + std::to_wstring(Env_.GetCurProvider()) +
+	const auto ID = std::to_wstring(uint64_t(&Env_)) + L" EP:" + std::to_wstring(Env_.GetCurProvider()) +
 		L" DEVICE:" + std::to_wstring(Env_.GetCurDeviceID()) +
 		L" THREAD:" + std::to_wstring(Env_.GetCurThreadCount()) +
 		L" PATH:" + Path_;
@@ -195,7 +200,7 @@ void DragonianLibOrtEnv::UnRefOrtCachedModel(
 	const DragonianLibOrtEnv& Env_
 )
 {
-	const auto ID = L"EP:" + std::to_wstring(Env_.GetCurProvider()) +
+	const auto ID = std::to_wstring(uint64_t(&Env_)) + L" EP:" + std::to_wstring(Env_.GetCurProvider()) +
 		L" DEVICE:" + std::to_wstring(Env_.GetCurDeviceID()) +
 		L" THREAD:" + std::to_wstring(Env_.GetCurThreadCount()) +
 		L" PATH:" + Path_;

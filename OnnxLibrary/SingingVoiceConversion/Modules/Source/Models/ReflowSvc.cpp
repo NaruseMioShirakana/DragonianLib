@@ -1,11 +1,11 @@
 ﻿#include "../../header/Models/ReflowSvc.hpp"
-#include <random>
-#include <regex>
-#include "Libraries/Base.h"
-#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 #include "../../header/InferTools/Sampler/SamplerManager.hpp"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
+
+#include <random>
+#include <regex>
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
@@ -37,6 +37,8 @@ ReflowSvc::ReflowSvc(
 	MaxStep = std::max(_Hps.MaxStep, 1ll);
 	Scale = _Hps.Scale;
 	VaeMode = _Hps.VaeMode;
+	F0Min = _Hps.F0Min;
+	F0Max = _Hps.F0Max;
 
 	ProgressCallbackFunction = _ProgressCallback;
 
@@ -100,7 +102,6 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 	if (_Slice.IsNotMute)
 	{
 		auto RawWav = InterpResample<float>(_Slice.Audio, (int)(_Slice.SamplingRate), 16000);
-		const auto src_audio_length = RawWav.Size();
 		bool NeedPadding = false;
 #ifdef LIBSVC_CUDA_ONLY_PADDING
 		if (ModelExecutionProvider == ExecutionProviders::CUDA)
@@ -186,7 +187,7 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 		}
 		else
 			InputTensors = Preprocessor->Extract(srcHiddenUnits, _Slice.F0, _Slice.Volume, _Slice.Speaker, _Inference_Params);
-
+				
 		OrtTensors EncoderOut;
 		try {
 			EncoderOut = PreEncoder->Run(Ort::RunOptions{ nullptr },
@@ -206,7 +207,7 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 		long long noise_shape[4] = { 1,1,MelBins,InputTensors.Data.FrameShape[1] };
 		const auto x_size = EncoderOut[0].GetTensorTypeAndShapeInfo().GetElementCount();
 		float t_end = std::max(std::min(1.f, _Params.TEnd), 0.002f);
-		float t_start = std::max(std::min(_Params.TBegin, t_end - 0.001f), 0.f);
+		float t_start = std::max(std::min(_Params.TBegin, t_end), 0.f);
 		if (x_size != 1)
 		{
 			auto x_it = EncoderOut[0].GetTensorMutableData<float>();
@@ -220,13 +221,21 @@ DragonianLibSTL::Vector<float> ReflowSvc::SliceInference(
 				it = normal(gen) * _Params.NoiseScale;
 			SamplerInTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, initial_noise.Data(), initial_noise.Size(), noise_shape, 4));
 		}
-		float Time[] = { t_start };
+		int64_t Time[] = { int64_t(t_start * Scale) };
 		int64_t OneShape[] = { 1 };
 		SamplerInTensors.emplace_back(Ort::Value::CreateTensor(*MemoryInfo, Time, 1, OneShape, 1));
 		SamplerInTensors.emplace_back(std::move(EncoderOut[1]));
 		const auto dt = (t_end - t_start) / float(step);
 
-		auto PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, _Process);
+		OrtTensors PredOut;
+
+		if (abs(t_end - t_start) > std::numeric_limits<float>::epsilon())
+			PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, _Process);
+		else
+		{
+			PredOut.emplace_back(std::move(SamplerInTensors[0]));
+			ProgressCallbackFunction(_Process += SingleStepSkip, 1);
+		}
 
 		try
 		{
@@ -465,7 +474,15 @@ DragonianLibSTL::Vector<float> ReflowSvc::InferPCMData(
 	SamplerInTensors.emplace_back(std::move(EncoderOut[1]));
 	const auto dt = (t_end - t_start) / float(step);
 
-	auto PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, _Process);
+	OrtTensors PredOut;
+
+	if (abs(t_end - t_start) > std::numeric_limits<float>::epsilon())
+		PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, _Process);
+	else
+	{
+		PredOut.emplace_back(std::move(SamplerInTensors[0]));
+		ProgressCallbackFunction(_Process += RealSteps, 1);
+	}
 
 	OrtTensors ReflowOut, finaOut;
 
@@ -652,7 +669,12 @@ DragonianLibSTL::Vector<float> ReflowSvc::ShallowDiffusionInference(
 	SamplerInTensors.emplace_back(std::move(EncoderOut[1]));
 	const auto dt = (t_end - t_start) / float(step);
 
-	auto PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, Process);
+	OrtTensors PredOut;
+
+	if (abs(t_end - t_start) > std::numeric_limits<float>::epsilon())
+		PredOut = Sampler::GetReflowSampler(_Params.ReflowSampler, VelocityFunction.get(), MelBins, ProgressCallbackFunction, MemoryInfo)->Sample(SamplerInTensors, step, dt, Scale, Process);
+	else
+		PredOut.emplace_back(std::move(SamplerInTensors[0]));
 
 	OrtTensors ReflowOut, finaOut;
 	try
