@@ -349,7 +349,7 @@ DragonianLibSTL::Vector<float> DiffusionSvc::SliceInference(
 	}
 	ProgressCallbackFunction(_Process += SingleStepSkip, 1);
 	const auto len = size_t(_Slice.OrgLen * int64_t(ModelSamplingRate) / (int)(_Slice.SamplingRate));
-	return { len, 0.f, GetMemoryProvider(DragonianLib::Device::CPU) };
+	return { len, 0.f, TemplateLibrary::CPUAllocator() };
 }
 
 DragonianLibSTL::Vector<float> DiffusionSvc::InferPCMData(

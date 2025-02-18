@@ -337,7 +337,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
 }
 
 //using Type_ = float;
-template <typename Type_>
+template <typename Type_, Device Device_ = Device::CPU>
 class Vector
 {
 public:
@@ -355,6 +355,7 @@ public:
 	using ConstReversedIterator = ConstReversedLinearIterator<ValueType>;
     using SizeType = size_t;
     using IndexType = long long;
+    using Allocator = GetAllocatorType<Device_>;
 
     static_assert(std::is_copy_assignable_v<ValueType>, "ValueType Must Be Copy Assignable!");
 	static_assert(std::is_copy_constructible_v<ValueType>, "ValueType Must Be Copy Constructible!");
@@ -364,7 +365,7 @@ protected:
     {
         _Impl_Dragonian_Lib_Destroy_Range(_MyFirst, _MyLast);
         if (_MyFirst && _MyOwner)
-            _MyAllocator->Free(_MyFirst);
+            _MyAllocator.deallocate(_MyFirst);
         _MyOwner = true;
         _MyFirst = nullptr;
         _MyLast = nullptr;
@@ -375,20 +376,19 @@ private:
     _D_Dragonian_Lib_Constexpr_Force_Inline void Destory() noexcept
     {
         _Tidy();
-        _MyAllocator = nullptr;
     }
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline void AllocateMemory(SizeType _Size)
 	{
         if (_Size == 0)
         {
-            _MyFirst = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
+            _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
             _MyLast = _MyFirst;
             _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
             return;
         }
 
-        _MyFirst = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _Size * 2);
+        _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _Size * 2);
         if (!_MyFirst) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyFirst + _Size * 2;
@@ -407,18 +407,17 @@ public:
 
 	Vector()
     {
-        _MyAllocator = GetMemoryProvider(Device::CPU);
-        _MyFirst = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
+        _MyAllocator = Allocator();
+        _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
         _MyLast = _MyFirst;
         _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
         return;
     }
 
-	Vector(SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(SizeType _Size, Allocator _Alloc = Allocator())
     {
 		if constexpr (std::is_default_constructible_v<ValueType>)
 	    {
-		    if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
 	    	_MyAllocator = _Alloc;
 	    	AllocateMemory(_Size);
 	    	_Impl_Dragonian_Lib_Iterator_Default_Construct(_MyFirst, _Size);
@@ -427,9 +426,8 @@ public:
 			_D_Dragonian_Lib_Stl_Throw("Default Construct Of ValueType Not Allowed!");
     }
 
-	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = Allocator())
     {
-        if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(_MyFirst, _Size, _Value);
@@ -437,7 +435,6 @@ public:
 
 	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
     {
-        if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         _MyOwner = _Owner;
         _MyFirst = *_Block;
@@ -458,16 +455,15 @@ public:
         return _Result;
 	}
 
-	Vector(ConstPointer _Begin, ConstPointer _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(ConstPointer _Begin, ConstPointer _End, Allocator _Alloc = Allocator())
     {
         auto _Size = _End - _Begin;
-        if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Begin, _Size);
     }
 
-	Vector(const ConstIterator& _Begin, const ConstIterator& _End, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(const ConstIterator& _Begin, const ConstIterator& _End, Allocator _Alloc = Allocator())
     {
         auto _Size = _End - _Begin;
         if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
@@ -476,7 +472,7 @@ public:
 		_Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Begin.Get(), _Size);
     }
 
-	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = Allocator())
     {
         if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
@@ -484,10 +480,9 @@ public:
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Buffer, _Size);
     }
 
-	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = GetMemoryProvider(Device::CPU))
+	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = Allocator())
     {
         auto _Size = _List.size();
-        if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _List.begin(), _Size);
@@ -514,7 +509,6 @@ public:
         _MyAllocator = _Right._MyAllocator;
         _MyOwner = _Right._MyOwner;
 
-        _Right._MyAllocator = nullptr;
         _Right._MyFirst = nullptr;
         _Right._MyLast = nullptr;
         _Right._MyEnd = nullptr;
@@ -548,7 +542,6 @@ public:
         _MyAllocator = _Right._MyAllocator;
         _MyOwner = _Right._MyOwner;
 
-        _Right._MyAllocator = nullptr;
         _Right._MyFirst = nullptr;
         _Right._MyLast = nullptr;
         _Right._MyEnd = nullptr;
@@ -710,7 +703,6 @@ public:
         _MyFirst = nullptr;
         _MyLast = nullptr;
         _MyEnd = nullptr;
-        _MyAllocator = nullptr;
         return { Ptr, _Size };
     }
 
@@ -763,7 +755,7 @@ private:
         const auto _Remainder = _MySize - _FrontCount;
         if (_NewSize > static_cast<int64_t>(Capacity()))
         {
-            auto _NewBuffer = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _NewSize * 2);
+            auto _NewBuffer = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _NewSize * 2);
             _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(
                 _NewBuffer, _MyFirst, _FrontCount
             );
@@ -815,7 +807,7 @@ private:
         const auto _Remainder = _MySize - _FrontCount;
         if (_NewSize > static_cast<int64_t>(Capacity()))
         {
-            auto _NewBuffer = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _NewSize * 2);
+            auto _NewBuffer = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _NewSize * 2);
             _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(
                 _NewBuffer, _MyFirst, _FrontCount
             );
@@ -870,7 +862,7 @@ private:
         const auto _Remainder = _MySize - _FrontCount;
         if (_NewSize > static_cast<int64_t>(Capacity()))
         {
-            auto _NewBuffer = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _NewSize * 2);
+            auto _NewBuffer = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _NewSize * 2);
             _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(
                 _NewBuffer, _MyFirst, _FrontCount
             );
@@ -925,7 +917,7 @@ private:
         const auto _Remainder = _MySize - _FrontCount;
         if (_NewSize > Capacity())
         {
-            auto _NewBuffer = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _NewSize * 2);
+            auto _NewBuffer = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _NewSize * 2);
             _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(
                 _NewBuffer, _MyFirst, _FrontCount
             );
@@ -980,13 +972,13 @@ public:
         if (_NewCapacity == 0)
         {
             _Tidy();
-            _MyFirst = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
+            _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
             _MyLast = _MyFirst;
             _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
             return;
         }
 
-        auto _Data = (Pointer)_MyAllocator->Allocate(sizeof(ValueType) * _NewCapacity);
+        auto _Data = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * _NewCapacity);
         auto _Size = std::min(_NewCapacity, Size());
 
         _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(

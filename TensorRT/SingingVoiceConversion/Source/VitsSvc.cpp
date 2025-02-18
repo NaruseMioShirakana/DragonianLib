@@ -480,7 +480,7 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 	}
 	//Mute clips
 	const auto len = size_t(_Slice.OrgLen * int64_t(MySamplingRate) / (int)(_Slice.SamplingRate));
-	return { len, 0.f, GetMemoryProvider(DragonianLib::Device::CPU) };
+	return { len, 0.f, TemplateLibrary::CPUAllocator() };
 }
 
 void VitsSvc::EmptyCache()

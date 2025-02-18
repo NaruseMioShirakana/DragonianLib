@@ -8,7 +8,7 @@ _D_Dragonian_TensorRT_Lib_Space_Header
 
 DLogger logger;
 
-void _Impl_Dragonian_Lib_Free_CPU_Memory(void* _Pointer) { GetMemoryProvider(Device::CPU)->Free(_Pointer); }
+void _Impl_Dragonian_Lib_Free_CPU_Memory(void* _Pointer) { TemplateLibrary::CPUAllocator::deallocate(_Pointer); }
 void _Impl_Dragonian_Lib_Free_CUDA_Memory(void* _Pointer) { if (cudaFree(_Pointer)) _D_Dragonian_Lib_CUDA_Error; }
 struct _Impl_Dragonian_Lib_Default_Deleter { template <typename T>void operator()(T* obj) const { delete obj; } };
 _Impl_Dragonian_Lib_Default_Deleter _Valdef_My_Default_Deleter;

@@ -689,7 +689,7 @@ void Image::TransposeBGR(size_t scale)
 	}
 }
 
-ULONG_PTR Token = 0;
+UInt64 Token = 0;
 
 void GdiInit()
 {

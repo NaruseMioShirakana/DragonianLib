@@ -512,7 +512,7 @@ DragonianLibSTL::Vector<size_t> AvCodec::SliceAudio(
 		
 		if ((IsVocalPart && !LastIsVocalPart) || (!IsVocalPart && LastIsVocalPart))
 		{
-			SlicePos.EmplaceBack(Pos);
+			SlicePos.EmplaceBack(Pos + SlicerSettings.HopSize / 2);
 			LastPos = Pos;
 		}
 		LastIsVocalPart = IsVocalPart;

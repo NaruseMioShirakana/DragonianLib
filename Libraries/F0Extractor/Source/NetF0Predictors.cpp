@@ -15,7 +15,7 @@ RMVPEF0Extractor::RMVPEF0Extractor(const std::wstring& _ModelPath, const std::sh
 Vector<float> RMVPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F0ExtractorParams& Params)
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(PCMData, Params);
 
 	return ExtractF0(
 		InterpResample<float>(PCMData, Params.SamplingRate, 16000),
@@ -33,7 +33,7 @@ Vector<float> RMVPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F
 Vector<float> RMVPEF0Extractor::ExtractF0(const Vector<int16_t>& PCMData, const F0ExtractorParams& Params)
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(InterpResample<double>(PCMData, Params.SamplingRate, 16000), Params);
 
 	return ExtractF0(
 		InterpResample<float>(PCMData, Params.SamplingRate, 16000),
@@ -54,7 +54,7 @@ Vector<float> RMVPEF0Extractor::ExtractF0(
 )
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(InterpResample<double>(PCMData, Params.SamplingRate, 16000), Params);
 
 	if (Params.SamplingRate != 16000)
 		return ExtractF0(
@@ -103,7 +103,7 @@ MELPEF0Extractor::MELPEF0Extractor(const std::wstring& _ModelPath, const std::sh
 Vector<float> MELPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F0ExtractorParams& Params)
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(PCMData, Params);
 
 	return ExtractF0(
 		InterpResample<float>(PCMData, Params.SamplingRate, 16000),
@@ -121,7 +121,7 @@ Vector<float> MELPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F
 Vector<float> MELPEF0Extractor::ExtractF0(const Vector<int16_t>& PCMData, const F0ExtractorParams& Params)
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(InterpResample<double>(PCMData, Params.SamplingRate, 16000), Params);
 
 	return ExtractF0(
 		InterpResample<float>(PCMData, Params.SamplingRate, 16000),
@@ -142,7 +142,7 @@ Vector<float> MELPEF0Extractor::ExtractF0(
 )
 {
 	if (!_MyModel)
-		return ((BaseF0Extractor*)(&_MyDioExtractor))->ExtractF0(PCMData, Params);
+		return _MyDioExtractor.ExtractF0(InterpResample<double>(PCMData, Params.SamplingRate, 16000), Params);
 
 	if (Params.SamplingRate != 16000)
 		return ExtractF0(

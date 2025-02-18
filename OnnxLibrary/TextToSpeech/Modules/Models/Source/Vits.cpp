@@ -90,7 +90,7 @@ DragonianLibSTL::Vector<float> Vits::GetEmotionVector(
 ) const
 {
 	if (EmotionSymbol.Empty())
-		return { 1024, 0.f, GetMemoryProvider(Device::CPU) };
+		return { 1024, 0.f, TemplateLibrary::CPUAllocator() };
 	DragonianLibSTL::Vector Result(1024, 0.f);
 	uint64_t mul = 0;
 	for (const auto& EmotionSymb : EmotionSymbol)
@@ -149,7 +149,7 @@ DragonianLibSTL::Vector<float> Vits::Inference(
 	}
 
 	if (UseLanguage && InputData._LanguageIds.Empty())
-		InputData._LanguageIds = { PhonemeSize, Params.LanguageID, GetMemoryProvider(Device::CPU) };
+		InputData._LanguageIds = { PhonemeSize, Params.LanguageID, TemplateLibrary::CPUAllocator() };
 	if (InputData._LanguageIds.Size() != PhonemeSize)
 	{
 		if (AddBlank && InputData._LanguageIds.Size() * 2 + 1 == PhonemeSize)
@@ -214,7 +214,7 @@ DragonianLibSTL::Vector<float> Vits::Inference(
 
 		for (auto& BertVec : InputData._BertVec)
 			if (BertVec.Empty())
-				BertVec = { BertBufferSize, 0.f, GetMemoryProvider(Device::CPU) };
+				BertVec = { BertBufferSize, 0.f, TemplateLibrary::CPUAllocator() };
 
 		auto BertSize = BertBufferSize / InputData._BertDims;
 		if (BertSize != PhonemeSize)

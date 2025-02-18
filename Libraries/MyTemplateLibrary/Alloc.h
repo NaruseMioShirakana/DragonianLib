@@ -21,51 +21,149 @@
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
-class BaseAllocator;
-
-_D_Dragonian_Lib_Template_Library_Space_End
-
-_D_Dragonian_Lib_Space_Begin
-
-using Allocator = TemplateLibrary::BaseAllocator*;
-Allocator GetMemoryProvider(Device _Device);
-
-_D_Dragonian_Lib_Space_End
-
-_D_Dragonian_Lib_Template_Library_Space_Begin
-
 class BaseAllocator
 {
 public:
 	friend class MemoryProvider;
+
 	virtual ~BaseAllocator() {}
+	BaseAllocator() {}
 	BaseAllocator(const BaseAllocator&) = default;
 	BaseAllocator(BaseAllocator&&) = default;
 	BaseAllocator& operator=(const BaseAllocator&) = default;
 	BaseAllocator& operator=(BaseAllocator&&) = default;
-	virtual unsigned char* Allocate(size_t _Size);
-	virtual void Free(void* _Block);
-	static void* allocate(size_t _Size);
-	static void deallocate(void* _Block);
-	Device GetDevice() const;
-	BaseAllocator(Device _Type) : Type_(_Type) {}
-	Device Type_;
+
+	static Device GetDevice() { return Device::CUSTOM; }
+	virtual void* allocate(size_t _Size);
+	virtual void deallocate(void* _Block);
 };
 
-class CPUAllocator : public BaseAllocator
+class CPUAllocator
 {
 public:
 	friend class MemoryProvider;
-	~CPUAllocator() override {}
+	~CPUAllocator() = default;
+	CPUAllocator() = default;
 	CPUAllocator(const CPUAllocator&) = default;
 	CPUAllocator(CPUAllocator&&) = default;
 	CPUAllocator& operator=(const CPUAllocator&) = default;
 	CPUAllocator& operator=(CPUAllocator&&) = default;
-	unsigned char* Allocate(size_t _Size) override;
-	void Free(void* _Block) override;
+
 	static void* allocate(size_t _Size);
 	static void deallocate(void* _Block);
-	CPUAllocator() : BaseAllocator(Device::CPU) {}
+	static Device GetDevice() { return Device::CPU; }
 };
+
+class CudaAllocator
+{
+public:
+	friend class MemoryProvider;
+	~CudaAllocator() = default;
+	CudaAllocator() = default;
+	CudaAllocator(const CudaAllocator&) = default;
+	CudaAllocator(CudaAllocator&&) = default;
+	CudaAllocator& operator=(const CudaAllocator&) = default;
+	CudaAllocator& operator=(CudaAllocator&&) = default;
+
+	static void* allocate(size_t _Size);
+	static void deallocate(void* _Block);
+	static Device GetDevice() { return Device::CUDA; }
+};
+
+class RocmAllocator
+{
+public:
+	friend class MemoryProvider;
+	~RocmAllocator() = default;
+	RocmAllocator() = default;
+	RocmAllocator(const RocmAllocator&) = default;
+	RocmAllocator(RocmAllocator&&) = default;
+	RocmAllocator& operator=(const RocmAllocator&) = default;
+	RocmAllocator& operator=(RocmAllocator&&) = default;
+
+	static void* allocate(size_t _Size);
+	static void deallocate(void* _Block);
+	static Device GetDevice() { return Device::HIP; }
+};
+
+class DmlAllocator
+{
+public:
+	friend class MemoryProvider;
+	~DmlAllocator() = default;
+	DmlAllocator() = default;
+	DmlAllocator(const DmlAllocator&) = default;
+	DmlAllocator(DmlAllocator&&) = default;
+	DmlAllocator& operator=(const DmlAllocator&) = default;
+	DmlAllocator& operator=(DmlAllocator&&) = default;
+
+	static void* allocate(size_t _Size);
+	static void deallocate(void* _Block);
+	static Device GetDevice() { return Device::DIRECTX; }
+};
+
+class CustomAllocator
+{
+public:
+	friend class MemoryProvider;
+	~CustomAllocator() {}
+	CustomAllocator(const CustomAllocator&) = default;
+	CustomAllocator(CustomAllocator&&) = default;
+	CustomAllocator& operator=(const CustomAllocator&) = default;
+	CustomAllocator& operator=(CustomAllocator&&) = default;
+	static Device GetDevice() { return Device::CUSTOM; }
+
+protected:
+	std::shared_ptr<BaseAllocator> _MyAlloc = nullptr;
+
+public:
+	CustomAllocator(const std::shared_ptr<BaseAllocator>& _Alloc) : _MyAlloc(_Alloc) {}
+	CustomAllocator() = default;
+	void* allocate(size_t _Size) const
+	{
+		if (!_MyAlloc)
+			_D_Dragonian_Lib_Throw_Exception("Bad Alloc!");
+		return _MyAlloc->allocate(_Size);
+	}
+	void deallocate(void* _Block) const
+	{
+		if (!_MyAlloc)
+			_D_Dragonian_Lib_Throw_Exception("Bad Alloc!");
+		_MyAlloc->deallocate(_Block);
+	}
+};
+
+template <Device _Type>
+struct GetAllocatorType__
+{
+	using Type = CustomAllocator;
+};
+
+template <>
+struct GetAllocatorType__<Device::CPU>
+{
+	using Type = CPUAllocator;
+};
+
+template <>
+struct GetAllocatorType__<Device::CUDA>
+{
+	using Type = CudaAllocator;
+};
+
+template <>
+struct GetAllocatorType__<Device::HIP>
+{
+	using Type = RocmAllocator;
+};
+
+template <>
+struct GetAllocatorType__<Device::DIRECTX>
+{
+	using Type = DmlAllocator;
+};
+
+template <Device _Type>
+using GetAllocatorType = typename GetAllocatorType__<_Type>::Type;
 
 _D_Dragonian_Lib_Template_Library_Space_End

@@ -302,6 +302,79 @@ namespace AvCodec
 		const DragonianLibSTL::Vector<float>& PcmData,
 		const SlicerSettings& SlicerSettings
 	);
+
+	template <typename T>
+	std::pair<DragonianLibSTL::Vector<T>, size_t> CrossCorrelation(
+		float SamplingRate,
+		const DragonianLibSTL::Vector<T>& Signal1,
+		float Signal1Begin,
+		float Signal1End,
+		const DragonianLibSTL::Vector<T>& Signal2,
+		float Signal2Begin,
+		float SliceOverlap,
+		const T& Factor
+	)
+	{
+		const auto Signal1Size = Signal1.Size();
+		const auto Signal2Size = Signal2.Size();
+
+		const auto Signal2Overlap = static_cast<size_t>(SliceOverlap * SamplingRate);
+
+		if (Signal2Overlap < 32)
+			_D_Dragonian_Lib_Throw_Exception("The slice overlap is too small.");
+
+		const auto Signal1BeginIndex = static_cast<size_t>(Signal1Begin * SamplingRate);
+		const auto Signal1EndIndex = static_cast<size_t>(Signal1End * SamplingRate);
+		const auto Signal1Sz = Signal1EndIndex - Signal1BeginIndex;
+
+		if (Signal1EndIndex <= Signal1BeginIndex)
+			_D_Dragonian_Lib_Throw_Exception("End time is less than start time.");
+
+		const auto Signal2BeginIndex = static_cast<size_t>(Signal2Begin * SamplingRate);
+		const auto Signal2EndIndex = Signal2BeginIndex + Signal2Overlap;
+
+		if (Signal1EndIndex > Signal1Size || Signal2EndIndex > Signal2Size)
+			_D_Dragonian_Lib_Throw_Exception("The slice overlap is too large.");
+
+		if (Signal1Sz < Signal2Overlap)
+			_D_Dragonian_Lib_Throw_Exception("The slice of the first signal is too short.");
+
+		DragonianLibSTL::Vector<float> Result(Signal1Sz - Signal2Overlap + 1);
+
+		{
+			auto _Signal1Begin = Signal1.Data() + Signal1BeginIndex;
+			const auto _Signal1End = Signal1.Data() + Signal1EndIndex;
+			const auto _Signal2Begin = Signal2.Data() + Signal2BeginIndex;
+			const auto _Signal2End = Signal2.Data() + Signal2EndIndex;
+			for (auto& i : Result)
+			{
+				T Sum = 0;
+				for (auto j = _Signal1Begin, k = _Signal2Begin; k != _Signal2End; ++j, ++k)
+					Sum += (*j++) * (*k++);
+				i = Sum;
+				++_Signal1Begin;
+			}
+		}
+
+		{
+			auto _Signal1Begin = Signal1.Data() + Signal1BeginIndex;
+			DragonianLibSTL::Vector<T> Signal1Pow2(Signal1Sz);
+			for (auto& i : Signal1Pow2)
+				i = (T)powf(float(*(_Signal1Begin++)), 2.f);
+			auto Signal1Pow2Begin = Signal1Pow2.Data();
+			for (auto& i : Result)
+			{
+				T Sum = Factor;
+				auto j = Signal1Pow2Begin;
+				for (auto k = 0; k < Signal2Overlap; ++j, ++k)
+					Sum += (*j++);
+				i /= (T)sqrtf(float(Sum));
+				++Signal1Pow2Begin;
+			}
+		}
+
+		return { std::move(Result), std::distance(Result.Begin(), std::max_element(Result.Begin(), Result.End())) };
+	}
 }
 
 _D_Dragonian_Lib_Space_End

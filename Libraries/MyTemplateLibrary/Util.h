@@ -70,6 +70,7 @@ enum class Device
 	CUDA,
 	HIP,
 	DIRECTX,
+	CUSTOM
 };
 
 static inline size_t NopID = size_t(-1);

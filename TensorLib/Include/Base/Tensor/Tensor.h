@@ -227,6 +227,7 @@ public:
 	using _MyMultiThreadSyncP = typename Operators::OperatorParameter<_NRank>::_MyMultiThreadSyncP;
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
+	using Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>;
 
 	Tensor() = default;
 
@@ -310,6 +311,7 @@ protected:
 	Dimensions<_NRank> _MyShape;
 	Dimensions<_NRank> _MyViewStride;
 	_MyMultiThreadSyncP _MyFutures = nullptr;
+	Allocator _MyAllocator;
 	bool _MyShapeIsBroadCasted = false;
 
 private:
@@ -958,8 +960,8 @@ private:
 			return false;
 		const auto Size = MyShape.Multiply();
 		_MyFirst = Pointer(
-			MyAlloc->Allocate(std::max(Size * sizeof(ValueType), 256ull)),
-			[MyAlloc](void* _Pointer) { MyAlloc->Free(_Pointer); }
+			MyAlloc.allocate(std::max(Size * sizeof(ValueType), 256ull)),
+			[MyAlloc](void* _Pointer) { MyAlloc.deallocate(_Pointer); }
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + Size;
@@ -984,7 +986,7 @@ private:
 
 	Tensor(const Dimensions<_NRank>& MyShape) : _MyFutures(new _MyMultiThreadSyncT)
 	{
-		if (AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
+		if (AllocateMemory(MyShape, Allocator()))
 		{
 			ConstructViewInfo(MyShape);
 			if constexpr (!std::is_trivially_copy_assignable_v<ValueType> && std::is_constructible_v<ValueType>)
@@ -999,7 +1001,7 @@ private:
 	template <typename _First, typename ...Rest>
 	Tensor(const Dimensions<_NRank>& MyShape, _First Arg0, Rest ...Args) : _MyFutures(new _MyMultiThreadSyncT)
 	{
-		if (AllocateMemory(MyShape, GetMemoryProvider(_MyDevice)))
+		if (AllocateMemory(MyShape, Allocator()))
 		{
 			ConstructViewInfo(MyShape);
 			if constexpr (std::is_constructible_v<ValueType, _First, Rest...>)
@@ -1018,13 +1020,11 @@ private:
 			return;
 		if (BufferSize < TSize)
 			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
-		if (!Alloc)
-			_D_Dragonian_Lib_Throw_Exception("Allocator Is Null!");
 		if (BufferSize > TSize)
 			LogWarn(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!");
 		_MyFirst = Pointer(
 			Buffer,
-			[Alloc](void* _Pointer) { Alloc->Free(_Pointer); }
+			[Alloc](void* _Pointer) { Alloc.deallocate(_Pointer); }
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + BufferSize;
@@ -1199,10 +1199,10 @@ public:
 	 * @brief Get the allocator of the tensor.
 	 * @return The allocator of the tensor.
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline
-		Allocator GetAllocator()
+	_D_Dragonian_Lib_Constexpr_Force_Inline
+		decltype(auto) GetAllocator() const
 	{
-		return GetMemoryProvider(_MyDevice);
+		return _MyAllocator;
 	}
 
 	/**
