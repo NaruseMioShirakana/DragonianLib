@@ -51,18 +51,35 @@ private:
 	std::shared_ptr<Ort::Session> _MyDecoder = nullptr;
 };
 
-class Llama : public LibTTSModule
+class Llama
 {
 public:
 
+	TemplateLibrary::Vector<Int64> Inference(
+		TemplateLibrary::Vector<Int64> TextPrompt,
+		TemplateLibrary::Vector<Int64> PromptTokens,
+		Int64 BatchSize = 1,
+		Int64 Seed = 114514,
+		Int64 NumSamples = 1,
+		Int64 MaxNewTokens = 0,
+		Float32 TopP = 0.7f,
+		Float32 RepetitionPenalty = 1.2f,
+		Float32 Temperature = 0.7f,
+		bool IterativePrompt = true,
+		Int64 ChunkLength = 100
+	);
 
-
-
-
-
-
-
-
+protected:
+	std::shared_ptr<Ort::Session> _MyLayer = nullptr;
+	Int64 _MyBegId = 0;
+	Int64 _MyEndId = 0;
+	Int64 _MyUserId = 0;
+	Int64 _MyAssistantId = 0;
+	Int64 _MySystemId = 0;
+	Int64 _MyTextId = 0;
+	Int64 _MyVoiceId = 0;
+	Int64 _MyInterleaveId = 0;
+	int64_t _MyNumCodebooks = 8;
 };
 
 class FishSpeech : public LibTTSModule

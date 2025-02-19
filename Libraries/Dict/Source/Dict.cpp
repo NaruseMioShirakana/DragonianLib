@@ -113,7 +113,7 @@ void Tokenizer::Tokenize(
 			}
 			if (!Found)
 			{
-				_OutputTokens.EmplaceBack(L"[UNK]");
+				_OutputTokens.EmplaceBack(_MyUNKText);
 				_InputText.remove_prefix(1);
 			}
 		}
@@ -165,7 +165,7 @@ void Tokenizer::Tokenize(
 			}
 			if (!Found)
 			{
-				_OutputTokens.EmplaceBack(L"[UNK]");
+				_OutputTokens.EmplaceBack(_MyUNKText);
 				_InputText.remove_prefix(1);
 			}
 		}
@@ -216,7 +216,7 @@ void Tokenizer::Tokenize(
 			}
 			if (!Found)
 			{
-				_OutputTokens.EmplaceBack(L"[UNK]");
+				_OutputTokens.EmplaceBack(_MyUNKText);
 				_InputText.remove_suffix(1);
 			}
 		}
@@ -267,7 +267,7 @@ void Tokenizer::Tokenize(
 			}
 			if (!Found)
 			{
-				_OutputTokens.EmplaceBack(L"[UNK]");
+				_OutputTokens.EmplaceBack(_MyUNKText);
 				_InputText.remove_suffix(1);
 			}
 		}
@@ -341,25 +341,35 @@ void Tokenizer::Tokenize(
 	}
 }
 
-Vector<Tokenizer::TokenizerType> Tokenizer::operator()(const Vector<std::wstring>& _Tokens) const
+Vector<Tokenizer::TokenizerType> Tokenizer::operator()(const Vector<std::wstring>& _Tokens, bool _AddBegin, bool _AddEnd) const
 {
 	auto Result = DragonianLibSTL::Vector<TokenizerType>();
 
-	Result.EmplaceBack(_MyVocab.at(L"[CLS]"));
+	if (_AddBegin)
+		Result.EmplaceBack(_MyVocab.at(_MyBeginText));
+
 	for (const auto& Token : _Tokens)
 	{
 		auto Match = _MyVocab.find(Token);
 		if (Match == _MyVocab.end())
-			Result.EmplaceBack(_MyVocab.at(L"[UNK]"));
+			Result.EmplaceBack(_MyVocab.at(_MyUNKText));
 		else
 			Result.EmplaceBack(Match->second);
 	}
-	Result.EmplaceBack(_MyVocab.at(L"[SEP]"));
+
+	if (_AddEnd)
+		Result.EmplaceBack(_MyVocab.at(_MyEndText));
 
 	return Result;
 }
 
-Tokenizer::Tokenizer(const std::wstring& _TokenizerModulePath)
+Tokenizer::Tokenizer(
+	const std::wstring& _TokenizerModulePath,
+	std::wstring _BeginText,
+	std::wstring _EndText,
+	std::wstring _EOSText,
+	std::wstring _UNKText
+): _MyBeginText(std::move(_BeginText)), _MyEndText(std::move(_EndText)), _MyEOSText(std::move(_EOSText)), _MyUNKText(std::move(_UNKText))
 {
 	const MJson::MJsonDocument _VocabJson(_TokenizerModulePath.c_str());
 	if (!_VocabJson.HasMember("ContinuingSubwordPrefix") ||

@@ -19,7 +19,13 @@ public:
 
 	Tokenizer() = delete;
 	~Tokenizer() = default;
-	Tokenizer(const std::wstring& _TokenizerModulePath);
+	Tokenizer(
+		const std::wstring& _TokenizerModulePath,
+		std::wstring _BeginText = L"[CLS]",
+		std::wstring _EndText = L"[SEP]",
+		std::wstring _EOSText = L"[EOS]",
+		std::wstring _UNKText = L"[UNK]"
+	);
 
 	Tokenizer(const Tokenizer&) = default;
 	Tokenizer(Tokenizer&&) noexcept = default;
@@ -42,12 +48,16 @@ public:
 		size_t _MaximumMatching = 32
 	) const;
 
-	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens) const;
+	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens, bool _AddBegin = true, bool _AddEnd = true) const;
 
 private:
 	std::unordered_map<std::wstring, TokenizerType> _MyVocab;
 	std::wstring _MySymbol = L"##";
 	TokenizerFix _MyFix = Prefix;
+	std::wstring _MyBeginText = L"[CLS]";
+	std::wstring _MyEndText = L"[SEP]";
+	std::wstring _MyEOSText = L"[EOS]";
+	std::wstring _MyUNKText = L"[UNK]";
 
 	void Tokenize(
 		std::wstring_view _InputText,
