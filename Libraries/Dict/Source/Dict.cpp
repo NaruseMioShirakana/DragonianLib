@@ -363,6 +363,14 @@ Vector<Tokenizer::TokenizerType> Tokenizer::operator()(const Vector<std::wstring
 	return Result;
 }
 
+Tokenizer::TokenizerType Tokenizer::GetToken(const std::wstring& _Token) const
+{
+	auto Match = _MyVocab.find(_Token);
+	if (Match == _MyVocab.end())
+		return _MyVocab.at(_MyUNKText);
+	return Match->second;
+}
+
 Tokenizer::Tokenizer(
 	const std::wstring& _TokenizerModulePath,
 	std::wstring _BeginText,

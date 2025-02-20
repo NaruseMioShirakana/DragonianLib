@@ -44,7 +44,7 @@
 					</ArrayItems>
 				</Expand>
 			</Synthetic>
-			<Item Name="[Type]" ExcludeView="simple">_MyAllocator->Type_</Item>
+			<Item Name="[Type]" ExcludeView="simple">_MyDevice</Item>
 		</Expand>
 	</Type>
 

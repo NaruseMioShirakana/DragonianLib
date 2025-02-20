@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include "ModelBase.hpp"
 #include "Libraries/Dict/Dict.hpp"
+#include "Libraries/MyTemplateLibrary/Array.h"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
-
-class FireflyArchitecture : public LibTTSModule
+	class FireflyArchitecture : public LibTTSModule
 {
 public:
 	FireflyArchitecture(
@@ -54,11 +54,27 @@ private:
 class Llama
 {
 public:
+	struct PromptTensor
+	{
+		TemplateLibrary::Vector<Int64> Data;
+		TemplateLibrary::Array<Int64, 3> Shape{ 0, 0, 0 };
+	};
 
-	TemplateLibrary::Vector<Int64> Inference(
-		TemplateLibrary::Vector<Int64> TextPrompt,
-		TemplateLibrary::Vector<Int64> PromptTokens,
+	struct RefPrompt
+	{
+		TemplateLibrary::Vector<Int64> VQPrompt;
+		TemplateLibrary::Vector<Int64> TextPrompt;
+	};
+
+	Llama() = delete;
+
+	Llama(TemplateLibrary::Vector<Int64> SystemPrompt) : _MySystemPrompt(std::move(SystemPrompt)) {}
+
+	PromptTensor Inference(
+		const TemplateLibrary::Vector<Int64>& TextPrompt,
+		std::optional<std::reference_wrapper<const TemplateLibrary::Vector<RefPrompt>>> VQPromptTokens = std::nullopt,
 		Int64 BatchSize = 1,
+		Int64 MaxLength = 2048,
 		Int64 Seed = 114514,
 		Int64 NumSamples = 1,
 		Int64 MaxNewTokens = 0,
@@ -71,15 +87,40 @@ public:
 
 protected:
 	std::shared_ptr<Ort::Session> _MyLayer = nullptr;
+
+	/*
+	* SystemPrompt.first.EmplaceBack(_MyBegId);
+	* SystemPrompt.first.EmplaceBack(_MySystemId);
+	* "Speak out the provided text."
+	* SystemPrompt.first.EmplaceBack(_MyEndId);
+	*/
+	TemplateLibrary::Vector<Int64> _MySystemPrompt;
+	Int64 _MyNumCodebooks = 8;
+
+private:
+	PromptTensor EncodeTextTokens(
+		const TemplateLibrary::Vector<Int64>& TextPrompt,
+		Int64 BatchSize = 1
+	);
+
+	void EncodeVQTokens(
+		const TemplateLibrary::Vector<RefPrompt>& VQPrompts,
+		TemplateLibrary::Vector<PromptTensor>& VQPromptsEncoded,
+		Int64 BatchSize = 1
+	);
+
+	PromptTensor EncodeSystemPrompts(Int64 BatchSize = 1);
+
+protected:
 	Int64 _MyBegId = 0;
-	Int64 _MyEndId = 0;
-	Int64 _MyUserId = 0;
-	Int64 _MyAssistantId = 0;
-	Int64 _MySystemId = 0;
-	Int64 _MyTextId = 0;
-	Int64 _MyVoiceId = 0;
-	Int64 _MyInterleaveId = 0;
-	int64_t _MyNumCodebooks = 8;
+	Int64 _MyEndId = 1;
+	Int64 _MyUserId = 2;
+	Int64 _MyAssistantId = 3;
+	Int64 _MySystemId = 4;
+	Int64 _MyTextId = 5;
+	Int64 _MyVoiceId = 6;
+	Int64 _MyInterleaveId = 7;
+	Int64 _MySemanticBeginId = 8;
 };
 
 class FishSpeech : public LibTTSModule

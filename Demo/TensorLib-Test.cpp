@@ -95,11 +95,23 @@ void WithTimer(const Fn& fn)
 }
 
 #include "OnnxLibrary/SingingVoiceConversion/Modules/Header/Models/VitsSvc.hpp"
+#include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
 #include "Libraries/AvCodec/AvCodec.h"
 
 int main()
 {
 	using namespace DragonianLib;
+
+	TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });
+
+	auto VQ = TemplateLibrary::Vector<TextToSpeech::Llama::RefPrompt>{ {TemplateLibrary::Arange(8 * 4ll, 8 * 8ll), { 123,456,789 }} };
+
+	auto Tokens = LLAMAModel.Inference({ 114, 514, 1919, 810 }, VQ);
+
+	auto Tensor = Functional::FromBuffer(Tokens.Data.Data(), Tokens.Data.Size()).EvalMove();
+	auto TTensor = Tensor.View(Tokens.Shape);
+	std::cout << TTensor;
+	return 0;
 
 	SingingVoiceConversion::VitsSvc Model{
 		{

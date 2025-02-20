@@ -50,6 +50,8 @@ public:
 
 	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens, bool _AddBegin = true, bool _AddEnd = true) const;
 
+	TokenizerType GetToken(const std::wstring& _Token) const;
+
 private:
 	std::unordered_map<std::wstring, TokenizerType> _MyVocab;
 	std::wstring _MySymbol = L"##";

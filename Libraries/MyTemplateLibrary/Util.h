@@ -81,22 +81,59 @@ namespace DragonianLibSTL
 }
 
 template <typename _Type>
-class Ranges
+class ConstantRanges
 {
 public:
-	_D_Dragonian_Lib_Constexpr_Force_Inline Ranges() = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline Ranges(_Type* _Begin, _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges() = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges(const _Type* _Begin, const _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type* Begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type* End() const { return _MyEnd; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type* begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type* end() const { return _MyEnd; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const { return _MyEnd; }
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const { return _MyEnd - _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline _Type& operator[](size_t _Index) const { return _MyBegin[_Index]; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const { return _MyBegin[_Index]; }
 
-	template <typename _Type2, typename=std::enable_if_t<std::is_assignable_v<_Type, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline Ranges& operator=(const Ranges<_Type2>& _Right)
+protected:
+	const _Type* _MyBegin = nullptr;
+	const _Type* _MyEnd = nullptr;
+};
+
+template <typename _Type>
+class MutableRanges
+{
+public:
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges() = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges(_Type* _Begin, _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const { return _MyEnd; }
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const { return _MyEnd - _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const { return _MyBegin[_Index]; }
+
+	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(MutableRanges<_Type2>&& _Right) = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(MutableRanges&& _Right) = delete;
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline operator ConstantRanges<_Type>() const { return ConstantRanges<_Type>(_MyBegin, _MyEnd); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges<_Type> C() const { return ConstantRanges<_Type>(_MyBegin, _MyEnd); }
+
+	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const MutableRanges<_Type2>& _Right)
+	{
+		if (Size() != _Right.Size())
+			_D_Dragonian_Lib_Throw_Exception("Size not match!");
+		for (size_t i = 0; i < Size(); ++i)
+			_MyBegin[i] = _Right[i];
+		return *this;
+	}
+
+	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const ConstantRanges<_Type2>& _Right)
 	{
 		if (Size() != _Right.Size())
 			_D_Dragonian_Lib_Throw_Exception("Size not match!");
@@ -105,8 +142,8 @@ public:
 		return *this;
 	}
 	
-	template <typename _Type2, typename = std::enable_if_t<std::is_assignable_v<_Type, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline Ranges& operator=(const _Type2& _Right)
+	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const _Type2& _Right)
 	{
 		for (size_t i = 0; i < Size(); ++i)
 			_MyBegin[i] = _Right;
@@ -117,6 +154,18 @@ protected:
 	_Type* _MyBegin = nullptr;
 	_Type* _MyEnd = nullptr;
 };
+
+template <typename _Type>
+decltype(auto) Ranges(const _Type* _Begin, const _Type* _End)
+{
+	return ConstantRanges<_Type>(_Begin, _End);
+}
+
+template <typename _Type>
+decltype(auto) Ranges(_Type* _Begin, _Type* _End)
+{
+	return MutableRanges<_Type>(_Begin, _End);
+}
 
 _D_Dragonian_Lib_Space_End
 

@@ -356,6 +356,7 @@ public:
     using SizeType = size_t;
     using IndexType = long long;
     using Allocator = GetAllocatorType<Device_>;
+	static constexpr auto _MyDevice = Device_;
 
     static_assert(std::is_copy_assignable_v<ValueType>, "ValueType Must Be Copy Assignable!");
 	static_assert(std::is_copy_constructible_v<ValueType>, "ValueType Must Be Copy Constructible!");

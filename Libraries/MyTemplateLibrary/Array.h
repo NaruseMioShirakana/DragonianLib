@@ -4,11 +4,12 @@
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
-template <typename _ValueType, size_t _Rank>
-struct Array
+template <class _ValueType, size_t _Rank>
+class Array
 {
+public:
 	static constexpr size_t _MyRank = _Rank;
-	static_assert(_Rank > 0, "The rank of the array must be greater than 0.");
+	static_assert(_MyRank > 0, "The rank of the array must be greater than 0.");
 	using ArrayType = _ValueType[_Rank];
 	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType* _Right)
 	{
@@ -143,7 +144,7 @@ struct Array
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* ReversedEnd()
 	{
-		return _MyData - 1;
+		return &_MyData[0] - 1;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* ReversedBegin() const
 	{
@@ -151,7 +152,7 @@ struct Array
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* ReversedEnd() const
 	{
-		return _MyData - 1;
+		return &_MyData[0] - 1;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Empty()
 	{
@@ -209,6 +210,11 @@ struct Array
 
 	_ValueType _MyData[_Rank]; ///< Data of the dimensions
 };
+
+template<typename _Tp, typename... _Up>
+Array(_Tp, _Up...)
+-> ::DragonianLib::TemplateLibrary::Array<std::enable_if_t<(TypeTraits::IsSameTypeValue<_Tp, _Up> && ...), _Tp>,
+         1 + sizeof...(_Up)>;
 
 template <typename _ValueType, size_t _Size>
 using MArray = Array<_ValueType, _Size>;
