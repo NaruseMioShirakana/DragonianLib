@@ -155,6 +155,110 @@ protected:
 	_Type* _MyEnd = nullptr;
 };
 
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+class NumberRangesIterator
+{
+public:
+	NumberRangesIterator() = delete;
+	NumberRangesIterator(_Type _Value, _Type _Step) : _MyValue(_Value), _MyStep(_Step) {}
+	const _Type& operator*() const { return _MyValue; }
+	const _Type* operator->() const { return &_MyValue; }
+	NumberRangesIterator& operator++() { _MyValue += _MyStep; return *this; }
+	NumberRangesIterator operator++(int) { auto _Tmp = *this; _MyValue += _MyStep; return _Tmp; }
+	bool operator==(const NumberRangesIterator& _Right) const { return _MyValue == _Right._MyValue; }
+	bool operator!=(const NumberRangesIterator& _Right) const { return _MyValue != _Right._MyValue; }
+	bool operator<(const NumberRangesIterator& _Right) const { return _MyStep > 0 ? (_MyValue < _Right._MyValue) : (_MyValue > _Right._MyValue); }
+	
+private:
+	_Type _MyValue;
+	_Type _MyStep;
+};
+
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+class NumberRanges
+{
+public:
+	NumberRanges() = delete;
+	NumberRanges(_Type _Begin, _Type _End, _Type _Step) : _MyBegin(_Begin), _MyStep(_Step), _MyEnd(_End) {}
+	NumberRangesIterator<_Type> begin() const { return NumberRangesIterator<_Type>(_MyBegin, _MyStep); }
+	NumberRangesIterator<_Type> end() const { return NumberRangesIterator<_Type>(_MyEnd, _MyStep); }
+	NumberRangesIterator<_Type> Begin() const { return NumberRangesIterator<_Type>(_MyBegin, _MyStep); }
+	NumberRangesIterator<_Type> End() const { return NumberRangesIterator<_Type>(_MyEnd, _MyStep); }
+	NumberRangesIterator<_Type> rbegin() const { return NumberRangesIterator<_Type>(_MyEnd, -_MyStep); }
+	NumberRangesIterator<_Type> rend() const { return NumberRangesIterator<_Type>(_MyBegin, -_MyStep); }
+private:
+	_Type _MyBegin;
+	_Type _MyStep;
+	_Type _MyEnd;
+};
+
+template <typename _IteratorType, typename _IntegerType = Int64, typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>>
+class EnumratedRangesIterator
+{
+public:
+	using _MyValueType = TypeTraits::RemoveReferenceType<decltype(*TypeTraits::InstanceOf<_IteratorType>())>;
+	using _MyReferenceType = TypeTraits::LReferenceType<_MyValueType>;
+	using _MyPointerType = TypeTraits::AddPointerType<_MyValueType>;
+
+	EnumratedRangesIterator() = delete;
+	EnumratedRangesIterator(_IteratorType _Iterator, _IntegerType _Index) : _MyIterator(_Iterator), _MyIndex(_Index) {}
+	EnumratedRangesIterator& operator++() { ++_MyIterator; ++_MyIndex; return *this; }
+	EnumratedRangesIterator operator++(int) { auto _Tmp = *this; ++_MyIterator; ++_MyIndex; return _Tmp; }
+	bool operator==(const EnumratedRangesIterator& _Right) const { return _MyIterator == _Right._MyIterator; }
+	bool operator!=(const EnumratedRangesIterator& _Right) const { return _MyIterator != _Right._MyIterator; }
+	bool operator<(const EnumratedRangesIterator& _Right) const { return _MyIterator < _Right._MyIterator; }
+	std::pair<_IntegerType, _MyReferenceType> operator*() const { return { _MyIndex, *_MyIterator }; }
+	_MyPointerType operator->() const { return &*_MyIterator; }
+
+private:
+	_IteratorType _MyIterator;
+	_IntegerType _MyIndex;
+};
+
+template <typename _Type, typename _IntegerType = Int64,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<std::ranges::range<_Type>>>
+class MutableEnumrate
+{
+public:
+	MutableEnumrate() = delete;
+	MutableEnumrate(_Type& _Value) : _MyValue(&_Value) {}
+	decltype(auto) begin() const { return EnumratedRangesIterator(_MyValue->begin(), _IntegerType(0)); }
+	decltype(auto) end() const { return EnumratedRangesIterator(_MyValue->end(), _IntegerType(0)); }
+private:
+	_Type* _MyValue;
+};
+
+template <typename _Type, typename _IntegerType = Int64,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<std::ranges::range<_Type>>>
+class ConstEnumrate
+{
+public:
+	ConstEnumrate() = delete;
+	ConstEnumrate(const _Type& _Value) : _MyValue(&_Value) {}
+	decltype(auto) begin() const { return EnumratedRangesIterator(_MyValue->begin(), _IntegerType(0)); }
+	decltype(auto) end() const { return EnumratedRangesIterator(_MyValue->end(), _IntegerType(0)); }
+private:
+	const _Type* _MyValue;
+};
+
+template <typename _IntegerType = Int64, typename _Type,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<std::ranges::range<_Type>>>
+decltype(auto) Enumrate(_Type& _Value)
+{
+	return MutableEnumrate<_Type, _IntegerType>(_Value);
+}
+
+template <typename _IntegerType = Int64, typename _Type,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<std::ranges::range<_Type>>>
+decltype(auto) Enumrate(const _Type& _Value)
+{
+	return ConstEnumrate<_Type, _IntegerType>(_Value);
+}
+
 template <typename _Type>
 decltype(auto) Ranges(const _Type* _Begin, const _Type* _End)
 {
@@ -165,6 +269,30 @@ template <typename _Type>
 decltype(auto) Ranges(_Type* _Begin, _Type* _End)
 {
 	return MutableRanges<_Type>(_Begin, _End);
+}
+
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+decltype(auto) Ranges(_Type _Begin, _Type _End, _Type _Step)
+{
+	if (_Step == 0)
+		_D_Dragonian_Lib_Throw_Exception("Step cannot be 0.");
+	if (_Begin < _End && _Step < 0)
+		_D_Dragonian_Lib_Throw_Exception("Step must be positive.");
+	if (_Begin > _End && _Step > 0)
+		_D_Dragonian_Lib_Throw_Exception("Step must be negative.");
+	return NumberRanges<_Type>(_Begin, _End, _Step);
+}
+
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+decltype(auto) Ranges(_Type _Begin, _Type _End)
+{
+	return NumberRanges<_Type>(_Begin, _End, _Begin < _End ? _Type(1) : _Type(-1));
+}
+
+template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+decltype(auto) Ranges(_Type _End)
+{
+	return NumberRanges<_Type>(_Type(0), _End, _End > _Type(0) ? _Type(1) : _Type(-1));
 }
 
 _D_Dragonian_Lib_Space_End

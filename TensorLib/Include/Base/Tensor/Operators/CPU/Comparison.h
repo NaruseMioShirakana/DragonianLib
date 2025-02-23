@@ -5,8 +5,8 @@
 #define _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(_Function, Unfold) namespace ComparisonOperators { namespace _Function##Binary { \
  \
 constexpr int64_t _D_Dragonian_Lib_Operator_Binary_Unfold = 8; \
-template <typename Type> \
-constexpr bool HasOperatorValue = decltype(TypeTraits::IsInvokableWith::CheckConst(_Function##<Type>, InstanceOf<Type>(), InstanceOf<Type>()))::value; \
+template <class _ValueType> \
+concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { _D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l); }; \
  \
 template<typename _Type> \
 void BinaryScalarCont( \
@@ -260,8 +260,11 @@ namespace ComparisonOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		requires(Type& _Left, Type& _Right) { { std::fabs(_Left - _Right) <= std::numeric_limits<Type>::epsilon() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left == _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left == _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Equal(const Type& A, const Type& B)
 	{
 		if constexpr (IsAnyOfValue<Type, float, double>)
@@ -270,8 +273,11 @@ namespace ComparisonOperators
 			return A == B;
 	}
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		(requires(Type& _Left, Type& _Right) { { std::fabs(_Left - _Right) > std::numeric_limits<Type>::epsilon() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; }) ||
+		requires(Type & _Left, Type & _Right) { { _Left != _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left != _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		NotEqual(const Type& A, const Type& B)
 	{
 		if constexpr (IsAnyOfValue<Type, float, double>)
@@ -280,29 +286,37 @@ namespace ComparisonOperators
 			return A != B;
 	}
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		(requires(Type& _Left, Type& _Right) { { _Left > _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; }) ||
+		(requires(Type & _Left, Type & _Right) { { _Left > _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; })
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Greater(const Type& A, const Type& B)
 	{
 		return A > B;
 	}
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		requires(Type& _Left, Type& _Right) { { _Left >= _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left >= _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		GreaterEqual(const Type& A, const Type& B)
 	{
 		return A >= B;
 	}
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		requires(Type& _Left, Type& _Right) { { _Left < _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left < _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Less(const Type& A, const Type& B)
 	{
 		return A < B;
 	}
 
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<Type> || IsArithmeticValue<Type>,ConditionalType<IsVectorizedValue<Type>, Type, bool>>
+	template <typename Type, typename = std::enable_if_t <
+		requires(Type& _Left, Type& _Right) { { _Left <= _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
+		requires(Type & _Left, Type & _Right) { { _Left <= _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		LessEqual(const Type& A, const Type& B)
 	{
 		return A <= B;

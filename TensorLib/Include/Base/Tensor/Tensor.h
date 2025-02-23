@@ -217,6 +217,7 @@ public:
 	template <typename _TensorType_, size_t _NRank_, Device _MyDevice_>
 	friend class Tensor;
 	using ValueType = std::remove_reference_t<_TensorType>;
+	static_assert(!Operators::SimdTypeTraits::IsVectorizedValue<ValueType>, "Vectorized value type is not supported!");
 	using Pointer = std::shared_ptr<void>;
 	using RawPointer = ValueType*;
 	using Reference = ValueType&;

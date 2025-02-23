@@ -80,9 +80,7 @@ std::enable_if_t<std::is_same_v<T, Integer>, std::string> DragonianLibCvtToStrin
 
 struct my_struct
 {
-	int	a = 0;
-	int	b = 0;
-	int c = 0;
+	int ccc = 0;
 };
 
 template <typename Fn>
@@ -98,9 +96,17 @@ void WithTimer(const Fn& fn)
 #include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
 #include "Libraries/AvCodec/AvCodec.h"
 
+struct aaa
+{
+	int a;
+	
+};
+
 int main()
 {
 	using namespace DragonianLib;
+
+	return 0;
 
 	TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });
 

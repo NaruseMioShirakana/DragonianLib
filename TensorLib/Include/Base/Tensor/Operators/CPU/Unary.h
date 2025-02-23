@@ -4,8 +4,8 @@
 
 #define _D_Dragonian_Lib_Operator_Unary_Function_Def(_Function, Unfold) namespace UnaryOperators { namespace _Function##Unary { \
  \
-template <typename Type> \
-constexpr bool HasOperatorValue = decltype(IsInvokableWith::CheckConst(_Function##<Type>, InstanceOf<Type>()))::value; \
+template <class _ValueType> \
+concept HasOperatorValue = requires(_ValueType & __r) { _D_Dragonian_Lib_Namespace Operators::UnaryOperators::_Function(__r); }; \
  \
 constexpr auto _D_Dragonian_Lib_Operator_Unary_Unfold = Unfold; \
 template<typename _Type>  \
@@ -250,8 +250,9 @@ namespace UnaryOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { -_Left }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Negative(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -260,8 +261,10 @@ namespace UnaryOperators
 			return -_Value;
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Sqrt() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::sqrt(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Sqrt(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -270,8 +273,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::sqrt(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.RSqrt() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { 1 / std::sqrt(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		RSqrt(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -280,8 +285,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(1 / std::sqrt(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Reciprocal() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { 1 / _Left }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Reciprocal(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -290,8 +297,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(1 / _Value);
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Abs(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::abs(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Abs(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -300,8 +309,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::abs(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Sin() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::sin(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Sin(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -310,8 +321,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::sin(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Cos() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::cos(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Cos(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -320,8 +333,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::cos(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Tan() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::tan(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Tan(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -330,8 +345,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::tan(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ASin() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::asin(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ASin(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -340,8 +357,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::asin(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ACos() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::acos(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ACos(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -350,8 +369,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::acos(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ATan() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::atan(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ATan(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -360,8 +381,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::atan(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Sinh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::sinh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Sinh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -370,8 +393,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::sinh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Cosh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::cosh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Cosh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -380,8 +405,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::cosh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Tanh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::tanh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Tanh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -390,8 +417,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::tanh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ASinh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::asinh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ASinh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -400,8 +429,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::asinh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ACosh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::acosh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ACosh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -410,8 +441,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::acosh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.ATanh() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::atanh(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ATanh(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -420,8 +453,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::atanh(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Exp() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::exp(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Exp(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -430,8 +465,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::exp(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Log() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::log(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Log(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -440,8 +477,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::log(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Log2() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::log2(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Log2(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -450,8 +489,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::log2(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Log10() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::log10(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Log10(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -460,8 +501,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::log10(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Ceil() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::ceil(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Ceil(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -470,8 +513,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::ceil(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Floor() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::floor(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Floor(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -480,8 +525,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::floor(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Round() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::round(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Round(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -490,8 +537,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::round(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Trunc() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { std::trunc(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Trunc(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
@@ -500,8 +549,10 @@ namespace UnaryOperators
 			return static_cast<_Type>(std::trunc(_Value));
 	}
 
-	template <typename _Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsVectorizedValue<_Type> || IsArithmeticValue<_Type>, _Type>
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left) { { _Left.Frac() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left) { { (_Left)-std::trunc(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Frac(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)

@@ -30,13 +30,11 @@ _D_Dragonian_Lib_Operator_Space_Begin
  * @class Vectorized
  * @brief Warpper for SIMD
  * @tparam Type Type of the data
- * @tparam T TypeCheak
  */
-template<typename Type, typename T = std::enable_if_t<!std::is_pointer_v<Type>, Type>>
+template<typename Type, typename = std::enable_if_t<!std::is_pointer_v<Type>>>
 class Vectorized
 {
 public:
-	static_assert(std::is_same_v<Type, T>);
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline ~Vectorized() = default;
@@ -1672,6 +1670,8 @@ namespace SimdTypeTraits
 	constexpr bool IsVectorized<Vectorized<Type>> = true;
 	template <typename Type>
 	constexpr bool IsVectorizedValue = IsVectorized<RemoveARPCVType<Type>>;
+	template <typename _Type>
+	concept IsSimdVector = IsVectorizedValue<_Type>;
 }
 
 _D_Dragonian_Lib_Operator_Space_End

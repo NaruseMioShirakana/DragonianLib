@@ -735,4 +735,11 @@ constexpr size_t TryPlaceN2AtN1()
 template <typename _Type>
 constexpr size_t MemberCountOfValue = _D_Dragonian_Lib_Type_Traits_Namespace MemberCountOf<_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>, 0>();
 
+template <typename _Type1, typename _Type2>
+concept SameImpl = _D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_Type1, _Type2>;
+template <typename _Type1, typename _Type2>
+concept IsType = _D_Dragonian_Lib_Type_Traits_Namespace SameImpl<_Type1, _Type2>&& _D_Dragonian_Lib_Type_Traits_Namespace SameImpl<_Type2, _Type1>;
+template <typename _Type1, typename... _Type>
+concept IsAnyType = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<_Type1, _Type...>;
+
 _D_Dragonian_Lib_Type_Traits_Namespace_End
