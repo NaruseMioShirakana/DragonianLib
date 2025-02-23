@@ -196,9 +196,7 @@ template <typename _IteratorType, typename _IntegerType = Int64, typename = std:
 class EnumratedRangesIterator
 {
 public:
-	using _MyValueType = TypeTraits::RemoveReferenceType<decltype(*TypeTraits::InstanceOf<_IteratorType>())>;
-	using _MyReferenceType = TypeTraits::LReferenceType<_MyValueType>;
-	using _MyPointerType = TypeTraits::AddPointerType<_MyValueType>;
+	using _MyReferenceType = decltype(*TypeTraits::InstanceOf<_IteratorType>());
 
 	EnumratedRangesIterator() = delete;
 	EnumratedRangesIterator(_IteratorType _Iterator, _IntegerType _Index) : _MyIterator(_Iterator), _MyIndex(_Index) {}
@@ -208,7 +206,7 @@ public:
 	bool operator!=(const EnumratedRangesIterator& _Right) const { return _MyIterator != _Right._MyIterator; }
 	bool operator<(const EnumratedRangesIterator& _Right) const { return _MyIterator < _Right._MyIterator; }
 	std::pair<_IntegerType, _MyReferenceType> operator*() const { return { _MyIndex, *_MyIterator }; }
-	_MyPointerType operator->() const { return &*_MyIterator; }
+	decltype(auto) operator->() const { return _MyIterator; }
 
 private:
 	_IteratorType _MyIterator;

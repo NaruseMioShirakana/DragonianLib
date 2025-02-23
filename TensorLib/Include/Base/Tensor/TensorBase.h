@@ -108,6 +108,8 @@ public:
 	using reference = TypeTraits::ConditionalType<_Rank == 1, _Type&, TensorIterator<_Type, _Rank>>;
 	using iterator_category = std::random_access_iterator_tag;
 
+	TensorIterator() = default;
+
 	TensorIterator(
 		_Type* _Data, const int64_t* _Shape, const int64_t* _Stride)
 		: _MyData(_Data), _MyShape(_Shape), _MyStride(_Stride), _MyStepStride(*_Stride) {}
@@ -287,10 +289,10 @@ public:
 	}
 
 protected:
-	_Type* _MyData;
-	const int64_t* _MyShape;
-	const int64_t* _MyStride;
-	int64_t _MyStepStride;
+	_Type* _MyData = nullptr;
+	const int64_t* _MyShape = nullptr;
+	const int64_t* _MyStride = nullptr;
+	int64_t _MyStepStride = 1;
 };
 
 _D_Dragonian_Lib_Space_End

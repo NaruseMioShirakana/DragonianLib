@@ -105,6 +105,11 @@ struct aaa
 int main()
 {
 	using namespace DragonianLib;
+	auto Tmp = Functional::Arange(0, 100, 1);
+	auto tensor = Tmp.View(5, 20);
+	for (auto [i, iter] : Enumrate(tensor))
+		for (auto [j, value] : Enumrate(iter))
+			std::cout << i << ' ' << j << ' ' << value << '\n';
 
 	return 0;
 

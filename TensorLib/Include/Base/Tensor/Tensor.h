@@ -4004,15 +4004,10 @@ public:
 	 * @return The begining iterator of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		TensorIterator<ValueType, _NRank> Begin() const
+		decltype(auto) Begin() const
 	{
 		ThrowOnNotEnabled();
-		using RetType = TypeTraits::ConditionalType<
-			TypeTraits::IsSameTypeValue<_TensorType, bool>
-			, bool, ValueType>;
-		return TensorIterator<RetType, _NRank>(
-			(RetType*)_MyData, _MyShape.Data(), _MyViewStride.Data()
-		);
+		return TensorIterator<ValueType, _NRank>{_MyData, _MyShape.Data(), _MyViewStride.Data()};
 	}
 
 	/**
@@ -4020,9 +4015,8 @@ public:
 	 * @return The ending iterator of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		TensorIterator<ValueType, _NRank> End() const
+		decltype(auto) End() const
 	{
-		ThrowOnNotEnabled();
 		return Begin() + _MyShape[0];
 	}
 
@@ -4031,7 +4025,7 @@ public:
 	 * @return The begining iterator of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		TensorIterator<ValueType, _NRank> begin() const
+		decltype(auto) begin() const
 	{
 		return Begin();
 	}
@@ -4041,7 +4035,7 @@ public:
 	 * @return The ending iterator of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		TensorIterator<ValueType, _NRank> end() const
+		decltype(auto) end() const
 	{
 		return End();
 	}
