@@ -7,6 +7,39 @@
 template <class _ValueType> \
 concept HasOperatorValue = requires(_ValueType & __r) { _D_Dragonian_Lib_Namespace Operators::UnaryOperators::_Function(__r); }; \
  \
+template <typename _Type> \
+class IsAvxEnabled \
+{ \
+public: \
+	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get() \
+	{ \
+		static IsAvxEnabled CheckInstance; \
+		return Value; \
+	} \
+private: \
+	static inline bool Value; \
+	_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabled() \
+	{ \
+		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
+		{ \
+			if constexpr (requires(Vectorized<_Type>&_a) { _Function(_a); }) \
+			{ \
+				try \
+				{ \
+					_Function(Vectorized<_Type>(_Type(1))); \
+					Value = true; \
+					return; \
+				} \
+				catch (std::exception& _Except) \
+				{ \
+					LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! "); \
+				} \
+			} \
+		} \
+		Value = false; \
+	} \
+}; \
+ \
 constexpr auto _D_Dragonian_Lib_Operator_Unary_Unfold = Unfold; \
 template<typename _Type>  \
 void UnaryInplaceCont##_Function( \
@@ -21,17 +54,7 @@ void UnaryInplaceCont##_Function( \
  \
 	SizeType i = 0; \
  \
-	bool EnableAvx = IsAvx256SupportedValue<_Type>; \
-	try \
-	{ \
-		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
-	} \
-	catch (std::exception&) \
-	{ \
-		LogWarn(L"Avx Is Not Supported, Falling Back To Scalar Mode"); \
-		EnableAvx = false; \
-	} \
+	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
  \
 	if constexpr (IsAvx256SupportedValue<_Type>) \
 	{ \
@@ -102,17 +125,7 @@ void UnaryCont##_Function( \
  \
 	SizeType i = 0; \
  \
-	bool EnableAvx = IsAvx256SupportedValue<_Type>; \
-	try \
-	{ \
-		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Dest + i)); \
-	} \
-	catch (std::exception&) \
-	{ \
-		LogWarn(L"Avx Is Not Supported, Falling Back To Scalar Mode"); \
-		EnableAvx = false; \
-	} \
+	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
  \
 	if constexpr (IsAvx256SupportedValue<_Type>) \
 	{ \

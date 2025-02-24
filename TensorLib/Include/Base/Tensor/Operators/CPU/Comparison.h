@@ -8,6 +8,39 @@ constexpr int64_t _D_Dragonian_Lib_Operator_Binary_Unfold = 8; \
 template <class _ValueType> \
 concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { _D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l); }; \
  \
+template <typename _Type> \
+class IsAvxEnabled \
+{ \
+public: \
+	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get() \
+	{ \
+		static IsAvxEnabled CheckInstance; \
+		return Value; \
+	} \
+private: \
+	static inline bool Value; \
+	_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabled() \
+	{ \
+		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
+		{ \
+			if constexpr (requires(Vectorized<_Type>&_a, Vectorized<_Type>&_b) { _Function(_a, _b); }) \
+			{ \
+				try \
+				{ \
+					_Function(Vectorized<_Type>(_Type(1)), Vectorized<_Type>(_Type(1))); \
+					Value = true; \
+					return; \
+				} \
+				catch (std::exception& _Except) \
+				{ \
+					LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! "); \
+				} \
+			} \
+		} \
+		Value = false; \
+	} \
+}; \
+ \
 template<typename _Type> \
 void BinaryScalarCont( \
 	bool* _Dest, \
@@ -23,17 +56,7 @@ void BinaryScalarCont( \
  \
 	SizeType i = 0; \
  \
-	bool EnableAvx = IsAvx256SupportedValue<_Type>; \
-	try \
-	{ \
-		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Src), Vectorized<_Type>(_Src)); \
-	} \
-	catch (std::exception&) \
-	{ \
-		LogWarn(L"Avx Is Not Supported, Falling Back To Scalar Mode"); \
-		EnableAvx = false; \
-	} \
+	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
  \
 	if constexpr (IsAvx256SupportedValue<_Type>) \
 	{ \
@@ -110,17 +133,7 @@ void BinaryTensorCont( \
  \
 	SizeType i = 0; \
  \
-	bool EnableAvx = IsAvx256SupportedValue<_Type>; \
-	try \
-	{ \
-		if constexpr (IsAvx256SupportedValue<_Type>) \
-			_Function(Vectorized<_Type>(_Src1), Vectorized<_Type>(_Src1)); \
-	} \
-	catch (std::exception&) \
-	{ \
-		LogWarn(L"Avx Is Not Supported, Falling Back To Scalar Mode"); \
-		EnableAvx = false; \
-	} \
+	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
  \
 	if constexpr (IsAvx256SupportedValue<_Type>) \
 	{ \
@@ -196,16 +209,6 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
 	bool Continuous \
 ) \
 { \
-	try \
-	{ \
-		bool Test = ComparisonOperators::_Function(*_Src, _Value); \
-	} \
-	catch (std::exception& e) \
-	{ \
-		_D_Dragonian_Lib_Throw_Exception(e.what()); \
-	} \
-	if constexpr (!ComparisonOperators::_Function##Binary::HasOperatorValue<_Type>) \
-		_D_Dragonian_Lib_Not_Implemented_Error; \
 	ImplMultiThreadDouble( \
 		_Dest, \
 		_DestInfo, \
@@ -230,16 +233,6 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 	bool Continuous \
 ) \
 { \
-	try \
-	{ \
-		bool Test = ComparisonOperators::_Function(*_Src1, *_Src2); \
-	} \
-	catch (std::exception& e) \
-	{ \
-		_D_Dragonian_Lib_Throw_Exception(e.what()); \
-	} \
-	if constexpr (!ComparisonOperators::_Function##Binary::HasOperatorValue<_Type>) \
-		_D_Dragonian_Lib_Not_Implemented_Error; \
 	ImplMultiThreadTriple( \
 		_Dest, \
 		_DestInfo, \

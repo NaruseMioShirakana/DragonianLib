@@ -2,7 +2,7 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-Value& Value::Load(const std::wstring& _Path, bool _Strict)
+DlibValue& DlibValue::Load(const std::wstring& _Path, bool _Strict)
 {
 	FileGuard DictFile;
 	DictFile.Open(_Path, L"rb");
@@ -14,7 +14,7 @@ Value& Value::Load(const std::wstring& _Path, bool _Strict)
 	return *this;
 }
 
-Value& Value::Save(const std::wstring& _Path)
+DlibValue& DlibValue::Save(const std::wstring& _Path)
 {
 	FileGuard file;
 	file.Open(_Path, L"rb");
@@ -24,12 +24,12 @@ Value& Value::Save(const std::wstring& _Path)
 	return *this;
 }
 
-void Value::LoadData(const DictType& _WeightDict, bool _Strict)
+void DlibValue::LoadData(const DictType& _WeightDict, bool _Strict)
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-void Value::SaveData(FileGuard& _File)
+void DlibValue::SaveData(FileGuard& _File)
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
 }

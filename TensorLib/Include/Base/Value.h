@@ -52,22 +52,22 @@ struct WeightData
 // Type alias for dictionary
 using DictType = std::unordered_map<std::string, WeightData>;
 
-class Value
+class DlibValue
 {
 public:
-    Value() = default;
-    virtual ~Value() = default;
-    Value(const Value& _Left) = default;
-    Value& operator=(const Value& _Left) = default;
-    Value(Value&& _Right) noexcept = default;
-    Value& operator=(Value&& _Right) noexcept = default;
+    DlibValue() = default;
+    virtual ~DlibValue() = default;
+    DlibValue(const DlibValue& _Left) = default;
+    DlibValue& operator=(const DlibValue& _Left) = default;
+    DlibValue(DlibValue&& _Right) noexcept = default;
+    DlibValue& operator=(DlibValue&& _Right) noexcept = default;
 
 protected:
     std::wstring RegName_;
 
 public:
-	virtual Value& Load(const std::wstring& _Path, bool _Strict = false);
-    virtual Value& Save(const std::wstring& _Path);
+	virtual DlibValue& Load(const std::wstring& _Path, bool _Strict = false);
+    virtual DlibValue& Save(const std::wstring& _Path);
     virtual void LoadData(const DictType& _WeightDict, bool _Strict = false);
     virtual void SaveData(FileGuard& _File);
 };

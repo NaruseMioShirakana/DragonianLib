@@ -31,7 +31,7 @@ _D_Dragonian_Lib_Operator_Space_Begin
  * @brief Warpper for SIMD
  * @tparam Type Type of the data
  */
-template<typename Type, typename = std::enable_if_t<!std::is_pointer_v<Type>>>
+template<typename Type, typename = std::enable_if_t<TypeTraits::IsAvx256SupportedValue<Type>>>
 class Vectorized
 {
 public:
@@ -1581,7 +1581,6 @@ public:
 
 private:
 	__m256i _YMMX;
-
 
 public:
 	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {

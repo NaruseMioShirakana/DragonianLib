@@ -2,6 +2,7 @@
 #include "Simd.h"
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/ThreadPool.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_Operator_Space_Begin
 
@@ -201,6 +202,43 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac);
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative);
 
+};
+
+template <typename _Type, typename _FunType, _FunType _Fun>
+class IsAvxEnabledUnary
+{
+public:
+	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get()
+	{
+		static IsAvxEnabledUnary CheckInstance;
+		return Value;
+	}
+
+private:
+	static inline bool Value;
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabledUnary()
+	{
+		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>)
+		{
+			if constexpr (requires(Vectorized<_Type>&_a) {
+				_Fun(_a);
+			})
+			{
+				try
+				{
+					_Fun(Vectorized<_Type>(_Type(1)));
+					Value = true;
+					return;
+				}
+				catch (std::exception& _Except)
+				{
+					LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
+				}
+			}
+		}
+		Value = false;
+	}
 };
 
 template <typename _Type>

@@ -209,7 +209,7 @@ constexpr const _Type& MinOf(const _Type& _Left, const _Type& _Right) { return _
  * @tparam _MyDevice The device of the tensor.
  */
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
-class Tensor : public Value
+class Tensor : public DlibValue
 {
 public:
 	static_assert(_NRank > 0, "The rank of the tensor must be greater than 0!");
@@ -222,7 +222,7 @@ public:
 	using RawPointer = ValueType*;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
-	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace Value>);
+	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace DlibValue>);
 
 	using _MyMultiThreadSyncT = typename Operators::OperatorParameter<_NRank>::_MyMultiThreadSyncT;
 	using _MyMultiThreadSyncP = typename Operators::OperatorParameter<_NRank>::_MyMultiThreadSyncP;

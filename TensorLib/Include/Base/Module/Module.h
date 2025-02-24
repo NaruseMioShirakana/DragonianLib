@@ -29,7 +29,7 @@
 
 _D_Dragonian_Lib_Graph_Space_Begin
 
-class Module : public Value
+class Module : public DlibValue
 {
 public:
 	Module(Module* _Parent, const std::wstring& _Name);

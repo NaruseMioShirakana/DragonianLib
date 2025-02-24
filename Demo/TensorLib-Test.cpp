@@ -96,20 +96,18 @@ void WithTimer(const Fn& fn)
 #include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
 #include "Libraries/AvCodec/AvCodec.h"
 
-struct aaa
-{
-	int a;
-	
-};
-
 int main()
 {
 	using namespace DragonianLib;
-	auto Tmp = Functional::Arange(0, 100, 1);
-	auto tensor = Tmp.View(5, 20);
-	for (auto [i, iter] : Enumrate(tensor))
-		for (auto [j, value] : Enumrate(iter))
-			std::cout << i << ' ' << j << ' ' << value << '\n';
+
+	auto Tmp = Functional::Arange(0, 1000000, 1).EvalMove();
+	auto tensor = Tmp.View(5, 20, -1);
+	WithTimer([&]
+		{
+			tensor += tensor.Clone();
+			tensor.Eval();
+		});
+	std::cout << tensor;
 
 	return 0;
 

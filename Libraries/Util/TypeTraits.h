@@ -422,7 +422,7 @@ constexpr auto IsBoolValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue
 template <typename _Type>
 constexpr auto IsArithmeticValue = _D_Dragonian_Lib_Type_Traits_Namespace IsFloatingPointValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsIntegerValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsComplexValue<_Type> || IsBoolValue<_Type>;
 template <typename _Type>
-constexpr auto IsAvx256SupportedValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Complex32, Complex64>;
+constexpr auto IsAvx256SupportedValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Complex32, Complex64, bool>;
 template <typename _Type>
 constexpr auto IsAvx256SupportedFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64>;
 template <typename _Type>
