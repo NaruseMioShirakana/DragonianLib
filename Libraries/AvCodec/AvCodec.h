@@ -303,6 +303,11 @@ namespace AvCodec
 		const SlicerSettings& SlicerSettings
 	);
 
+	DragonianLibSTL::Vector<size_t> SliceAudio(
+		const TemplateLibrary::ConstantRanges<float>& PcmData,
+		const SlicerSettings& SlicerSettings
+	);
+
 	template <typename T>
 	std::pair<DragonianLibSTL::Vector<T>, size_t> CrossCorrelation(
 		float SamplingRate,

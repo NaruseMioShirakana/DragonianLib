@@ -1,28 +1,22 @@
-﻿#include "../header/NativeApi.h"
-
-#ifdef max
-#undef max
-#endif
-#ifdef min
-#undef min
-#endif
-
-#include <mutex>
+﻿#include <mutex>
 #include <string>
-#include "Libraries/AvCodec/AvCodec.h"
+
 #include "Libraries/Base.h"
-#include "../../Modules/header/Modules.hpp"
-#include "Libraries/F0Extractor/NetF0Predictors.hpp"
 #include "Libraries/Util/Logger.h"
+#include "Libraries/AvCodec/AvCodec.h"
 #include "Libraries/Util/StringPreprocess.h"
+
+#include "../header/NativeApi.h"
+#include "../../Modules/header/Modules.hpp"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
 #endif
 
-const wchar_t* LibSvcNullString = L"";
+const wchar_t* _GDragonianLibSvcNullString = L"";
+std::wstring _GDragonianLibSvcLastError = L"";
 
-#define LibSvcNullStrCheck(Str) ((Str)?(Str):(LibSvcNullString))
+#define _GDragonianLibSvcNullStrCheck(Str) ((Str)?(Str):(_GDragonianLibSvcNullString))
 
 #ifndef _WIN32
 BSTR SysAllocString(const wchar_t* _String)
@@ -38,32 +32,9 @@ void SysFreeString(BSTR _String)
 }
 #endif
 
-using Config = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams;
-using VitsSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VitsSvc;
-using DiffusionSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space DiffusionSvc;
-using ReflowSvc = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space ReflowSvc;
-using ClusterBase = DragonianLib::Cluster::BaseCluster;
-using TensorExtractorBase = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space TensorExtractor::LibSvcTensorExtractor;
-using ProgressCallback = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ProgressCallback;
-using ExecutionProvider = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders;
-using Slices = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleAudio;
-using SingleSlice = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingleSlice;
-using Params = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space InferenceParams;
-
-using DInt16Vector = DragonianLib::TemplateLibrary::Vector<int16_t>;
-using DFloat32Vector = DragonianLib::TemplateLibrary::Vector<float>;
-using DDFloat32Vector = DragonianLib::TemplateLibrary::Vector<DragonianLib::TemplateLibrary::Vector<float>>;
-using DUInt64Vector = DragonianLib::TemplateLibrary::Vector<size_t>;
-using MelContainer = std::pair<DragonianLib::TemplateLibrary::Vector<float>, int64_t>;
-using DataContainer = Slices;
-using OrtModelType = std::shared_ptr<Ort::Session>*;
-using SvcModelType = DragonianLib::SingingVoiceConversion::SingingVoiceConversion*;
-
-std::unordered_map<std::wstring, DragonianLib::FunctionTransform::Mel*> MelOperators;
-
-void InitLibSvcHparams(
-	LibSvcHparams* _Input
-)
+void _Dragonian_Lib_Svc_Add_Prefix(InitHparams)(
+	_Dragonian_Lib_Svc_Add_Prefix(Hparams)* _Input
+	)
 {
 	_Input->TensorExtractor = nullptr;
 	_Input->HubertPath = nullptr;
@@ -104,29 +75,31 @@ void InitLibSvcHparams(
 	_Input->MaxStep = 1000;
 	_Input->SpecMin = -12;
 	_Input->SpecMax = 2;
+	_Input->F0Min = 50.f;
+	_Input->F0Max = 1100.f;
 	_Input->Scale = 1000.f;
 }
 
-void InitLibSvcParams(
-	LibSvcParams* _Input
-)
+void _Dragonian_Lib_Svc_Add_Prefix(InitInferenceParams)(
+	_Dragonian_Lib_Svc_Add_Prefix(Params)* _Input
+	)
 {
-	_Input->NoiseScale = 0.3f;					
-	_Input->Seed = 52468;							
-	_Input->SpeakerId = 0;					
-	_Input->SpkCount = 2;							
-	_Input->IndexRate = 0.f;				
-	_Input->ClusterRate = 0.f;					
-	_Input->DDSPNoiseScale = 0.8f;				
-	_Input->Keys = 0.f;									
-	_Input->MeanWindowLength = 2;					
-	_Input->Pndm = 100;								
-	_Input->Step = 1000;							
+	_Input->NoiseScale = 0.3f;
+	_Input->Seed = 52468;
+	_Input->SpeakerId = 0;
+	_Input->SpkCount = 2;
+	_Input->IndexRate = 0.f;
+	_Input->ClusterRate = 0.f;
+	_Input->DDSPNoiseScale = 0.8f;
+	_Input->Keys = 0.f;
+	_Input->MeanWindowLength = 2;
+	_Input->Pndm = 100;
+	_Input->Step = 1000;
 	_Input->TBegin = 0.f;
 	_Input->TEnd = 1.f;
-	_Input->Sampler = nullptr;						
-	_Input->ReflowSampler = nullptr;					
-	_Input->F0Method = nullptr;						
+	_Input->Sampler = nullptr;
+	_Input->ReflowSampler = nullptr;
+	_Input->F0Method = nullptr;
 	_Input->VocoderModel = nullptr;
 	_Input->VocoderHopSize = 512;
 	_Input->VocoderMelBins = 128;
@@ -138,9 +111,9 @@ void InitLibSvcParams(
 	_Input->__DEBUG__MODE__ = 0;
 }
 
-void InitLibSvcF0ExtractorSetting(
-	LibSvcF0ExtractorSetting* _Input
-)
+void _Dragonian_Lib_Svc_Add_Prefix(InitF0ExtractorSetting)(
+	_Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Input
+	)
 {
 	_Input->HopSize = 480;
 	_Input->SamplingRate = 48000;
@@ -148,1178 +121,144 @@ void InitLibSvcF0ExtractorSetting(
 	_Input->F0Max = 1100.0;
 	_Input->F0Min = 50.0;
 	_Input->UserParameter = nullptr;
-	_Input->ModelPath = LibSvcNullString;
+	_Input->ModelPath = _GDragonianLibSvcNullString;
 	_Input->Env = nullptr;
 }
 
-void InitLibSvcSlicerSettings(
-	LibSvcSlicerSettings* _Input
-)
+void _Dragonian_Lib_Svc_Add_Prefix(InitSlicerSettings)(
+	_Dragonian_Lib_Svc_Add_Prefix(SlicerSettings)* _Input
+	)
 {
 	_Input->SamplingRate = 48000;
-	_Input->Threshold = 30. / 32768.;
-	_Input->MinLength = 3.;
-	_Input->WindowLength = 2048;
-	_Input->HopSize = 512;
-}
-
-//FloatVector
-
-float* LibSvcGetFloatVectorData(
-	LibSvcFloatVector _Obj
-)
-{
-	auto& Obj = *(DFloat32Vector*)_Obj;
-	return Obj.Data();
-}
-
-size_t LibSvcGetFloatVectorSize(
-	LibSvcFloatVector _Obj
-)
-{
-	auto& Obj = *(DFloat32Vector*)_Obj;
-	return Obj.Size();
-}
-
-LibSvcFloatVector LibSvcAllocateFloatVector()
-{
-	return LibSvcFloatVector(new DFloat32Vector);
-}
-
-void LibSvcReleaseFloatVector(
-	LibSvcFloatVector _Obj
-)
-{
-	delete (DFloat32Vector*)_Obj;
-}
-
-void LibSvcInsertFloatVector(LibSvcFloatVector _ObjA, LibSvcFloatVector _ObjB)
-{
-	auto& ObjA = *(DFloat32Vector*)_ObjA;
-	auto& ObjB = *(DFloat32Vector*)_ObjB;
-	ObjA.Insert(ObjA.end(), ObjB.begin(), ObjB.end());
-}
-
-//DFloatVector
-
-LibSvcFloatVector LibSvcGetDFloatVectorData(
-	LibSvcDoubleDimsFloatVector _Obj,
-	size_t _Index
-)
-{
-	auto& Obj = *(DDFloat32Vector*)_Obj;
-	return LibSvcFloatVector(Obj.Data() + _Index);
-}
-
-size_t LibSvcGetDFloatVectorSize(
-	LibSvcDoubleDimsFloatVector _Obj
-)
-{
-	auto& Obj = *(DDFloat32Vector*)_Obj;
-	return Obj.Size();
-}
-
-//Int16Vector
-
-LibSvcInt16Vector LibSvcAllocateInt16Vector()
-{
-	return LibSvcInt16Vector(new DInt16Vector);
-}
-
-void LibSvcReleaseInt16Vector(
-	LibSvcInt16Vector _Obj
-)
-{
-	delete (DInt16Vector*)_Obj;
-}
-
-void LibSvcSetInt16VectorLength(
-	LibSvcInt16Vector _Obj,
-	size_t _Size
-)
-{
-	auto& Obj = *(DInt16Vector*)_Obj;
-	Obj.Resize(_Size);
-}
-
-void LibSvcInsertInt16Vector(
-	LibSvcInt16Vector _ObjA,
-	LibSvcInt16Vector _ObjB
-)
-{
-	auto& ObjA = *(DInt16Vector*)_ObjA;
-	auto& ObjB = *(DInt16Vector*)_ObjB;
-	ObjA.Insert(ObjA.end(), ObjB.begin(), ObjB.end());
-}
-
-int16_t* LibSvcGetInt16VectorData(
-	LibSvcInt16Vector _Obj
-)
-{
-	auto& Obj = *(DInt16Vector*)_Obj;
-	return Obj.Data();
-}
-
-size_t LibSvcGetInt16VectorSize(
-	LibSvcInt16Vector _Obj
-)
-{
-	auto& Obj = *(DInt16Vector*)_Obj;
-	return Obj.Size();
-}
-
-//UInt64Vector
-
-LibSvcUInt64Vector LibSvcAllocateUInt64Vector()
-{
-	return LibSvcUInt64Vector(new DUInt64Vector);
-}
-
-void LibSvcReleaseUInt64Vector(
-	LibSvcUInt64Vector _Obj
-)
-{
-	delete (DUInt64Vector*)_Obj;
-}
-
-void LibSvcSetUInt64VectorLength(
-	LibSvcUInt64Vector _Obj,
-	size_t _Size
-)
-{
-	auto& Obj = *(DUInt64Vector*)_Obj;
-	Obj.Resize(_Size);
-}
-
-size_t* LibSvcGetUInt64VectorData(
-	LibSvcUInt64Vector _Obj
-)
-{
-	auto& Obj = *(DUInt64Vector*)_Obj;
-	return Obj.Data();
-}
-
-size_t LibSvcGetUInt64VectorSize(
-	LibSvcUInt64Vector _Obj
-)
-{
-	auto& Obj = *(DUInt64Vector*)_Obj;
-	return Obj.Size();
-}
-
-//Mel
-
-LibSvcMelType LibSvcAllocateMel()
-{
-	return LibSvcMelType(new MelContainer);
-}
-
-void LibSvcReleaseMel(
-	LibSvcMelType _Obj
-)
-{
-	delete (MelContainer*)_Obj;
-}
-
-LibSvcFloatVector LibSvcGetMelData(
-	LibSvcMelType _Obj
-)
-{
-	auto& Obj = *(MelContainer*)_Obj;
-	return LibSvcFloatVector(&Obj.first);
-}
-
-int64_t LibSvcGetMelSize(
-	LibSvcMelType _Obj
-)
-{
-	auto& Obj = *(MelContainer*)_Obj;
-	return Obj.second;
-}
-
-//Slice
-
-LibSvcFloatVector LibSvcGetAudio(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return LibSvcFloatVector(&Obj.Audio);
-}
-
-LibSvcFloatVector LibSvcGetF0(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return LibSvcFloatVector(&Obj.F0);
-}
-
-LibSvcFloatVector LibSvcGetVolume(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return LibSvcFloatVector(&Obj.Volume);
-}
-
-LibSvcDoubleDimsFloatVector LibSvcGetSpeaker(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return LibSvcDoubleDimsFloatVector(&Obj.Speaker);
-}
-
-UINT64 LibSvcGetSrcLength(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return Obj.OrgLen;
-}
-
-INT32 LibSvcGetIsNotMute(
-	LibSvcSliceType _Obj
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	return Obj.IsNotMute;
-}
-
-void LibSvcSetSpeakerMixDataSize(
-	LibSvcSliceType _Obj,
-	size_t _NSpeaker
-)
-{
-	auto& Obj = *(SingleSlice*)_Obj;
-	Obj.Speaker.Resize(_NSpeaker, DragonianLib::TemplateLibrary::Vector(Obj.F0.Size(), 0.f));
-}
-
-//Array Of Slice - MoeVoiceStudioSvcSlice
-
-LibSvcSlicesType LibSvcAllocateSliceData()
-{
-	return LibSvcSlicesType(new DataContainer);
-}
-
-void LibSvcReleaseSliceData(
-	LibSvcSlicesType _Obj
-)
-{
-	delete (DataContainer*)_Obj;
-}
-
-BSTR LibSvcGetAudioPath(
-	LibSvcSlicesType _Obj
-)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return SysAllocString(Obj.Path.c_str());
-}
-
-LibSvcSliceType LibSvcGetSlice(
-	LibSvcSlicesType _Obj,
-	size_t _Index
-)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return LibSvcSliceType(Obj.Slices.Data() + _Index);
-}
-
-size_t LibSvcGetSliceCount(
-	LibSvcSlicesType _Obj
-)
-{
-	auto& Obj = *(DataContainer*)_Obj;
-	return Obj.Slices.Size();
+	_Input->Threshold = -60.;
+	_Input->MinLength = 5.;
+	_Input->WindowLength = 8192;
+	_Input->HopSize = 1024;
 }
 
 /***************************************Fun*******************************************/
 
-void RaiseError(const std::wstring& _Msg)
+void _Dragonian_Lib_Svc_Add_Prefix(RaiseError)(const std::wstring& _Msg)
 {
 	DragonianLib::LogError(_Msg.c_str());
+	_GDragonianLibSvcLastError = _Msg;
 }
 
-void LibSvcSetGlobalEnvDir(
+BSTR _Dragonian_Lib_Svc_Add_Prefix(GetLastError)()
+{
+	return SysAllocString(_GDragonianLibSvcLastError.c_str());
+}
+
+void _Dragonian_Lib_Svc_Add_Prefix(SetGlobalEnvDir)(
 	LPCWSTR _Dir
-)
+	)
 {
 	DragonianLib::SetGlobalEnvDir(_Dir);
 }
 
-void LibSvcSetLoggerId(
+void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerId)(
 	LPCWSTR _Id
-)
+	)
 {
 	DragonianLib::SetLoggerId(_Id);
 }
 
-void LibSvcSetLoggerLevel(
+void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerLevel)(
 	INT32 _Level
-)
+	)
 {
 	SetLoggerLevel(static_cast<DragonianLib::LogLevel>(_Level));
 }
 
-void LibSvcSetLoggerFunction(
-	LibSvcLoggerFunction _Logger
-)
+void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerFunction)(
+	_Dragonian_Lib_Svc_Add_Prefix(LoggerFunction) _Logger
+	)
 {
 	DragonianLib::SetLoggerFunction(_Logger);
 }
 
-void LibSvcInit()
+void _Dragonian_Lib_Svc_Add_Prefix(Init)()
 {
-	
+
 }
 
-void LibSvcFreeString(BSTR _String)
+void _Dragonian_Lib_Svc_Add_Prefix(FreeString)(
+	BSTR _String
+	)
 {
 	SysFreeString(_String);
 }
 
-LibSvcEnv LibSvcCreateEnv(
-	UINT32 ThreadCount,
-	UINT32 DeviceID,
-	UINT32 Provider
+void _Dragonian_Lib_Svc_Add_Prefix(FreeData)(
+	void* _Ptr
+	)
+{
+	DragonianLib::TemplateLibrary::CPUAllocator::deallocate(_Ptr);
+}
+
+_Dragonian_Lib_Svc_Add_Prefix(Env) _Dragonian_Lib_Svc_Add_Prefix(CreateEnv)(
+	UINT32 _ThreadCount,
+	UINT32 _DeviceID,
+	_Dragonian_Lib_Svc_Add_Prefix(ExecutionProvider) _Provider
 )
 {
 	try
 	{
-		return LibSvcEnv(DragonianLib::DragonianLibOrtEnv::CreateEnv(ThreadCount, DeviceID, Provider).get());
+		return _Dragonian_Lib_Svc_Add_Prefix(Env)(&DragonianLib::DragonianLibOrtEnv::CreateEnv(_ThreadCount, _DeviceID, _Provider));
 	}
 	catch (std::exception& e)
 	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
 		return nullptr;
 	}
 }
 
-void LibSvcDestoryEnv(
-	LibSvcEnv Env
-)
+void _Dragonian_Lib_Svc_Add_Prefix(DestoryEnv)(
+	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
+	)
 {
-	auto& _MyEnv = *(DragonianLib::DragonianLibOrtEnv*)Env;
-	DragonianLib::DragonianLibOrtEnv::DestroyEnv(_MyEnv.GetCurThreadCount(), _MyEnv.GetCurDeviceID(), _MyEnv.GetCurProvider());
+	auto& _MyEnv = *(std::shared_ptr<DragonianLib::DragonianLibOrtEnv>*)_Env;
+	DragonianLib::DragonianLibOrtEnv::DestroyEnv(_MyEnv->GetCurThreadCount(), _MyEnv->GetCurDeviceID(), _MyEnv->GetCurProvider());
 }
 
-INT32 LibSvcSliceAudioI16(
-	LibSvcCInt16Vector _Audio,
-	const LibSvcSlicerSettings* _Setting,
-	LibSvcUInt64Vector _Output
-)
+_Dragonian_Lib_Svc_Add_Prefix(Model) _Dragonian_Lib_Svc_Add_Prefix(LoadModel)(
+	const _Dragonian_Lib_Svc_Add_Prefix(Hparams)* _Config,
+	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env,
+	_Dragonian_Lib_Svc_Add_Prefix(ProgressCallback) _ProgressCallback
+	)
 {
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
+	auto _MyEnv = *(std::shared_ptr<DragonianLib::DragonianLibOrtEnv>*)_Env;
 
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	auto& Ret = *(DUInt64Vector*)(_Output);
-	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings SliSetting{
-		_Setting->SamplingRate,
-		_Setting->Threshold,
-		_Setting->MinLength,
-		_Setting->WindowLength,
-		_Setting->HopSize
-	};
-
-	try
-	{
-		Ret = _D_Dragonian_Lib_Lib_Av_Codec_Space SliceAudio(
-			InterpResample(
-				*(const DInt16Vector*)(_Audio),
-				1,
-				1,
-				32768.f
-			),
-			SliSetting
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-	return 0;
-}
-
-INT32 LibSvcSliceAudio(
-	LibSvcCFloatVector _Audio,
-	const LibSvcSlicerSettings* _Setting,
-	LibSvcUInt64Vector _Output
-)
-{
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"Output Could Not Be Null!");
-		return 1;
-	}
-
-	auto& Ret = *(DUInt64Vector*)(_Output);
-
-	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings SliSetting{
-		_Setting->SamplingRate,
-		_Setting->Threshold,
-		_Setting->MinLength,
-		_Setting->WindowLength,
-		_Setting->HopSize
-	};
-
-	try
-	{
-		Ret = _D_Dragonian_Lib_Lib_Av_Codec_Space SliceAudio(
-			*(const DFloat32Vector*)(_Audio),
-			SliSetting
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-	return 0;
-}
-
-INT32 LibSvcPreprocessI16(
-	LibSvcCInt16Vector _Audio,
-	LibSvcCUInt64Vector _SlicePos,
-	const LibSvcF0ExtractorSetting* _Settings,
-	double _Threshold,
-	const wchar_t* _F0Method,
-	LibSvcSlicesType _Output
-)
-{
-	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings _Setting{
-		.Threshold = _Threshold
-	};
-
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_SlicePos)
-	{
-		RaiseError(L"Slice Pos Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	Slices& Ret = *(Slices*)_Output;
-	try
-	{
-		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
-			InterpResample(
-				*(const DInt16Vector*)(_Audio),
-				1,
-				1,
-				32768.f
-			),
-			*(const DUInt64Vector*)(_SlicePos),
-			_Setting.SamplingRate,
-			_Setting.Threshold
-		);
-
-		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
-			Ret,
-			{
-				_Settings->SamplingRate,
-				_Settings->HopSize,
-				_Settings->F0Bins,
-				_Settings->F0Max,
-				_Settings->F0Min,
-				_Settings->UserParameter,
-			},
-			_F0Method,
-			{
-				_Settings->ModelPath,
-				_Settings->Env
-			}
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-	return 0;
-}
-
-INT32 LibSvcPreprocess(
-	LibSvcCFloatVector _Audio,
-	LibSvcCUInt64Vector _SlicePos,
-	const LibSvcF0ExtractorSetting* _Settings,
-	double _Threshold,
-	const wchar_t* _F0Method,
-	LibSvcSlicesType _Output
-)
-{
-	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings _Setting{
-		.Threshold = _Threshold
-	};
-
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_SlicePos)
-	{
-		RaiseError(L"Slice Pos Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	Slices& Ret = *(Slices*)_Output;
-	try
-	{
-		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
-			*(const DFloat32Vector*)(_Audio),
-			*(const DUInt64Vector*)(_SlicePos),
-			_Setting.SamplingRate,
-			_Setting.Threshold
-		);
-
-		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
-			Ret,
-			{
-				_Settings->SamplingRate,
-				_Settings->HopSize,
-				_Settings->F0Bins,
-				_Settings->F0Max,
-				_Settings->F0Min,
-				_Settings->UserParameter,
-			},
-			_F0Method,
-			{
-				_Settings->ModelPath,
-				_Settings->Env
-			}
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-	return 0;
-}
-
-INT32 LibSvcStftI16(
-	LibSvcCInt16Vector _Audio,
-	INT32 _SamplingRate,
-	INT32 _Hopsize,
-	INT32 _MelBins,
-	LibSvcMelType _Output
-)
-{
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	if (MelOperators.size() > 5)
-	{
-		delete MelOperators.begin()->second;
-		MelOperators.erase(MelOperators.begin());
-	}
-
-	try
-	{
-		const std::wstring _Name = L"S" +
-			std::to_wstring(_SamplingRate) +
-			L"H" + std::to_wstring(_Hopsize) +
-			L"M" + std::to_wstring(_MelBins);
-		if (!MelOperators.contains(_Name))
-			MelOperators[_Name] = new DragonianLib::FunctionTransform::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
-		auto _NormalizedAudio = InterpResample(
-			*(const DInt16Vector*)_Audio,
-			_SamplingRate,
-			_SamplingRate,
-			32768.
-		);
-		*(MelContainer*)(_Output) = MelOperators.at(_Name)->operator()(_NormalizedAudio);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcStft(
-	LibSvcCFloatVector _Audio,
-	INT32 _SamplingRate,
-	INT32 _Hopsize,
-	INT32 _MelBins,
-	LibSvcMelType _Output
-)
-{
-	if (!_Audio)
-	{
-		RaiseError(L"Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	if (MelOperators.size() > 5)
-	{
-		delete MelOperators.begin()->second;
-		MelOperators.erase(MelOperators.begin());
-	}
-
-	try
-	{
-		const std::wstring _Name = L"S" +
-			std::to_wstring(_SamplingRate) +
-			L"H" + std::to_wstring(_Hopsize) +
-			L"M" + std::to_wstring(_MelBins);
-		if (!MelOperators.contains(_Name))
-			MelOperators[_Name] = new DragonianLib::FunctionTransform::Mel(_Hopsize * 4, _Hopsize, _SamplingRate, _MelBins);
-		auto _NormalizedAudio = InterpResample<double>(
-			*(const DFloat32Vector*)_Audio,
-			_SamplingRate,
-			_SamplingRate
-		);
-		*(MelContainer*)(_Output) = MelOperators.at(_Name)->operator()(_NormalizedAudio);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcInferSlice(
-	LibSvcModel _Model,
-	LibSvcCSliceType _Slice,
-	const LibSvcParams* _InferParams,
-	size_t* _Process,
-	LibSvcFloatVector _Output
-)
-{
-	if (!_Model)
-	{
-		RaiseError(L"_Model Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Slice)
-	{
-		RaiseError(L"_Slice Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_InferParams)
-	{
-		RaiseError(L"_InferParams Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Process)
-	{
-		RaiseError(L"_Process Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	const Params Param
-	{
-		_InferParams->NoiseScale,
-		_InferParams->Seed,
-		_InferParams->SpeakerId,
-		_InferParams->SpkCount,
-		_InferParams->IndexRate,
-		_InferParams->ClusterRate,
-		_InferParams->DDSPNoiseScale,
-		_InferParams->Keys,
-		_InferParams->MeanWindowLength,
-		_InferParams->Pndm,
-		_InferParams->Step,
-		_InferParams->TBegin,
-		_InferParams->TEnd,
-		LibSvcNullStrCheck(_InferParams->Sampler),
-		LibSvcNullStrCheck(_InferParams->ReflowSampler),
-		LibSvcNullStrCheck(_InferParams->F0Method),
-		*OrtModelType(_InferParams->VocoderModel),
-		_InferParams->VocoderHopSize,
-		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate,
-		_InferParams->F0Bins,
-		_InferParams->F0Max,
-		_InferParams->F0Min,
-		_InferParams->F0ExtractorUserParameter,
-		{},
-		{},
-		{},
-		{}
-	};
-
-	try
-	{
-		*(DFloat32Vector*)(_Output) = (SvcModelType(_Model))->SliceInference(
-			*(const SingleSlice*)(_Slice),
-			Param,
-			*_Process
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcInferAudio(
-	LibSvcModel _Model,
-	LibSvcSlicesType _Audio,
-	const LibSvcParams* _InferParams,
-	UINT64 _SrcLength,
-	size_t* _Process,
-	LibSvcFloatVector _Output
-)
-{
-	if (!_Model)
-	{
-		RaiseError(L"_Model Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Audio)
-	{
-		RaiseError(L"_Audio Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_InferParams)
-	{
-		RaiseError(L"_InferParams Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Process)
-	{
-		RaiseError(L"_Process Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	const Params Param
-	{
-		_InferParams->NoiseScale,
-		_InferParams->Seed,
-		_InferParams->SpeakerId,
-		_InferParams->SpkCount,
-		_InferParams->IndexRate,
-		_InferParams->ClusterRate,
-		_InferParams->DDSPNoiseScale,
-		_InferParams->Keys,
-		_InferParams->MeanWindowLength,
-		_InferParams->Pndm,
-		_InferParams->Step,
-		_InferParams->TBegin,
-		_InferParams->TEnd,
-		LibSvcNullStrCheck(_InferParams->Sampler),
-		LibSvcNullStrCheck(_InferParams->ReflowSampler),
-		LibSvcNullStrCheck(_InferParams->F0Method),
-		*OrtModelType(_InferParams->VocoderModel),
-		_InferParams->VocoderHopSize,
-		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate,
-		_InferParams->F0Bins,
-		_InferParams->F0Max,
-		_InferParams->F0Min,
-		_InferParams->F0ExtractorUserParameter,
-		{},
-		{},
-		{},
-		{}
-	};
-
-	auto __Slices = *(const Slices*)(_Audio);
-
-	auto& OutPutAudio = *(DFloat32Vector*)(_Output);
-	OutPutAudio.Reserve(_SrcLength);
-	try
-	{
-		for (const auto& Single : __Slices.Slices)
-		{
-			auto Out = SvcModelType(_Model)->SliceInference(Single, Param, *_Process);
-			OutPutAudio.Insert(OutPutAudio.end(), Out.begin(), Out.end());
-		}
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcInferPCMData(
-	LibSvcModel _Model,
-	LibSvcCFloatVector _PCMData,
-	const LibSvcParams* _InferParams,
-	INT32 SamplingRate,
-	LibSvcFloatVector _Output
-)
-{
-	if (!_Model)
-	{
-		RaiseError(L"_Model Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_PCMData)
-	{
-		RaiseError(L"_PCMData Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_InferParams)
-	{
-		RaiseError(L"_InferParams Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	const Params Param
-	{
-		_InferParams->NoiseScale,
-		_InferParams->Seed,
-		_InferParams->SpeakerId,
-		_InferParams->SpkCount,
-		_InferParams->IndexRate,
-		_InferParams->ClusterRate,
-		_InferParams->DDSPNoiseScale,
-		_InferParams->Keys,
-		_InferParams->MeanWindowLength,
-		_InferParams->Pndm,
-		_InferParams->Step,
-		_InferParams->TBegin,
-		_InferParams->TEnd,
-		LibSvcNullStrCheck(_InferParams->Sampler),
-		LibSvcNullStrCheck(_InferParams->ReflowSampler),
-		LibSvcNullStrCheck(_InferParams->F0Method),
-		*OrtModelType(_InferParams->VocoderModel),
-		_InferParams->VocoderHopSize,
-		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate,
-		_InferParams->F0Bins,
-		_InferParams->F0Max,
-		_InferParams->F0Min,
-		_InferParams->F0ExtractorUserParameter,
-		{},
-		{},
-		{},
-		{}
-	};
-
-	auto& InputData = *(const DFloat32Vector*)(_PCMData);
-
-	try
-	{
-		*(DFloat32Vector*)(_Output) = SvcModelType(_Model)->InferPCMData(
-			InputData,
-			SamplingRate,
-			Param
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcShallowDiffusionInference(
-	LibSvcModel _Model,
-	LibSvcFloatVector _16KAudioHubert,
-	LibSvcMelType _Mel,
-	LibSvcCFloatVector _SrcF0,
-	LibSvcCFloatVector _SrcVolume,
-	LibSvcCDoubleDimsFloatVector _SrcSpeakerMap,
-	INT64 _SrcSize,
-	const LibSvcParams* _InferParams,
-	size_t* _Process,
-	LibSvcFloatVector _Output
-)
-{
-	if (!_Model)
-	{
-		RaiseError(L"_Model Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_16KAudioHubert)
-	{
-		RaiseError(L"_16KAudioHubert Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Mel)
-	{
-		RaiseError(L"_Mel Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_SrcF0)
-	{
-		RaiseError(L"_SrcF0 Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_SrcVolume)
-	{
-		RaiseError(L"_SrcVolume Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_SrcSpeakerMap)
-	{
-		RaiseError(L"_SrcSpeakerMap Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_InferParams)
-	{
-		RaiseError(L"_InferParams Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Process)
-	{
-		RaiseError(L"_Process Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	const Params Param
-	{
-		_InferParams->NoiseScale,
-		_InferParams->Seed,
-		_InferParams->SpeakerId,
-		_InferParams->SpkCount,
-		_InferParams->IndexRate,
-		_InferParams->ClusterRate,
-		_InferParams->DDSPNoiseScale,
-		_InferParams->Keys,
-		_InferParams->MeanWindowLength,
-		_InferParams->Pndm,
-		_InferParams->Step,
-		_InferParams->TBegin,
-		_InferParams->TEnd,
-		LibSvcNullStrCheck(_InferParams->Sampler),
-		LibSvcNullStrCheck(_InferParams->ReflowSampler),
-		LibSvcNullStrCheck(_InferParams->F0Method),
-		*OrtModelType(_InferParams->VocoderModel),
-		_InferParams->VocoderHopSize,
-		_InferParams->VocoderMelBins,
-		_InferParams->VocoderSamplingRate,
-		_InferParams->F0Bins,
-		_InferParams->F0Max,
-		_InferParams->F0Min,
-		_InferParams->F0ExtractorUserParameter,
-		{},
-		{},
-		{},
-		{}
-	};
-
-	try
-	{
-		*(DFloat32Vector*)(_Output) = SvcModelType(_Model)->ShallowDiffusionInference(
-			*(DFloat32Vector*)_16KAudioHubert,
-			Param,
-			*(MelContainer*)(_Mel),
-			*(const DFloat32Vector*)(_SrcF0),
-			*(const DFloat32Vector*)(_SrcVolume),
-			*(const DDFloat32Vector*)(_SrcSpeakerMap),
-			*_Process,
-			_SrcSize
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-INT32 LibSvcVocoderEnhance(
-	LibSvcVocoderModel _Model,
-	LibSvcEnv _Env,
-	LibSvcMelType _Mel,
-	LibSvcCFloatVector _F0,
-	INT32 _VocoderMelBins,
-	LibSvcFloatVector _Output
-)
-{
-	if (!_Model)
-	{
-		RaiseError(L"_Model Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Env)
-	{
-		RaiseError(L"_Env Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_F0)
-	{
-		RaiseError(L"_16KAudioHubert Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Mel)
-	{
-		RaiseError(L"_Mel Could Not Be Null!");
-		return 1;
-	}
-
-	if (!_Output)
-	{
-		RaiseError(L"_Output Could Not Be Null!");
-		return 1;
-	}
-
-	auto Rf0 = *(const DFloat32Vector*)(_F0);
-	auto& MelTemp = *(MelContainer*)(_Mel);
-	if (Rf0.Size() != (size_t)MelTemp.second)
-		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
-	try
-	{
-		*(DFloat32Vector*)(_Output) = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VocoderInfer(
-			MelTemp.first,
-			Rf0,
-			_VocoderMelBins,
-			MelTemp.second,
-			((DragonianLib::DragonianLibOrtEnv*)_Env)->GetMemoryInfo(),
-			*(OrtModelType)_Model
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return 1;
-	}
-
-	return 0;
-}
-
-LibSvcModel LibSvcLoadModel(
-	UINT32 _T,
-	const LibSvcHparams* _Config,
-	ProgCallback _ProgressCallback,
-	UINT32 _ExecutionProvider,
-	UINT32 _DeviceID,
-	UINT32 _ThreadCount
-)
-{
 	if (!_Config)
 	{
-		RaiseError(L"_Model Could Not Be Null!");
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
 		return nullptr;
 	}
 
-	//printf("%lld", (long long)(Config.DiffusionSvc.Encoder));
-
 	_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space Hparams ModelConfig{
-		LibSvcNullStrCheck(_Config->TensorExtractor),
-		LibSvcNullStrCheck(_Config->HubertPath),
+		_GDragonianLibSvcNullStrCheck(_Config->TensorExtractor),
+		_GDragonianLibSvcNullStrCheck(_Config->HubertPath),
 		{
-			LibSvcNullStrCheck(_Config->DiffusionSvc.Encoder),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.Denoise),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.Pred),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.After),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.Alpha),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.Naive),
-			LibSvcNullStrCheck(_Config->DiffusionSvc.DiffSvc)
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.Encoder),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.Denoise),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.Pred),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.After),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.Alpha),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.Naive),
+			_GDragonianLibSvcNullStrCheck(_Config->DiffusionSvc.DiffSvc)
 		},
 		{
-			LibSvcNullStrCheck(_Config->VitsSvc.VitsSvc)
+			_GDragonianLibSvcNullStrCheck(_Config->VitsSvc.VitsSvc)
 		},
 		{
-			LibSvcNullStrCheck(_Config->ReflowSvc.Encoder),
-			LibSvcNullStrCheck(_Config->ReflowSvc.VelocityFn),
-			LibSvcNullStrCheck(_Config->ReflowSvc.After)
+			_GDragonianLibSvcNullStrCheck(_Config->ReflowSvc.Encoder),
+			_GDragonianLibSvcNullStrCheck(_Config->ReflowSvc.VelocityFn),
+			_GDragonianLibSvcNullStrCheck(_Config->ReflowSvc.After)
 		},
 		{
 			_Config->Cluster.ClusterCenterSize,
-			LibSvcNullStrCheck(_Config->Cluster.Path),
-			LibSvcNullStrCheck(_Config->Cluster.Type)
+			_GDragonianLibSvcNullStrCheck(_Config->Cluster.Path),
+			_GDragonianLibSvcNullStrCheck(_Config->Cluster.Type)
 		},
 		_Config->SamplingRate,
 		_Config->HopSize,
@@ -1333,90 +272,93 @@ LibSvcModel LibSvcLoadModel(
 		_Config->MaxStep,
 		_Config->SpecMin,
 		_Config->SpecMax,
+		_Config->F0Min,
+		_Config->F0Max,
 		_Config->Scale
 	};
 
 	try
 	{
-		if (_T == 0)
-			return LibSvcModel(new VitsSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
-		if (_T == 1)
-			return LibSvcModel(new DiffusionSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
-		if (_T == 2)
-			return LibSvcModel(new ReflowSvc(ModelConfig, _ProgressCallback, static_cast<_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space LibSvcModule::ExecutionProviders>(_ExecutionProvider), _DeviceID, _ThreadCount));
+		if (!ModelConfig.VitsSvc.VitsSvc.empty())
+			return _Dragonian_Lib_Svc_Add_Prefix(Model)(new DragonianLib::SingingVoiceConversion::VitsSvc(ModelConfig, _ProgressCallback, _MyEnv));
+		if (!ModelConfig.DiffusionSvc.Encoder.empty() || !ModelConfig.DiffusionSvc.DiffSvc.empty())
+			return _Dragonian_Lib_Svc_Add_Prefix(Model)(new DragonianLib::SingingVoiceConversion::DiffusionSvc(ModelConfig, _ProgressCallback, _MyEnv));
+		if (!ModelConfig.ReflowSvc.Encoder.empty())
+			return _Dragonian_Lib_Svc_Add_Prefix(Model)(new DragonianLib::SingingVoiceConversion::ReflowSvc(ModelConfig, _ProgressCallback, _MyEnv));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Model not recognized!");
 		return nullptr;
 	}
 	catch (std::exception& e)
 	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
 		return nullptr;
 	}
 }
 
-INT32 LibSvcUnloadModel(
-	LibSvcModel _Model
-)
+_Dragonian_Lib_Svc_Add_Prefix(VocoderModel) _Dragonian_Lib_Svc_Add_Prefix(LoadVocoder)(
+	LPCWSTR VocoderPath,
+	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
+	)
 {
+	if (!VocoderPath)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"VocoderPath Could Not Be Null");
+		return nullptr;
+	}
+
+	if (!_Env)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Env Could Not Be Null");
+		return nullptr;
+	}
+
 	try
 	{
-		delete (SvcModelType)_Model;
+		return _Dragonian_Lib_Svc_Add_Prefix(VocoderModel)(
+			&DragonianLib::DragonianLibOrtEnv::RefOrtCachedModel(
+				VocoderPath,
+				**(std::shared_ptr<DragonianLib::DragonianLibOrtEnv>*)_Env
+			)
+			);
 	}
 	catch (std::exception& e)
 	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return nullptr;
+	}
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadModel)(
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model
+	)
+{
+	try
+	{
+		delete (DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
 		return 1;
 	}
 
 	return 0;
 }
 
-LibSvcVocoderModel LibSvcLoadVocoder(
-	LPCWSTR VocoderPath,
-	LibSvcEnv _Env
-)
-{
-	if (!VocoderPath)
-	{
-		RaiseError(L"VocoderPath Could Not Be Null");
-		return nullptr;
-	}
-
-	if (!_Env)
-	{
-		RaiseError(L"_Env Could Not Be Null");
-		return nullptr;
-	}
-
-	try
-	{
-		return LibSvcVocoderModel(
-			&DragonianLib::DragonianLibOrtEnv::RefOrtCachedModel(
-				VocoderPath,
-				*(DragonianLib::DragonianLibOrtEnv*)_Env
-			)
-		);
-	}
-	catch (std::exception& e)
-	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
-		return nullptr;
-	}
-}
-
-INT32 LibSvcUnloadCachedModel(
+INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadCachedModel)(
 	LPCWSTR ModelPath,
-	LibSvcEnv _Env
-)
+	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
+	)
 {
 	if (!ModelPath)
 	{
-		RaiseError(L"ModelPath Could Not Be Null");
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"ModelPath Could Not Be Null");
 		return 1;
 	}
 
 	if (!_Env)
 	{
-		RaiseError(L"_Env Could Not Be Null");
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Env Could Not Be Null");
 		return 1;
 	}
 
@@ -1424,53 +366,865 @@ INT32 LibSvcUnloadCachedModel(
 	{
 		DragonianLib::DragonianLibOrtEnv::UnRefOrtCachedModel(
 			ModelPath,
-			*(DragonianLib::DragonianLibOrtEnv*)_Env
+			**(std::shared_ptr<DragonianLib::DragonianLibOrtEnv>*)_Env
 		);
 	}
 	catch (std::exception& e)
 	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
 		return 1;
 	}
 	return 0;
 }
 
-void LibSvcClearCachedModel()
+void _Dragonian_Lib_Svc_Add_Prefix(ClearCachedModel)()
 {
 	DragonianLib::DragonianLibOrtEnv::ClearModelCache();
 }
 
-INT32 LibSvcReadAudio(
-	LPCWSTR _AudioPath,
-	INT32 _SamplingRate,
-	LibSvcFloatVector _Output
-)
+INT32 _Dragonian_Lib_Svc_Add_Prefix(SliceAudio)(
+	const _Dragonian_Lib_Svc_Add_Prefix(SlicerSettings)* _Setting,
+	const float* _Audio,
+	size_t _AudioSize,
+	size_t** _SlicePos,
+	size_t* _SlicePosSize
+	)
 {
+	if (!_Setting)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Setting Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Audio)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (_AudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SlicePos)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"SlicePos Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_SlicePosSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"SlicePosSize Could Not Be Null!");
+		return 1;
+	}
+
+	_D_Dragonian_Lib_Lib_Av_Codec_Space SlicerSettings SliSetting{
+		_Setting->SamplingRate,
+		_Setting->Threshold,
+		_Setting->MinLength,
+		_Setting->WindowLength,
+		_Setting->HopSize
+	};
+
 	try
 	{
-		*(DFloat32Vector*)(_Output) = _D_Dragonian_Lib_Lib_Av_Codec_Space AvCodec().DecodeFloat(
-			DragonianLib::WideStringToUTF8(_AudioPath).c_str(),
-			_SamplingRate
-		);
+		auto [_MyPos, _MySize] = _D_Dragonian_Lib_Lib_Av_Codec_Space SliceAudio(
+			DragonianLib::TemplateLibrary::Ranges(_Audio, _Audio + _AudioSize),
+			SliSetting
+		).Release();
+		*_SlicePos = _MyPos;
+		*_SlicePosSize = _MySize;
 	}
 	catch (std::exception& e)
 	{
-		RaiseError(DragonianLib::UTF8ToWideString(e.what()));
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(PreprocessInferenceData)(
+	const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Settings,
+	const float* _Audio,
+	size_t _AudioSize,
+	const size_t* _SlicePos,
+	size_t _SlicePosSize,
+	double _DbThreshold,
+	const wchar_t* _F0Method,
+	_Dragonian_Lib_Svc_Add_Prefix(InferenceData)* _OutputSlices,
+	size_t* _OutputSlicesSize
+	)
+{
+	if (!_Settings)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Settings Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Audio)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (_AudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SlicePos)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Slice Pos Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SlicePosSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Slice Pos Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_F0Method)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"F0 Method Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSlices)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Output Slices Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSlicesSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Output Slices Size Could Not Be Null!");
+		return 1;
+	}
+
+	*_OutputSlices = (_Dragonian_Lib_Svc_Add_Prefix(InferenceData))(new DragonianLib::SingingVoiceConversion::SingleAudio());
+	auto& Ret = *(DragonianLib::SingingVoiceConversion::SingleAudio*)(*_OutputSlices);
+	try
+	{
+		Ret = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::GetAudioSlice(
+			DragonianLib::TemplateLibrary::Ranges(_Audio, _Audio + _AudioSize),
+			DragonianLib::TemplateLibrary::Ranges(_SlicePos, _SlicePos + _SlicePosSize),
+			_Settings->SamplingRate,
+			_DbThreshold
+		);
+
+		_D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space SingingVoiceConversion::PreProcessAudio(
+			Ret,
+			{
+				_Settings->SamplingRate,
+				_Settings->HopSize,
+				_Settings->F0Bins,
+				_Settings->F0Max,
+				_Settings->F0Min,
+				_Settings->UserParameter,
+			},
+			_GDragonianLibSvcNullStrCheck(_F0Method),
+			{
+				_GDragonianLibSvcNullStrCheck(_Settings->ModelPath),
+				_Settings->Env
+			}
+		);
+
+		*_OutputSlicesSize = Ret.Slices.Size();
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(ReleaseInferenceData)(
+	_Dragonian_Lib_Svc_Add_Prefix(InferenceData) _Data
+	)
+{
+	try
+	{
+		delete (DragonianLib::SingingVoiceConversion::SingleAudio*)_Data;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+_Dragonian_Lib_Svc_Add_Prefix(Slice) _Dragonian_Lib_Svc_Add_Prefix(GetSlice)(
+	_Dragonian_Lib_Svc_Add_Prefix(InferenceData) _Data,
+	size_t _Index,
+	size_t* _NumFrames
+	)
+{
+	auto& _MyData = *(DragonianLib::SingingVoiceConversion::SingleAudio*)_Data;
+	if (_Index >= _MyData.Slices.Size())
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Index Out Of Range!");
+		return nullptr;
+	}
+	*_NumFrames = _MyData.Slices[_Index].F0.Size();
+	return (_Dragonian_Lib_Svc_Add_Prefix(Slice))(&_MyData.Slices[_Index]);
+}
+
+float* _Dragonian_Lib_Svc_Add_Prefix(GetAudio)(
+	_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice,
+	size_t* _AudioSize
+	)
+{
+	auto& _MySlice = *(DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice;
+	*_AudioSize = _MySlice.Audio.Size();
+	return _MySlice.Audio.Data();
+}
+
+float* _Dragonian_Lib_Svc_Add_Prefix(GetF0)(
+	_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+	)
+{
+	auto& _MySlice = *(DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice;
+	return _MySlice.F0.Data();
+}
+
+float* _Dragonian_Lib_Svc_Add_Prefix(GetVolume)(
+	_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+	)
+{
+	auto& _MySlice = *(DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice;
+	return _MySlice.Volume.Data();
+}
+
+_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Dragonian_Lib_Svc_Add_Prefix(GetSpeaker)(
+	_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+	)
+{
+	return (_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData))(&((DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice)->Speaker);
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(ReshapeSpeakerMixData)(
+	_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Speaker,
+	size_t _SpeakerCount,
+	size_t _NumFrame
+	)
+{
+	auto& _MySpeaker = *(decltype(DragonianLib::SingingVoiceConversion::SingleSlice::Speaker)*)_Speaker;
+	try
+	{
+		_MySpeaker.Resize(_SpeakerCount);
+		for (auto& _MyData : _MySpeaker)
+			_MyData.Resize(_NumFrame);
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+	return 0;
+}
+
+float* _Dragonian_Lib_Svc_Add_Prefix(GetSpeakerData)(
+	_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Speaker,
+	size_t _Index
+	)
+{
+	auto& _MySpeaker = *(decltype(DragonianLib::SingingVoiceConversion::SingleSlice::Speaker)*)_Speaker;
+	return _MySpeaker[_Index].Data();
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(Stft)(
+	const float* _Audio,
+	size_t _AudioSize,
+	INT32 _SamplingRate,
+	INT32 _Hopsize,
+	INT32 _MelBins,
+	float** _OutputMel,
+	size_t* _OutputMelSize
+	)
+{
+	if (!_Audio)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (_AudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"Audio Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_OutputMel)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"OutputMel Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputMelSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"OutputMelSize Could Not Be Null!");
+		return 1;
+	}
+
+	try
+	{
+		DragonianLib::TemplateLibrary::Vector<double> _InputAudio;
+		_InputAudio.Resize(_AudioSize);
+		for (size_t i = 0; i < _AudioSize; ++i)
+			_InputAudio[i] = _Audio[i];
+		auto [_MyMel, _MyMelSize] = DragonianLib::SingingVoiceConversion::GetMelOperator(_SamplingRate, _Hopsize, _MelBins)(_InputAudio);
+		*_OutputMelSize = _MyMel.Size();
+		*_OutputMel = _MyMel.Release().first;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
 		return 1;
 	}
 
 	return 0;
 }
 
-void LibSvcWriteAudioFile(
-	LibSvcFloatVector _PCMData,
-	LPCWSTR _OutputPath,
-	INT32 _SamplingRate
-)
+INT32 _Dragonian_Lib_Svc_Add_Prefix(InferSlice)(
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+	const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+	_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice,
+	size_t* _Process,
+	float** _Output,
+	size_t* _OutputSize
+	)
 {
-	_D_Dragonian_Lib_Lib_Av_Codec_Space WritePCMData(
-		_OutputPath,
-		*(DFloat32Vector*)(_PCMData),
-		_SamplingRate
-	);
+	
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Slice)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Slice Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_InferParams)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_InferParams Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Process)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Process Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_OutputSize Could Not Be Null!");
+		return 1;
+	}
+
+	const DragonianLib::SingingVoiceConversion::InferenceParams Param
+	{
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		_GDragonianLibSvcNullStrCheck(_InferParams->Sampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->ReflowSampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->F0Method),
+		*(std::shared_ptr<Ort::Session>*)_InferParams->VocoderModel,
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter
+	};
+
+	try
+	{
+		auto [_MyData, _MySize] = DragonianLib::TemplateLibrary::InterpResample<float>(
+			((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->SliceInference(
+				*(const DragonianLib::SingingVoiceConversion::SingleSlice*)(_Slice),
+				Param,
+				*_Process
+			),
+			((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->GetSamplingRate(),
+			((const DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice)->SamplingRate
+		).Release();
+		*_Output = _MyData;
+		*_OutputSize = _MySize;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(InferAudio)(
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+	const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+	const float* _Audio,
+	size_t _AudioSize,
+	long _AudioSamplingRate,
+	const wchar_t* _F0Method,
+	const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Settings,
+	float _SliceTime,
+	float _CrossFadeTime,
+	double _DbThreshold,
+	float** _Output,
+	size_t* _OutputSize
+	)
+{
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Audio)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (_AudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_InferParams)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_InferParams Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_F0Method)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_F0Method Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Settings)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Settings Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_OutputSize Could Not Be Null!");
+		return 1;
+	}
+
+	const DragonianLib::SingingVoiceConversion::InferenceParams Param
+	{
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		_GDragonianLibSvcNullStrCheck(_InferParams->Sampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->ReflowSampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->F0Method),
+		*(std::shared_ptr<Ort::Session>*)_InferParams->VocoderModel,
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter
+	};
+
+	auto [OutPutData, OutPutSize] = ((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->InferenceWithCrossFade(
+		DragonianLib::TemplateLibrary::Ranges(_Audio, _Audio + _AudioSize),
+		_AudioSamplingRate,
+		Param,
+		{ _CrossFadeTime, _SliceTime },
+		{ _AudioSamplingRate, _Settings->HopSize, _Settings->F0Bins, _Settings->F0Max, _Settings->F0Min, _Settings->UserParameter },
+		_GDragonianLibSvcNullStrCheck(_F0Method),
+		{ _GDragonianLibSvcNullStrCheck(_Settings->ModelPath), _Settings->Env },
+		_DbThreshold
+	).Release();
+	*_Output = OutPutData;
+	*_OutputSize = OutPutSize;
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(InferPCMData)(
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+	const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+	const float* _Audio,
+	size_t _AudioSize,
+	INT32 _InputSamplingRate,
+	float** _Output,
+	size_t* _OutputSize
+	)
+{
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Audio)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Null!");
+		return 1;
+	}
+
+	if (_AudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_InferParams)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_InferParams Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_OutputSize Could Not Be Null!");
+		return 1;
+	}
+
+	const DragonianLib::SingingVoiceConversion::InferenceParams Param
+	{
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		_GDragonianLibSvcNullStrCheck(_InferParams->Sampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->ReflowSampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->F0Method),
+		*(std::shared_ptr<Ort::Session>*)_InferParams->VocoderModel,
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter
+	};
+
+	try
+	{
+		auto InputData = DragonianLib::TemplateLibrary::Vector<float>(_Audio, _Audio + _AudioSize);
+		auto [_MyData, _MySize] = DragonianLib::TemplateLibrary::InterpResample<float>(
+			((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->InferPCMData(
+				InputData,
+				_InputSamplingRate,
+				Param
+			),
+			((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->GetSamplingRate(),
+			_InputSamplingRate
+		).Release();
+		*_Output = _MyData;
+		*_OutputSize = _MySize;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(ShallowDiffusionInference)(
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+	const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+	const float* _16KAudioHubert,
+	size_t _16KAudioSize,
+	const float* _Mel,
+	size_t _SrcMelSize,
+	size_t _MelSize,
+	const float* _SrcF0,
+	size_t _SrcF0Size,
+	const float* _SrcVolume,
+	size_t _SrcVolumeSize,
+	_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _SrcSpeakerMap,
+	size_t* _Process,
+	float** _Output,
+	size_t* _OutputSize
+	)
+{
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_16KAudioHubert)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_16KAudioHubert Could Not Be Null!");
+		return 1;
+	}
+
+	if (_16KAudioSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_16KAudioHubert Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_Mel)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Mel Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SrcMelSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Mel Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SrcF0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcF0 Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SrcF0Size == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcF0 Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SrcVolume)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcVolume Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SrcVolumeSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcVolume Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SrcSpeakerMap)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcSpeakerMap Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Process)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Process Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_OutputSize Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_InferParams)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_InferParams Could Not Be Null!");
+		return 1;
+	}
+
+	const DragonianLib::SingingVoiceConversion::InferenceParams Param
+	{
+		_InferParams->NoiseScale,
+		_InferParams->Seed,
+		_InferParams->SpeakerId,
+		_InferParams->SpkCount,
+		_InferParams->IndexRate,
+		_InferParams->ClusterRate,
+		_InferParams->DDSPNoiseScale,
+		_InferParams->Keys,
+		_InferParams->MeanWindowLength,
+		_InferParams->Pndm,
+		_InferParams->Step,
+		_InferParams->TBegin,
+		_InferParams->TEnd,
+		_GDragonianLibSvcNullStrCheck(_InferParams->Sampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->ReflowSampler),
+		_GDragonianLibSvcNullStrCheck(_InferParams->F0Method),
+		*(std::shared_ptr<Ort::Session>*)_InferParams->VocoderModel,
+		_InferParams->VocoderHopSize,
+		_InferParams->VocoderMelBins,
+		_InferParams->VocoderSamplingRate,
+		_InferParams->F0Bins,
+		_InferParams->F0Max,
+		_InferParams->F0Min,
+		_InferParams->F0ExtractorUserParameter
+	};
+
+	try
+	{
+		auto _16kAudio = DragonianLib::TemplateLibrary::Vector(_16KAudioHubert, _16KAudioHubert + _16KAudioSize);
+		std::pair<DragonianLib::TemplateLibrary::Vector<float>, int64_t> _MelData{ {_Mel, _Mel + _SrcMelSize}, _MelSize };
+		auto [_MyData, _MySize] = ((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->ShallowDiffusionInference(
+			_16kAudio,
+			Param,
+			_MelData,
+			{ _SrcF0, _SrcF0 + _SrcF0Size },
+			{ _SrcVolume, _SrcVolume + _SrcVolumeSize },
+			*(decltype(DragonianLib::SingingVoiceConversion::SingleSlice::Speaker)*)_SrcSpeakerMap,
+			*_Process,
+			_SrcSize
+		).Release();
+		*_Output = _MyData;
+		*_OutputSize = _MySize;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
+}
+
+INT32 _Dragonian_Lib_Svc_Add_Prefix(VocoderEnhance)(
+	_Dragonian_Lib_Svc_Add_Prefix(VocoderModel) _Model,
+	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env,
+	const float* _Mel,
+	size_t _SrcMelSize,
+	const float* _SrcF0,
+	size_t _SrcF0Size,
+	INT32 _VocoderMelBins,
+	float** _Output,
+	size_t* _OutputSize
+	)
+{
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_Mel)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Mel Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SrcMelSize == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Mel Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_SrcF0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcF0 Could Not Be Null!");
+		return 1;
+	}
+
+	if (_SrcF0Size == 0)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_SrcF0 Could Not Be Empty!");
+		return 1;
+	}
+
+	if (!_Output)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Output Could Not Be Null!");
+		return 1;
+	}
+
+	if (!_OutputSize)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_OutputSize Could Not Be Null!");
+		return 1;
+	}
+
+	auto Rf0 = DragonianLib::TemplateLibrary::Vector(_SrcF0, _SrcF0 + _SrcF0Size);
+	std::pair<DragonianLib::TemplateLibrary::Vector<float>, int64_t> MelTemp{ {_Mel, _Mel + _SrcMelSize}, _SrcMelSize / _VocoderMelBins };
+	if (Rf0.Size() != (size_t)MelTemp.second)
+		Rf0 = InterpFunc(Rf0, (long)Rf0.Size(), (long)MelTemp.second);
+
+	try
+	{
+		auto [_MyData, _MySize] = _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Space VocoderInfer(
+			MelTemp.first,
+			Rf0,
+			_VocoderMelBins,
+			MelTemp.second,
+			(*(std::shared_ptr<DragonianLib::DragonianLibOrtEnv>*)_Env)->GetMemoryInfo(),
+			*(std::shared_ptr<Ort::Session>*)_Model
+		).Release();
+		*_Output = _MyData;
+		*_OutputSize = _MySize;
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return 1;
+	}
+
+	return 0;
 }

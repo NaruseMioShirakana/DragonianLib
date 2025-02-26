@@ -50,12 +50,41 @@ public:
         unsigned ThreadCount_ = 0
     );
 
+    SingingVoiceConversion(
+        const std::wstring& HubertPath_,
+		const std::shared_ptr<DragonianLibOrtEnv>& Env_
+	);
+
+
+    /**
+     * @brief Performs inference with crossfade
+     * @param _Audio The audio data
+     * @param _SrcSamplingRate Source sampling rate
+     * @param _Params Inference parameters
+     * @param _Crossfade Crossfade parameters
+     * @param _F0Params F0 parameters
+     * @param _F0Method F0 extraction method
+     * @param _F0ExtractorLoadParameter F0 extractor user parameter
+     * @param _DbThreshold Threshold
+     * @return Inference result as a vector of floats (_SrcSamplingRate)
+     */
+    DragonianLibSTL::Vector<float> InferenceWithCrossFade(
+        const DragonianLibSTL::ConstantRanges<float>& _Audio,
+        long _SrcSamplingRate,
+        const InferenceParams& _Params,
+		const CrossFadeParams& _Crossfade,
+		const F0Extractor::F0ExtractorParams& _F0Params,
+		const std::wstring& _F0Method,
+		const F0Extractor::NetF0ExtractorSetting& _F0ExtractorLoadParameter,
+        double _DbThreshold
+    ) const;
+
     /**
      * @brief Performs inference on a single slice of audio
      * @param _Slice The audio slice
      * @param _Params Inference parameters
      * @param _Process Process size
-     * @return Inference result as a vector of floats
+     * @return Inference result as a vector of floats (Model.SamplingRate)
      */
     [[nodiscard]] virtual DragonianLibSTL::Vector<float> SliceInference(
         const SingleSlice& _Slice,
@@ -68,7 +97,7 @@ public:
      * @param _PCMData The PCM data
      * @param _SrcSamplingRate Source sampling rate
      * @param _Params Inference parameters
-     * @return Inference result as a vector of floats
+     * @return Inference result as a vector of floats (Model.SamplingRate)
      */
     [[nodiscard]] virtual DragonianLibSTL::Vector<float> InferPCMData(
         const DragonianLibSTL::Vector<float>& _PCMData,
@@ -86,7 +115,7 @@ public:
      * @param _SrcSpeakerMap Source speaker map
      * @param Process Process size
      * @param SrcSize Source size
-     * @return Inference result as a vector of floats
+     * @return Inference result as a vector of floats (Model.SamplingRate)
      */
     [[nodiscard]] virtual DragonianLibSTL::Vector<float> ShallowDiffusionInference(
         DragonianLibSTL::Vector<float>& _16KAudioHubert,
@@ -130,6 +159,13 @@ public:
     [[nodiscard]] static SingleAudio GetAudioSlice(
         const DragonianLibSTL::Vector<float>& _InputPCM,
         const DragonianLibSTL::Vector<size_t>& _SlicePos,
+        long _SamplingRate,
+        double _Threshold
+    );
+
+    [[nodiscard]] static SingleAudio GetAudioSlice(
+        const DragonianLibSTL::ConstantRanges<float>& _InputPCM,
+        const DragonianLibSTL::ConstantRanges<size_t>& _SlicePos,
         long _SamplingRate,
         double _Threshold
     );
@@ -202,6 +238,11 @@ public:
     virtual void NormMel(
         DragonianLibSTL::Vector<float>& MelSpec
     ) const;
+
+    void Tick(size_t Cur, size_t Total) const
+    {
+        ProgressCallbackFunction(Cur, Total);
+    }
 
 protected:
     TensorExtractor::TensorExtractor Preprocessor;

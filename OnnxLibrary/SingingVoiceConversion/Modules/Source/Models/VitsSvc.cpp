@@ -21,10 +21,65 @@ VitsSvc::VitsSvc(
 	ExecutionProviders ExecutionProvider_,
 	unsigned DeviceID_,
 	unsigned ThreadCount_
-) :
-	SingingVoiceConversion(_Hps.HubertPath, ExecutionProvider_, DeviceID_, ThreadCount_)
+) : SingingVoiceConversion(_Hps.HubertPath, ExecutionProvider_, DeviceID_, ThreadCount_)
 {
+	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
+	HopSize = std::max(_Hps.HopSize, 1);
+	HiddenUnitKDims = std::max(_Hps.HiddenUnitKDims, 1ll);
+	SpeakerCount = std::max(_Hps.SpeakerCount, 1ll);
+	EnableVolume = _Hps.EnableVolume;
+	EnableCharaMix = _Hps.EnableCharaMix;
+	VitsSvcVersion = _Hps.TensorExtractor;
 
+	ProgressCallbackFunction = _ProgressCallback;
+
+	if (!_Hps.Cluster.Type.empty())
+	{
+		ClusterCenterSize = _Hps.Cluster.ClusterCenterSize;
+		try
+		{
+			Cluster = Cluster::GetCluster(_Hps.Cluster.Type, _Hps.Cluster.Path, HiddenUnitKDims, ClusterCenterSize);
+			EnableCluster = true;
+		}
+		catch (std::exception& e)
+		{
+			LogWarn(UTF8ToWideString(e.what()));
+			EnableCluster = false;
+		}
+	}
+
+	try
+	{
+		LogInfo(L"[Info] loading VitsSvcModel Models");
+		VitsSvcModel = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.VitsSvc.VitsSvc.c_str(), *SessionOptions);
+		LogInfo(L"[Info] VitsSvcModel Models loaded");
+	}
+	catch (Ort::Exception& _exception)
+	{
+		_D_Dragonian_Lib_Throw_Exception(_exception.what());
+	}
+
+	if (VitsSvcModel->GetInputCount() == 4 && VitsSvcVersion != L"SoVits3.0")
+		VitsSvcVersion = L"SoVits2.0";
+
+	TensorExtractor::LibSvcTensorExtractor::Others _others_param;
+	_others_param.Memory = *MemoryInfo;
+	try
+	{
+		Preprocessor = GetTensorExtractor(VitsSvcVersion, 48000, ModelSamplingRate, HopSize, EnableCharaMix, EnableVolume, HiddenUnitKDims, SpeakerCount, _others_param);
+	}
+	catch (std::exception& e)
+	{
+		_D_Dragonian_Lib_Throw_Exception(e.what());
+	}
+}
+
+VitsSvc::VitsSvc(
+	const Hparams& _Hps,
+	const ProgressCallback& _ProgressCallback,
+	const std::shared_ptr<DragonianLibOrtEnv>& Env_
+) : SingingVoiceConversion(_Hps.HubertPath, Env_)
+{
 	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
 	HopSize = std::max(_Hps.HopSize, 1);
 	HiddenUnitKDims = std::max(_Hps.HiddenUnitKDims, 1ll);
@@ -213,10 +268,12 @@ DragonianLibSTL::Vector<float> VitsSvc::SliceInference(
 
 		const auto dstWavLen = (_Slice.OrgLen * int64_t(ModelSamplingRate)) / _Slice.SamplingRate;
 		VitsOutput.Resize(dstWavLen, 0.f);
+		ProgressCallbackFunction(++_Process, 0);
 		return VitsOutput;
 	}
 	//Mute clips
 	const auto len = size_t(_Slice.OrgLen * int64_t(ModelSamplingRate) / _Slice.SamplingRate);
+	ProgressCallbackFunction(++_Process, 0);
 	return { len, 0.f, TemplateLibrary::CPUAllocator() };
 }
 

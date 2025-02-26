@@ -20,11 +20,13 @@
 #pragma once
 #include "Libraries/DynLibExport.h"
 
+#define _Dragonian_Lib_Svc_Add_Prefix(Name) DragonianVoiceSvc##Name
+
 #ifdef __GNUC__
-#define LibSvcDeprecated __attribute__((deprecated))
+#define _Dragonian_Lib_Svc_Deprecated __attribute__((deprecated))
 #else
 #ifdef _MSC_VER
-#define LibSvcDeprecated __declspec(deprecated)
+#define _Dragonian_Lib_Svc_Deprecated __declspec(deprecated)
 #endif
 #endif
 #ifdef _WIN32
@@ -35,54 +37,34 @@ extern "C" {
 #endif
 
 #ifndef _WIN32
-	typedef signed char         INT8, * PINT8;
-	typedef signed short        INT16, * PINT16;
-	typedef signed int          INT32, * PINT32;
-	typedef signed long long      INT64, * PINT64;
-	typedef unsigned char       UINT8, * PUINT8;
-	typedef unsigned short      UINT16, * PUINT16;
-	typedef unsigned int        UINT32, * PUINT32;
-	typedef unsigned long long    UINT64, * PUINT64;
+	typedef signed char INT8, * PINT8;
+	typedef signed short INT16, * PINT16;
+	typedef signed int INT32, * PINT32;
+	typedef signed long long INT64, * PINT64;
+	typedef unsigned char UINT8, * PUINT8;
+	typedef unsigned short UINT16, * PUINT16;
+	typedef unsigned int UINT32, * PUINT32;
+	typedef unsigned long long UINT64, * PUINT64;
 	typedef wchar_t* NWPSTR, * LPWSTR, * PWSTR, * BSTR;
 	typedef const wchar_t* LPCWSTR;
 #endif
 
-	typedef void(*ProgCallback)(size_t cur, size_t total);			///< Progress callback function 
-	typedef struct ___LIBSVCAPIT1___* LibSvcFloatVector;			///< Vector<float>
-	typedef struct ___LIBSVCAPIT2___* LibSvcDoubleDimsFloatVector;	///< Vector<Vector<float>>
-	typedef struct ___LIBSVCAPIT3___* LibSvcInt16Vector;			///< Vector<int16_t>
-	typedef struct ___LIBSVCAPIT4___* LibSvcUInt64Vector;			///< Vector<size_t>
-	typedef struct ___LIBSVCAPIT5___* LibSvcMelType;				///< Pair<Vector<float>, int64_t>
-	typedef struct ___LIBSVCAPIT6___* LibSvcSliceType;				///< MoeVoiceStudioSvcSlice
-	typedef struct ___LIBSVCAPIT7___* LibSvcSlicesType;				///< Array Of Slice
-	typedef struct ___LIBSVCAPIT8___* LibSvcModel;					///< SharedPtr<OrtSession>
-	typedef struct ___LIBSVCAPIT9___* LibSvcVocoderModel;			///< SharedPtr<OrtSession>
-	typedef struct ___LIBSVCAPIT10___* LibSvcEnv;					///< SharedPtr<DragonianLibEnv>
-	typedef const ___LIBSVCAPIT1___* LibSvcCFloatVector;			///< const Vector<float>
-	typedef const ___LIBSVCAPIT2___* LibSvcCDoubleDimsFloatVector;	///< const Vector<Vector<float>>
-	typedef const ___LIBSVCAPIT3___* LibSvcCInt16Vector;			///< const Vector<int16_t>
-	typedef const ___LIBSVCAPIT4___* LibSvcCUInt64Vector;			///< const Vector<size_t>
-	typedef const ___LIBSVCAPIT5___* LibSvcCMelType;				///< const Pair<Vector<float>, int64_t>
-	typedef const ___LIBSVCAPIT6___* LibSvcCSliceType;				///< const MoeVoiceStudioSvcSlice
-	typedef const ___LIBSVCAPIT7___* LibSvcCSlicesType;				///< const Array Of Slice
-	typedef const ___LIBSVCAPIT10___* LibSvcCEnv;					///< const SharedPtr<DragonianLibEnv>
+	
+	typedef struct ____Dragonian_Lib_Svc_ApiT1___* _Dragonian_Lib_Svc_Add_Prefix(Model); ///< SingingVoiceConversion*
+	typedef struct ____Dragonian_Lib_Svc_ApiT2___* _Dragonian_Lib_Svc_Add_Prefix(VocoderModel); ///< SharedPtr<OrtSession>
+	typedef struct ____Dragonian_Lib_Svc_ApiT3___* _Dragonian_Lib_Svc_Add_Prefix(Env); ///< SharedPtr<DragonianLibEnv>
+	typedef struct ____Dragonian_Lib_Svc_ApiT4___* _Dragonian_Lib_Svc_Add_Prefix(InferenceData); ///< Inference Data
+	typedef struct ____Dragonian_Lib_Svc_ApiT5___* _Dragonian_Lib_Svc_Add_Prefix(Slice); ///< Slice
+	typedef struct ____Dragonian_Lib_Svc_ApiT6___* _Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData); ///< Speaker Mix Data
 
-	typedef void(*LibSvcLoggerFunction)(unsigned Level, const wchar_t* Message, const wchar_t* Id); ///< Logger function
+	typedef void(*_Dragonian_Lib_Svc_Add_Prefix(ProgressCallback))(size_t cur, size_t total); ///< Progress callback function 
+	typedef void(*_Dragonian_Lib_Svc_Add_Prefix(LoggerFunction))(unsigned Level, const wchar_t* Message, const wchar_t* Id); ///< Logger function
+	typedef void(*_Dragonian_Lib_Svc_Add_Prefix(Deleter))(void*); ///< Deleter function
 
 	///< Execution Providers(0:CPU, 1:CUDA, 2:DML)
-	enum LibSvcExecutionProviders
+	enum _Dragonian_Lib_Svc_Add_Prefix(ExecutionProvider)
 	{
-		CPU = 0,
-		CUDA = 1,
-		DML = 2
-	};
-
-	///< Model Type(0:Vits, 1:Diffusion, 2:Reflow)
-	enum LibSvcModelType
-	{
-		Vits,
-		Diffusion,
-		Reflow
+		_Dragonian_Lib_Svc_Add_Prefix(CPUEP) = 0, _Dragonian_Lib_Svc_Add_Prefix(CUDAEP) = 1, _Dragonian_Lib_Svc_Add_Prefix(DMLEP) = 2
 	};
 
 #ifdef _MSC_VER
@@ -92,10 +74,9 @@ extern "C" {
 #endif
 
 	/**
-	 * @struct LibSvcSlicerSettings
 	 * @brief Slicer settings
 	 */
-	struct LibSvcSlicerSettings
+	struct _Dragonian_Lib_Svc_Add_Prefix(SlicerSettings)
 	{
 		INT32 SamplingRate;	///< Sampling rate
 		double Threshold; ///< Mute Threshold
@@ -105,10 +86,9 @@ extern "C" {
 	};
 
 	/**
-	 * @struct LibSvcParams
 	 * @brief Inference parameters
 	 */
-	struct LibSvcParams
+	struct _Dragonian_Lib_Svc_Add_Prefix(Params)
 	{
 		float NoiseScale;	///< Noise scale factor					[0 ~ 10]
 		INT64 Seed;			///< Random seed						[INT64]
@@ -126,7 +106,7 @@ extern "C" {
 		LPWSTR Sampler;			///< Diffusion Sampler				["Pndm" "DDim"]
 		LPWSTR ReflowSampler;	///< Reflow Sampler					["Eular" "Rk4" "Heun" "Pecece"]
 		LPWSTR F0Method;					///< F0 Method			["Dio" "Harvest" "RMVPE" "FCPE"]
-		LibSvcVocoderModel VocoderModel;	///< Vocoder model
+		_Dragonian_Lib_Svc_Add_Prefix(VocoderModel) VocoderModel;	///< Vocoder model
 		INT32 VocoderHopSize;				///< Vocoder hop size
 		INT32 VocoderMelBins;		///< Vocoder mel bins
 		INT32 VocoderSamplingRate;		///< Vocoder sampling rate
@@ -138,10 +118,9 @@ extern "C" {
 	};
 
 	/**
-	 * @struct LibSvcF0ExtractorSetting
 	 * @brief F0 extractor settings
 	 */
-	struct LibSvcF0ExtractorSetting
+	struct _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)
 	{
 		INT32 SamplingRate;	///< Sampling rate
 		INT32 HopSize;	///< Hop size
@@ -149,15 +128,14 @@ extern "C" {
 		double F0Max;	///< F0 max
 		double F0Min;	///< F0 min
 		void* UserParameter;	///< User parameter
-		LibSvcEnv Env;	///< Environment
+		_Dragonian_Lib_Svc_Add_Prefix(Env) Env;	///< Environment
 		const wchar_t* ModelPath;	///< Model path
 	};
 
 	/**
-	 * @struct DiffusionSvcPaths
 	 * @brief Diffusion Svc paths
 	 */
-	struct DiffusionSvcPaths
+	struct _Dragonian_Lib_Svc_Add_Prefix(DiffusionSvcPaths)
 	{
 		LPWSTR Encoder;   ///< Encoder path
 		LPWSTR Denoise;   ///< Denoise path
@@ -170,10 +148,9 @@ extern "C" {
 	};
 
 	/**
-	 * @struct ReflowSvcPaths
 	 * @brief Reflow Svc paths
 	 */
-	struct ReflowSvcPaths
+	struct _Dragonian_Lib_Svc_Add_Prefix(ReflowSvcPaths)
 	{
 		LPWSTR Encoder;     ///< Encoder path
 		LPWSTR VelocityFn;  ///< Velocity function path
@@ -181,19 +158,17 @@ extern "C" {
 	};
 
 	/**
-	 * @struct VitsSvcPaths
 	 * @brief Vits Svc paths
 	 */
-	struct VitsSvcPaths
+	struct _Dragonian_Lib_Svc_Add_Prefix(VitsSvcPaths)
 	{
 		LPWSTR VitsSvc;  ///< Vits Svc path
 	};
 
 	/**
-	 * @struct LibSvcClusterConfig
 	 * @brief Cluster configuration
 	 */
-	struct LibSvcClusterConfig
+	struct _Dragonian_Lib_Svc_Add_Prefix(ClusterConfig)
 	{
 		INT64 ClusterCenterSize;  ///< Cluster center size
 		LPWSTR Path;              ///< Path
@@ -201,17 +176,16 @@ extern "C" {
 	};
 
 	/**
-	 * @struct LibSvcHparams
 	 * @brief Model parameters
 	 */
-	struct LibSvcHparams
+	struct _Dragonian_Lib_Svc_Add_Prefix(Hparams)
 	{
 		LPWSTR TensorExtractor;	 ///< Tensor extractor path
 		LPWSTR HubertPath;       ///< Hubert path
-		DiffusionSvcPaths DiffusionSvc;  ///< Diffusion Svc paths
-		VitsSvcPaths VitsSvc;            ///< Vits Svc paths
-		ReflowSvcPaths ReflowSvc;        ///< Reflow Svc paths
-		LibSvcClusterConfig Cluster;     ///< Cluster configuration
+		_Dragonian_Lib_Svc_Add_Prefix(DiffusionSvcPaths) DiffusionSvc;  ///< Diffusion Svc paths
+		_Dragonian_Lib_Svc_Add_Prefix(VitsSvcPaths) VitsSvc;            ///< Vits Svc paths
+		_Dragonian_Lib_Svc_Add_Prefix(ReflowSvcPaths) ReflowSvc;        ///< Reflow Svc paths
+		_Dragonian_Lib_Svc_Add_Prefix(ClusterConfig) Cluster;     ///< Cluster configuration
 
 		INT32 SamplingRate;  ///< Sampling rate
 
@@ -227,6 +201,8 @@ extern "C" {
 		INT64 MaxStep;  ///< Maximum step
 		float SpecMin;  ///< Spectrum minimum
 		float SpecMax;  ///< Spectrum maximum
+		float F0Min;	///< F0 min
+		float F0Max;	///< F0 max
 		float Scale;    ///< Scale
 	};
 
@@ -238,339 +214,50 @@ extern "C" {
 #endif
 
 	/**
-	 * @brief Initialize the LibSvcHparams structure
-	 * @param _Input LibSvcHparams structure
+	 * @brief Init the model parameters.
+	 * @param _Input The model parameters.
 	 */
-	LibSvcApi void InitLibSvcHparams(
-		LibSvcHparams* _Input
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(InitHparams)(
+		_Dragonian_Lib_Svc_Add_Prefix(Hparams)* _Input
 	);
 
 	/**
-	 * @brief Initialize the LibSvcParams structure
-	 * @param _Input LibSvcParams structure
+	 * @brief Initializes the inference parameters.
+	 * @param _Input The inference parameters.
 	 */
-	LibSvcApi void InitLibSvcParams(
-		LibSvcParams* _Input
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(InitInferenceParams)(
+		_Dragonian_Lib_Svc_Add_Prefix(Params)* _Input
 	);
 
 	/**
-	 * @brief Initialize the LibSvcF0ExtractorSetting structure
-	 * @param _Input LibSvcF0ExtractorSetting structure
+	 * @brief Initializes the F0 extractor settings.
+	 * @param _Input The F0 extractor settings.
 	 */
-	LibSvcApi void InitLibSvcF0ExtractorSetting(
-		LibSvcF0ExtractorSetting* _Input
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(InitF0ExtractorSetting)(
+		_Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Input
 	);
 
 	/**
-	 * @brief Initialize the LibSvcSlicerSettings structure
-	 * @param _Input LibSvcSlicerSettings structure
+	 * @brief Initializes the slicer settings.
+	 * @param _Input The slicer settings.
 	 */
-	LibSvcApi void InitLibSvcSlicerSettings(
-		LibSvcSlicerSettings* _Input
-	);
-
-	/**
-	 * @brief Get the buffer of the float vector
-	 * @param _Obj Float vector
-	 * @return Buffer of the float vector
-	 */
-	LibSvcApi float* LibSvcGetFloatVectorData(
-		LibSvcFloatVector _Obj
-	);
-
-	/**
-	 * @brief Get the size of the float vector
-	 * @param _Obj Float vector
-	 * @return Size of the float vector
-	 */
-	LibSvcApi size_t LibSvcGetFloatVectorSize(
-		LibSvcFloatVector _Obj
-	);
-
-	/**
-	 * @brief Allocate a float vector
-	 * @return A new float vector
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcAllocateFloatVector();
-
-	/**
-	 * @brief Release the float vector
-	 * @param _Obj Float vector
-	 */
-	LibSvcApi void LibSvcReleaseFloatVector(
-		LibSvcFloatVector _Obj
-	);
-
-	/**
-	 * @brief Insert _ObjB into _ObjA
-	 * @param _ObjA Inserted float vector
-	 * @param _ObjB Inserting float vector
-	 */
-	LibSvcApi void LibSvcInsertFloatVector(
-		LibSvcFloatVector _ObjA,
-		LibSvcFloatVector _ObjB
-	);
-
-	/**
-	 * @brief Get the float vector from the double-dimension float vector
-	 * @param _Obj Double-dimension float vector
-	 * @param _Index Index of the float vector
-	 * @return Float vector
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcGetDFloatVectorData(
-		LibSvcDoubleDimsFloatVector _Obj,
-		size_t _Index
-	);
-
-	/**
-	 * @brief Get the size of the double-dimension float vector
-	 * @param _Obj Double-dimension float vector
-	 * @return Size of the double-dimension float vector
-	 */
-	LibSvcApi size_t LibSvcGetDFloatVectorSize(
-		LibSvcDoubleDimsFloatVector _Obj
-	);
-
-	/**
-	 * @brief Allocate a new int16 vector
-	 * @return A new int16 vector
-	 */
-	LibSvcApi LibSvcInt16Vector LibSvcAllocateInt16Vector();
-
-	/**
-	 * @brief Release the int16 vector
-	 * @param _Obj The int16 vector to release
-	 */
-	LibSvcApi void LibSvcReleaseInt16Vector(
-		LibSvcInt16Vector _Obj
-	);
-
-	/**
-	 * @brief Set the length of the int16 vector
-	 * @param _Obj The int16 vector
-	 * @param _Size The new size of the vector
-	 */
-	LibSvcApi void LibSvcSetInt16VectorLength(
-		LibSvcInt16Vector _Obj,
-		size_t _Size
-	);
-
-	/**
-	 * @brief Insert one int16 vector into another
-	 * @param _ObjA The target int16 vector
-	 * @param _ObjB The int16 vector to insert
-	 */
-	LibSvcApi void LibSvcInsertInt16Vector(
-		LibSvcInt16Vector _ObjA,
-		LibSvcInt16Vector _ObjB
-	);
-
-	/**
-	 * @brief Get the data of the int16 vector
-	 * @param _Obj The int16 vector
-	 * @return Pointer to the data of the int16 vector
-	 */
-	LibSvcApi short* LibSvcGetInt16VectorData(
-		LibSvcInt16Vector _Obj
-	);
-
-	/**
-	 * @brief Get the size of the int16 vector
-	 * @param _Obj The int16 vector
-	 * @return Size of the int16 vector
-	 */
-	LibSvcApi size_t LibSvcGetInt16VectorSize(
-		LibSvcInt16Vector _Obj
-	);
-
-	/**
-	 * @brief Allocate a new uint64 vector
-	 * @return A new uint64 vector
-	 */
-	LibSvcApi LibSvcUInt64Vector LibSvcAllocateUInt64Vector();
-
-	/**
-	 * @brief Release the uint64 vector
-	 * @param _Obj The uint64 vector to release
-	 */
-	LibSvcApi void LibSvcReleaseUInt64Vector(
-		LibSvcUInt64Vector _Obj
-	);
-
-	/**
-	 * @brief Set the length of the uint64 vector
-	 * @param _Obj The uint64 vector
-	 * @param _Size The new size of the vector
-	 */
-	LibSvcApi void LibSvcSetUInt64VectorLength(
-		LibSvcUInt64Vector _Obj,
-		size_t _Size
-	);
-
-	/**
-	 * @brief Get the data of the uint64 vector
-	 * @param _Obj The uint64 vector
-	 * @return Pointer to the data of the uint64 vector
-	 */
-	LibSvcApi size_t* LibSvcGetUInt64VectorData(
-		LibSvcUInt64Vector _Obj
-	);
-
-	/**
-	 * @brief Get the size of the uint64 vector
-	 * @param _Obj The uint64 vector
-	 * @return Size of the uint64 vector
-	 */
-	LibSvcApi size_t LibSvcGetUInt64VectorSize(
-		LibSvcUInt64Vector _Obj
-	);
-
-	/**
-	 * @brief Allocate a new Mel type
-	 * @return A new Mel type
-	 */
-	LibSvcApi LibSvcMelType LibSvcAllocateMel();
-
-	/**
-	 * @brief Release the Mel type
-	 * @param _Obj The Mel type to release
-	 */
-	LibSvcApi void LibSvcReleaseMel(
-		LibSvcMelType _Obj
-	);
-
-	/**
-	 * @brief Get the data of the Mel type
-	 * @param _Obj The Mel type
-	 * @return Float vector containing the Mel data
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcGetMelData(
-		LibSvcMelType _Obj
-	);
-
-	/**
-	 * @brief Get the size of the Mel type
-	 * @param _Obj The Mel type
-	 * @return Size of the Mel type
-	 */
-	LibSvcApi INT64 LibSvcGetMelSize(
-		LibSvcMelType _Obj
-	);
-
-	/**
-	 * @brief Get the audio data from the slice type
-	 * @param _Obj The slice type
-	 * @return Float vector containing the audio data
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcGetAudio(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Get the F0 data from the slice type
-	 * @param _Obj The slice type
-	 * @return Float vector containing the F0 data
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcGetF0(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Get the volume data from the slice type
-	 * @param _Obj The slice type
-	 * @return Float vector containing the volume data
-	 */
-	LibSvcApi LibSvcFloatVector LibSvcGetVolume(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Get the speaker data from the slice type
-	 * @param _Obj The slice type
-	 * @return Double-dimension float vector containing the speaker data
-	 */
-	LibSvcApi LibSvcDoubleDimsFloatVector LibSvcGetSpeaker(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Get the source length from the slice type
-	 * @param _Obj The slice type
-	 * @return Source length
-	 */
-	LibSvcApi UINT64 LibSvcGetSrcLength(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Check if the slice type is not mute
-	 * @param _Obj The slice type
-	 * @return 1 if not mute, 0 otherwise
-	 */
-	LibSvcApi INT32 LibSvcGetIsNotMute(
-		LibSvcSliceType _Obj
-	);
-
-	/**
-	 * @brief Set the size of the speaker mix data
-	 * @param _Obj The slice type
-	 * @param _NSpeaker The number of speakers
-	 */
-	LibSvcApi void LibSvcSetSpeakerMixDataSize(
-		LibSvcSliceType _Obj,
-		size_t _NSpeaker
-	);
-
-	/**
-	 * @brief Allocate new slice data
-	 * @return New slice data
-	 */
-	LibSvcApi LibSvcSlicesType LibSvcAllocateSliceData();
-
-	/**
-	 * @brief Release the slice data
-	 * @param _Obj The slice data to release
-	 */
-	LibSvcApi void LibSvcReleaseSliceData(
-		LibSvcSlicesType _Obj
-	);
-
-	/**
-	 * @brief Get the audio path from the slice data
-	 * @param _Obj The slice data
-	 * @return Audio path as a BSTR
-	 */
-	LibSvcApi BSTR LibSvcGetAudioPath(
-		LibSvcSlicesType _Obj
-	);
-
-	/**
-	 * @brief Get a slice from the slice data
-	 * @param _Obj The slice data
-	 * @param _Index The index of the slice
-	 * @return The slice at the specified index
-	 */
-	LibSvcApi LibSvcSliceType LibSvcGetSlice(
-		LibSvcSlicesType _Obj,
-		size_t _Index
-	);
-
-	/**
-	 * @brief Get the count of slices in the slice data
-	 * @param _Obj The slice data
-	 * @return Count of slices
-	 */
-	LibSvcApi size_t LibSvcGetSliceCount(
-		LibSvcSlicesType _Obj
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(InitSlicerSettings)(
+		_Dragonian_Lib_Svc_Add_Prefix(SlicerSettings)* _Input
 	);
 
 	/******************************************Fun**********************************************/
 
 	/**
+	 * @brief Get the last error message.
+	 * @return The last error message. (Should be freed by _Dragonian_Lib_Svc_Add_Prefix(FreeString))
+	 */
+	_Dragonian_Lib_Svc_Api BSTR _Dragonian_Lib_Svc_Add_Prefix(GetLastError)();
+
+	/**
 	 * @brief Sets the global environment directory.
 	 * @param _Dir The directory path.
 	 */
-	LibSvcApi void LibSvcSetGlobalEnvDir(
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(SetGlobalEnvDir)(
 		LPCWSTR _Dir
 	);
 
@@ -578,7 +265,7 @@ extern "C" {
 	 * @brief Sets the logger ID.
 	 * @param _Id The logger ID.
 	 */
-	LibSvcApi void LibSvcSetLoggerId(
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerId)(
 		LPCWSTR _Id
 	);
 
@@ -586,7 +273,7 @@ extern "C" {
 	 * @brief Sets the logger level.
 	 * @param _Level The logger level.
 	 */
-	LibSvcApi void LibSvcSetLoggerLevel(
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerLevel)(
 		INT32 _Level
 	);
 
@@ -594,319 +281,229 @@ extern "C" {
 	 * @brief Sets the logger function.
 	 * @param _Logger The logger function.
 	 */
-	LibSvcApi void LibSvcSetLoggerFunction(
-		LibSvcLoggerFunction _Logger
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(SetLoggerFunction)(
+		_Dragonian_Lib_Svc_Add_Prefix(LoggerFunction) _Logger
 	);
 
 	/**
 	 * @brief Initializes the library.
 	 */
-	LibSvcApi void LibSvcInit();
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(Init)();
 
 	/**
 	 * @brief Frees a string.
 	 * @param _String The string to free.
 	 */
-	LibSvcApi void LibSvcFreeString(
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(FreeString)(
 		BSTR _String
 	);
 
 	/**
-	 * @brief Creates an environment.
-	 * @param ThreadCount The number of threads.
-	 * @param DeviceID The device ID.
-	 * @param Provider The provider.
-	 * @return The created environment.
+	 * @brief Frees data.
+	 * @param _Ptr The data to free.
 	 */
-	LibSvcApi LibSvcEnv LibSvcCreateEnv(
-		UINT32 ThreadCount,
-		UINT32 DeviceID,
-		UINT32 Provider
-	);
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(FreeData)(
+		void* _Ptr
+		);
 
 	/**
-	 * @brief Destroys an environment.
-	 * @param Env The environment to destroy.
-	 */
-	LibSvcApi void LibSvcDestoryEnv(
-		LibSvcEnv Env
-	);
-
-	/**
-	 * @brief Slices audio data (int16 version).
-	 * @param _Audio The audio data.
-	 * @param _Setting The slicer settings.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcSliceAudioI16(
-		LibSvcCInt16Vector _Audio,
-		const LibSvcSlicerSettings* _Setting,
-		LibSvcUInt64Vector _Output
-	);
-
-	/**
-	 * @brief Slices audio data (float version).
-	 * @param _Audio The audio data.
-	 * @param _Setting The slicer settings.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcSliceAudio(
-		LibSvcCFloatVector _Audio,
-		const LibSvcSlicerSettings* _Setting,
-		LibSvcUInt64Vector _Output
-	);
-
-	/**
-	 * @brief Preprocesses audio data (int16 version).
-	 * @param _Audio The audio data.
-	 * @param _SlicePos The slice positions.
-	 * @param _Settings The settings of the F0 extractor.
-	 * @param _Threshold The threshold.
-	 * @param _F0Method The F0 method.
-	 * @param _Output The output slices.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcPreprocessI16(
-		LibSvcCInt16Vector _Audio,
-		LibSvcCUInt64Vector _SlicePos,
-		const LibSvcF0ExtractorSetting* _Settings,
-		double _Threshold,
-		const wchar_t* _F0Method,
-		LibSvcSlicesType _Output
-	);
-
-	/**
-	 * @brief Preprocesses audio data (float version).
-	 * @param _Audio The audio data.
-	 * @param _SlicePos The slice positions.
-	 * @param _Settings The settings of the F0 extractor.
-	 * @param _Threshold The threshold.
-	 * @param _F0Method The F0 method.
-	 * @param _Output The output slices.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcPreprocess(
-		LibSvcCFloatVector _Audio,
-		LibSvcCUInt64Vector _SlicePos,
-		const LibSvcF0ExtractorSetting* _Settings,
-		double _Threshold,
-		const wchar_t* _F0Method,
-		LibSvcSlicesType _Output
-	);
-
-	/**
-	 * @brief Performs STFT on audio data (int16 version).
-	 * @param _Audio The audio data.
-	 * @param _SamplingRate The sampling rate.
-	 * @param _Hopsize The hop size.
-	 * @param _MelBins The number of mel bins.
-	 * @param _Output The output mel type.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcStftI16(
-		LibSvcCInt16Vector _Audio,
-		INT32 _SamplingRate,
-		INT32 _Hopsize,
-		INT32 _MelBins,
-		LibSvcMelType _Output
-	);
-
-	/**
-	 * @brief Performs STFT on audio data (float version).
-	 * @param _Audio The audio data.
-	 * @param _SamplingRate The sampling rate.
-	 * @param _Hopsize The hop size.
-	 * @param _MelBins The number of mel bins.
-	 * @param _Output The output mel type.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcStft(
-		LibSvcCFloatVector _Audio,
-		INT32 _SamplingRate,
-		INT32 _Hopsize,
-		INT32 _MelBins,
-		LibSvcMelType _Output
-	);
-
-	/**
-	 * @brief Infers a slice.
-	 * @param _Model The model.
-	 * @param _Slice The slice.
-	 * @param _InferParams The inference parameters.
-	 * @param _Process The process.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcInferSlice(
-		LibSvcModel _Model,
-		LibSvcCSliceType _Slice,
-		const LibSvcParams* _InferParams,
-		size_t* _Process,
-		LibSvcFloatVector _Output
-	);
-
-	/**
-	 * @brief Infers audio data.
-	 * @param _Model The model.
-	 * @param _Audio The audio slices.
-	 * @param _InferParams The inference parameters.
-	 * @param _SrcLength The source length.
-	 * @param _Process The process.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcInferAudio(
-		LibSvcModel _Model,
-		LibSvcSlicesType _Audio,
-		const LibSvcParams* _InferParams,
-		UINT64 _SrcLength,
-		size_t* _Process,
-		LibSvcFloatVector _Output
-	);
-
-	/**
-	 * @brief Infers PCM data.
-	 * @param _Model The model.
-	 * @param _PCMData The PCM data.
-	 * @param _InferParams The inference parameters.
-	 * @param SamplingRate The sampling rate.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcInferPCMData(
-		LibSvcModel _Model,
-		LibSvcCFloatVector _PCMData,
-		const LibSvcParams* _InferParams,
-		INT32 SamplingRate,
-		LibSvcFloatVector _Output
-	);
-
-	/**
-	 * @brief Infers shallow diffusion.
-	 * @param _Model The model.
-	 * @param _16KAudioHubert The 16K audio Hubert.
-	 * @param _Mel The mel type.
-	 * @param _SrcF0 The source F0.
-	 * @param _SrcVolume The source volume.
-	 * @param _SrcSpeakerMap The source speaker map.
-	 * @param _SrcSize The source size.
-	 * @param _InferParams The inference parameters.
-	 * @param _Process The process.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcShallowDiffusionInference(
-		LibSvcModel _Model,
-		LibSvcFloatVector _16KAudioHubert,
-		LibSvcMelType _Mel,
-		LibSvcCFloatVector _SrcF0,
-		LibSvcCFloatVector _SrcVolume,
-		LibSvcCDoubleDimsFloatVector _SrcSpeakerMap,
-		INT64 _SrcSize,
-		const LibSvcParams* _InferParams,
-		size_t* _Process,
-		LibSvcFloatVector _Output
-	);
-
-	/**
-	 * @brief Vocoder Enhance.
-	 * @param _Model Vocoder model.
-	 * @param _Env The environment.
-	 * @param _Mel The mel type.
-	 * @param _F0 The F0.
-	 * @param _VocoderMelBins The vocoder mel bins.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcVocoderEnhance(
-		LibSvcVocoderModel _Model,
-		LibSvcEnv _Env,
-		LibSvcMelType _Mel,
-		LibSvcCFloatVector _F0,
-		INT32 _VocoderMelBins,
-		LibSvcFloatVector _Output
-	);
-
-	/**
-	 * @brief Loads a model.
-	 * @param _T The model type.
-	 * @param _Config The model configuration.
-	 * @param _ProgressCallback The progress callback.
-	 * @param _ExecutionProvider The execution provider.
+	 * @brief Create an environment.
+	 * @param _ThreadCount The thread count.
 	 * @param _DeviceID The device ID.
-	 * @param _ThreadCount The number of threads.
-	 * @return The loaded model.
+	 * @param _Provider The execution provider.
+	 * @return The environment.
 	 */
-	LibSvcApi LibSvcModel LibSvcLoadModel(
-		UINT32 _T,
-		const LibSvcHparams* _Config,
-		ProgCallback _ProgressCallback,
-		UINT32 _ExecutionProvider,
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(Env) _Dragonian_Lib_Svc_Add_Prefix(CreateEnv)(
+		UINT32 _ThreadCount,
 		UINT32 _DeviceID,
-		UINT32 _ThreadCount
+		_Dragonian_Lib_Svc_Add_Prefix(ExecutionProvider) _Provider
 	);
 
 	/**
-	 * @brief Unloads a model.
-	 * @param _Model The model to unload.
-	 * @return Status code.
+	 * @brief Destory an environment.
+	 * @param _Env The environment.
 	 */
-	LibSvcApi INT32 LibSvcUnloadModel(
-		LibSvcModel _Model
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(DestoryEnv)(
+		_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
 	);
 
 	/**
-	 * @brief Loads a vocoder model.
+	 * @brief Load a model.
+	 * @param _Config The model parameters.
+	 * @param _Env The environment.
+	 * @param _ProgressCallback The progress callback.
+	 * @return The model.
+	 */
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(Model) _Dragonian_Lib_Svc_Add_Prefix(LoadModel)(
+		const _Dragonian_Lib_Svc_Add_Prefix(Hparams)* _Config,
+		_Dragonian_Lib_Svc_Add_Prefix(Env) _Env,
+		_Dragonian_Lib_Svc_Add_Prefix(ProgressCallback) _ProgressCallback
+		);
+
+	/**
+	 * @brief Load a vocoder model.
 	 * @param VocoderPath The vocoder path.
 	 * @param _Env The environment.
-	 * @return The loaded vocoder model.
+	 * @return The vocoder model.
 	 */
-	LibSvcApi LibSvcVocoderModel LibSvcLoadVocoder(
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(VocoderModel) _Dragonian_Lib_Svc_Add_Prefix(LoadVocoder)(
 		LPCWSTR VocoderPath,
-		LibSvcEnv _Env
-	);
+		_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
+		);
 
 	/**
-	 * @brief Unloads a ort model.
+	 * @brief Unload a model.
+	 * @param _Model The model.
+	 */
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadModel)(
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model
+		);
+
+	/**
+	 * @brief Unload a cached model.
 	 * @param ModelPath The model path.
 	 * @param _Env The environment.
-	 * @return Status code.
 	 */
-	LibSvcApi INT32 LibSvcUnloadCachedModel(
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadCachedModel)(
 		LPCWSTR ModelPath,
-		LibSvcEnv _Env
-	);
+		_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
+		);
 
 	/**
-	 * @brief Unloads all cached models.
+	 * @brief Clear all cached model.
 	 */
-	LibSvcApi void LibSvcClearCachedModel();
+	_Dragonian_Lib_Svc_Api void _Dragonian_Lib_Svc_Add_Prefix(ClearCachedModel)();
 
-	/**
-	 * @brief Reads audio data from a file.
-	 * @param _AudioPath The audio file path.
-	 * @param _SamplingRate The sampling rate.
-	 * @param _Output The output vector.
-	 * @return Status code.
-	 */
-	LibSvcApi INT32 LibSvcReadAudio(
-		LPCWSTR _AudioPath,
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(SliceAudio)(
+		const _Dragonian_Lib_Svc_Add_Prefix(SlicerSettings)* _Setting,
+		const float* _Audio,
+		size_t _AudioSize,
+		size_t** _SlicePos,
+		size_t* _SlicePosSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(PreprocessInferenceData)(
+		const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Settings,
+		const float* _Audio,
+		size_t _AudioSize,
+		const size_t* _SlicePos,
+		size_t _SlicePosSize,
+		double _DbThreshold,
+		const wchar_t* _F0Method,
+		_Dragonian_Lib_Svc_Add_Prefix(InferenceData)* _OutputSlices,
+		size_t* _OutputSlicesSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(ReleaseInferenceData)(
+		_Dragonian_Lib_Svc_Add_Prefix(InferenceData) _Data
+		);
+
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(Slice) _Dragonian_Lib_Svc_Add_Prefix(GetSlice)(
+		_Dragonian_Lib_Svc_Add_Prefix(InferenceData) _Data,
+		size_t _Index,
+		size_t* _NumFrames
+		);
+
+	_Dragonian_Lib_Svc_Api float* _Dragonian_Lib_Svc_Add_Prefix(GetAudio)(
+		_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice,
+		size_t* _AudioSize
+		);
+
+	_Dragonian_Lib_Svc_Api float* _Dragonian_Lib_Svc_Add_Prefix(GetF0)(
+		_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+		);
+
+	_Dragonian_Lib_Svc_Api float* _Dragonian_Lib_Svc_Add_Prefix(GetVolume)(
+		_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+		);
+
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Dragonian_Lib_Svc_Add_Prefix(GetSpeaker)(
+		_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(ReshapeSpeakerMixData)(
+		_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Speaker,
+		size_t _SpeakerCount,
+		size_t _NumFrame
+		);
+
+	_Dragonian_Lib_Svc_Api float* _Dragonian_Lib_Svc_Add_Prefix(GetSpeakerData)(
+		_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _Speaker,
+		size_t _Index
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(Stft)(
+		const float* _Audio,
+		size_t _AudioSize,
 		INT32 _SamplingRate,
-		LibSvcFloatVector _Output
+		INT32 _Hopsize,
+		INT32 _MelBins,
+		float** _OutputMel,
+		size_t* _OutputMelSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(InferSlice)(
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+		const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+		_Dragonian_Lib_Svc_Add_Prefix(Slice) _Slice,
+		size_t* _Process,
+		float** _Output,
+		size_t* _OutputSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(InferAudio)(
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+		const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+		const float* _Audio,
+		size_t _AudioSize,
+		long _AudioSamplingRate,
+		const wchar_t* _F0Method,
+		const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorSetting)* _Settings,
+		float _SliceTime,
+		float _CrossFadeTime,
+		double _DbThreshold,
+		float** _Output,
+		size_t* _OutputSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(InferPCMData)(
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+		const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+		const float* _Audio,
+		size_t _AudioSize,
+		INT32 _InputSamplingRate,
+		float** _Output,
+		size_t* _OutputSize
+		);
+
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(ShallowDiffusionInference)(
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+		const _Dragonian_Lib_Svc_Add_Prefix(Params)* _InferParams,
+		const float* _16KAudioHubert,
+		size_t _16KAudioSize,
+		const float* _Mel,
+		size_t _SrcMelSize,
+		size_t _MelSize,
+		const float* _SrcF0,
+		size_t _SrcF0Size,
+		const float* _SrcVolume,
+		size_t _SrcVolumeSize,
+		_Dragonian_Lib_Svc_Add_Prefix(SpeakerMixData) _SrcSpeakerMap,
+		size_t* _Process,
+		float** _Output,
+		size_t* _OutputSize
 	);
 
-	/**
-	 * @brief Writes audio data to a file.
-	 * @param _PCMData The PCM data.
-	 * @param _OutputPath The output file path.
-	 * @param _SamplingRate The sampling rate.
-	 */
-	LibSvcApi void LibSvcWriteAudioFile(
-		LibSvcFloatVector _PCMData,
-		LPCWSTR _OutputPath,
-		INT32 _SamplingRate
+	_Dragonian_Lib_Svc_Api INT32 _Dragonian_Lib_Svc_Add_Prefix(VocoderEnhance)(
+		_Dragonian_Lib_Svc_Add_Prefix(VocoderModel) _Model,
+		_Dragonian_Lib_Svc_Add_Prefix(Env) _Env,
+		const float* _Mel,
+		size_t _SrcMelSize,
+		const float* _SrcF0,
+		size_t _SrcF0Size,
+		INT32 _VocoderMelBins,
+		float** _Output,
+		size_t* _OutputSize
 	);
 
 #ifdef __cplusplus

@@ -60,26 +60,6 @@ public:
 	}
 };
 
-_D_Dragonian_Lib_Template_Library_Space_End
-
-_D_Dragonian_Lib_Space_Begin
-
-enum class Device
-{
-	CPU = 0,
-	CUDA,
-	HIP,
-	DIRECTX,
-	CUSTOM
-};
-
-static inline size_t NopID = size_t(-1);
-
-namespace DragonianLibSTL
-{
-	using namespace _D_Dragonian_Lib_Namespace TemplateLibrary;
-}
-
 template <typename _Type>
 class ConstantRanges
 {
@@ -87,6 +67,8 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges() = delete;
 	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges(const _Type* _Begin, const _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const { return _MyBegin; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
@@ -107,6 +89,8 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges() = delete;
 	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges(_Type* _Begin, _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const { return _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const { return _MyBegin; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
@@ -141,7 +125,7 @@ public:
 			_MyBegin[i] = _Right[i];
 		return *this;
 	}
-	
+
 	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const _Type2& _Right)
 	{
@@ -168,7 +152,7 @@ public:
 	bool operator==(const NumberRangesIterator& _Right) const { return _MyValue == _Right._MyValue; }
 	bool operator!=(const NumberRangesIterator& _Right) const { return _MyValue != _Right._MyValue; }
 	bool operator<(const NumberRangesIterator& _Right) const { return _MyStep > 0 ? (_MyValue < _Right._MyValue) : (_MyValue > _Right._MyValue); }
-	
+
 private:
 	_Type _MyValue;
 	_Type _MyStep;
@@ -291,6 +275,26 @@ template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticVa
 decltype(auto) Ranges(_Type _End)
 {
 	return NumberRanges<_Type>(_Type(0), _End, _End > _Type(0) ? _Type(1) : _Type(-1));
+}
+
+_D_Dragonian_Lib_Template_Library_Space_End
+
+_D_Dragonian_Lib_Space_Begin
+
+enum class Device
+{
+	CPU = 0,
+	CUDA,
+	HIP,
+	DIRECTX,
+	CUSTOM
+};
+
+static inline size_t NopID = size_t(-1);
+
+namespace DragonianLibSTL
+{
+	using namespace _D_Dragonian_Lib_Namespace TemplateLibrary;
 }
 
 _D_Dragonian_Lib_Space_End

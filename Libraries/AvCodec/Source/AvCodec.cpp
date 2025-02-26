@@ -522,4 +522,42 @@ DragonianLibSTL::Vector<size_t> AvCodec::SliceAudio(
 	return SlicePos;
 }
 
+DragonianLibSTL::Vector<size_t> AvCodec::SliceAudio(
+	const TemplateLibrary::ConstantRanges<float>& PcmData,
+	const SlicerSettings& SlicerSettings
+)
+{
+	const auto MinSamples = size_t(SlicerSettings.MinLength) * SlicerSettings.SamplingRate;
+	if (PcmData.Size() < MinSamples)
+		return { 0, PcmData.Size() };
+
+	DragonianLibSTL::Vector<unsigned long long> SlicePos;
+	SlicePos.EmplaceBack(0);
+	auto TotalCount = static_cast<ptrdiff_t>(PcmData.Size() - SlicerSettings.WindowLength);
+
+	ptrdiff_t LastPos = 0;
+	bool LastIsVocalPart = CalculateDB(PcmData.Begin(), PcmData.Begin() + SlicerSettings.WindowLength) > SlicerSettings.Threshold;
+	for (ptrdiff_t Pos = SlicerSettings.HopSize; Pos < TotalCount; Pos += SlicerSettings.HopSize)
+	{
+		const auto DB = CalculateDB(
+			PcmData.Begin() + Pos,
+			PcmData.Begin() + Pos + SlicerSettings.WindowLength
+		);
+		const auto IsVocalPart = DB > SlicerSettings.Threshold;
+
+		if (Pos - LastPos < ptrdiff_t(MinSamples))
+			continue;
+
+		if ((IsVocalPart && !LastIsVocalPart) || (!IsVocalPart && LastIsVocalPart))
+		{
+			SlicePos.EmplaceBack(Pos + SlicerSettings.HopSize / 2);
+			LastPos = Pos;
+		}
+		LastIsVocalPart = IsVocalPart;
+	}
+
+	SlicePos.EmplaceBack(PcmData.Size());
+	return SlicePos;
+}
+
 _D_Dragonian_Lib_Space_End

@@ -1,10 +1,10 @@
 ﻿#pragma once
 #ifdef DRAGONIANLIB_IMPORT
-#define LibSvcApi __declspec(dllimport)
+#define _Dragonian_Lib_Svc_Api __declspec(dllimport)
 #else
 #ifdef DRAGONIANLIB_EXPORT
-#define LibSvcApi __declspec(dllexport)
+#define _Dragonian_Lib_Svc_Api __declspec(dllexport)
 #else
-#define LibSvcApi
+#define _Dragonian_Lib_Svc_Api
 #endif
 #endif

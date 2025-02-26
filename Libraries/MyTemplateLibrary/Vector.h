@@ -336,6 +336,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
 		_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
 }
 
+constexpr struct VectorViewPlaceholder {} TypeVectorView;
+
 //using Type_ = float;
 template <typename Type_, Device Device_ = Device::CPU>
 class Vector
@@ -442,6 +444,14 @@ public:
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyLast;
         *_Block = nullptr;
+    }
+
+    Vector(VectorViewPlaceholder, Pointer _Block, SizeType _Size)
+    {
+        _MyOwner = false;
+        _MyFirst = _Block;
+        _MyLast = _MyFirst + _Size;
+        _MyEnd = _MyLast;
     }
 
     static Vector CreateView(Pointer _Block, SizeType _Size, Allocator _Alloc)
@@ -1465,6 +1475,19 @@ _D_Dragonian_Lib_Constexpr_Force_Inline void Resample(
 template<typename TypeOutput, typename TypeInput>
 _D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
     const Vector<TypeInput>& Data,
+    long SrcSamplingRate,
+    long DstSamplingRate,
+    TypeOutput Div
+)
+{
+    Vector<TypeOutput> Output(CalculateResampledSize(Data.Size(), (double)SrcSamplingRate, (double)DstSamplingRate));
+    Resample(Data.Data(), Data.Size(), Output.Data(), Output.Size(), Div);
+    return Output;
+}
+
+template<typename TypeOutput, typename TypeInput>
+_D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> InterpResample(
+    const ConstantRanges<TypeInput>& Data,
     long SrcSamplingRate,
     long DstSamplingRate,
     TypeOutput Div

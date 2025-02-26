@@ -11,6 +11,15 @@ LibSvcModule::LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigne
 	SessionOptions = OrtApiEnv->GetSessionOptions();
 }
 
+LibSvcModule::LibSvcModule(const std::shared_ptr<DragonianLibOrtEnv>& Env_) :
+	OrtApiEnv(Env_)
+{
+	ModelExecutionProvider = static_cast<ExecutionProviders>(Env_->GetCurProvider());
+	OnnxEnv = OrtApiEnv->GetEnv();
+	MemoryInfo = OrtApiEnv->GetMemoryInfo();
+	SessionOptions = OrtApiEnv->GetSessionOptions();
+}
+
 LibSvcModule::~LibSvcModule()
 {
 	OnnxEnv = nullptr;

@@ -46,6 +46,12 @@ public:
         unsigned ThreadCount_ = 0
     );
 
+    DiffusionSvc(
+        const Hparams& _Hps,
+        const ProgressCallback& _ProgressCallback,
+        const std::shared_ptr<DragonianLibOrtEnv>& Env_
+    );
+
     /**
      * @brief Destructor
      */

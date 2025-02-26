@@ -288,6 +288,8 @@ public:
      */
     LibSvcModule(const ExecutionProviders& ExecutionProvider_, unsigned DeviceID_, unsigned ThreadCount_ = 0);
 
+    LibSvcModule(const std::shared_ptr<DragonianLibOrtEnv>& Env_);
+
     /**
      * @brief Destructor for LibSvcModule
      */

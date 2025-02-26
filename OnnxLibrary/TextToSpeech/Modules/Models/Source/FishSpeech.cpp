@@ -257,7 +257,7 @@ Llama::PromptTensor Llama::EncodeTextTokens(
 	for (Int64 Batch = 0; Batch < BatchSize; ++Batch)
 	{
 		const auto PromptsPointer = Prompts.Data() + Batch * PromptsPerBatch;
-		Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
+		TemplateLibrary::Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = TemplateLibrary::Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
 	}
 
 	return { std::move(Prompts), PromptsShape };
@@ -305,7 +305,7 @@ void Llama::EncodeVQTokens(
 				AllPrompt.EmplaceBack(_MyAssistantId);
 				AllPrompt.EmplaceBack(_MyVoiceId);
 				const auto VQPromptPointer = VQPromptTokens.Data() + Batch * VQPromptCountPerBatch;
-				for (const auto Index : Ranges(VQPromptPointer, VQPromptPointer + VQPromptShape[2]))
+				for (const auto Index : TemplateLibrary::Ranges(VQPromptPointer, VQPromptPointer + VQPromptShape[2]))
 					AllPrompt.EmplaceBack(Index); //TODO
 				AllPrompt.EmplaceBack(_MyEndId);
 			}
@@ -320,14 +320,14 @@ void Llama::EncodeVQTokens(
 		for (Int64 Batch = 0; Batch < BatchSize; ++Batch)
 		{
 			const auto PromptsPointer = Prompts.Data() + Batch * PromptsPerBatch;
-			Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
+			TemplateLibrary::Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = TemplateLibrary::Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
 
 			const auto VQPromptPointer = VQPromptTokens.Data() + Batch * VQPromptCountPerBatch;
 			//values[0, encoded.vq_mask_tokens] = vq_parts[0] + tokenizer.semantic_begin_id
 			{
 				const auto VQBegin = PromptsPointer + OffsetVQ;
 				const auto VQEnd = VQBegin + VQPromptShape[2];
-				for (auto& i : Ranges(VQBegin, VQEnd))
+				for (auto& i : TemplateLibrary::Ranges(VQBegin, VQEnd))
 					i += _MySemanticBeginId;
 			}
 
@@ -338,7 +338,7 @@ void Llama::EncodeVQTokens(
 				const auto CurrentVoicePartEnd = CurrentVoicePartBegin + VQPromptShape[2];
 				const auto CurrentVQBegin = VQPromptPointer + Codebook * VQPromptShape[2];
 				const auto CurrentVQEnd = CurrentVQBegin + VQPromptShape[2];
-				Ranges(CurrentVoicePartBegin, CurrentVoicePartEnd) = Ranges(CurrentVQBegin, CurrentVQEnd);
+				TemplateLibrary::Ranges(CurrentVoicePartBegin, CurrentVoicePartEnd) = TemplateLibrary::Ranges(CurrentVQBegin, CurrentVQEnd);
 			}
 		}
 
@@ -386,7 +386,7 @@ Llama::PromptTensor Llama::EncodeSystemPrompts(Int64 BatchSize)
 	for (Int64 Batch = 0; Batch < BatchSize; ++Batch)
 	{
 		const auto PromptsPointer = Prompts.Data() + Batch * PromptsPerBatch;
-		Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
+		TemplateLibrary::Ranges(PromptsPointer, PromptsPointer + PromptsShape[2]) = TemplateLibrary::Ranges(AllPrompt.Data() + Batch * PromptsShape[2], AllPrompt.Data() + (Batch + 1) * PromptsShape[2]).C();
 	}
 
 	return { std::move(Prompts), PromptsShape };

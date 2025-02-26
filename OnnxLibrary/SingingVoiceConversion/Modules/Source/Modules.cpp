@@ -3,7 +3,6 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-bool KernelSetup = false;
 std::unordered_map<std::wstring, FunctionTransform::Mel*> MelOperators;
 
 FunctionTransform::Mel& GetMelOperator(

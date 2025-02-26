@@ -1,7 +1,4 @@
 ﻿#include "TensorLib/Include/Base/Tensor/Functional.h"
-#include "TensorLib/Include/Base/Module/Convolution.h"
-#include "TensorLib/Include/Base/Module/Embedding.h"
-#include "TensorLib/Include/Base/Module/Linear.h"
 #include <iostream>
 
 auto MyLastTime = std::chrono::high_resolution_clock::now();
@@ -15,7 +12,7 @@ void ShowProgressBar(size_t progress) {
 	std::cout.flush();
 	auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - MyLastTime).count();
 	MyLastTime = std::chrono::high_resolution_clock::now();
-	std::cout << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
+	std::cout << "[Speed: " << 6000.0f / static_cast<float>(TimeUsed) << " it/s] ";
 	std::cout << "[";
 	for (int i = 0; i < barWidth; ++i) {
 		if (i < pos) std::cout << "=";
@@ -23,6 +20,7 @@ void ShowProgressBar(size_t progress) {
 		else std::cout << " ";
 	}
 	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
+	MyLastTime = std::chrono::high_resolution_clock::now();
 }
 
 void ProgressCb(size_t a, size_t b)
@@ -31,57 +29,6 @@ void ProgressCb(size_t a, size_t b)
 		TotalStep = b;
 	ShowProgressBar(a);
 }
-
-class MyModule : public DragonianLib::Graph::Module
-{
-public:
-	MyModule() : Module(nullptr, L"MyModule"),
-		DragonianLibRegisterLayer(_List),
-		DragonianLibRegisterLayer(_Seq)
-	{
-		using emb = DragonianLib::Graph::Embedding<float, DragonianLib::Device::CPU>;
-		using linear = DragonianLib::Graph::Linear<float, DragonianLib::Device::CPU>;
-		using conv1d = DragonianLib::Graph::Conv1D<float, DragonianLib::Device::CPU>;
-		_List.Append(
-			DragonianLibLayerItem(
-				emb,
-				DragonianLib::Graph::EmbeddingParam{ 1919, 810 }
-			)
-		);
-		_List.Append(
-			DragonianLibLayerItem(
-				linear,
-				DragonianLib::Graph::LinearParam{ 514, 114 }
-			)
-		);
-		_List.Append(
-			DragonianLibLayerItem(
-				conv1d,
-				DragonianLib::Graph::Conv1DParam{ 114, 514, 9 }
-			)
-		);
-	}
-private:
-	DragonianLib::Graph::ModuleList _List;
-	DragonianLib::Graph::Sequential _Seq;
-};
-
-struct Integer
-{
-	int i = 0;
-	operator std::string() const { return std::to_string(i); }
-};
-
-template <typename T>
-std::enable_if_t<std::is_same_v<T, Integer>, std::string> DragonianLibCvtToString(const T& t)
-{
-	return std::to_string(t.i);
-}
-
-struct my_struct
-{
-	int ccc = 0;
-};
 
 template <typename Fn>
 void WithTimer(const Fn& fn)
@@ -92,26 +39,99 @@ void WithTimer(const Fn& fn)
 	std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
-#include "OnnxLibrary/SingingVoiceConversion/Modules/Header/Models/VitsSvc.hpp"
-#include "OnnxLibrary/TextToSpeech/Modules/Models/Header/FishSpeech.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Api/header/NativeApi.h"	
 #include "Libraries/AvCodec/AvCodec.h"
 
 int main()
 {
-	using namespace DragonianLib;
+	auto Env = DragonianVoiceSvcCreateEnv(8, 0, DragonianVoiceSvcDMLEP);
+	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
+	std::wstring ModelPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\NaruseMioShirakana\NaruseMioShirakana_RVC.onnx)";
+	std::wstring F0ModelPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\F0Predictor\RMVPE.onnx)";
+	std::wstring VecModelPath = LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)";
+	std::wstring ModelType = L"RVC";
+	DragonianVoiceSvcHparams Hparams{
+			ModelType.data(),
+			VecModelPath.data(),
+			{},
+			{ModelPath.data()},
+			{},
+			{},
+			40000,
+			320,
+			768,
+			1,
+			false,
+			false,
+			false,
+			128,
+			0,
+			1000,
+			-12,
+			2,
+			65.f,
+			1100.f,
+			1000.f
+	};
+	auto Model = DragonianVoiceSvcLoadModel(
+		&Hparams,
+		Env,
+		ProgressCb
+	);
+	
+	auto Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
+		R"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)",
+		44100
+	);
 
-	auto Tmp = Functional::Arange(0, 1000000, 1).EvalMove();
-	auto tensor = Tmp.View(5, 20, -1);
-	WithTimer([&]
-		{
-			tensor += tensor.Clone();
-			tensor.Eval();
-		});
-	std::cout << tensor;
+	DragonianVoiceSvcF0ExtractorSetting F0Setting{
+		44100,
+		320,
+		256,
+		1100.0,
+		50.0,
+		nullptr,
+		Env,
+		F0ModelPath.data()
+	};
 
-	return 0;
+	float* OutputAudio = nullptr;
+	size_t OutputAudioSize = 0;
 
-	TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });
+	DragonianVoiceSvcParams Params;
+	DragonianVoiceSvcInitInferenceParams(&Params);
+	Params.VocoderModel = DragonianVoiceSvcLoadVocoder(
+		VocoderPath.data(),
+		Env
+	);
+	Params.Keys = -8;
+
+	MyLastTime = std::chrono::high_resolution_clock::now();
+	DragonianVoiceSvcInferAudio(
+		Model,
+		&Params,
+		Audio.Data(),
+		Audio.Size(),
+		44100,
+		L"Rmvpe",
+		&F0Setting,
+		5,
+		1,
+		-60.,
+		&OutputAudio,
+		&OutputAudioSize
+	);
+
+	DragonianLib::AvCodec::WritePCMData(
+		(LR"(D:/VSGIT/MoeSS - Release/Testdata/OutPut-PCM-aaaa.wav)"),
+		{ OutputAudio, OutputAudio + OutputAudioSize },
+		44100
+	);
+
+	DragonianVoiceSvcFreeData(OutputAudio);
+	DragonianVoiceSvcDestoryEnv(Env);
+
+	/*TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });
 
 	auto VQ = TemplateLibrary::Vector<TextToSpeech::Llama::RefPrompt>{ {TemplateLibrary::Arange(8 * 4ll, 8 * 8ll), { 123,456,789 }} };
 
@@ -209,5 +229,5 @@ int main()
 		(LR"(D:/VSGIT/MoeSS - Release/Testdata/OutPut-PCM-aaaa.wav)"),
 		Output,
 		40000
-	);
+	);*/
 }

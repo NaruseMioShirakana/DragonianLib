@@ -20,10 +20,76 @@ ReflowSvc::ReflowSvc(
 	ExecutionProviders ExecutionProvider_,
 	unsigned DeviceID_,
 	unsigned ThreadCount_
-) :
-	SingingVoiceConversion(_Hps.HubertPath, ExecutionProvider_, DeviceID_, ThreadCount_)
+) : SingingVoiceConversion(_Hps.HubertPath, ExecutionProvider_, DeviceID_, ThreadCount_)
 {
+	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
+	MelBins = std::max(_Hps.MelBins, 1ll);
+	HopSize = std::max(_Hps.HopSize, 1);
+	HiddenUnitKDims = std::max(_Hps.HiddenUnitKDims, 1ll);
+	SpeakerCount = std::max(_Hps.SpeakerCount, 1ll);
+	EnableVolume = _Hps.EnableVolume;
+	EnableCharaMix = _Hps.EnableCharaMix;
+	ReflowSvcVersion = _Hps.TensorExtractor;
+	SpecMax = _Hps.SpecMax;
+	SpecMin = _Hps.SpecMin;
+	MaxStep = std::max(_Hps.MaxStep, 1ll);
+	Scale = _Hps.Scale;
+	VaeMode = _Hps.VaeMode;
+	F0Min = _Hps.F0Min;
+	F0Max = _Hps.F0Max;
 
+	ProgressCallbackFunction = _ProgressCallback;
+
+	if (!_Hps.Cluster.Type.empty())
+	{
+		ClusterCenterSize = _Hps.Cluster.ClusterCenterSize;
+		try
+		{
+			Cluster = Cluster::GetCluster(_Hps.Cluster.Type, _Hps.Cluster.Path, HiddenUnitKDims, ClusterCenterSize);
+			EnableCluster = true;
+		}
+		catch (std::exception& e)
+		{
+			LogWarn(UTF8ToWideString(e.what()));
+			EnableCluster = false;
+		}
+	}
+
+	//LoadModels
+	try
+	{
+		LogInfo(L"Loading ReflowSvc Models");
+
+		PreEncoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.Encoder.c_str(), *SessionOptions);
+		VelocityFunction = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.VelocityFn.c_str(), *SessionOptions);
+		PostDecoder = std::make_shared<Ort::Session>(*OnnxEnv, _Hps.ReflowSvc.After.c_str(), *SessionOptions);
+
+		LogInfo(L"ReflowSvc Models loaded");
+	}
+	catch (Ort::Exception& _exception)
+	{
+		_D_Dragonian_Lib_Throw_Exception(_exception.what());
+	}
+
+	TensorExtractor::LibSvcTensorExtractor::Others _others_param;
+	_others_param.Memory = *MemoryInfo;
+
+	try
+	{
+		Preprocessor = GetTensorExtractor(ReflowSvcVersion, 48000, ModelSamplingRate, HopSize, EnableCharaMix, EnableVolume, HiddenUnitKDims, SpeakerCount, _others_param);
+	}
+	catch (std::exception& e)
+	{
+		_D_Dragonian_Lib_Throw_Exception(e.what());
+	}
+}
+
+ReflowSvc::ReflowSvc(
+	const Hparams& _Hps,
+	const ProgressCallback& _ProgressCallback,
+	const std::shared_ptr<DragonianLibOrtEnv>& Env_
+) : SingingVoiceConversion(_Hps.HubertPath, Env_)
+{
 	ModelSamplingRate = std::max(_Hps.SamplingRate, 2000l);
 	MelBins = std::max(_Hps.MelBins, 1ll);
 	HopSize = std::max(_Hps.HopSize, 1);
