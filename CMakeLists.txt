@@ -17,15 +17,15 @@ option(DRAGONIANLIB_CUDA								"cuda backend"									OFF)
 option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
 option(DRAGONIANLIB_VULKAN								"vk backend"									OFF)
 
-option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				ON)
+option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				OFF)
 option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		ON)
-option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					ON)
-option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			ON)
+option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					OFF)
+option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			OFF)
 
-option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				ON)
-option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		ON)
-option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					ON)
-option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			ON)
+option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				OFF)
+option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		OFF)
+option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					OFF)
+option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			OFF)
 
 option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				OFF)
 option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		OFF)
@@ -33,7 +33,7 @@ option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				O
 option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			OFF)
 
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
-option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
+option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								ON)
 option(DRAGONIANLIB_BUILD_DEMO							"build demo"									ON)
 
 set(DRAGONIANLIB_ONNXRUNTIME OFF)

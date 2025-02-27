@@ -88,80 +88,93 @@ namespace AvCodec
 	class AvCodec
 	{
 	public:
-		AvCodec();
+		AvCodec() = default;
 		~AvCodec();
 		AvCodec(const AvCodec&) = delete;
 		AvCodec(AvCodec&&) = delete;
 		AvCodec operator=(const AvCodec&) = delete;
 		AvCodec operator=(AvCodec&&) = delete;
 
+		enum PCMFormat {
+			PCM_FORMAT_NONE = -1,
+			PCM_FORMAT_UINT8,				///< unsigned 8 bits
+			PCM_FORMAT_INT16,				///< signed 16 bits
+			PCM_FORMAT_INT32,				///< signed 32 bits
+			PCM_FORMAT_FLOAT32,				///< float
+			PCM_FORMAT_FLOAT64,				///< double
+
+			PCM_FORMAT_UINT8_PLANAR,        ///< unsigned 8 bits, planar
+			PCM_FORMAT_INT16_PLANAR,        ///< signed 16 bits, planar
+			PCM_FORMAT_INT32_PLANAR,        ///< signed 32 bits, planar
+			PCM_FORMAT_FLOAT32_PLANAR,      ///< float, planar
+			PCM_FORMAT_FLOAT64_PLANAR,      ///< double, planar
+			PCM_FORMAT_INT64,				///< signed 64 bits
+			PCM_FORMAT_INT64_PLANAR,        ///< signed 64 bits, planar
+
+			PCM_FORMAT_NB					///< Number of sample formats. DO NOT USE if linking dynamically
+		};
+
 		/**
 		 * @brief Decode an audio file
 		 * @param AudioPath Path to the audio file
-		 * @param OutSamplingRate Sampling rate of the output audio
-		 * @param OutChannels Channels of the output audio
-		 * @param OutFloat Output audio is float
-		 * @param OutPlanar Output audio is planar
+		 * @param OutputSamplingRate Sampling rate of the output audio
+		 * @param OutputFormat Format of the output audio
+		 * @param OutputStero Whether the output audio is stereo
 		 * @return Raw PCM data
 		 */
 		DragonianLibSTL::Vector<unsigned char> Decode(
-			const char* AudioPath,
-			int OutSamplingRate,
-			int OutChannels = 1,
-			bool OutFloat = false,
-			bool OutPlanar = false
+			const std::wstring& AudioPath,
+			int OutputSamplingRate,
+			PCMFormat OutputFormat = PCM_FORMAT_FLOAT32,
+			bool OutputStero = false
 		);
 
 		/**
 		 * @brief Decode an audio file
 		 * @param AudioPath Path to the audio file
-		 * @param OutSamplingRate Sampling rate of the output audio
-		 * @param OutChannels Channels of the output audio
-		 * @param OutPlanar Output audio is planar
+		 * @param OutputSamplingRate Sampling rate of the output audio
+		 * @param OutputStero Whether the output audio is stereo
+		 * @param OutputPlanar Whether the output audio is planar
 		 * @return Float PCM data
 		 */
 		DragonianLibSTL::Vector<float> DecodeFloat(
-			const char* AudioPath,
-			int OutSamplingRate,
-			int OutChannels = 1,
-			bool OutPlanar = false
+			const std::wstring& AudioPath,
+			int OutputSamplingRate,
+			bool OutputStero = false,
+			bool OutputPlanar = false
 		);
 
 		/**
 		 * @brief Decode an audio file
 		 * @param AudioPath Path to the audio file
-		 * @param OutSamplingRate Sampling rate of the output audio
-		 * @param OutChannels Channels of the output audio
-		 * @param OutPlanar Output audio is planar
+		 * @param OutputSamplingRate Sampling rate of the output audio
+		 * @param OutputStero Whether the output audio is stereo
+		 * @param OutputPlanar Whether the output audio is planar
 		 * @return Signed 16-bit PCM data
 		 */
 		DragonianLibSTL::Vector<int16_t> DecodeSigned16(
-			const char* AudioPath,
-			int OutSamplingRate,
-			int OutChannels = 1,
-			bool OutPlanar = false
+			const std::wstring& AudioPath,
+			int OutputSamplingRate,
+			bool OutputStero = false,
+			bool OutputPlanar = false
 		);
 
 		/**
 		 * @brief Encode an audio file
-		 * @param OutPutPath Path to the output audio file
-		 * @param PcmData Raw PCM data
-		 * @param SrcSamplingRate Sampling rate of the input audio
-		 * @param OutSamplingRate Sampling rate of the output audio
-		 * @param SrcChannels Channels of the input audio
-		 * @param OutChannels Channels of the output audio
-		 * @param IsFloat Input audio is float
-		 * @param IsPlanar Input audio is planar
+		 * @param OutputPath Path to the output audio file
+		 * @param PCMData Raw PCM data
+		 * @param SamplingRate Sampling rate of the input audio
+		 * @param PCMType Type of the input audio
+		 * @param EncoderFormatID ID of the encoder format
+		 * @param IsStero Whether the input audio is stereo
 		 */
 		void Encode(
-			const char* OutPutPath,
-			const DragonianLibSTL::Vector<unsigned char>& PcmData,
-			int SrcSamplingRate,
-			int OutSamplingRate,
-			int SrcChannels,
-			int OutChannels = 1,
-			bool IsFloat = false,
-			bool IsPlanar = false
+			const std::wstring& OutputPath,
+			const DragonianLibSTL::ConstantRanges<Byte>& PCMData,
+			int SamplingRate,
+			PCMFormat PCMType = PCM_FORMAT_FLOAT32,
+			int EncoderFormatID = 0,
+			bool IsStero = false
 		);
 
 		// Release the encoder/decoder
@@ -172,10 +185,12 @@ namespace AvCodec
 
 	private:
 		AVFrame* InFrame = nullptr; // Input frame
+		AVFrame* OutFrame = nullptr; // Input frame
 		SwrContext* SwrContext = nullptr; // Resampling context
 		AVCodecContext* AvCodecContext = nullptr; // Codec context
 		AVFormatContext* AvFormatContext = nullptr; // Format context
 		AVPacket* Packet = nullptr; // Packet
+		bool InputMode = false;
 		uint8_t* OutBuffer[8] = { nullptr , nullptr , nullptr , nullptr , nullptr , nullptr , nullptr , nullptr }; // Output buffer
 	};
 
@@ -208,72 +223,18 @@ namespace AvCodec
 
 	/**
 	 * @brief Write PCM data to a file
-	 * @param OutPutPath Path to the output file
-	 * @param PcmData PCM data
+	 * @param OutputPath Path to the output file
+	 * @param PCMData PCM data
 	 * @param SamplingRate Sampling rate
-	 * @param Channels Channels
-	 * @param IsFloat Data is float format
-	 * @param IsPlanar Data is planar
+	 * @param DataFormat Data format
+	 * @param IsStero Whether the data is stereo
 	 */
 	void WritePCMData(
-		const wchar_t* OutPutPath,
-		const DragonianLibSTL::Vector<unsigned char>& PcmData,
+		const std::wstring& OutputPath,
+		const TemplateLibrary::ConstantRanges<Byte>& PCMData,
 		int SamplingRate,
-		int Channels = 1,
-		bool IsFloat = false,
-		bool IsPlanar = false
-	);
-
-	/**
-	 * @brief Write float PCM data to a file
-	 * @param OutPutPath Path to the output file
-	 * @param PcmData PCM data
-	 * @param SamplingRate Sampling rate
-	 * @param Channels Channels
-	 * @param IsPlanar Data is planar
-	 */
-	void WritePCMData(
-		const wchar_t* OutPutPath,
-		const DragonianLibSTL::Vector<float>& PcmData,
-		int SamplingRate,
-		int Channels = 1,
-		bool IsPlanar = false
-	);
-
-	/**
-	 * @brief Write signed 16-bit PCM data to a file
-	 * @param OutPutPath Path to the output file
-	 * @param PcmData PCM data
-	 * @param SamplingRate Sampling rate
-	 * @param Channels Channels
-	 * @param IsPlanar Data is planar
-	 */
-	void WritePCMData(
-		const wchar_t* OutPutPath,
-		const DragonianLibSTL::Vector<int16_t>& PcmData,
-		int SamplingRate,
-		int Channels = 1,
-		bool IsPlanar = false
-	);
-
-	/**
-	 * @brief Write PCM data to a file
-	 * @param OutPutPath Path to the output file
-	 * @param PcmData PCM data
-	 * @param BufferSize Buffer size
-	 * @param SamplingRate Sampling rate
-	 * @param Channels Channels
-	 * @param IsFloat Data is float format
-	 * @param IsPlanar Data is planar
-	 */
-	void WritePCMData(
-		const wchar_t* OutPutPath,
-		const unsigned char* PcmData,
-		size_t BufferSize,
-		int SamplingRate,
-		int Channels = 1,
-		bool IsFloat = false,
-		bool IsPlanar = false
+		AvCodec::PCMFormat DataFormat = AvCodec::PCM_FORMAT_FLOAT32,
+		bool IsStero = false
 	);
 
 	/**

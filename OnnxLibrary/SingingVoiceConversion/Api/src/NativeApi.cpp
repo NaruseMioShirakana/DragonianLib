@@ -774,7 +774,7 @@ INT32 _Dragonian_Lib_Svc_Add_Prefix(InferSlice)(
 				*_Process
 			),
 			((DragonianLib::SingingVoiceConversion::SingingVoiceConversion*)_Model)->GetSamplingRate(),
-			((const DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice)->SamplingRate
+			static_cast<long>(((const DragonianLib::SingingVoiceConversion::SingleSlice*)_Slice)->SamplingRate)
 		).Release();
 		*_Output = _MyData;
 		*_OutputSize = _MySize;
@@ -1134,7 +1134,7 @@ INT32 _Dragonian_Lib_Svc_Add_Prefix(ShallowDiffusionInference)(
 			{ _SrcVolume, _SrcVolume + _SrcVolumeSize },
 			*(decltype(DragonianLib::SingingVoiceConversion::SingleSlice::Speaker)*)_SrcSpeakerMap,
 			*_Process,
-			_SrcSize
+			0
 		).Release();
 		*_Output = _MyData;
 		*_OutputSize = _MySize;

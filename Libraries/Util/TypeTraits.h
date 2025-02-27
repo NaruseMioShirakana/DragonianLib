@@ -742,4 +742,99 @@ concept IsType = _D_Dragonian_Lib_Type_Traits_Namespace SameImpl<_Type1, _Type2>
 template <typename _Type1, typename... _Type>
 concept IsAnyType = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<_Type1, _Type...>;
 
+template <typename _Type>
+concept CouldIndex = requires(_Type & _Val)
+{
+	{ _Val[0] };
+};
+
+template <typename _Type>
+concept HasFrontIncrement = requires(_Type & _Val)
+{
+	{ ++_Val } -> IsType<_Type&>;
+};
+template <typename _Type>
+concept HasBackIncrement = requires(_Type & _Val)
+{
+	{ _Val++ } -> IsType<_Type>;
+};
+template <typename _Type>
+concept HasFrontDecrement = requires(_Type & _Val)
+{
+	{ --_Val } -> IsType<_Type&>;
+};
+template <typename _Type>
+concept HasBackDecrement = requires(_Type & _Val)
+{
+	{ _Val-- } -> IsType<_Type>;
+};
+
+template <typename _Type>
+concept HasIntegerAddition = requires(_Type & _Val)
+{
+	{ _Val + 1 } -> IsType<_Type>;
+};
+template <typename _Type>
+concept HasIntegerSubtraction = requires(_Type & _Val)
+{
+	{ _Val - 1 } -> IsType<_Type>;
+};
+template <typename _Type>
+concept HasInplaceIntegerAddition = requires(_Type & _Val)
+{
+	{ _Val += 1 } -> IsType<_Type&>;
+};
+template <typename _Type>
+concept HasInplaceIntegerSubtraction = requires(_Type & _Val)
+{
+	{ _Val -= 1 } -> IsType<_Type&>;
+};
+
+template <typename _Type>
+concept HasMemberOperator = requires(_Type & _Val)
+{
+	{ _Val.operator->() };
+};
+template <typename _Type>
+concept HasUnrefOperator = requires(_Type & _Val)
+{
+	{ *_Val };
+};
+
+template <typename _Type>
+concept HasLessOperator = requires(_Type & _Val)
+{
+	{ _Val < _Val } -> IsType<bool>;
+};
+template <typename _Type>
+concept HasEqualOperator = requires(_Type & _Val)
+{
+	{ _Val == _Val } -> IsType<bool>;
+};
+
+template <typename _Type>
+concept IsPointerLike = HasMemberOperator<_Type> && HasUnrefOperator<_Type> && HasFrontIncrement<_Type> && HasBackIncrement<_Type> && HasFrontDecrement<_Type> && HasBackDecrement<_Type> && HasIntegerAddition<_Type> && HasIntegerSubtraction<_Type> && HasInplaceIntegerAddition<_Type> && HasInplaceIntegerSubtraction<_Type> && CouldIndex<_Type> && HasLessOperator<_Type> && HasEqualOperator<_Type>;
+template <typename _Type>
+concept IsIterator = HasUnrefOperator<_Type> && HasFrontIncrement<_Type> && HasLessOperator<_Type> && HasEqualOperator<_Type>;
+template <typename _Type>
+concept IsRandomAccessIterator = IsPointerLike<_Type>;
+
+template <typename _Type>
+concept HasLRange = requires(_Type & _Val)
+{
+	{ _Val.begin() } -> IsIterator;
+	{ _Val.end() } -> IsIterator;
+	{ _Val.end() } -> IsType<decltype(_Val.begin())>;
+};
+template <typename _Type>
+concept HasHRange = requires(_Type & _Val)
+{
+	{ _Val.Begin() } -> IsIterator;
+	{ _Val.End() } -> IsIterator;
+	{ _Val.End() } -> IsType<decltype(_Val.Begin())>;
+};
+template <typename _Type>
+concept HasRange = HasLRange<_Type> || HasHRange<_Type>;
+
+
 _D_Dragonian_Lib_Type_Traits_Namespace_End

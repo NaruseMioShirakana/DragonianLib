@@ -11,6 +11,7 @@ public:
 	static constexpr size_t _MyRank = _Rank;
 	static_assert(_MyRank > 0, "The rank of the array must be greater than 0.");
 	using ArrayType = _ValueType[_Rank];
+
 	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType* _Right)
 	{
 		for (size_t i = 0; i < _Rank; ++i)

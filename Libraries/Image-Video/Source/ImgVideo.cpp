@@ -18,8 +18,22 @@
 #endif
 #include "Libraries/Base.h"
 
-_D_Dragonian_Lib_Image_Video_Header
 #ifdef _WIN32
+#define _D_Dragonian_Lib_Image_Video_W32 1
+#else
+#define _D_Dragonian_Lib_Image_Video_W32 0
+#endif
+
+#ifndef DRAGONIANLIB_EXPORT
+#define _D_Dragonian_Lib_Image_Video_Static 1
+#else
+#define _D_Dragonian_Lib_Image_Video_Static 0
+#endif
+
+
+_D_Dragonian_Lib_Image_Video_Header
+
+#if _D_Dragonian_Lib_Image_Video_W32 + _D_Dragonian_Lib_Image_Video_Static == 2
 
 void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
@@ -608,7 +622,6 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 }
 
 #else
-#error GDIPLUS is not supported on this platform.
 #endif
 
 void Image::Transpose(size_t scale)

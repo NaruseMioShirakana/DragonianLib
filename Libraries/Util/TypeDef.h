@@ -98,6 +98,29 @@ namespace TypeDef
 		static_assert(sizeof...(_RSize) == 0, "Rank must be equal to the number of sizes");
 		using Type = _Type[_Size];
 	};
+
+	enum class BuiltInTypes
+	{
+		None,
+		Int8,
+		Int16,
+		Int32,
+		Int64,
+		UInt8,
+		UInt16,
+		UInt32,
+		UInt64,
+		Float8,
+		BFloat16,
+		Float16,
+		Float32,
+		Float64,
+		Complex32,
+		Complex64,
+		Byte,
+		LPVoid,
+		CPVoid
+	};
 }
 
 template <typename _Type, size_t _Rank>

@@ -178,4 +178,132 @@ FileGuard& FileGuard::operator<<(const std::wstring& _Str)
 	return *this;
 }
 
+FILE* FileGuard::Release()
+{
+	auto _File = file_;
+	file_ = nullptr;
+	return _File;
+}
+
+IOStream::~IOStream()
+{
+	_Tidy();
+}
+
+IOStream::IOStream(IOStream&& _Right) noexcept
+{
+	_MyFile = _Right._MyFile;
+	_MyBuffer = _Right._MyBuffer;
+	_MyBufferEnd = _Right._MyBufferEnd;
+	_MyIter = _Right._MyIter;
+	_Right._MyFile = nullptr;
+	_Right._MyBuffer = nullptr;
+	_Right._MyBufferEnd = nullptr;
+	_Right._MyIter = nullptr;
+}
+
+IOStream& IOStream::operator=(IOStream&& _Right) noexcept
+{
+	_MyFile = _Right._MyFile;
+	_MyBuffer = _Right._MyBuffer;
+	_MyBufferEnd = _Right._MyBufferEnd;
+	_MyIter = _Right._MyIter;
+	_Right._MyFile = nullptr;
+	_Right._MyBuffer = nullptr;
+	_Right._MyBufferEnd = nullptr;
+	_Right._MyIter = nullptr;
+	return *this;
+}
+
+void IOStream::_Tidy()
+{
+	if (_MyFile)
+		fclose(_MyFile);
+	delete[] _MyBuffer;
+
+	_MyFile = nullptr;
+	_MyBuffer = nullptr;
+	_MyBufferEnd = nullptr;
+	_MyIter = nullptr;
+}
+
+IOStream::IOStream(const std::wstring& _Path, const std::wstring& _Mode)
+{
+#ifdef _WIN32
+	if (_wfopen_s(&_MyFile, _Path.c_str(), _Mode.c_str()))
+		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
+#else
+	_MyFile = _wfopen(_Path.c_str(), _Mode.c_str());
+	if (!_MyFile)
+		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
+#endif
+}
+
+IOStream::IOStream(FILE* _FileStream) : _MyFile(_FileStream) {}
+
+IOStream::IOStream(size_t _BufferSize)
+{
+	_MyBuffer = new Byte[_BufferSize];
+	_MyBufferEnd = _MyBuffer + _BufferSize;
+	_MyIter = _MyBuffer;
+}
+
+FILE* IOStream::ReleaseFile() noexcept
+{
+	auto _File = _MyFile;
+	_MyFile = nullptr;
+	return _File;
+}
+
+Byte* IOStream::ReleaseBuffer() noexcept
+{
+	auto _Buffer = _MyBuffer;
+	_MyBuffer = nullptr;
+	_MyBufferEnd = nullptr;
+	_MyIter = nullptr;
+	return _Buffer;
+}
+
+size_t IOStream::Tell() const noexcept
+{
+	if (_MyFile)
+		return ftell(_MyFile);
+	return Capacity();
+}
+
+void IOStream::Seek(long _Offset, int _Origin) noexcept
+{
+	if (_MyFile)
+		fseek(_MyFile, _Offset, _Origin);
+	else
+	{
+		auto Temp = _MyIter;
+		if (_Origin == SEEK_SET)
+			_MyIter = _MyBuffer + _Offset;
+		else if (_Origin == SEEK_CUR)
+			_MyIter += _Offset;
+		else if (_Origin == SEEK_END)
+			_MyIter = _MyBufferEnd + _Offset;
+		if (_MyIter < _MyBuffer || _MyIter > _MyBufferEnd)
+			_MyIter = Temp;
+	}
+}
+
+void IOStream::Reserve(size_t _Size)
+{
+	if (Enabled())
+		_D_Dragonian_Lib_Throw_Exception("IOStream is enabled.");
+
+	if (IsBuffer() && Capacity() != _Size)
+	{
+		auto Tmp = new Byte[_Size];
+		auto Offset = static_cast<size_t>(_MyIter - _MyBuffer);
+		memcpy(Tmp, _MyBuffer, std::min(Capacity(), _Size));
+		delete[] _MyBuffer;
+		_MyBuffer = Tmp;
+		_MyBufferEnd = _MyBuffer + _Size;
+		_MyIter = _MyBuffer + std::min(Offset, _Size);
+	}
+}
+
 _D_Dragonian_Lib_Space_End

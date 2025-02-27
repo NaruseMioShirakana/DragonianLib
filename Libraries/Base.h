@@ -44,6 +44,7 @@ class FileGuard
 {
 public:
 	FileGuard() = default;
+	FileGuard(FILE* _FileStream) : file_(_FileStream) {}
 	~FileGuard();
 	FileGuard(const std::wstring& _Path, const std::wstring& _Mode);
 	FileGuard(const std::wstring& _Path, const wchar_t* _Mode);
@@ -104,6 +105,7 @@ public:
 	FileGuard& operator<<(char _Ch);
 	FileGuard& operator<<(wchar_t _Ch);
 
+	FILE* Release();
 private:
 	FILE* file_ = nullptr;
 };
@@ -147,5 +149,53 @@ decltype(auto) CvtToString(const _Type& _Value)
 	else
 		return _Value.to_string();
 }
+
+class IOStream
+{
+public:
+	IOStream() = delete;
+	~IOStream();
+	IOStream(const IOStream&) = delete;
+	IOStream(IOStream&& _Right) noexcept;
+	IOStream& operator=(const IOStream&) = delete;
+	IOStream& operator=(IOStream&& _Right) noexcept;
+	void _Tidy();
+
+private:
+	FILE* _MyFile = nullptr;
+	Byte* _MyBuffer = nullptr;
+	Byte* _MyBufferEnd = nullptr;
+	Byte* _MyIter = nullptr;
+
+public:
+	IOStream(const std::wstring& _Path, const std::wstring& _Mode);
+	IOStream(FILE* _FileStream);
+	IOStream(size_t _BufferSize);
+
+	bool IsFile() const noexcept { return _MyFile; }
+	bool IsBuffer() const noexcept { return _MyBuffer; }
+
+	FILE* ReleaseFile() noexcept;
+	Byte* ReleaseBuffer() noexcept;
+
+	FILE* GetFile() const noexcept { return _MyFile; }
+	Byte* Data() const noexcept { return _MyBuffer; }
+
+	size_t Size() const noexcept { return _MyIter - _MyBuffer; }
+	size_t Capacity() const noexcept { return _MyBufferEnd - _MyBuffer; }
+
+	Byte* Begin() const noexcept { return _MyBuffer; }
+	Byte* End() const noexcept { return _MyIter; }
+	
+	Byte* begin() const noexcept { return _MyBuffer; }
+	Byte* end() const noexcept { return _MyIter; }
+
+	bool Enabled() const noexcept { return IsFile() xor IsBuffer(); }
+
+	void Seek(long _Offset, int _Origin) noexcept;
+	size_t Tell() const noexcept;
+
+	void Reserve(size_t _Size);
+};
 
 _D_Dragonian_Lib_Space_End

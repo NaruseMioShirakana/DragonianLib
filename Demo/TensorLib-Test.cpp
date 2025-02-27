@@ -44,7 +44,14 @@ void WithTimer(const Fn& fn)
 
 int main()
 {
-	auto Env = DragonianVoiceSvcCreateEnv(8, 0, DragonianVoiceSvcDMLEP);
+	auto Codec = DragonianLib::AvCodec::AvCodec();
+
+	auto Audio = Codec.DecodeFloat(
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)",
+		44100
+	);
+
+	auto Env = DragonianVoiceSvcCreateEnv(8, 1, DragonianVoiceSvcDMLEP);
 	std::wstring VocoderPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)";
 	std::wstring ModelPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\NaruseMioShirakana\NaruseMioShirakana_RVC.onnx)";
 	std::wstring F0ModelPath = LR"(D:\VSGIT\MoeVS-SVC\Build\Release\F0Predictor\RMVPE.onnx)";
@@ -77,11 +84,6 @@ int main()
 		&Hparams,
 		Env,
 		ProgressCb
-	);
-	
-	auto Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
-		R"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)",
-		44100
 	);
 
 	DragonianVoiceSvcF0ExtractorSetting F0Setting{
@@ -122,9 +124,11 @@ int main()
 		&OutputAudioSize
 	);
 
-	DragonianLib::AvCodec::WritePCMData(
-		(LR"(D:/VSGIT/MoeSS - Release/Testdata/OutPut-PCM-aaaa.wav)"),
-		{ OutputAudio, OutputAudio + OutputAudioSize },
+	DragonianLib::Byte* OutputAudioBytes = reinterpret_cast<DragonianLib::Byte*>(OutputAudio);
+	DragonianLib::Byte* OutputAudioEnd = OutputAudioBytes + OutputAudioSize * sizeof(float);
+	Codec.Encode(
+		LR"(D:/VSGIT/MoeSS - Release/Testdata/OutPut-PCM-aaaa.mp3)",
+		{ OutputAudioBytes, OutputAudioEnd },
 		44100
 	);
 
