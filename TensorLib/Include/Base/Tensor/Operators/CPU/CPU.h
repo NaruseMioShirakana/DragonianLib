@@ -4,12 +4,16 @@
 #include "Libraries/Util/ThreadPool.h"
 #include "Libraries/Util/StringPreprocess.h"
 
+#define _D_Dragonian_Lib_Operator_Fndecl(_Function) decltype(_Function), _Function
+
 _D_Dragonian_Lib_Operator_Space_Begin
 
-inline ThreadPool _Valdef_My_Thread_Pool{ 1 };
-inline SizeType _Valdef_Global_Max_Task_Count_Per_Operator = 1;
-inline bool _Flag_Instant_Run = true;
-inline std::atomic_uint64_t _Valdef_Global_Random_Device_Id = 0;
+ThreadPool& GetThreadPool();
+SizeType GetMaxTaskCountPerOperator();
+void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount);
+bool GetInstantRunFlag();
+void SetInstantRunFlag(bool _Flag);
+std::atomic_uint64_t& GetRandomDeviceId();
 
 template<typename _Type>
 class OperatorsBase<_Type, Device::CPU>
@@ -204,43 +208,6 @@ public:
 
 };
 
-template <typename _Type, typename _FunType, _FunType _Fun>
-class IsAvxEnabledUnary
-{
-public:
-	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get()
-	{
-		static IsAvxEnabledUnary CheckInstance;
-		return Value;
-	}
-
-private:
-	static inline bool Value;
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabledUnary()
-	{
-		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>)
-		{
-			if constexpr (requires(Vectorized<_Type>&_a) {
-				_Fun(_a);
-			})
-			{
-				try
-				{
-					_Fun(Vectorized<_Type>(_Type(1)));
-					Value = true;
-					return;
-				}
-				catch (std::exception& _Except)
-				{
-					LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
-				}
-			}
-		}
-		Value = false;
-	}
-};
-
 template <typename _Type>
 struct RandomSettings
 {
@@ -415,120 +382,163 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> T
 	}
 }
 
-/**
- * @brief Multithreaded single tensor operation.
- * @tparam _Type Type of the tensor.
- * @tparam _Parameter Parameter of the operator.
- * @tparam _Fn Incontinuous function (pointer, shape parameter, operator parameter).
- * @tparam _ContFn Continuous function, (pointer, size, operator parameter) if operator dims = 0, (pointer, shape parameter, operator parameter) otherwise.
- * @tparam OperatorDims Number of operator dimensions, rank - operator dims = batch dims.
- * @param _Dest Data pointer of the destination tensor.
- * @param _DestParameter Parameter of the destination tensor.
- * @param _UserParameter User parameter.
- * @param Continuous Whether the operation is continuous.
- * @param _Function Incontinuous function.
- * @param _ContFunction Continuous function.
- * @return void.
- */
-template<typename _Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-void ImplMultiThreadSingle(
-	_Type* _Dest,
-	const OperatorParameter<_NRank>& _DestParameter,
-	_Parameter _UserParameter,
-	bool Continuous,
-	_Fn _Function,
-	_ContFn _ContFunction
+template <
+	typename _RetType, typename _InputType, typename _ParameterType,
+	typename _FunctionType, _FunctionType _Function,
+	TypeDef::OperatorType _OType,
+	size_t _NRank, size_t _Unfold
+> void BasicOperators(
+	_RetType* _Dest,
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const _InputType* _Src1,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
+	const _InputType* _Src2,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
+	const std::shared_ptr<_ParameterType> _Value
 )
 {
-	const auto TotalRank = _DestParameter.GetRank();
-	const auto BatchDims = TotalRank - OperatorDims;
-	const auto BatchCount = _DestParameter.GetSize(0, BatchDims);
-	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
-	const auto DataSize = BatchCount * OperatorUnfoldCount;
+	const auto& _DestInfo = *_DestInfoOld;
+	const auto& _Src1Info = *_Src1InfoOld;
 
-	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
+	const SizeType* __restrict DestShape = _DestInfo.Shape.Data();
+	const SizeType* __restrict DestBegin = _DestInfo.Begin.Data();
+	const SizeType* __restrict DestViewStride = _DestInfo.ViewStride.Data();
+	const SizeType* __restrict Src1ViewStride = _Src1Info.ViewStride.Data();
+
+	if constexpr (_OType == TypeDef::UnaryOperatorType)
 	{
-		if (Continuous)
-		{
-			if (DataSize < DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
-				_DestParameter.ThreadPool->emplace_back(
-					_Valdef_My_Thread_Pool.Commit(
-						_ContFunction,
-						_Dest,
-						DataSize,
-						_UserParameter
-					),
-					std::vector{
-						_DestParameter.Data,
-					}
-				);
-			else
+		DoubleTensorLoop<_NRank, _Unfold>(
+			0, 0,
+			DestShape, DestBegin,
+			DestViewStride, Src1ViewStride,
+			[&](int64_t _IndexA, int64_t _IndexB)
 			{
-				const auto ThreadCount = std::min(
-					std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-					_Valdef_Global_Max_Task_Count_Per_Operator
-				);
-
-				auto SplitSize = DataSize / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
-				if (SplitSize == 0) SplitSize = 1;
-				const auto TaskCount = DataSize / SplitSize;
-				const auto Remainder = DataSize % SplitSize;
-
-				SizeType i = 0;
-				for (; i < TaskCount; ++i)
-				{
-					if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
-						_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							SplitSize,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-						}
-					);
-				}
-				if (Remainder)
-				{
-					if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
-						_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							Remainder,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-						}
-					);
-				}
+				_Dest[_IndexA] = (_RetType)_Function(_Src1[_IndexB]);
 			}
-			return;
-		}
+		);
 	}
+	else if constexpr (_OType == TypeDef::BinaryOperatorType)
+	{
+		const auto& _Src2Info = *_Src2InfoOld;
+		const SizeType* __restrict Src2ViewStride = _Src2Info.ViewStride.Data();
+		TripleTensorLoop<_NRank, _Unfold>(
+			0, 0, 0,
+			DestShape, DestBegin,
+			DestViewStride, Src1ViewStride, Src2ViewStride,
+			[&](int64_t _IndexA, int64_t _IndexB, int64_t _IndexC)
+			{
+				_Dest[_IndexA] = (_RetType)_Function(_Src1[_IndexB], _Src2[_IndexC]);
+			}
+		);
+	}
+	else if constexpr (_OType == TypeDef::ConstantOperatorType)
+	{
+		const auto& _ParameterValue = *_Value;
+		auto Func = [&](int64_t _IndexA, int64_t _IndexB)
+			{
+				_Dest[_IndexA] = (_RetType)_Function(_Src1[_IndexB], _ParameterValue);
+			};
+		DoubleTensorLoop<_NRank, _Unfold>(
+			0, 0,
+			DestShape, DestBegin,
+			DestViewStride, Src1ViewStride,
+			Func
+		);
+	}
+}
 
-	if constexpr (!IsCallableValue<_Fn>)
+template<
+	typename _FunctionType, _FunctionType _Function,
+	typename _VectorizedFunctionType, _VectorizedFunctionType _VectorizedFunction,
+	TypeDef::OperatorType _OType, bool _IsCompare,
+	size_t _Unfold, Int64 _OpThroughput, size_t _NRank,
+	typename _RetType, typename _InputType, typename _ParameterType
+> void ImplMultiThreadBasic(
+	_RetType* _Dest,
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const _InputType* _Src1,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
+	const _InputType* _Src2,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
+	const std::shared_ptr<_ParameterType> _Value,
+	bool Continuous
+)
+{
+	if constexpr (!IsCallableValue<_FunctionType>)
 	{
 		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
 		return;
 	}
 
-	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
+	const auto TotalDataSize = _DestInfoOld->GetSize();
+	TemplateLibrary::Array<std::shared_ptr<void>, 3> _DataPointer{ nullptr, nullptr, nullptr };
+	_DataPointer[0] = _DestInfoOld->Data;
+	_DataPointer[1] = _Src1InfoOld->Data;
+	if constexpr (_OType == TypeDef::BinaryOperatorType)
+		_DataPointer[2] = _Src2InfoOld->Data;
+
+	auto CreateTask = [&](std::shared_future<void> TaskFuture)
+		{
+			_DestInfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			_Src1InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			if constexpr (_OType == TypeDef::BinaryOperatorType)
+				_Src2InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+		};
+
+	if (Continuous)
+	{
+		auto ContinuousFn = [=](Int64 _Offset, Int64 _Size)
+			{
+				if constexpr (IsSameTypeValue<_FunctionType, _VectorizedFunctionType>)
+					ContiguousFunction<_RetType, _InputType, _ParameterType, _FunctionType, _Function, _OType, _OpThroughput>(
+						_Dest + _Offset, _Size, _Src1 + _Offset, _Src2 + _Offset, _Value
+					);
+				else
+					VectorizedFunction<_RetType, _InputType, _ParameterType, _FunctionType, _Function, _VectorizedFunctionType, _VectorizedFunction, _OType, _IsCompare, _OpThroughput>(
+						_Dest + _Offset, _Size, _Src1 + _Offset, _Src2 + _Offset, _Value
+					);
+			};
+
+		if (TotalDataSize < DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
+			CreateTask(GetThreadPool().Commit(ContinuousFn, 0, TotalDataSize));
+		else
+		{
+			const auto ThreadCount = std::min(
+				std::max(GetThreadPool().GetThreadCount(), 1ll),
+				GetMaxTaskCountPerOperator()
+			);
+			auto SplitSize = TotalDataSize / ThreadCount;
+			if (SplitSize == 0) SplitSize = 1;
+			const auto TaskCount = TotalDataSize / SplitSize;
+			const auto Remainder = TotalDataSize % SplitSize;
+
+			SizeType i = 0;
+			for (; i < TaskCount; ++i)
+				CreateTask(GetThreadPool().Commit(ContinuousFn, i * SplitSize, SplitSize));
+			if (Remainder)
+				CreateTask(GetThreadPool().Commit(ContinuousFn, i * SplitSize, Remainder));
+		}
+		return;
+	}
+
+	auto InContinuousFn = [=](auto& Info)
+		{
+			BasicOperators<_RetType, _InputType, _ParameterType, _FunctionType, _Function, _OType, _NRank, _Unfold>(
+				_Dest, Info, _Src1, _Src1InfoOld, _Src2, _Src2InfoOld, _Value
+			);
+		};
+
+	if (TotalDataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 	{
 		const auto NTasks = std::min(
-			std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-			_Valdef_Global_Max_Task_Count_Per_Operator
+			std::max(GetThreadPool().GetThreadCount(), 1ll),
+			GetMaxTaskCountPerOperator()
 		);
 		SizeType TotalTaskCount = -1, TaskDim = -1;
-		for (SizeType i = 0; i < BatchDims; ++i)
-			if (_DestParameter.Shape[i] >= NTasks)
+		for (SizeType i = 0; i < _NRank; ++i)
+			if (_DestInfoOld->Shape[i] >= NTasks)
 			{
-				TotalTaskCount = _DestParameter.Shape[i];
+				TotalTaskCount = _DestInfoOld->Shape[i];
 				TaskDim = i;
 				break;
 			}
@@ -541,439 +551,89 @@ void ImplMultiThreadSingle(
 			SizeType ShapeIndex = 0;
 			while (ShapeIndex < TotalTaskCount - Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(*_DestInfoOld);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
-
-				if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
-					_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
-				if (Continuous)
-				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-							}
-						);
-				}
-				else
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-						}
-					);
-				}
+				CreateTask(GetThreadPool().Commit(InContinuousFn, Info));
 				ShapeIndex += TaskPerSlice;
 			}
 			if (Remainder)
 			{
-				if constexpr (IsSameTypeValue<RemoveARPCVType<_Parameter>, RandomSettings<_Type>>)
-					_UserParameter._ThreadId = _Valdef_Global_Random_Device_Id++;
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(*_DestInfoOld);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + Remainder;
-
-				if (Continuous)
-				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-							}
-						);
-				}
-				else
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-						}
-					);
-				}
+				CreateTask(GetThreadPool().Commit(InContinuousFn, Info));
 			}
 			return;
 		}
 	}
 
-	if (Continuous)
-	{
-		if constexpr (OperatorDims != 0)
-			_DestParameter.ThreadPool->emplace_back(
-				_Valdef_My_Thread_Pool.Commit(
-					_ContFunction,
-					_Dest,
-					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-					_UserParameter
-				),
-				std::vector{
-					_DestParameter.Data,
-				}
-			);
-	}
-	else
-	{
-		_DestParameter.ThreadPool->emplace_back(
-			_Valdef_My_Thread_Pool.Commit(
-				_Function,
-				_Dest,
-				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-				_UserParameter
-			),
-			std::vector{
-				_DestParameter.Data,
-			}
-		);
-	}
+	CreateTask(GetThreadPool().Commit(InContinuousFn, _DestInfoOld));
 }
 
-/**
- * @brief Multithreaded single tensor operation.
- * @tparam _DstType Type of the destination tensor.
- * @tparam _SrcType Type of the source tensor.
- * @tparam _Parameter Parameter of the operator.
- * @tparam _Fn Incontinuous function (pointer, shape parameter, operator parameter).
- * @tparam _ContFn Continuous function, (pointer, size, operator parameter) if operator dims = 0, (pointer, shape parameter, operator parameter) otherwise.
- * @tparam OperatorDims Number of operator dimensions, rank - operator dims = batch dims.
- * @param _Dest Data pointer of the destination tensor.
- * @param _DestParameter Parameter of the destination tensor.
- * @param _Src Data pointer of the source tensor.
- * @param _SrcParameter Parameter of the source tensor.
- * @param _UserParameter User parameter.
- * @param Continuous Whether the operation is continuous.
- * @param _Function Incontinuous function.
- * @param _ContFunction Continuous function.
- * @return void.
- */
-template<typename _DstType, typename _SrcType, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-void ImplMultiThreadDouble(
+template<
+	size_t _ArgCount, size_t _NRank,
+	typename _Src2Type, typename _Src1Type, typename _DstType,
+	SizeType OperatorDims = 0,
+	typename _ParameterType, typename _FunctionType, typename _ContinuousFunctionType
+>
+void ImplMultiThreadCaller(
 	_DstType* _Dest,
-	const OperatorParameter<_NRank>& _DestParameter,
-	const _SrcType* _Src,
-	const OperatorParameter<_NRank>& _SrcParameter,
-	_Parameter _UserParameter,
-	bool Continuous,
-	_Fn _Function,
-	_ContFn _ContFunction
-)
-{
-	const auto TotalRank = _DestParameter.GetRank();
-	const auto BatchDims = TotalRank - OperatorDims;
-	const auto BatchCount = _DestParameter.GetSize(0, BatchDims);
-	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
-	const auto DataSize = BatchCount * OperatorUnfoldCount;
-
-	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
-	{
-		if (Continuous)
-		{
-			if (DataSize < DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
-				_DestParameter.ThreadPool->emplace_back(
-					_Valdef_My_Thread_Pool.Commit(
-						_ContFunction,
-						_Dest,
-						_Src,
-						DataSize,
-						_UserParameter
-					),
-					std::vector{
-						_DestParameter.Data,
-						_SrcParameter.Data,
-					}
-				);
-			else
-			{
-				const auto ThreadCount = std::min(
-					std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-					_Valdef_Global_Max_Task_Count_Per_Operator
-				);
-				auto SplitSize = DataSize / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
-				if (SplitSize == 0) SplitSize = 1;
-				const auto TaskCount = DataSize / SplitSize;
-				const auto Remainder = DataSize % SplitSize;
-
-				SizeType i = 0;
-				for (; i < TaskCount; ++i)
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							_Src + i * SplitSize,
-							SplitSize,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_SrcParameter.Data,
-						}
-					);
-				}
-				if (Remainder)
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							_Src + i * SplitSize,
-							Remainder,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_SrcParameter.Data,
-						}
-					);
-				}
-			}
-			return;
-		}
-	}
-
-	if constexpr (!IsCallableValue<_Fn>)
-	{
-		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
-		return;
-	}
-
-	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
-	{
-		const auto NTasks = std::min(
-			std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-			_Valdef_Global_Max_Task_Count_Per_Operator
-		);
-		SizeType TotalTaskCount = -1, TaskDim = -1;
-		for (SizeType i = 0; i < BatchDims; ++i)
-			if (_DestParameter.Shape[i] >= NTasks)
-			{
-				TotalTaskCount = _DestParameter.Shape[i];
-				TaskDim = i;
-				break;
-			}
-		if (TotalTaskCount != -1)
-		{
-			auto TaskPerSlice = TotalTaskCount / NTasks;
-			if (TaskPerSlice == 0) TaskPerSlice = 1;
-			const auto Remainder = TotalTaskCount % TaskPerSlice;
-
-			SizeType ShapeIndex = 0;
-			while (ShapeIndex < TotalTaskCount - Remainder)
-			{
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
-				Info->Begin[TaskDim] = ShapeIndex;
-				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
-
-				if (Continuous)
-				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_Src,
-								std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-								_SrcParameter.Data,
-							}
-						);
-				}
-				else
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_Src,
-							std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_SrcParameter.Data,
-						}
-					);
-				}
-
-				ShapeIndex += TaskPerSlice;
-			}
-			if (Remainder)
-			{
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
-				Info->Begin[TaskDim] = ShapeIndex;
-				Info->Shape[TaskDim] = ShapeIndex + Remainder;
-
-				if (Continuous)
-				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_Src,
-								std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-								_SrcParameter.Data,
-							}
-						);
-				}
-				else
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_Src,
-							std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_SrcParameter.Data,
-						}
-					);
-				}
-			}
-			return;
-		}
-	}
-
-	if (Continuous)
-	{
-		if constexpr (OperatorDims != 0)
-			_DestParameter.ThreadPool->emplace_back(
-				_Valdef_My_Thread_Pool.Commit(
-					_ContFunction,
-					_Dest,
-					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-					_Src,
-					std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-					_UserParameter
-				),
-				std::vector{
-					_DestParameter.Data,
-					_SrcParameter.Data,
-				}
-			);
-	}
-	else
-	{
-		_DestParameter.ThreadPool->emplace_back(
-			_Valdef_My_Thread_Pool.Commit(
-				_Function,
-				_Dest,
-				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-				_Src,
-				std::make_shared<OperatorParameter<_NRank>>(_SrcParameter),
-				_UserParameter
-			),
-			std::vector{
-				_DestParameter.Data,
-				_SrcParameter.Data,
-			}
-		);
-	}
-}
-
-/**
- * @brief Multithreaded single tensor operation.
- * @tparam _DstType Type of the destination tensor.
- * @tparam _Src1Type Type of the first source tensor.
- * @tparam _Src2Type Type of the second source tensor.
- * @tparam _Parameter Parameter of the operator.
- * @tparam _Fn Incontinuous function (pointer, shape parameter, operator parameter).
- * @tparam _ContFn Continuous function, (pointer, size, operator parameter) if operator dims = 0, (pointer, shape parameter, operator parameter) otherwise.
- * @tparam OperatorDims Number of operator dimensions, rank - operator dims = batch dims.
- * @param _Dest Data pointer of the destination tensor.
- * @param _DestParameter Parameter of the destination tensor.
- * @param _Src1 Data pointer of the first source tensor.
- * @param _Src1Parameter Parameter of the first source tensor.
- * @param _Src2 Data pointer of the second source tensor.
- * @param _Src2Parameter Parameter of the second source tensor.
- * @param _UserParameter User parameter.
- * @param Continuous Whether the operation is continuous.
- * @param _Function Incontinuous function.
- * @param _ContFunction Continuous function.
- * @return void.
- */
-template<typename _DstType, typename _Src1Type, typename _Src2Type, typename _Parameter, size_t _NRank, typename _Fn, typename _ContFn, SizeType OperatorDims = 0>
-void ImplMultiThreadTriple(
-	_DstType* _Dest,
-	const OperatorParameter<_NRank>& _DestParameter,
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	const _Src1Type* _Src1,
-	const OperatorParameter<_NRank>& _Src1Parameter,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
 	const _Src2Type* _Src2,
-	const OperatorParameter<_NRank>& _Src2Parameter,
-	_Parameter _UserParameter,
+	const std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
+	const std::shared_ptr<_ParameterType> _UserParameter,
 	bool Continuous,
-	_Fn _Function,
-	_ContFn _ContFunction
+	_FunctionType _Function,
+	_ContinuousFunctionType _ContFunction
 )
 {
-	const auto TotalRank = _DestParameter.GetRank();
+	static_assert((_ArgCount < 4) && (_ArgCount > 0));
+
+	const auto TotalRank = _DestInfoOld->GetRank();
 	const auto BatchDims = TotalRank - OperatorDims;
-	const auto BatchCount = _DestParameter.GetSize(0, BatchDims);
-	const auto OperatorUnfoldCount = _DestParameter.GetSize(BatchDims);
+	const auto BatchCount = _DestInfoOld->GetSize(0, BatchDims);
+	const auto OperatorUnfoldCount = _DestInfoOld->GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
-	if constexpr (IsCallableValue<_ContFn> && OperatorDims == 0)
+	TemplateLibrary::Array<std::shared_ptr<void>, 3> _DataPointer{ nullptr, nullptr, nullptr };
+	_DataPointer[0] = _DestInfoOld->Data;
+	if constexpr (_ArgCount > 1)
+		_DataPointer[1] = _Src1InfoOld->Data;
+	if constexpr (_ArgCount > 2)
+		_DataPointer[2] = _Src2InfoOld->Data;
+
+	auto CreateTask = [&](std::shared_future<void> TaskFuture)
+		{
+			_DestInfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			if constexpr (_ArgCount > 1)
+				_Src1InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			if constexpr (_ArgCount > 2)
+				_Src2InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+		};
+
+	if constexpr (IsCallableValue<_ContinuousFunctionType> && OperatorDims == 0)
 	{
 		if (Continuous)
 		{
 			if (DataSize < DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
-				_DestParameter.ThreadPool->emplace_back(
-					_Valdef_My_Thread_Pool.Commit(
-						_ContFunction,
-						_Dest,
-						_Src1,
-						_Src2,
-						DataSize,
-						_UserParameter
-					),
-					std::vector{
-						_DestParameter.Data,
-						_Src1Parameter.Data,
-						_Src2Parameter.Data
-					}
-				);
+			{
+				if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
+					_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
+				if constexpr (_ArgCount == 1)
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, DataSize, _UserParameter));
+				else if constexpr (_ArgCount == 2)
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, DataSize, _UserParameter));
+				else if constexpr (_ArgCount == 3)
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, _Src2, DataSize, _UserParameter));
+			}
 			else
 			{
 				const auto ThreadCount = std::min(
-					std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-					_Valdef_Global_Max_Task_Count_Per_Operator
+					std::max(GetThreadPool().GetThreadCount(), 1ll),
+					GetMaxTaskCountPerOperator()
 				);
 				auto SplitSize = DataSize / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
 				if (SplitSize == 0) SplitSize = 1;
@@ -983,46 +643,50 @@ void ImplMultiThreadTriple(
 				SizeType i = 0;
 				for (; i < TaskCount; ++i)
 				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							_Src1 + i * SplitSize,
-							_Src2 + i * SplitSize,
-							SplitSize,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_Src1Parameter.Data,
-							_Src2Parameter.Data
-						}
-					);
+					auto _CDest = _Dest + i * SplitSize;
+					auto _CSrc1 = _Src1 + i * SplitSize;
+					auto _CSrc2 = _Src2 + i * SplitSize;
+					if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
+					{
+						auto _Param = std::make_shared<RandomSettings<_DstType>>(*_UserParameter);
+						_Param->_ThreadId = GetRandomDeviceId().fetch_add(1);
+						if constexpr (_ArgCount == 1)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, SplitSize, _Param));
+						else if constexpr (_ArgCount == 2)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, SplitSize, _Param));
+						else if constexpr (_ArgCount == 3)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, _CSrc2, SplitSize, _Param));
+					}
+					else
+					{
+						if constexpr (_ArgCount == 1)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, SplitSize, _UserParameter));
+						else if constexpr (_ArgCount == 2)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, SplitSize, _UserParameter));
+						else if constexpr (_ArgCount == 3)
+							CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, _CSrc2, SplitSize, _UserParameter));
+					}
 				}
 				if (Remainder)
 				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_ContFunction,
-							_Dest + i * SplitSize,
-							_Src1 + i * SplitSize,
-							_Src2 + i * SplitSize,
-							Remainder,
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_Src1Parameter.Data,
-							_Src2Parameter.Data
-						}
-					);
+					auto _CDest = _Dest + i * SplitSize;
+					auto _CSrc1 = _Src1 + i * SplitSize;
+					auto _CSrc2 = _Src2 + i * SplitSize;
+					if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
+						_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
+					if constexpr (_ArgCount == 1)
+						CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, Remainder, _UserParameter));
+					else if constexpr (_ArgCount == 2)
+						CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, Remainder, _UserParameter));
+					else if constexpr (_ArgCount == 3)
+						CreateTask(GetThreadPool().Commit(_ContFunction, _CDest, _CSrc1, _CSrc2, Remainder, _UserParameter));
 				}
 			}
 			return;
 		}
 	}
 
-	if constexpr(!IsCallableValue<_Fn>)
+	if constexpr (!IsCallableValue<_FunctionType>)
 	{
 		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
 		return;
@@ -1031,14 +695,14 @@ void ImplMultiThreadTriple(
 	if (DataSize > DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE)
 	{
 		const auto NTasks = std::min(
-			std::max(_Valdef_My_Thread_Pool.GetThreadCount(), 1ll),
-			_Valdef_Global_Max_Task_Count_Per_Operator
+			std::max(GetThreadPool().GetThreadCount(), 1ll),
+			GetMaxTaskCountPerOperator()
 		);
 		SizeType TotalTaskCount = -1, TaskDim = -1;
 		for (SizeType i = 0; i < BatchDims; ++i)
-			if (_DestParameter.Shape[i] >= NTasks)
+			if (_DestInfoOld->Shape[i] >= NTasks)
 			{
-				TotalTaskCount = _DestParameter.Shape[i];
+				TotalTaskCount = _DestInfoOld->Shape[i];
 				TaskDim = i;
 				break;
 			}
@@ -1051,147 +715,59 @@ void ImplMultiThreadTriple(
 			SizeType ShapeIndex = 0;
 			while (ShapeIndex < TotalTaskCount - Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(*_DestInfoOld);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + TaskPerSlice;
-
-				if (Continuous)
+				if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
 				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_Src1,
-								std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-								_Src2,
-								std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-								_Src1Parameter.Data,
-								_Src2Parameter.Data
-							}
-						);
+					auto _Param = std::make_shared<RandomSettings<_DstType>>(*_UserParameter);
+					_Param->_ThreadId = GetRandomDeviceId().fetch_add(1);
+					if constexpr (_ArgCount == 1)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Param));
+					else if constexpr (_ArgCount == 2)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _Param));
+					else if constexpr (_ArgCount == 3)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _Src2, _Src2InfoOld, _Param));
 				}
 				else
 				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_Src1,
-							std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-							_Src2,
-							std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_Src1Parameter.Data,
-							_Src2Parameter.Data
-						}
-					);
+					if constexpr (_ArgCount == 1)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _UserParameter));
+					else if constexpr (_ArgCount == 2)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _UserParameter));
+					else if constexpr (_ArgCount == 3)
+						CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _Src2, _Src2InfoOld, _UserParameter));
 				}
 
 				ShapeIndex += TaskPerSlice;
 			}
 			if (Remainder)
 			{
-				auto Info = std::make_shared<OperatorParameter<_NRank>>(_DestParameter);
+				auto Info = std::make_shared<OperatorParameter<_NRank>>(*_DestInfoOld);
 				Info->Begin[TaskDim] = ShapeIndex;
 				Info->Shape[TaskDim] = ShapeIndex + Remainder;
 
-				if (Continuous)
-				{
-					if constexpr (OperatorDims != 0)
-						_DestParameter.ThreadPool->emplace_back(
-							_Valdef_My_Thread_Pool.Commit(
-								_ContFunction,
-								_Dest,
-								Info,
-								_Src1,
-								std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-								_Src2,
-								std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-								_UserParameter
-							),
-							std::vector{
-								_DestParameter.Data,
-								_Src1Parameter.Data,
-								_Src2Parameter.Data
-							}
-						);
-				}
-				else
-				{
-					_DestParameter.ThreadPool->emplace_back(
-						_Valdef_My_Thread_Pool.Commit(
-							_Function,
-							_Dest,
-							Info,
-							_Src1,
-							std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-							_Src2,
-							std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-							_UserParameter
-						),
-						std::vector{
-							_DestParameter.Data,
-							_Src1Parameter.Data,
-							_Src2Parameter.Data
-						}
-					);
-				}
+				if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
+					_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
+				if constexpr (_ArgCount == 1)
+					CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _UserParameter));
+				else if constexpr (_ArgCount == 2)
+					CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _UserParameter));
+				else if constexpr (_ArgCount == 3)
+					CreateTask(GetThreadPool().Commit(_Function, _Dest, Info, _Src1, _Src1InfoOld, _Src2, _Src2InfoOld, _UserParameter));
 			}
 			return;
 		}
 	}
 
-	if (Continuous)
-	{
-		if constexpr (OperatorDims != 0)
-			_DestParameter.ThreadPool->emplace_back(
-				_Valdef_My_Thread_Pool.Commit(
-					_ContFunction,
-					_Dest,
-					std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-					_Src1,
-					std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-					_Src2,
-					std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-					_UserParameter
-				),
-				std::vector{
-					_DestParameter.Data,
-					_Src1Parameter.Data,
-					_Src2Parameter.Data
-				}
-			);
-	}
-	else
-	{
-		_DestParameter.ThreadPool->emplace_back(
-			_Valdef_My_Thread_Pool.Commit(
-				_Function,
-				_Dest,
-				std::make_shared<OperatorParameter<_NRank>>(_DestParameter),
-				_Src1,
-				std::make_shared<OperatorParameter<_NRank>>(_Src1Parameter),
-				_Src2,
-				std::make_shared<OperatorParameter<_NRank>>(_Src2Parameter),
-				_UserParameter
-			),
-			std::vector{
-				_DestParameter.Data,
-				_Src1Parameter.Data,
-				_Src2Parameter.Data
-			}
-		);
-	}
+	if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
+		_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
+	if constexpr (_ArgCount == 1)
+		CreateTask(GetThreadPool().Commit(_Function, _Dest, _DestInfoOld, _UserParameter));
+	else if constexpr (_ArgCount == 2)
+		CreateTask(GetThreadPool().Commit(_Function, _Dest, _DestInfoOld, _Src1, _Src1InfoOld, _UserParameter));
+	else if constexpr (_ArgCount == 3)
+		CreateTask(GetThreadPool().Commit(_Function, _Dest, _DestInfoOld, _Src1, _Src1InfoOld, _Src2, _Src2InfoOld, _UserParameter));
 }
 
 _D_Dragonian_Lib_Operator_Space_End

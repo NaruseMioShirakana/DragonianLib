@@ -1,8 +1,13 @@
 ﻿#pragma once
 #include <future>
 #include <random>
-#include "../TensorBase.h"
+#include <deque>
+
 #include "OperatorMarco.h"
+#include "Libraries/Util/Logger.h"
+#include "Libraries/Util/StringPreprocess.h"
+
+#include "../TensorBase.h"
 
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
@@ -23,7 +28,9 @@ _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndexOp(SizeType _Index, Si
 template<size_t _NRank>
 struct OperatorParameter
 {
-	using _MyMultiThreadSyncT = std::deque<std::pair<std::future<void>, std::vector<std::shared_ptr<void>>>>;
+	using _MyMultiThreadDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 3>;
+	using _MyMultiThreadSyncPair = std::pair<std::shared_future<void>, _MyMultiThreadDataPointers>;
+	using _MyMultiThreadSyncT = std::deque<_MyMultiThreadSyncPair>;
 	using _MyMultiThreadSyncP = std::shared_ptr<_MyMultiThreadSyncT>;
 
 	IDLArray<SizeType, _NRank> Shape; ///< Shape: The [view end/shape] of the tensor.

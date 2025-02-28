@@ -2,204 +2,13 @@
 #include "CPU.h"
 #include "Libraries/Util/Logger.h"
 
-#define _D_Dragonian_Lib_Operator_Unary_Function_Def(_Function, Unfold) namespace UnaryOperators { namespace _Function##Unary { \
- \
-template <class _ValueType> \
-concept HasOperatorValue = requires(_ValueType & __r) { _D_Dragonian_Lib_Namespace Operators::UnaryOperators::_Function(__r); }; \
- \
-template <typename _Type> \
-class IsAvxEnabled \
+#define _D_Dragonian_Lib_Operator_Unary_Function_Def(_Function, Unfold, AvxThroughput) \
+namespace UnaryOperators \
 { \
-public: \
-	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get() \
-	{ \
-		static IsAvxEnabled CheckInstance; \
-		return Value; \
+	namespace _Function##Unary { \
+		template <class _ValueType> \
+		concept HasOperatorValue = requires(_ValueType & __r) { _D_Dragonian_Lib_Namespace Operators::UnaryOperators::_Function(__r); }; \
 	} \
-private: \
-	static inline bool Value; \
-	_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabled() \
-	{ \
-		if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
-		{ \
-			if constexpr (requires(Vectorized<_Type>&_a) { _Function(_a); }) \
-			{ \
-				try \
-				{ \
-					_Function(Vectorized<_Type>(_Type(1))); \
-					Value = true; \
-					return; \
-				} \
-				catch (std::exception& _Except) \
-				{ \
-					LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! "); \
-				} \
-			} \
-		} \
-		Value = false; \
-	} \
-}; \
- \
-constexpr auto _D_Dragonian_Lib_Operator_Unary_Unfold = Unfold; \
-template<typename _Type>  \
-void UnaryInplaceCont##_Function( \
-	_Type* _Dest, \
-	SizeType DestSize, \
-	void* \
-) \
-{ \
-	constexpr int64_t OpThroughput = 2; \
-	constexpr int64_t Stride = int64_t(sizeof(__m256) / sizeof(_Type)); \
-	constexpr int64_t LoopStride = OpThroughput * Stride; \
- \
-	SizeType i = 0; \
- \
-	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
- \
-	if constexpr (IsAvx256SupportedValue<_Type>) \
-	{ \
-		if (EnableAvx) \
-			for (; i < DestSize - LoopStride; i += LoopStride) \
-			{ \
-				auto _Dest1 = Vectorized<_Type>(_Dest + i); \
-				auto _Dest2 = Vectorized<_Type>(_Dest + i + Stride); \
-				auto _Result1 = _Function(_Dest1); \
-				auto _Result2 = _Function(_Dest2); \
-				_Result1.Store(_Dest + i); \
-				_Result2.Store(_Dest + i + Stride); \
-			} \
-		else \
-			for (; i < DestSize - OpThroughput; i += OpThroughput) \
-				for (int64_t j = 0; j < OpThroughput; ++j) \
-					_Dest[i + j] = _Function(_Dest[i + j]); \
-	} \
-	else \
-		for (; i < DestSize - OpThroughput; i += OpThroughput) \
-			for (int64_t j = 0; j < OpThroughput; ++j) \
-				_Dest[i + j] = _Function(_Dest[i + j]); \
- \
-	for (; i < DestSize; ++i) \
-		_Dest[i] = _Function(_Dest[i]); \
-} \
- \
-template<typename _Type, size_t _NRank> \
-void UnaryInplace##_Function( \
-	_Type* _Dest, \
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld, \
-	void* \
-) \
-{ \
-	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld; \
- \
-	const auto Func = [&](int64_t _Index) \
-		{ \
-			_Dest[_Index] = _Function(_Dest[_Index]); \
-		}; \
-	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
-	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
- \
-	SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Unary_Unfold>( \
-		0, Shape, Begin, ViewStride, Func \
-	); \
-} \
- \
-template<typename _Type> \
-void UnaryInplaceContEmpty##_Function( \
-	_Type* _Dest, \
-	SizeType DestSize, \
-	void* \
-) {} \
- \
-template<typename _Type> \
-void UnaryCont##_Function( \
-	_Type* _Dest, \
-	const _Type* _Src, \
-	SizeType DestSize, \
-	void* \
-) \
-{ \
-	constexpr int64_t OpThroughput = 2; \
-	constexpr int64_t Stride = int64_t(sizeof(__m256) / sizeof(_Type)); \
-	constexpr int64_t LoopStride = OpThroughput * Stride; \
- \
-	SizeType i = 0; \
- \
-	const bool EnableAvx = IsAvxEnabled<_Type>::Get(); \
- \
-	if constexpr (IsAvx256SupportedValue<_Type>) \
-	{ \
-		if (EnableAvx) \
-			for (; i < DestSize - LoopStride; i += LoopStride) \
-			{ \
-				auto _Src1 = Vectorized<_Type>(_Src + i); \
-				auto _Src2 = Vectorized<_Type>(_Src + i + Stride); \
-				auto _Result1 = _Function(_Src1); \
-				auto _Result2 = _Function(_Src2); \
-				_Result1.Store(_Dest + i); \
-				_Result2.Store(_Dest + i + Stride); \
-			} \
-		else \
-			for (; i < DestSize - OpThroughput; i += OpThroughput) \
-				for (int64_t j = 0; j < OpThroughput; ++j) \
-					_Dest[i + j] = _Function(_Src[i + j]); \
-	} \
-	else \
-		for (; i < DestSize - OpThroughput; i += OpThroughput) \
-			for (int64_t j = 0; j < OpThroughput; ++j) \
-				_Dest[i + j] = _Function(_Src[i + j]); \
- \
-	for (; i < DestSize; ++i) \
-		_Dest[i] = _Function(_Src[i]); \
-} \
- \
-template<typename _DestType, typename _SrcType> \
-void UnaryContEmpty##_Function ( \
-	_DestType* _Dest, \
-	const _SrcType* _Src, \
-	SizeType DestSize, \
-	void* \
-) \
-{ \
-	constexpr int64_t OpThroughput = 8; \
-	SizeType i = 0; \
-	for (; i < DestSize - OpThroughput; i += OpThroughput) \
-		for (int64_t j = 0; j < OpThroughput; ++j) \
-			_Dest[i + j] = _Function(_Src[i + j]); \
-			 \
-	for (; i < DestSize; ++i) \
-		_Dest[i] = _Function(_Src[i]); \
-} \
- \
-template<typename _DestType, typename _SrcType, size_t _NRank> \
-void Unary##_Function( \
-	_DestType* _Dest, \
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld, \
-	const _SrcType* _Src, \
-	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld, \
-	void* \
-) \
-{ \
-	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld; \
-	const OperatorParameter<_NRank>& _SrcInfo = *_SrcInfoOld; \
- \
-	const auto Func = [&](int64_t _IndexA, int64_t _IndexB) \
-		{ \
-			_Dest[_IndexA] = _Function(_Src[_IndexB]); \
-		}; \
-	const SizeType* __restrict Shape = _DestInfo.Shape.Data(); \
-	const SizeType* __restrict Begin = _DestInfo.Begin.Data(); \
-	const SizeType* __restrict ViewStride = _DestInfo.ViewStride.Data(); \
-	const SizeType* __restrict SrcViewStride = _SrcInfo.ViewStride.Data(); \
- \
-	DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Unary_Unfold>( \
-		0, 0, \
-		Shape, Begin, \
-		ViewStride, SrcViewStride, \
-		Func \
-	); \
-} \
-} \
 } \
 template <typename _Type> \
 template<typename _ResultType, size_t _NRank> \
@@ -211,50 +20,28 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Unary( \
 	bool Continuous \
 ) \
 { \
-	try \
-	{ \
-		_ResultType Test = UnaryOperators::_Function(*_Src); \
-	} \
-	catch (std::exception& e) \
-	{ \
-		_D_Dragonian_Lib_Throw_Exception(e.what()); \
-	} \
-	if constexpr (IsSameTypeValue<_Type, _ResultType>) \
-	{ \
-		if (_Dest == _Src) \
-			ImplMultiThreadSingle( \
-				_Dest, \
-				_DestInfo, \
-				nullptr, \
-				Continuous, \
-				UnaryOperators::_Function##Unary::UnaryInplace##_Function<_Type, _NRank>, \
-				UnaryOperators::_Function##Unary::UnaryInplaceCont##_Function<_Type> \
-			); \
-		else \
-			ImplMultiThreadDouble( \
-				_Dest, \
-				_DestInfo, \
-				_Src, \
-				_SrcInfo, \
-				nullptr, \
-				Continuous, \
-				UnaryOperators::_Function##Unary::Unary##_Function<_ResultType, _Type, _NRank>, \
-				UnaryOperators::_Function##Unary::UnaryCont##_Function<_Type> \
-			); \
-	} \
-	else \
-	{ \
-		ImplMultiThreadDouble( \
+	if constexpr (TypeTraits::IsAvx256SupportedValue<_Type> && TypeTraits::IsSameTypeValue<_Type, _ResultType>) \
+		ImplMultiThreadBasic<decltype(UnaryOperators::_Function##<_Type>), UnaryOperators::_Function##<_Type>, decltype(UnaryOperators::_Function##<Vectorized<_Type>>), UnaryOperators::_Function##<Vectorized<_Type>>, TypeDef::UnaryOperatorType, false, Unfold, AvxThroughput, _NRank, _ResultType, _Type, _Type>(\
 			_Dest, \
-			_DestInfo, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
 			_Src, \
-			_SrcInfo, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
 			nullptr, \
-			Continuous, \
-			UnaryOperators::_Function##Unary::Unary##_Function<_ResultType, _Type, _NRank>, \
-			UnaryOperators::_Function##Unary::UnaryContEmpty##_Function<_ResultType, _Type> \
+			nullptr, \
+			nullptr, \
+			Continuous \
 		); \
-	} \
+	else \
+		ImplMultiThreadBasic<decltype(UnaryOperators::_Function##<_Type>), UnaryOperators::_Function##<_Type>, decltype(UnaryOperators::_Function##<_Type>), UnaryOperators::_Function##<_Type>, TypeDef::UnaryOperatorType, false, Unfold, AvxThroughput, _NRank, _ResultType, _Type, _Type>(\
+			_Dest, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
+			_Src, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
+			nullptr, \
+			nullptr, \
+			nullptr, \
+			Continuous \
+		); \
 }
 
 _D_Dragonian_Lib_Operator_Space_Begin
@@ -576,32 +363,32 @@ namespace UnaryOperators
 
 }
 
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Negative, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Sqrt, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(RSqrt, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Reciprocal, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Abs, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Sin, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Cos, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Tan, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ASin, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ACos, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ATan, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Sinh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Cosh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Tanh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ASinh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ACosh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(ATanh, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Exp, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Log, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Log2, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Log10, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Ceil, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Floor, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Round, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Trunc, 8);
-_D_Dragonian_Lib_Operator_Unary_Function_Def(Frac, 8);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Negative, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Sqrt, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(RSqrt, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Reciprocal, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Abs, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Sin, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Cos, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Tan, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ASin, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ACos, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ATan, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Sinh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Cosh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Tanh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ASinh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ACosh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ATanh, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Exp, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Log, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Log2, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Log10, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Ceil, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Floor, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Round, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Trunc, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Frac, 8, 2);
 
 _D_Dragonian_Lib_Operator_Space_End
 

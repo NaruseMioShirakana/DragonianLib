@@ -18,7 +18,6 @@
 */
 
 #pragma once
-#include <cstdint>
 #include <unordered_map>
 #include "Util/TypeTraits.h"
 

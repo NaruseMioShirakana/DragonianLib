@@ -18,30 +18,31 @@ std::wregex _Valdef_Dragonian_Lib_Value_Regexw(LR"([ ]*(-{0,1}\d+)[ ]*)");
 
 void SetRandomSeed(SizeType _Seed)
 {
-	Operators::_Valdef_My_Thread_Pool.SetRandomSeed(_Seed);
-	Operators::_Valdef_Global_Random_Device_Id = 0;
+	Operators::GetThreadPool().SetRandomSeed(_Seed);
+	Operators::GetRandomDeviceId() = 0;
 }
 
 void SetWorkerCount(SizeType _ThreadCount)
 {
-	Operators::_Valdef_My_Thread_Pool.Init(std::max(_ThreadCount, static_cast<SizeType>(0)));
-	SetMaxTaskCountPerOperator(Operators::_Valdef_My_Thread_Pool.GetThreadCount() / 2);
+	Operators::GetThreadPool().Init(std::max(_ThreadCount, static_cast<SizeType>(0)));
+	SetMaxTaskCountPerOperator(Operators::GetThreadPool().GetThreadCount() / 2);
 }
 
 void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount)
 {
-	Operators::_Valdef_Global_Max_Task_Count_Per_Operator = std::max(_MaxTaskCount, static_cast<SizeType>(1));
+	
+	Operators::SetMaxTaskCountPerOperator(std::max(_MaxTaskCount, static_cast<SizeType>(1)));
 }
 
 void EnableTimeLogger(bool _Enable)
 {
-	Operators::_Valdef_My_Thread_Pool.EnableTimeLogger(_Enable);
+	Operators::GetThreadPool().EnableTimeLogger(_Enable);
 }
 
 void EnableInstantRun(bool _Enable)
 {
-	Operators::_Valdef_My_Thread_Pool.EnableInstantRun(_Enable);
-	Operators::_Flag_Instant_Run = _Enable;
+	Operators::GetThreadPool().EnableInstantRun(_Enable);
+	Operators::SetInstantRunFlag(_Enable);
 }
 
 Range::Range(const char* _RangeArgs)

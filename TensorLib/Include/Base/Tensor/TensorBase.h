@@ -22,8 +22,8 @@
 #include <complex>
 #include <set>
 #include <unordered_map>
-#include "../Value.h"
-#include "Libraries/MyTemplateLibrary/Array.h"
+#include "TensorLib/Include/Base/Value.h"
+
 
 _D_Dragonian_Lib_Space_Begin
 

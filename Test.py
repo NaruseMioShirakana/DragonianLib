@@ -1,13 +1,10 @@
 import torch
 import time
 
-emb = torch.nn.Embedding(100, 2048)
-indices = torch.LongTensor([[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
-indices = indices.repeat(1, 100)
-ten = torch.ones(11451400)
+emb = torch.ones((114,514,1919))
 for i in range(20):
     begin = time.time()
-    torch.nn.functional.pad(ten, (114, 114))
+    emb += 2
     print(time.time() - begin)
 
 

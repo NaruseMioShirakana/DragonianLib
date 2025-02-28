@@ -44,6 +44,17 @@ void WithTimer(const Fn& fn)
 
 int main()
 {
+	DragonianLib::SetWorkerCount(16);
+	DragonianLib::SetMaxTaskCountPerOperator(8);
+	DragonianLib::SetRandomSeed(114514);
+	auto Ten1 = DragonianLib::Functional::Randn<double>(DragonianLib::IDim(1000), 0, 1.f).EvalMove();
+	std::cout << (Ten1 < 1).Eval() << "\n\n";
+	auto Ten2 = Ten1.Cast<float>();
+	(Ten2 += 2).Eval();
+	auto Ten3 = DragonianLib::Functional::Arange(0, 1000, 2).EvalMove();
+	std::cout << Ten3.Eval() << "\n";
+	std::cout << Ten2.Gather(Ten3).Eval();
+	return 0;
 	auto Codec = DragonianLib::AvCodec::AvCodec();
 
 	auto Audio = Codec.DecodeFloat(

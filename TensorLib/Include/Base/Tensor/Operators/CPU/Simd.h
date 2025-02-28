@@ -1671,6 +1671,215 @@ namespace SimdTypeTraits
 	constexpr bool IsVectorizedValue = IsVectorized<RemoveARPCVType<Type>>;
 	template <typename _Type>
 	concept IsSimdVector = IsVectorizedValue<_Type>;
+
+	template <typename _Type, typename _FunctionType, _FunctionType _Function>
+	class IsAvxEnabled
+	{
+	public:
+		_D_Dragonian_Lib_Constexpr_Force_Inline static bool Get()
+		{
+			static IsAvxEnabled CheckInstance;
+			return Value;
+		}
+	private:
+		static inline bool Value;
+		_D_Dragonian_Lib_Constexpr_Force_Inline IsAvxEnabled()
+		{
+			if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>)
+			{
+				if constexpr (requires(Vectorized<_Type>&_a, Vectorized<_Type>&_b) { _Function(_a, _b); })
+				{
+					try
+					{
+						_Function(Vectorized<_Type>(_Type(1)), Vectorized<_Type>(_Type(1)));
+						Value = true;
+						return;
+					}
+					catch (std::exception& _Except)
+					{
+						LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
+					}
+				}
+				else if constexpr (requires(Vectorized<_Type>&_a) { _Function(_a); })
+				{
+					try
+					{
+						_Function(Vectorized<_Type>(_Type(1)));
+						Value = true;
+						return;
+					}
+					catch (std::exception& _Except)
+					{
+						LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
+					}
+				}
+			}
+			Value = false;
+		}
+	};
+}
+
+template <
+	typename _RetType, typename _InputType, typename _ParameterType,
+	typename _FunctionType, _FunctionType _Function,
+	typename _VectorizedFunctionType, _VectorizedFunctionType _VectorizedFunction,
+	TypeDef::OperatorType _OType,
+	bool IsCompare,
+	Int64 OpThroughput
+> void VectorizedFunction(
+	_RetType* _Dest,
+	SizeType _DestSize,
+	const _InputType* _Src1 = nullptr,
+	const _InputType* _Src2 = nullptr,
+	const std::shared_ptr<_ParameterType> _ValPtr = nullptr
+)
+{
+	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(_InputType));
+	constexpr Int64 LoopStride = OpThroughput * Stride;
+
+	if constexpr (TypeTraits::IsAvx256SupportedValue<_InputType>)
+	{
+		if (SimdTypeTraits::IsAvxEnabled<_InputType, _VectorizedFunctionType, _VectorizedFunction>::Get())
+		{
+			while (size_t(_Dest) % sizeof(__m256) && _DestSize > 0)
+			{
+				if constexpr (_OType == TypeDef::UnaryOperatorType)
+					*_Dest++ = (_RetType)_Function(*_Src1++);
+				else if constexpr (_OType == TypeDef::BinaryOperatorType)
+					*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
+				else if constexpr (_OType == TypeDef::ConstantOperatorType)
+					*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+				--_DestSize;
+			}
+
+			Vectorized<_InputType> VectorizedValue[OpThroughput * 2];
+			if constexpr (_OType == TypeDef::ConstantOperatorType)
+				VectorizedValue[OpThroughput] = Vectorized<_InputType>(*_ValPtr);
+
+			while (_DestSize >= LoopStride)
+			{
+				if constexpr (_OType == TypeDef::UnaryOperatorType)
+				{
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i]);
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						if constexpr (IsCompare)
+							VectorizedValue[i].StoreBool(_Dest + i * Stride);
+						else
+							VectorizedValue[i].Store(_Dest + i * Stride);
+				}
+				else if constexpr (_OType == TypeDef::BinaryOperatorType)
+				{
+					for (Int64 i = 0; i < OpThroughput; ++i)
+					{
+						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
+						VectorizedValue[i + OpThroughput] = Vectorized<_InputType>(_Src2 + i * Stride);
+					}
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i], VectorizedValue[i + OpThroughput]);
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						if constexpr (IsCompare)
+							VectorizedValue[i].StoreBool(_Dest + i * Stride);
+						else
+							VectorizedValue[i].Store(_Dest + i * Stride);
+				}
+				else if constexpr (_OType == TypeDef::ConstantOperatorType)
+				{
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i], VectorizedValue[OpThroughput]);
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						if constexpr (IsCompare)
+							VectorizedValue[i].StoreBool(_Dest + i * Stride);
+						else
+							VectorizedValue[i].Store(_Dest + i * Stride);
+				}
+				_Dest += LoopStride;
+				_Src1 += LoopStride;
+				if constexpr (_OType == TypeDef::BinaryOperatorType)
+					_Src2 += LoopStride;
+				_DestSize -= LoopStride;
+			}
+		}
+	}
+
+	while (_DestSize >= LoopStride)
+	{
+		for (Int64 i = 0; i < LoopStride; ++i)
+		{
+			if constexpr (_OType == TypeDef::UnaryOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i]);
+			else if constexpr (_OType == TypeDef::BinaryOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i], _Src2[i]);
+			else if constexpr (_OType == TypeDef::ConstantOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i], *_ValPtr);
+		}
+		_Dest += LoopStride;
+		_Src1 += LoopStride;
+		if constexpr (_OType == TypeDef::BinaryOperatorType)
+			_Src2 += LoopStride;
+		_DestSize -= LoopStride;
+	}
+
+	while (_DestSize > 0)
+	{
+		if constexpr (_OType == TypeDef::UnaryOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++);
+		else if constexpr (_OType == TypeDef::BinaryOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
+		else if constexpr (_OType == TypeDef::ConstantOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+		--_DestSize;
+	}
+}
+
+template <
+	typename _RetType, typename _InputType, typename _ParameterType,
+	typename _FunctionType, _FunctionType _Function,
+	TypeDef::OperatorType _OType,
+	Int64 OpThroughput
+> void ContiguousFunction(
+	_RetType* _Dest,
+	SizeType _DestSize,
+	const _InputType* _Src1 = nullptr,
+	const _InputType* _Src2 = nullptr,
+	const std::shared_ptr<_ParameterType> _ValPtr = nullptr
+)
+{
+	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(_InputType));
+	constexpr Int64 LoopStride = OpThroughput * Stride;
+
+	while (_DestSize > LoopStride)
+	{
+		for (Int64 i = 0; i < OpThroughput; ++i)
+		{
+			if constexpr (_OType == TypeDef::UnaryOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i]);
+			else if constexpr (_OType == TypeDef::BinaryOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i], _Src2[i]);
+			else if constexpr (_OType == TypeDef::ConstantOperatorType)
+				_Dest[i] = (_RetType)_Function(_Src1[i], *_ValPtr);
+		}
+		_Dest += LoopStride;
+		_Src1 += LoopStride;
+		if constexpr (_OType == TypeDef::BinaryOperatorType)
+			_Src2 += LoopStride;
+		_DestSize -= LoopStride;
+	}
+
+	while (_DestSize > 0)
+	{
+		if constexpr (_OType == TypeDef::UnaryOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++);
+		else if constexpr (_OType == TypeDef::BinaryOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
+		else if constexpr (_OType == TypeDef::ConstantOperatorType)
+			*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+		--_DestSize;
+	}
 }
 
 _D_Dragonian_Lib_Operator_Space_End

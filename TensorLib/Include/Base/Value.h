@@ -19,6 +19,7 @@
 
 #pragma once
 #include "Libraries/Base.h"
+#include "Libraries/MyTemplateLibrary/Array.h"
 
 _D_Dragonian_Lib_Space_Begin
 

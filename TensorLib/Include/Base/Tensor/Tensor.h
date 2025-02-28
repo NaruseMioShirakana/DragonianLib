@@ -236,8 +236,8 @@ public:
 	{
 		if (_MyFutures)
 		{
-			if (!_MyFutures->empty() && !Operators::_Flag_Instant_Run)
-				Operators::_Valdef_My_Thread_Pool.Notify(_MyFutures->size());
+			if (!_MyFutures->empty() && !Operators::GetInstantRunFlag())
+				Operators::GetThreadPool().Notify(_MyFutures->size());
 			while (!_MyFutures->empty())
 			{
 				_MyFutures->front().first.get();
@@ -249,8 +249,8 @@ public:
 	{
 		if (_MyFutures)
 		{
-			if (!_MyFutures->empty() && !Operators::_Flag_Instant_Run)
-				Operators::_Valdef_My_Thread_Pool.Notify(_MyFutures->size());
+			if (!_MyFutures->empty() && !Operators::GetInstantRunFlag())
+				Operators::GetThreadPool().Notify(_MyFutures->size());
 			while (!_MyFutures->empty())
 			{
 				_MyFutures->front().first.get();
@@ -263,8 +263,8 @@ public:
 	{
 		if (_MyFutures)
 		{
-			if (!_MyFutures->empty() && !Operators::_Flag_Instant_Run)
-				Operators::_Valdef_My_Thread_Pool.Notify(_MyFutures->size());
+			if (!_MyFutures->empty() && !Operators::GetInstantRunFlag())
+				Operators::GetThreadPool().Notify(_MyFutures->size());
 			while (!_MyFutures->empty())
 			{
 				_MyFutures->front().first.get();

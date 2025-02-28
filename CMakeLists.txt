@@ -506,31 +506,31 @@ install(
 #Install Header File
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/Libraries/
-	DESTINATION include/Libraries
+	DESTINATION include/DragonianLib/Libraries
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/OnnxLibrary/
-	DESTINATION include/OnnxRuntimeLibraries
+	DESTINATION include/DragonianLib/OnnxLibrary
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/TensorRT/
-	DESTINATION include/NvinferLibraries
+	DESTINATION include/DragonianLib/TensorRT
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/TensorLib/
-	DESTINATION include/DragonianTensor
+	DESTINATION include/DragonianLib/TensorLib
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )
 install(
 	DIRECTORY ${PROJECT_SOURCE_DIR}/NCNNLibrary/
-	DESTINATION include/NCNNLibraries
+	DESTINATION include/DragonianLib/NCNNLibrary
 	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 	PATTERN "*/" EXCLUDE
 )

@@ -72,6 +72,13 @@ using Complex64 = std::complex<double>; ///< 64-bit complex
 
 namespace TypeDef
 {
+	enum OperatorType
+	{
+		UnaryOperatorType,
+		BinaryOperatorType,
+		ConstantOperatorType
+	};
+
 	template <typename _Type, size_t _Rank>
 	struct _Impl_NDInitilizerListType
 	{

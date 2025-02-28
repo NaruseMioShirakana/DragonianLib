@@ -13,7 +13,7 @@ void AssignTensorCont(
 	_TypeDest* _Dest,
 	const _TypeSrc* _Src,
 	SizeType DestSize,
-	void*
+	const std::shared_ptr<int>&
 )
 {
 	if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_trivially_copy_assignable_v<_TypeSrc>)
@@ -54,10 +54,10 @@ void AssignTensorCont(
 template<typename _TypeDest, typename _TypeSrc, size_t _NRank>
 void AssignTensor(
 	_TypeDest* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
 	const _TypeSrc* _Src,
-	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld,
-	void*
+	const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld,
+	const std::shared_ptr<int>&
 )
 {
 	if constexpr (
@@ -103,12 +103,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplCast(
 {
 	if constexpr (TypeTraits::CouldBeConvertedFromValue<_Type, _TypeSrc> && std::is_move_assignable_v<_Type>)
 	{
-		ImplMultiThreadDouble(
+		ImplMultiThreadCaller<2, _NRank, _Type>(
 			_Dest,
-			_DestInfo,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			_Src,
-			_SrcInfo,
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
 			nullptr,
+			nullptr,
+			std::make_shared<int>(0),
 			Continuous,
 			AssignTensor<_Type, _TypeSrc, _NRank>,
 			AssignTensorCont<_Type, _TypeSrc>
@@ -130,12 +132,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignTensor(
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		ImplMultiThreadDouble(
+		ImplMultiThreadCaller<2, _NRank, _Type>(
 			_Dest,
-			_DestInfo,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			_Src,
-			_SrcInfo,
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
 			nullptr,
+			nullptr,
+			std::make_shared<int>(0),
 			Continuous,
 			AssignTensor<_Type, _Type, _NRank>,
 			AssignTensorCont<_Type, _Type>
@@ -157,13 +161,13 @@ template<typename _Type>
 void AssignBufferCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	_Struct_Buffer<_Type> _Value
+	const std::shared_ptr<_Struct_Buffer<_Type>> _Value
 )
 {
-	const auto Index = _Dest - _Value._DestBegin;
-	if (Index >= _Value._Count) return;
-	DestSize = std::min(DestSize, _Value._Count - Index);
-	const auto _SrcPtr = _Value._Src + Index;
+	const auto Index = _Dest - _Value->_DestBegin;
+	if (Index >= _Value->_Count) return;
+	DestSize = std::min(DestSize, _Value->_Count - Index);
+	const auto _SrcPtr = _Value->_Src + Index;
 	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
 		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
 	else if constexpr (std::is_copy_assignable_v<_Type>)
@@ -190,18 +194,18 @@ void AssignBufferCont(
 template<typename _Type, size_t _NRank>
 void AssignBuffer(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	_Struct_Buffer<_Type> _Value
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<_Struct_Buffer<_Type>> _Value
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 
-		const auto End = _Value._Src + _Value._Count;
+		const auto End = _Value->_Src + _Value->_Count;
 		const _Type* _Src;
 		if (std::ranges::count(_DestInfo.Begin, 0) == _NRank)
-			_Src = _Value._Src;
+			_Src = _Value->_Src;
 		else if (std::ranges::count(_DestInfo.Begin, 0) == _NRank - 1)
 		{
 			SizeType TaskIndex = 1;
@@ -210,7 +214,7 @@ void AssignBuffer(
 					TaskIndex *= _DestInfo.Begin[i];
 				else
 					TaskIndex *= _DestInfo.Shape[i];
-			_Src = _Value._Src + TaskIndex;
+			_Src = _Value->_Src + TaskIndex;
 		}
 		else
 			_D_Dragonian_Lib_Not_Implemented_Error;
@@ -223,7 +227,7 @@ void AssignBuffer(
 			};
 
 		SingleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
-			0, 
+			0,
 			_DestInfo.Shape.Data(), _DestInfo.Begin.Data(),
 			_DestInfo.ViewStride.Data(),
 			Func
@@ -237,13 +241,13 @@ template<typename _Type>
 void MoveBufferCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	_Struct_Buffer<_Type> _Value
+	const std::shared_ptr<_Struct_Buffer<_Type>> _Value
 )
 {
-	const auto Index = _Dest - _Value._DestBegin;
-	if (Index >= _Value._Count) return;
-	DestSize = std::min(DestSize, _Value._Count - Index);
-	const auto _SrcPtr = _Value._Src + Index;
+	const auto Index = _Dest - _Value->_DestBegin;
+	if (Index >= _Value->_Count) return;
+	DestSize = std::min(DestSize, _Value->_Count - Index);
+	const auto _SrcPtr = _Value->_Src + Index;
 	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
 		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
 	else if constexpr (std::is_move_assignable_v<_Type>)
@@ -270,18 +274,18 @@ void MoveBufferCont(
 template<typename _Type, size_t _NRank>
 void MoveBuffer(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	_Struct_Buffer<_Type> _Value
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<_Struct_Buffer<_Type>> _Value
 )
 {
 	if constexpr (std::is_move_assignable_v<_Type>)
 	{
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 
-		const auto End = _Value._Src + _Value._Count;
+		const auto End = _Value->_Src + _Value->_Count;
 		const _Type* _Src;
 		if (std::ranges::count(_DestInfo.Begin, 0) == _NRank)
-			_Src = _Value._Src;
+			_Src = _Value->_Src;
 		else if (std::ranges::count(_DestInfo.Begin, 0) == _NRank - 1)
 		{
 			SizeType TaskIndex = 1;
@@ -290,7 +294,7 @@ void MoveBuffer(
 					TaskIndex *= _DestInfo.Begin[i];
 				else
 					TaskIndex *= _DestInfo.Shape[i];
-			_Src = _Value._Src + TaskIndex;
+			_Src = _Value->_Src + TaskIndex;
 		}
 		else
 			_D_Dragonian_Lib_Not_Implemented_Error;
@@ -325,11 +329,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplMoveBuffer(
 {
 	if constexpr (std::is_move_assignable_v<_Type>)
 	{
-		_Struct_Buffer<_Type> _Value = { _Dest, _Src, _Count };
-		ImplMultiThreadSingle<_Type, _Struct_Buffer<_Type>>(
+		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 			_Dest,
-			_DestInfo,
-			_Value,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			std::make_shared<_Struct_Buffer<_Type>>(_Dest, _Src, _Count),
 			Continuous,
 			MoveBuffer<_Type, _NRank>,
 			MoveBufferCont<_Type>
@@ -351,11 +358,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignBuffer(
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		_Struct_Buffer<_Type> _Value = { _Dest, _Src, _Count };
-		ImplMultiThreadSingle<_Type, _Struct_Buffer<_Type>>(
+		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 			_Dest,
-			_DestInfo,
-			_Value,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			std::make_shared<_Struct_Buffer<_Type>>(_Dest, _Src, _Count),
 			Continuous,
 			AssignBuffer<_Type, _NRank>,
 			AssignBufferCont<_Type>
@@ -369,7 +379,7 @@ template<typename _Type>
 void AssignScalarCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	std::shared_ptr<_Type> _ValPtr
+	const std::shared_ptr<_Type> _ValPtr
 )
 {
 	constexpr int64_t OpThroughput = 2;
@@ -406,8 +416,8 @@ void AssignScalarCont(
 template<typename _Type, size_t _NRank>
 void AssignScalar(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	std::shared_ptr<_Type> _ValPtr
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<_Type> _ValPtr
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
@@ -439,9 +449,13 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignScalar(
 {
 	if constexpr (std::is_constructible_v<_Type>)
 	{
-		ImplMultiThreadSingle(
+		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 			_Dest,
-			_DestInfo,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
 			std::make_shared<_Type>(_Value),
 			Continuous,
 			AssignScalar<_Type, _NRank>,
@@ -456,11 +470,11 @@ template<typename _Type>
 void AssignRandnCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	RandomSettings<_Type> Settings
+	const std::shared_ptr<RandomSettings<_Type>> Settings
 )
 {
-	auto RandomDevice = _Valdef_My_Thread_Pool.GetRandomEngine(Settings._ThreadId);
-	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings._Mean, Settings._Sigma);
+	auto RandomDevice = GetThreadPool().GetRandomEngine(Settings->_ThreadId);
+	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings->_Mean, Settings->_Sigma);
 
 	SizeType i = 0;
 	if constexpr (TypeTraits::IsComplexValue<_Type>)
@@ -500,12 +514,12 @@ void AssignRandnCont(
 template<typename _Type, size_t _NRank>
 void AssignRandn(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	RandomSettings<_Type> Settings
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<RandomSettings<_Type>> Settings
 )
 {
-	auto RandomDevice = _Valdef_My_Thread_Pool.GetRandomEngine(Settings._ThreadId);
-	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings._Mean, Settings._Sigma);
+	auto RandomDevice = GetThreadPool().GetRandomEngine(Settings->_ThreadId);
+	_Impl_Dragonian_Lib_Normal_Distribution_Type<_Type> NormalDistribution(Settings->_Mean, Settings->_Sigma);
 
 	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 	const SizeType* __restrict Shape = _DestInfo.Shape.Data();
@@ -541,10 +555,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRandn(
 	{
 		using RandomType = _Impl_Dragonian_Lib_Random_Type<_Type>;
 		using RandomNormalType = _Impl_Dragonian_Lib_Random_Normal_Type<_Type>;
-		ImplMultiThreadSingle<_Type>(
+		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 			_Dest,
-			_DestInfo,
-			RandomSettings<_Type>{ (RandomType)0, (RandomType)0, (RandomNormalType)_Mean, (RandomNormalType)_Sigma},
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			std::make_shared<RandomSettings<_Type>>((RandomType)0, (RandomType)0, (RandomNormalType)_Mean, (RandomNormalType)_Sigma),
 			Continuous,
 			AssignRandn<_Type, _NRank>,
 			AssignRandnCont<_Type>
@@ -556,12 +574,12 @@ template<typename _Type>
 void AssignRandomCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	RandomSettings<_Type> Settings
+	const std::shared_ptr<RandomSettings<_Type>> Settings
 )
 {
-	auto RandomDevice = _Valdef_My_Thread_Pool.GetRandomEngine(Settings._ThreadId);
+	auto RandomDevice = GetThreadPool().GetRandomEngine(Settings->_ThreadId);
 	using RandomDistributionType = _Impl_Dragonian_Lib_Random_Distribution_Type<_Type>;
-	RandomDistributionType Distribution(Settings._Min, Settings._Max);
+	RandomDistributionType Distribution(Settings->_Min, Settings->_Max);
 
 	SizeType i = 0;
 	if constexpr (TypeTraits::IsComplexValue<_Type>)
@@ -601,13 +619,13 @@ void AssignRandomCont(
 template<typename _Type, size_t _NRank>
 void AssignRandom(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	RandomSettings<_Type> Settings
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	const std::shared_ptr<RandomSettings<_Type>> Settings
 )
 {
-	auto RandomDevice = _Valdef_My_Thread_Pool.GetRandomEngine(Settings._ThreadId);
+	auto RandomDevice = GetThreadPool().GetRandomEngine(Settings->_ThreadId);
 	using RandomDistributionType = _Impl_Dragonian_Lib_Random_Distribution_Type<_Type>;
-	RandomDistributionType Distribution(Settings._Min, Settings._Max);
+	RandomDistributionType Distribution(Settings->_Min, Settings->_Max);
 
 	const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 
@@ -646,19 +664,27 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 		using RandomNormalType = _Impl_Dragonian_Lib_Random_Normal_Type<_Type>;
 
 		if constexpr (TypeTraits::IsComplexValue<_Type>)
-			ImplMultiThreadSingle<_Type>(
+			ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 				_Dest,
-				_DestInfo,
-				RandomSettings<_Type>{(RandomType)_Min.real(), (RandomType)_Max.real(), (RandomNormalType)0., (RandomNormalType)0.},
+				std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+				nullptr,
+				nullptr,
+				nullptr,
+				nullptr,
+				std::make_shared<RandomSettings<_Type>>((RandomType)_Min.real(), (RandomType)_Max.real(), (RandomNormalType)0., (RandomNormalType)0.),
 				Continuous,
 				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>
 			);
 		else
-			ImplMultiThreadSingle<_Type>(
+			ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 				_Dest,
-				_DestInfo,
-				RandomSettings<_Type>{(RandomType)_Min, (RandomType)_Max, (RandomNormalType)0., (RandomNormalType)0.},
+				std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+				nullptr,
+				nullptr,
+				nullptr,
+				nullptr,
+				std::make_shared<RandomSettings<_Type>>((RandomType)_Min, (RandomType)_Max, (RandomNormalType)0., (RandomNormalType)0.),
 				Continuous,
 				AssignRandom<_Type, _NRank>,
 				AssignRandomCont<_Type>
@@ -678,11 +704,11 @@ template<typename _Type>
 void ArangeImpCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	ArangeParams<_Type> _Value
+	std::shared_ptr<ArangeParams<_Type>> _Value
 )
 {
-	const auto Index = _Dest - _Value._DestBegin;
-	_Dest[0] = _Value._Start + _Type(Index) * _Value._Step;
+	const auto Index = _Dest - _Value->_DestBegin;
+	_Dest[0] = _Value->_Start + _Type(Index) * _Value->_Step;
 
 	constexpr int64_t OpThroughput = 2;
 	constexpr int64_t Stride = int64_t(sizeof(__m256) / sizeof(_Type));
@@ -694,12 +720,12 @@ void ArangeImpCont(
 		if (DestSize >= LoopStride)
 		{
 			for (int64_t j = 1; j < LoopStride; ++j)
-				_Dest[j] = _Dest[j - 1] + _Value._Step;
+				_Dest[j] = _Dest[j - 1] + _Value->_Step;
 
 			Vectorized<_Type> _VectorizedValue1(_Dest);
 			Vectorized<_Type> _VectorizedValue2(_Dest + Stride);
-			Vectorized<_Type> _VectorizedStep1(_Value._Step * static_cast<_Type>(LoopStride));
-			Vectorized<_Type> _VectorizedStep2(_Value._Step * static_cast<_Type>(LoopStride));
+			Vectorized<_Type> _VectorizedStep1(_Value->_Step * static_cast<_Type>(LoopStride));
+			Vectorized<_Type> _VectorizedStep2(_Value->_Step * static_cast<_Type>(LoopStride));
 			for (; i < DestSize - LoopStride; i += LoopStride)
 			{
 				_VectorizedValue1.Store(_Dest + i);
@@ -716,23 +742,23 @@ void ArangeImpCont(
 		if (DestSize >= LoopStride)
 		{
 			for (int64_t j = 1; j < LoopStride; ++j)
-				_Dest[j] = _Dest[j - 1] + _Value._Step;
+				_Dest[j] = _Dest[j - 1] + _Value->_Step;
 			for (; i < DestSize - LoopStride; i += LoopStride)
 				for (int64_t j = 0; j < LoopStride; ++j)
-					_Dest[i + j] = _Dest[i + j - 1] + _Value._Step;
+					_Dest[i + j] = _Dest[i + j - 1] + _Value->_Step;
 		}
 		else
 			++i;
 	}
 	for (; i < DestSize; ++i)
-		_Dest[i] = _Dest[i - 1] + _Value._Step;
+		_Dest[i] = _Dest[i - 1] + _Value->_Step;
 }
 
 template<typename _Type, size_t _NRank>
 void ArangeImp(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	ArangeParams<_Type> Settings
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	std::shared_ptr<ArangeParams<_Type>> Settings
 )
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
@@ -754,11 +780,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 	{
 		if (!Continuous)
 			_D_Dragonian_Lib_Not_Implemented_Error;
-		ArangeParams<_Type> _Value = { _Start, _Step, _Dest };
-		ImplMultiThreadSingle<_Type, ArangeParams<_Type>>(
+		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
 			_Dest,
-			_DestInfo,
-			_Value,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			std::make_shared<ArangeParams<_Type>>(_Start, _Step, _Dest),
 			Continuous,
 			ArangeImp<_Type, _NRank>,
 			ArangeImpCont<_Type>
@@ -795,7 +824,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> G
 			for (int64_t j = 0; j < LoopUnfold; ++j)
 			{
 				const auto Val1 = Value1 + i * *Stride1;
-				const auto Val2 = Value2 + i * *Stride2;
+				const auto Val2 = _Dim == 0 ? Value2 : Value2 + i * *Stride2;
 				const auto Val3 = Value3 + i * *Stride3;
 				_Func(Val1, Val2, Val3);
 				++i;
@@ -804,7 +833,7 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> G
 		while (i < *Shape)
 		{
 			const auto Val1 = Value1 + i * *Stride1;
-			const auto Val2 = Value2 + i * *Stride2;
+			const auto Val2 = _Dim == 0 ? Value2 : Value2 + i * *Stride2;
 			const auto Val3 = Value3 + i * *Stride3;
 			_Func(Val1, Val2, Val3);
 			++i;
@@ -815,12 +844,12 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> G
 template<typename _Type, typename _IndexType, size_t _NRank, size_t _Dim>
 void GatherOp(
 	_Type* _Dest,
-	std::shared_ptr<OperatorParameter<_NRank>> _DestInfo,
+	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfo,
 	const _Type* _Src,
-	std::shared_ptr<OperatorParameter<_NRank>> _SrcInfo,
+	const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfo,
 	const _IndexType* _Index,
-	std::shared_ptr<OperatorParameter<_NRank>> _IndexInfo,
-	void*
+	const std::shared_ptr<OperatorParameter<_NRank>> _IndexInfo,
+	const std::shared_ptr<int>&
 )
 {
 	const auto Func = [&](int64_t _IndexDst, int64_t _IndexSrc, int64_t _IndexIdx)
@@ -836,6 +865,7 @@ void GatherOp(
 		Func
 	);
 }
+
 template<typename _Type>
 template<typename _IndexType, size_t _NRank, size_t _Dim>
 void OperatorsBase<_Type, Device::CPU>::ImplGather(
@@ -847,14 +877,14 @@ void OperatorsBase<_Type, Device::CPU>::ImplGather(
 	const OperatorParameter<_NRank>& _IndexInfo
 )
 {
-	ImplMultiThreadTriple(
+	ImplMultiThreadCaller<3, _NRank>(
 		_Dest,
-		_DestInfo,
+		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 		_Src,
-		_SrcInfo,
+		std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
 		_Index,
-		_IndexInfo,
-		nullptr,
+		std::make_shared<OperatorParameter<_NRank>>(_IndexInfo),
+		std::make_shared<int>(0),
 		false,
 		GatherOp<_Type, _IndexType, _NRank, _Dim>,
 		nullptr

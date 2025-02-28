@@ -1,6 +1,5 @@
 ﻿#pragma once
-
-#include "../Base.h"
+#include "Libraries/Base.h"
 
 #define _D_Dragonian_Lib_Template_Library_Space_Begin _D_Dragonian_Lib_Space_Begin namespace TemplateLibrary {
 #define _D_Dragonian_Lib_Template_Library_Space_End } _D_Dragonian_Lib_Space_End

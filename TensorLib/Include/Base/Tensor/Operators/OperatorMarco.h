@@ -55,3 +55,4 @@ static void Impl##_Function##Unary( \
 	const OperatorParameter<_NRank>& _SrcInfo, \
 	bool Continuous \
 )
+

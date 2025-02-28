@@ -328,7 +328,7 @@ _Dragonian_Lib_Svc_Add_Prefix(VocoderModel) _Dragonian_Lib_Svc_Add_Prefix(LoadVo
 	}
 }
 
-INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadModel)(
+INT32 _Dragonian_Lib_Svc_Add_Prefix(UnrefModel)(
 	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model
 	)
 {
@@ -345,7 +345,7 @@ INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadModel)(
 	return 0;
 }
 
-INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadCachedModel)(
+INT32 _Dragonian_Lib_Svc_Add_Prefix(UnrefGlobalCache)(
 	LPCWSTR ModelPath,
 	_Dragonian_Lib_Svc_Add_Prefix(Env) _Env
 	)
@@ -377,7 +377,7 @@ INT32 _Dragonian_Lib_Svc_Add_Prefix(UnloadCachedModel)(
 	return 0;
 }
 
-void _Dragonian_Lib_Svc_Add_Prefix(ClearCachedModel)()
+void _Dragonian_Lib_Svc_Add_Prefix(ClearGlobalCache)()
 {
 	DragonianLib::DragonianLibOrtEnv::ClearModelCache();
 }

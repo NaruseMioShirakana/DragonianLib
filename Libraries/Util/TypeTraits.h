@@ -150,18 +150,14 @@ template <typename _Ty1, typename _Ty2>
 struct IsSameType
 {
 	constexpr static bool _IsSame = false;
-	constexpr static bool _IsSameFun(const _Ty1&, const _Ty2&) { return _IsSame; }
 };
 template <typename _Ty1>
 struct IsSameType<_Ty1, _Ty1>
 {
 	constexpr static bool _IsSame = true;
-	constexpr static bool _IsSameFun(const _Ty1&, const _Ty1&) { return _IsSame; }
 };
 template <typename _Ty1, typename _Ty2>
 constexpr bool IsSameTypeValue = _D_Dragonian_Lib_Type_Traits_Namespace IsSameType<_Ty1, _Ty2>::_IsSame;
-template <typename _Ty1, typename _Ty2>
-constexpr bool IsSameTypeVal(const _Ty1& _Val1, const _Ty2& _Val2) { return _D_Dragonian_Lib_Type_Traits_Namespace IsSameType<_Ty1, _Ty2>::_IsSameFun(_Val1, _Val2); }
 
 template <typename _Ty1, typename ..._Types>
 struct IsAnyOf { constexpr static bool _IsAnyOf = false; };
