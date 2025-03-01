@@ -25,6 +25,50 @@ _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IRanges(_ArgTypes&& ..._A
 	return VRanges<sizeof...(_ArgTypes)>({ std::forward<_ArgTypes>(_Args)... });
 }
 
+class _D_Dragonian_Lib_Impl_Functional
+{
+public:
+	_D_Dragonian_Lib_Impl_Functional() = delete;
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>>>
+	static decltype(auto) Max(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	{
+		_TensorA.Eval();
+		_TensorB.Eval();
+		auto BroadCasted = Tensor<_MyValueType, _NRankA, _MyDevice>::BroadCast(_TensorA, _TensorB);
+		auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_MyValueType, _MyDevice>::ImplMaxTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>>>
+	static decltype(auto) Min(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	{
+		_TensorA.Eval();
+		_TensorB.Eval();
+		auto BroadCasted = Tensor<_MyValueType, _NRankA, _MyDevice>::BroadCast(_TensorA, _TensorB);
+		auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(BroadCasted.first.Shape());
+		Operators::OperatorsBase<_MyValueType, _MyDevice>::ImplMinTensor(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			BroadCasted.first.Data(),
+			BroadCasted.first.GetDefaultOperatorParameter(),
+			BroadCasted.second.Data(),
+			BroadCasted.second.GetDefaultOperatorParameter(),
+			!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() &&
+			!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous()
+		);
+		return Ret;
+	}
+};
 namespace Functional
 {
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
@@ -631,7 +675,7 @@ namespace Functional
 		for (SizeType i = 0; i < (SizeType)_TensorCount; ++i)
 		{
 			CurSlice = { i , i + 1 };
-			Ret[_MySliceOption].TAssign(_Inputs[i].UnSqueeze(_Dim));
+			Ret[_MySliceOption].TensorAssign(_Inputs[i].UnSqueeze(_Dim));
 		}
 
 		return Ret;
@@ -671,10 +715,22 @@ namespace Functional
 		{
 			const auto& __Shape = _Inputs[i].Shape();
 			CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Dim] };
-			Ret[_MySliceOption].TAssign(_Inputs[i]);
+			Ret[_MySliceOption].TensorAssign(_Inputs[i]);
 		}
 
 		return Ret;
+	}
+
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>>>
+	decltype(auto) Max(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	{
+		return _D_Dragonian_Lib_Impl_Functional::Max(_TensorA, _TensorB);
+	}
+
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>>>
+	decltype(auto) Min(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	{
+		return _D_Dragonian_Lib_Impl_Functional::Min(_TensorA, _TensorB);
 	}
 }
 

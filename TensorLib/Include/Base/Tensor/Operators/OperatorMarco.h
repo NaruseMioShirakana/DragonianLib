@@ -56,3 +56,22 @@ static void Impl##_Function##Unary( \
 	bool Continuous \
 )
 
+#define _D_Dragonian_Lib_Operator_Unary_St_Define(_Function) \
+template<size_t _NRank> \
+static void Impl##_Function##Unary( \
+	_Type* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	bool Continuous \
+)
+
+#define _D_Dragonian_Lib_Operator_Unary_With_Extra_Define(_Function, ExtraTemplate) \
+template<typename _ResultType, size_t _NRank, ExtraTemplate> \
+static void Impl##_Function##Unary( \
+	_ResultType* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	bool Continuous \
+)

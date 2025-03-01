@@ -6,3 +6,5 @@
 #include "Operators/CPU/Comparison.h"
 #include "Operators/CPU/Assign.h"
 #include "Operators/CPU/Interpolate.h"
+#include "Operators/CPU/Reduce.h"
+#include "Operators/CPU/Cumulate.h"

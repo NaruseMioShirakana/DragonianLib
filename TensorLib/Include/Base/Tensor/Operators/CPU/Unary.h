@@ -98,17 +98,17 @@ namespace UnaryOperators
 	}
 
 	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left) { { _Left.Abs(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type& _Left) { { _Left.Abs() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
 		requires(_Type & _Left) { { std::abs(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
 	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Abs(const _Type& _Value)
 	{
 		if constexpr (IsVectorizedValue<_Type>)
-			return _Value.Abs(_mm256_set1_epi32(0x7FFFFFFF));
+			return _Value.Abs();
 		else
 			return static_cast<_Type>(std::abs(_Value));
 	}
-
+	
 	template <typename _Type, typename = std::enable_if_t <
 		requires(_Type& _Left) { { _Left.Sin() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
 		requires(_Type & _Left) { { std::sin(_Left) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }

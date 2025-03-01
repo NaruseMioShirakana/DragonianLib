@@ -164,54 +164,6 @@ public:
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
-	template<size_t _NRank>
-	static void ImplSum(
-		_Type* _Dest,
-		const OperatorParameter<_NRank - 1>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplCumSum(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplCumProd(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	template<size_t _NRank>
-	static void ImplDiff(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	)
-	{
-		_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
 	_D_Dragonian_Lib_Operator_Binary_Define(Add) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define(Sub) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define(Mul) { _D_Dragonian_Lib_Not_Implemented_Error; }
@@ -239,6 +191,11 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Binary_Define(Max) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Max) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define(Min) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Min) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Comparison_Define(Equal) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
@@ -280,6 +237,23 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Trunc) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceProd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMax) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMean) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(ReduceLp) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceLogSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceLogSumExp) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMax) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumProd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMax) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
 };
 
 _D_Dragonian_Lib_Operator_Space_End

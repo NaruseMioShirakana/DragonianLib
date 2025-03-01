@@ -32,6 +32,8 @@ static inline constexpr SizeType RangeBeginPos = INT64_MAX; ///< Begin index
 static inline constexpr SizeType RangeEndPos = INT64_MIN; ///< End index
 static inline SizeType ZeroConstantVal = 0; ///< None index
 
+class _D_Dragonian_Lib_Impl_Functional;
+
 /**
  * @brief Struct representing a range with begin, step, and end values.
  */
@@ -216,6 +218,7 @@ public:
 
 	template <typename _TensorType_, size_t _NRank_, Device _MyDevice_>
 	friend class Tensor;
+	friend class _D_Dragonian_Lib_Impl_Functional;
 	using ValueType = std::remove_reference_t<_TensorType>;
 	static_assert(!Operators::SimdTypeTraits::IsVectorizedValue<ValueType>, "Vectorized value type is not supported!");
 	using Pointer = std::shared_ptr<void>;
@@ -490,13 +493,8 @@ public:
 	Tensor(Tensor&& Right) noexcept = default;
 	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
 
-	/**
-	 * @brief Copy the data of a tensor
-	 * @param _Left Source tensor
-	 * @return Reference of this
-	 */
 	template <size_t _TRank, typename = std::enable_if_t<_NRank >= _TRank>>
-	constexpr Tensor& operator=(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
+	constexpr Tensor& TensorAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
 	{
 		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
 		{
@@ -508,30 +506,7 @@ public:
 			_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
-	template <size_t _TRank, typename = std::enable_if_t<_NRank >= _TRank>>
-	constexpr Tensor& TAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
-	{
-		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
-		{
-			if ((const void*)this != (const void*)&_Left)
-				Assign(_Left);
-			return *this;
-		}
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
-	}
-
-	constexpr Tensor& operator=(const Tensor& _Left)
-	{
-		if constexpr (TypeTraits::CouldBeConvertedFromValue<ValueType, ValueType> && std::is_copy_assignable_v<ValueType>)
-		{
-			if ((const void*)this != (const void*)&_Left)
-				Assign(_Left);
-			return *this;
-		}
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
-	}
+	constexpr Tensor& operator=(const Tensor& _Left) = delete;
 
 	/**
 	 * @brief Assign the tensor with a scalar value.
@@ -4290,6 +4265,23 @@ public:
 		return Ret;
 	}
 
+	Tensor AxisFromTo(SizeType _Begin = -2, SizeType _End = -1) const
+	{
+		ThrowOnNotEnabled();
+		const auto AxisCount = (SizeType)_MyShape.Size();
+		_Begin = CalcIndex(_Begin, AxisCount);
+		_End = CalcIterator(_End, AxisCount);
+		if (_Begin > _End)
+			_D_Dragonian_Lib_Throw_Exception("Begin Should Not Be Greater Than End!");
+		Tensor Ret = View();
+		for (SizeType i = _Begin; i < _End - 1; ++i)
+		{
+			std::swap(Ret._MyShape[i], Ret._MyShape[i + 1]);
+			std::swap(Ret._MyViewStride[i], Ret._MyViewStride[i + 1]);
+		}
+		return Ret;
+	}
+
 	/**
 	 * @brief Unsqueeze the tensor, add a new axis at the specified position. for example, we have a tensor with [N, C, H] shape, we can unsqueeze it at the 1st axis with UnSqueeze(1) to get a tensor with [N, 1, C, H] shape.
 	 * @param _Dim The specified position.
@@ -4423,7 +4415,7 @@ public:
 		Tensor> Clone() const
 	{
 		Tensor Ret{ this->_MyShape };
-		Ret = *this;
+		Ret.TensorAssign(*this);
 		return Ret;
 	}
 
@@ -4576,7 +4568,7 @@ public:
 		}
 
 		auto Ret = New(Shape);
-		Ret[NewTensorSlice] = *this;
+		Ret[NewTensorSlice].TensorAssign(*this);
 		if (_Type == PaddingType::Zero)
 		{
 			_Type = PaddingType::Constant;
@@ -4731,6 +4723,346 @@ public:
 		_Axis = CalcIndex(_Axis, Rank());
 		_PaddingCount[_Axis].End = (_Repeat - 1) * _MyShape[_Axis];
 		return Padding(_PaddingCount, PaddingType::Cicular);
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) Sum(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template Sum<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceSumUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) Prod(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template Prod<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceProdUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) Mean(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template Mean<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceMeanUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) ReduceMax(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template ReduceMax<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceMaxUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) ReduceMin(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template ReduceMin<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceMinUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) LpNorm(
+			SizeType _Axis,
+			const ValueType& _P
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template LpNorm<false>(-1, _P).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceLpScalar
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				_P,
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) L1Norm(
+			SizeType _Axis
+		) const
+	{
+		return LpNorm<KeepDim>(_Axis, 1);
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) L2Norm(
+			SizeType _Axis
+		) const
+	{
+		return LpNorm<KeepDim>(_Axis, 2);
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) LogSum(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template LogSum<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceLogSumUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::ExpUnary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) LogSumExp(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template LogSumExp<false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceLogSumExpUnary
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <typename RetType = Int32 ,bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) ArgMax(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template ArgMax<RetType, false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<RetType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceArgMaxUnary<RetType>
+				(
+					RetView.Data(),
+					RetView.GetDefaultOperatorParameter(),
+					TensorTmp.Data(),
+					TensorTmp.GetDefaultOperatorParameter(),
+					RetView.IsContinuous() && TensorTmp.IsContinuous()
+				);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
+	}
+
+	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>>>
+		decltype(auto) ArgMin(
+			SizeType _Axis
+		) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).template ArgMin<RetType, false>(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.Eval();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<RetType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceArgMinUnary<RetType>
+				(
+					RetView.Data(),
+					RetView.GetDefaultOperatorParameter(),
+					TensorTmp.Data(),
+					TensorTmp.GetDefaultOperatorParameter(),
+					RetView.IsContinuous() && TensorTmp.IsContinuous()
+				);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
 	}
 
 	/*

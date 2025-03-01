@@ -202,6 +202,30 @@ namespace BinaryOperators
 		else
 			return std::pow(_Left, _Right);
 	}
+
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left, _Type& _Right) { { _Left.Max(_Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left, _Type & _Right) { { std::max(_Left, _Right) }; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+		Max(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (IsVectorizedValue<_Type>)
+			return _Left.Max(_Right);
+		else
+			return std::max(_Left, _Right);
+	}
+
+	template <typename _Type, typename = std::enable_if_t <
+		requires(_Type& _Left, _Type& _Right) { { _Left.Min(_Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
+		requires(_Type & _Left, _Type & _Right) { { std::min(_Left, _Right) }; }
+	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+		Min(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (IsVectorizedValue<_Type>)
+			return _Left.Min(_Right);
+		else
+			return std::min(_Left, _Right);
+	}
 }
 
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Add, 8, 2);
@@ -217,6 +241,8 @@ _D_Dragonian_Lib_Operator_Binary_Function_Def(BinaryAnd, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(LShift, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(RShift, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Pow, 8, 2);
+_D_Dragonian_Lib_Operator_Binary_Function_Def(Max, 8, 2);
+_D_Dragonian_Lib_Operator_Binary_Function_Def(Min, 8, 2);
 
 _D_Dragonian_Lib_Operator_Space_End
 

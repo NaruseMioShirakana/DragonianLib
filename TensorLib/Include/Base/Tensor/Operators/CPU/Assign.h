@@ -103,7 +103,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplCast(
 {
 	if constexpr (TypeTraits::CouldBeConvertedFromValue<_Type, _TypeSrc> && std::is_move_assignable_v<_Type>)
 	{
-		ImplMultiThreadCaller<2, _NRank, _Type>(
+		ImplMultiThreadCaller<2, _NRank, 0, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			_Src,
@@ -132,7 +132,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignTensor(
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		ImplMultiThreadCaller<2, _NRank, _Type>(
+		ImplMultiThreadCaller<2, _NRank, 0, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			_Src,
@@ -329,7 +329,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplMoveBuffer(
 {
 	if constexpr (std::is_move_assignable_v<_Type>)
 	{
-		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+		ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			nullptr,
@@ -358,7 +358,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignBuffer(
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
-		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+		ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			nullptr,
@@ -449,7 +449,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignScalar(
 {
 	if constexpr (std::is_constructible_v<_Type>)
 	{
-		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+		ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			nullptr,
@@ -555,7 +555,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRandn(
 	{
 		using RandomType = _Impl_Dragonian_Lib_Random_Type<_Type>;
 		using RandomNormalType = _Impl_Dragonian_Lib_Random_Normal_Type<_Type>;
-		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+		ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			nullptr,
@@ -664,7 +664,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 		using RandomNormalType = _Impl_Dragonian_Lib_Random_Normal_Type<_Type>;
 
 		if constexpr (TypeTraits::IsComplexValue<_Type>)
-			ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+			ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 				_Dest,
 				std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 				nullptr,
@@ -677,7 +677,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplAssignRand(
 				AssignRandomCont<_Type>
 			);
 		else
-			ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+			ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 				_Dest,
 				std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 				nullptr,
@@ -780,7 +780,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 	{
 		if (!Continuous)
 			_D_Dragonian_Lib_Not_Implemented_Error;
-		ImplMultiThreadCaller<1, _NRank, _Type, _Type>(
+		ImplMultiThreadCaller<1, _NRank, 0, _Type, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 			nullptr,
@@ -877,7 +877,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplGather(
 	const OperatorParameter<_NRank>& _IndexInfo
 )
 {
-	ImplMultiThreadCaller<3, _NRank>(
+	ImplMultiThreadCaller<3, _NRank, 0>(
 		_Dest,
 		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 		_Src,

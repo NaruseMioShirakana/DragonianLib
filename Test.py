@@ -4,7 +4,7 @@ import time
 emb = torch.ones((114,514,1919))
 for i in range(20):
     begin = time.time()
-    emb += 2
+    torch.sum(emb, 0)
     print(time.time() - begin)
 
 

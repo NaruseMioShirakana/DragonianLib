@@ -101,42 +101,6 @@ public:
 		const OperatorParameter<_NRank>& _IndexInfo
 	);
 
-	template<size_t _NRank>
-	static void ImplSum(
-		_Type* _Dest,
-		const OperatorParameter<_NRank - 1>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplCumSum(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplCumProd(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	);
-
-	template<size_t _NRank>
-	static void ImplDiff(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		bool Continuous
-	);
-
 	_D_Dragonian_Lib_Operator_Binary_Define(Add);
 	_D_Dragonian_Lib_Operator_Binary_Define(Sub);
 	_D_Dragonian_Lib_Operator_Binary_Define(Mul);
@@ -164,6 +128,11 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd);
+
+	_D_Dragonian_Lib_Operator_Binary_Define(Max);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Max);
+	_D_Dragonian_Lib_Operator_Binary_Define(Min);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Min);
 
 	_D_Dragonian_Lib_Operator_Comparison_Define(Equal);
 	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual);
@@ -205,6 +174,22 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Trunc);
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac);
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative);
+
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceSum);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceProd);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMax);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMin);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceMean);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(ReduceLp);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceLogSum);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceLogSumExp);
+	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMax);
+	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMin);
+
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSum);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumProd);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMax);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMin);
 
 };
 
@@ -377,6 +362,55 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> T
 			const auto Val2 = Value2 + i * *Stride2;
 			const auto Val3 = Value3 + i * *Stride3;
 			_Func(Val1, Val2, Val3);
+			++i;
+		}
+	}
+}
+
+template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
+_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> InlinedTensorLoop(
+	int64_t Value1, int64_t Value2, int64_t Value3, int64_t Value4,
+	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
+	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2, const int64_t* __restrict Stride3, const int64_t* __restrict Stride4,
+	_Fn _Func
+)
+{
+	if constexpr (LoopCount - 1)
+		for (int64_t i = *LoopBegin; i < *Shape; ++i)
+		{
+			const auto Val1 = Value1 + i * *Stride1;
+			const auto Val2 = Value2 + i * *Stride2;
+			const auto Val3 = Value3 + i * *Stride3;
+			const auto Val4 = Value4 + i * *Stride4;
+			InlinedTensorLoop<LoopCount - 1, LoopUnfold>(
+				Val1, Val2, Val3, Val4,
+				Shape + 1, LoopBegin + 1,
+				Stride1 + 1, Stride2 + 1, Stride3 + 1, Stride4 + 1,
+				_Func
+			);
+		}
+	else
+	{
+		int64_t i = *LoopBegin;
+		while (i < *Shape - LoopUnfold)
+		{
+			for (int64_t j = 0; j < LoopUnfold; ++j)
+			{
+				const auto Val1 = Value1 + i * *Stride1;
+				const auto Val2 = Value2 + i * *Stride2;
+				const auto Val3 = Value3 + i * *Stride3;
+				const auto Val4 = Value4 + i * *Stride4;
+				_Func(Val1, Val2, Val3, Val4);
+				++i;
+			}
+		}
+		while (i < *Shape)
+		{
+			const auto Val1 = Value1 + i * *Stride1;
+			const auto Val2 = Value2 + i * *Stride2;
+			const auto Val3 = Value3 + i * *Stride3;
+			const auto Val4 = Value4 + i * *Stride4;
+			_Func(Val1, Val2, Val3, Val4);
 			++i;
 		}
 	}
@@ -572,9 +606,8 @@ template<
 }
 
 template<
-	size_t _ArgCount, size_t _NRank,
+	size_t _ArgCount, size_t _NRank, SizeType OperatorDims,
 	typename _Src2Type, typename _Src1Type, typename _DstType,
-	SizeType OperatorDims = 0,
 	typename _ParameterType, typename _FunctionType, typename _ContinuousFunctionType
 >
 void ImplMultiThreadCaller(
@@ -614,7 +647,7 @@ void ImplMultiThreadCaller(
 				_Src2InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
 		};
 
-	if constexpr (IsCallableValue<_ContinuousFunctionType> && OperatorDims == 0)
+	if constexpr (IsCallableValue<_ContinuousFunctionType>)
 	{
 		if (Continuous)
 		{
@@ -623,11 +656,11 @@ void ImplMultiThreadCaller(
 				if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
 					_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
 				if constexpr (_ArgCount == 1)
-					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, DataSize, _UserParameter));
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, BatchCount, _UserParameter));
 				else if constexpr (_ArgCount == 2)
-					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, DataSize, _UserParameter));
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, BatchCount, _UserParameter));
 				else if constexpr (_ArgCount == 3)
-					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, _Src2, DataSize, _UserParameter));
+					CreateTask(GetThreadPool().Commit(_ContFunction, _Dest, _Src1, _Src2, BatchCount, _UserParameter));
 			}
 			else
 			{
@@ -635,10 +668,10 @@ void ImplMultiThreadCaller(
 					std::max(GetThreadPool().GetThreadCount(), 1ll),
 					GetMaxTaskCountPerOperator()
 				);
-				auto SplitSize = DataSize / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
+				auto SplitSize = BatchCount / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
 				if (SplitSize == 0) SplitSize = 1;
-				const auto TaskCount = DataSize / SplitSize;
-				const auto Remainder = DataSize % SplitSize;
+				const auto TaskCount = BatchCount / SplitSize;
+				const auto Remainder = BatchCount % SplitSize;
 
 				SizeType i = 0;
 				for (; i < TaskCount; ++i)

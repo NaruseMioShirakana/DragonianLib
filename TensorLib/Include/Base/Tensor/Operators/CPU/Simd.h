@@ -842,12 +842,12 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Abs(const Vectorized& _Mask) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Abs() const
 	{
 		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
-			return _mm256_and_ps(*this, _Mask);
+			return _mm256_and_ps(*this, _mm256_castsi256_ps(_mm256_set1_epi32(INT32_MAX)));
 		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
-			return _mm256_and_pd(*this, _Mask);
+			return _mm256_and_pd(*this, _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_MAX)));
 		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
 			return _mm256_abs_epi8(*this);
 		else if constexpr (std::is_same_v<Type, int16_t>)
@@ -1717,6 +1717,91 @@ namespace SimdTypeTraits
 			Value = false;
 		}
 	};
+}
+
+template <
+	Int64 Throughput, typename Type,
+	typename _FunctionTypePre, typename _FunctionTypeMid, typename _FunctionTypeEnd,
+	typename _FunctionTypePreVec, typename _FunctionTypeMidVec,
+	typename = std::enable_if_t<IsCallableValue<_FunctionTypeMid>>
+> Type ReduceFunction(
+	const Type* _Src, SizeType _Size, Type _InitValue,
+	_FunctionTypePre _PreFunction,
+	_FunctionTypePreVec _PreFunctionVec,
+	_FunctionTypeMid _MidFunction,
+	_FunctionTypeMidVec _MidFunctionVec,
+	_FunctionTypeEnd _EndFunction
+)
+{
+	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(Type));
+	constexpr Int64 LoopStride = Throughput * Stride;
+
+	auto _MyResultValue = _InitValue;
+	if constexpr (TypeTraits::IsAvx256SupportedValue<Type> && IsCallableValue<_FunctionTypeMidVec>)
+	{
+		if (_Size >= LoopStride)
+		{
+			while (size_t(_Src) % sizeof(__m256) && _Size > 0)
+			{
+				auto _Value = *_Src++;
+				if constexpr (IsCallableValue<_FunctionTypePre>)
+					_Value = _PreFunction(_Value);
+				_MyResultValue = _MidFunction(_MyResultValue, _Value);
+				--_Size;
+			}
+
+			if (_Size >= LoopStride)
+			{
+				Vectorized<Type> VectorizedValue[Throughput]; Vectorized<Type> VectorizedSource[Throughput];
+				for (Int64 i = 0; i < Throughput; ++i)
+					VectorizedValue[i] = Vectorized<Type>(_InitValue);
+				while (_Size >= LoopStride)
+				{
+					for (Int64 i = 0; i < Throughput; ++i)
+						VectorizedSource[i] = Vectorized<Type>(_Src + i * Stride);
+					if constexpr (IsCallableValue<_FunctionTypePreVec>)
+						for (Int64 i = 0; i < Throughput; ++i)
+							VectorizedSource[i] = _PreFunctionVec(VectorizedSource[i]);
+					for (Int64 i = 0; i < Throughput; ++i)
+						VectorizedValue[i] = _MidFunctionVec(VectorizedValue[i], VectorizedSource[i]);
+					_Size -= LoopStride;
+					_Src += LoopStride;
+				}
+				for (Int64 i = 1; i < Throughput; ++i)
+					VectorizedValue[0] = _MidFunctionVec(VectorizedValue[0], VectorizedValue[i]);
+				Type ResultVec[Stride];
+				VectorizedValue[0].Store(ResultVec);
+				for (Int64 i = 0; i < Stride; ++i)
+					_MyResultValue = _MidFunction(_MyResultValue, ResultVec[i]);
+			}
+		}
+	}
+
+	while (_Size >= LoopStride)
+	{
+		for (Int64 i = 0; i < LoopStride; ++i)
+		{
+			auto _Value = _Src[i];
+			if constexpr (IsCallableValue<_FunctionTypePre>)
+				_Value = _PreFunction(_Value);
+			_MyResultValue = _MidFunction(_MyResultValue, _Value);
+		}
+		_Src += LoopStride;
+		_Size -= LoopStride;
+	}
+
+	while (_Size > 0)
+	{
+		auto _Value = *_Src++;
+		if constexpr (IsCallableValue<_FunctionTypePre>)
+			_Value = _PreFunction(_Value);
+		_MyResultValue = _MidFunction(_MyResultValue, _Value);
+		--_Size;
+	}
+	if constexpr (IsCallableValue<_FunctionTypeEnd>)
+		return _EndFunction(_MyResultValue);
+	else
+		return _MyResultValue;
 }
 
 template <
