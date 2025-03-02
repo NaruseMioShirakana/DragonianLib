@@ -43,7 +43,7 @@ template <
 
 	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
 		{
-			DoubleTensorLoop<_NRank, 8>(
+			DoubleTensorLoop<_ReduceDim, 8>(
 				0, 0,
 				_DestInfoNew->Shape.Data(), _DestInfoNew->Begin.Data(),
 				_DestInfoNew->ViewStride.Data(), _SrcInfoNew->ViewStride.Data(),
@@ -381,7 +381,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplReduceArgMaxUnary(
 
 	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
 		{
-			DoubleTensorLoop<_NRank, 8>(
+			DoubleTensorLoop<_ReduceDim, 8>(
 				0, 0,
 				_DestInfoNew->Shape.Data(), _DestInfoNew->Begin.Data(),
 				_DestInfoNew->ViewStride.Data(), _SrcInfoNew->ViewStride.Data(),
@@ -434,7 +434,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplReduceArgMinUnary(
 		};
 	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
 		{
-			DoubleTensorLoop<_NRank, 8>(
+			DoubleTensorLoop<_ReduceDim, 8>(
 				0, 0,
 				_DestInfoNew->Shape.Data(), _DestInfoNew->Begin.Data(),
 				_DestInfoNew->ViewStride.Data(), _SrcInfoNew->ViewStride.Data(),

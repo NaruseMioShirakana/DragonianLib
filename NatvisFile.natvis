@@ -147,7 +147,16 @@
 					</Synthetic>
 				</Expand>
 			</Synthetic>
-			<Item Name="[ExecutingTasks]">_MyFutures</Item>
+			<Synthetic Name="[Mutex]">
+				<DisplayString>
+					{{ Dependency: {_MyFuturesAsResult}, InplaceLock: {_MyFuturesAsArgument} }}
+				</DisplayString>
+				<Expand>
+					<Item Name="[Dependency]">_MyFuturesAsResult</Item>
+					<Item Name="[InplaceLock]">_MyFuturesAsArgument</Item>
+				</Expand>
+			</Synthetic>
+
 		</Expand>
 	</Type>
 

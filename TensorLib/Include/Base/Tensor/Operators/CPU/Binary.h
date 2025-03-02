@@ -7,10 +7,9 @@ namespace BinaryOperators \
 	namespace _Function##Binary \
 	{ \
 		template <class _ValueType> \
-		concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { _D_Dragonian_Lib_Namespace Operators::BinaryOperators::_Function(__r, __l); }; \
+		concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { {_D_Dragonian_Lib_Namespace Operators::BinaryOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
 		template <class _ValueType> \
-		concept HasInplaceOperatorValue = HasOperatorValue<_ValueType> && std::is_copy_assignable_v<_ValueType>; \
-		 \
+		concept HasVectorOperatorValue = requires(Vectorized<_ValueType> & __r, Vectorized<_ValueType> & __l) { {_D_Dragonian_Lib_Namespace Operators::BinaryOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
 	} \
 } \
  \
@@ -91,140 +90,206 @@ namespace BinaryOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { {_Left + _Right}->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Add(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left + _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A + _B }; })
+			return _Left + _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Add(_B) }; })
+			return _Left.Add(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.add(_B) }; })
+			return _Left.add(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left - _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Sub(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left - _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A - _B }; })
+			return _Left - _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Sub(_B) }; })
+			return _Left.Sub(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.sub(_B) }; })
+			return _Left.sub(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left * _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Mul(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left * _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A* _B }; })
+			return _Left * _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Mul(_B) }; })
+			return _Left.Mul(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.mul(_B) }; })
+			return _Left.mul(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left / _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Div(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left / _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A / _B }; })
+			return _Left / _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Div(_B) }; })
+			return _Left.Div(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.div(_B) }; })
+			return _Left.div(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { std::fmod(_Left, _Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
-		requires(_Type & _Left, _Type & _Right) { { _Left% _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Mod(const _Type& _Left, const _Type& _Right)
 	{
 		if constexpr (IsFloatingPointValue<_Type>)
 			return std::fmod(_Left, _Right);
-		else
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A% _B }; })
 			return _Left % _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Mod(_B) }; })
+			return _Left.Mod(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.mod(_B) }; })
+			return _Left.mod(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left && _Right }; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		And(const _Type& _Left, const _Type& _Right)
 	{
-		return _Type(_Left && _Right);
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A& _B }; })
+			return _Left & _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.And(_B) }; })
+			return _Left.And(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left || _Right }; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Or(const _Type& _Left, const _Type& _Right)
 	{
-		return _Type(_Left || _Right);
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A | _B }; })
+			return _Left | _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Or(_B) }; })
+			return _Left.Or(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left & _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		BinaryAnd(_Type& _Left, const _Type& _Right)
 	{
-		return _Left & _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A& _B }; })
+			return _Left & _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BinaryAnd(_B) }; })
+			return _Left.BinaryAnd(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left | _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		BinaryOr(_Type& _Left, const _Type& _Right)
 	{
-		return _Left | _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A | _B }; })
+			return _Left | _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BinaryOr(_B) }; })
+			return _Left.BinaryOr(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left ^ _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Xor(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left ^ _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A^ _B }; })
+			return _Left ^ _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Xor(_B) }; })
+			return _Left.Xor(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left << _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		LShift(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left << _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A << _B }; })
+			return _Left << _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.LShift(_B) }; })
+			return _Left.LShift(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.lshift(_B) }; })
+			return _Left.lshift(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		(requires(_Type& _Left, _Type& _Right) { { _Left >> _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; })
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		RShift(const _Type& _Left, const _Type& _Right)
 	{
-		return _Left >> _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A >> _B }; })
+			return _Left >> _Right;
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.RShift(_B) }; })
+			return _Left.RShift(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.rshift(_B) }; })
+			return _Left.rshift(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left.Pow(_Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
-		requires(_Type& _Left, _Type& _Right) { { std::pow(_Left, _Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Pow(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (IsVectorizedValue<_Type>)
-			return _Left.Pow(_Right);
-		else
+		if constexpr (requires(_Type & _A, _Type & _B) { { std::pow(_A, _B) }; })
 			return std::pow(_Left, _Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Pow(_B) }; })
+			return _Left.Pow(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.pow(_B) }; })
+			return _Left.pow(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left.Max(_Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
-		requires(_Type & _Left, _Type & _Right) { { std::max(_Left, _Right) }; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Max(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (IsVectorizedValue<_Type>)
-			return _Left.Max(_Right);
-		else
+		if constexpr (requires(_Type & _A, _Type & _B) { { std::max(_A, _B) }; })
 			return std::max(_Left, _Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Max(_B) }; })
+			return _Left.Max(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.max(_B) }; })
+			return _Left.max(_Right);
+		else
+			return std::nullopt;
 	}
 
-	template <typename _Type, typename = std::enable_if_t <
-		requires(_Type& _Left, _Type& _Right) { { _Left.Min(_Right) }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<_Type>; } ||
-		requires(_Type & _Left, _Type & _Right) { { std::min(_Left, _Right) }; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename _Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Min(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (IsVectorizedValue<_Type>)
-			return _Left.Min(_Right);
-		else
+		if constexpr (requires(_Type & _A, _Type & _B) { { std::min(_A, _B) }; })
 			return std::min(_Left, _Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Min(_B) }; })
+			return _Left.Min(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.min(_B) }; })
+			return _Left.min(_Right);
+		else
+			return std::nullopt;
 	}
 }
 

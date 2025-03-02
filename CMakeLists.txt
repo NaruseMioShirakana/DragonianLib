@@ -3,7 +3,7 @@
 #Version
 set(DRAGONIANLIB_VERSION_MAJOR 1)
 set(DRAGONIANLIB_VERSION_MINOR 2)
-set(DRAGONIANLIB_VERSION_PATCH 3)
+set(DRAGONIANLIB_VERSION_PATCH 4)
 
 #Global Visual Studio Macros
 add_definitions(-DUNICODE)
@@ -33,7 +33,7 @@ option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				O
 option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			OFF)
 
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
-option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								ON)
+option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
 option(DRAGONIANLIB_BUILD_DEMO							"build demo"									ON)
 
 set(DRAGONIANLIB_ONNXRUNTIME OFF)

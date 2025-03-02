@@ -99,4 +99,6 @@ _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Imp
 	return Prefix + ' ' + Message;
 }
 
+
+
 _D_Dragonian_Lib_Space_End

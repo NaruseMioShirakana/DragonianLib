@@ -47,15 +47,11 @@ int main()
 	DragonianLib::SetWorkerCount(16);
 	DragonianLib::SetMaxTaskCountPerOperator(8);
 	DragonianLib::SetRandomSeed(114514);
-	auto Ten1 = DragonianLib::Functional::Arange(0.f, 500.f, 1.f);
-	auto Ten2 = DragonianLib::Functional::Randn(DragonianLib::IDim(114, 514, 1919));
-	auto Ten3 = Ten1.View(2, -1);
-	auto Ten4 = Ten3 + 1;
-	WithTimer([&] {Ten2.Sum(0).Eval(); });
-	WithTimer([&] {Ten2.Sum(0).Eval(); });
-	WithTimer([&] {Ten2.Sum(0).Eval(); });
-	WithTimer([&] {Ten2.Sum(0).Eval(); });
-	std::cout << DragonianLib::Functional::Min(Ten4, Ten3).Eval() << "\n\n";
+	const auto Ten1 = DragonianLib::Functional::Ones(DragonianLib::IDim(11, 4, 5)).Evaluate();
+	std::cout << DragonianLib::Functional::Cat(
+		DragonianLib::Functional::ConstantOf(DragonianLib::IDim(3, 4), 0),
+		DragonianLib::Functional::ConstantOf(DragonianLib::IDim(3, 4), 1)
+	).Evaluate();
 	return 0;
 	auto Codec = DragonianLib::AvCodec::AvCodec();
 

@@ -380,27 +380,27 @@ template <int64_t Index, typename First, typename... Rest>
 struct GetValueAt;
 template <int64_t Index, typename First, typename... Rest>
 struct GetValueAt<Index, First, Rest...> {
-	static constexpr auto Get(First, Rest... rest) {
-		return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Index - 1, Rest...>::Get(rest...);
+	static constexpr decltype(auto) Get(First&&, Rest&&... rest) {
+		return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Index - 1, Rest...>::Get(std::forward<Rest>(rest)...);
 	}
 };
 template <typename First, typename... Rest>
 struct GetValueAt<0, First, Rest...> {
-	static constexpr First Get(First first, Rest...) {
-		return first;
+	static constexpr decltype(auto) Get(First&& first, Rest&&...) {
+		return std::forward<First>(first);
 	}
 };
 template <int64_t Index, typename... Types>
 struct GetValueAt<Index, _D_Dragonian_Lib_Namespace GeneralizedList<Types...>> {
-	static constexpr auto Get(Types... rest) {
-		return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Index - 1, Types...>::Get(rest...);
+	static constexpr decltype(auto) Get(Types&&... args) {
+		return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Index, Types...>::Get(std::forward<Types>(args)...);
 	}
 };
 template <int64_t Index, typename... Types>
-constexpr auto GetValueAtValue(Types... args) {
+constexpr decltype(auto) GetValue(Types&&... args) {
 	constexpr static auto Size = sizeof...(Types);
 	constexpr static auto Idx = _D_Dragonian_Lib_Type_Traits_Namespace CalculateIndexValue<Index, Size>;
-	return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Idx, Types...>::Get(args...);
+	return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Idx, Types...>::Get(std::forward<Types>(args)...);
 }
 
 template <typename _Type>
@@ -737,6 +737,10 @@ template <typename _Type1, typename _Type2>
 concept IsType = _D_Dragonian_Lib_Type_Traits_Namespace SameImpl<_Type1, _Type2>&& _D_Dragonian_Lib_Type_Traits_Namespace SameImpl<_Type2, _Type1>;
 template <typename _Type1, typename... _Type>
 concept IsAnyType = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<_Type1, _Type...>;
+template <typename _Type1, typename _Type2>
+concept NotType = !_D_Dragonian_Lib_Type_Traits_Namespace IsType<_Type1, _Type2>;
+template <typename _Type1, typename... _Type>
+concept NotAnyType = !_D_Dragonian_Lib_Type_Traits_Namespace IsAnyType<_Type1, _Type...>;
 
 template <typename _Type>
 concept CouldIndex = requires(_Type & _Val)

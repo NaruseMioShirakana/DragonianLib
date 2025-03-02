@@ -165,6 +165,7 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(ACosh);
 	_D_Dragonian_Lib_Operator_Unary_Define(ATanh);
 	_D_Dragonian_Lib_Operator_Unary_Define(Exp);
+	_D_Dragonian_Lib_Operator_Unary_Define(Exp2);
 	_D_Dragonian_Lib_Operator_Unary_Define(Log);
 	_D_Dragonian_Lib_Operator_Unary_Define(Log2);
 	_D_Dragonian_Lib_Operator_Unary_Define(Log10);
@@ -174,6 +175,8 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Trunc);
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac);
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative);
+	_D_Dragonian_Lib_Operator_Unary_Define(BitwiseNot);
+	_D_Dragonian_Lib_Operator_Unary_Define(Not);
 
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceSum);
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceProd);
@@ -513,10 +516,10 @@ template<
 
 	auto CreateTask = [&](std::shared_future<void> TaskFuture)
 		{
-			_DestInfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
-			_Src1InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
+			_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_OType == TypeDef::BinaryOperatorType)
-				_Src2InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+				_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 		};
 
 	if (Continuous)
@@ -640,11 +643,11 @@ void ImplMultiThreadCaller(
 
 	auto CreateTask = [&](std::shared_future<void> TaskFuture)
 		{
-			_DestInfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_ArgCount > 1)
-				_Src1InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+				_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_ArgCount > 2)
-				_Src2InfoOld->ThreadPool->emplace_back(TaskFuture, _DataPointer);
+				_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 		};
 
 	if constexpr (IsCallableValue<_ContinuousFunctionType>)

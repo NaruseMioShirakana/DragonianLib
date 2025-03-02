@@ -28,16 +28,17 @@ _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndexOp(SizeType _Index, Si
 template<size_t _NRank>
 struct OperatorParameter
 {
-	using _MyMultiThreadDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 3>;
-	using _MyMultiThreadSyncPair = std::pair<std::shared_future<void>, _MyMultiThreadDataPointers>;
-	using _MyMultiThreadSyncT = std::deque<_MyMultiThreadSyncPair>;
-	using _MyMultiThreadSyncP = std::shared_ptr<_MyMultiThreadSyncT>;
+	using DependencyChainDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 3>;
+	using DependencyChainPair = std::pair<std::shared_future<void>, DependencyChainDataPointers>;
+	using DependencyChainType = std::deque<DependencyChainPair>;
+	using DependencyChainPointer = std::shared_ptr<DependencyChainType>;
 
 	IDLArray<SizeType, _NRank> Shape; ///< Shape: The [view end/shape] of the tensor.
 	IDLArray<SizeType, _NRank> Begin; ///< Begin: The [view begin] of the tensor.
 	IDLArray<SizeType, _NRank> ViewStride; ///< ViewStep: The step of the view.
 	IDLArray<bool, _NRank> IsContinuous; ///< IsContinuous: The continuous flag of the view.
-	_MyMultiThreadSyncP ThreadPool = nullptr; ///< ThreadPool: The futures of the tensor.
+	DependencyChainPointer ResultDependency = nullptr; ///< Dependency: Block All the operations until the dependency is finished.
+	DependencyChainPointer ArgumentDependency = nullptr; ///< InplaceLock: Block the inplace operation until the dependency is finished.
 	void* UserParameter = nullptr; ///< UserParameter: The user parameter.
 	std::shared_ptr<void> Data = nullptr; ///< Data: The data of the tensor (prevent from the data being released while the tensor is used by an operator).
 	SizeType GetSize(size_t RangeBegin = 0, size_t RangeEnd = _NRank) const
@@ -55,13 +56,10 @@ class OperatorsBase
 {
 	OperatorsBase() = delete;
 public:
-
 	template<typename _TypeSrc, size_t _NRank>
 	static void ImplCast(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _TypeSrc* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _TypeSrc* _Src, const OperatorParameter<_NRank>& _SrcInfo, 
 		bool Continuous
 	)
 	{
@@ -70,10 +68,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplAssignTensor(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src, const OperatorParameter<_NRank>& _SrcInfo,
 		bool Continuous
 	)
 	{
@@ -82,11 +78,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplMoveBuffer(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		SizeType _Count,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src, SizeType _Count, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -94,11 +87,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplAssignBuffer(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		SizeType _Count,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src, SizeType _Count, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -106,10 +96,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplAssignScalar(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type& _Value,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type& _Value, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -117,11 +105,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplAssignRandn(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		double _Mean,
-		double _Sigma,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		double _Mean, double _Sigma, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -129,11 +114,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplAssignRand(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type& _Min,
-		const _Type& _Max,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type& _Min, const _Type& _Max, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -141,11 +123,8 @@ public:
 
 	template<size_t _NRank>
 	static void ImplArange(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type& _Start,
-		const _Type& _Step,
-		bool Continuous
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type& _Start, const _Type& _Step, bool Continuous
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -153,12 +132,9 @@ public:
 
 	template<typename _IndexType, size_t _NRank, size_t _Dim>
 	static void ImplGather(
-		_Type* _Dest,
-		const OperatorParameter<_NRank>& _DestInfo,
-		const _Type* _Src,
-		const OperatorParameter<_NRank>& _SrcInfo,
-		const _IndexType* _Index,
-		const OperatorParameter<_NRank>& _IndexInfo
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src, const OperatorParameter<_NRank>& _SrcInfo,
+		const _IndexType* _Index, const OperatorParameter<_NRank>& _IndexInfo
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;
@@ -228,6 +204,7 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(ACosh) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(ATanh) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Exp) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Exp2) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Log) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Log2) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Log10) { _D_Dragonian_Lib_Not_Implemented_Error; }
@@ -237,6 +214,8 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Trunc) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Frac) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(BitwiseNot) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Not) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceProd) { _D_Dragonian_Lib_Not_Implemented_Error; }

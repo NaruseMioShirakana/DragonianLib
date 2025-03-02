@@ -51,6 +51,7 @@ private:
 	static uint32_t bfloat16_to_float32(bfloat16_t bf16);
 };
 
+using Boolean = bool; ///< Boolean
 using Int8 = int8_t; ///< 8-bit integer
 using Int16 = int16_t; ///< 16-bit integer
 using Int32 = int32_t; ///< 32-bit integer

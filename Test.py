@@ -1,10 +1,10 @@
 import torch
 import time
 
-emb = torch.ones((114,514,1919))
+emb = torch.randn((114,514,1919))
 for i in range(20):
     begin = time.time()
-    torch.sum(emb, 0)
+    torch.cos(emb)
     print(time.time() - begin)
 
 

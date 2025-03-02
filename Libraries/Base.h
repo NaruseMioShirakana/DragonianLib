@@ -19,6 +19,7 @@
 
 #pragma once
 #include <unordered_map>
+
 #include "Util/TypeTraits.h"
 
 _D_Dragonian_Lib_Space_Begin
@@ -129,25 +130,6 @@ enum class FloatPrecision
 	Float16,
 	Float32
 };
-
-template <typename _Type>
-decltype(auto) CvtToString(const _Type& _Value)
-{
-	if constexpr (TypeTraits::IsComplexValue<_Type>)
-		return std::to_string(_Value.real()) + " + " + std::to_string(_Value.imag()) + "i";
-	else if constexpr (TypeTraits::IsArithmeticValue<_Type>)
-		return std::to_string(_Value);
-	else if constexpr (TypeTraits::IsStringValue<_Type>)
-		return _Value;
-	else if constexpr (TypeTraits::CouldBeConvertedFromValue<std::string, _Type> ||
-		TypeTraits::CouldBeConvertedFromValue<const char*, _Type>)
-		return std::string(_Value);
-	else if constexpr (TypeTraits::CouldBeConvertedFromValue<std::wstring, _Type> ||
-		TypeTraits::CouldBeConvertedFromValue<const wchar_t*, _Type>)
-		return std::wstring(_Value);
-	else
-		return _Value.to_string();
-}
 
 class IOStream
 {

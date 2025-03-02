@@ -7,7 +7,9 @@ namespace ComparisonOperators \
 	namespace _Function##Binary \
 	{ \
 		template <class _ValueType> \
-		concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { _D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l); }; \
+		concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { {_D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
+		template <class _ValueType> \
+		concept HasVectorOperatorValue = requires(Vectorized<_ValueType> & __r, Vectorized<_ValueType> & __l) { {_D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
 	} \
 } \
  \
@@ -22,7 +24,7 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
 	bool Continuous \
 ) \
 { \
-	if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
+	if constexpr (ComparisonOperators::##_Function##Binary::HasVectorOperatorValue<_Type>) \
 		ImplMultiThreadBasic<decltype(ComparisonOperators::_Function##<_Type>), ComparisonOperators::_Function##<_Type>, decltype(ComparisonOperators::_Function##<Vectorized<_Type>>), ComparisonOperators::_Function##<Vectorized<_Type>>, TypeDef::ConstantOperatorType, true, Unfold, AvxThroughput, _NRank, bool, _Type, _Type>(\
 			_Dest, \
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
@@ -58,7 +60,7 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 	bool Continuous \
 ) \
 { \
-	if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
+	if constexpr (ComparisonOperators::##_Function##Binary::HasVectorOperatorValue<_Type>) \
 		ImplMultiThreadBasic<decltype(ComparisonOperators::_Function##<_Type>), ComparisonOperators::_Function##<_Type>, decltype(ComparisonOperators::_Function##<Vectorized<_Type>>), ComparisonOperators::_Function##<Vectorized<_Type>>, TypeDef::BinaryOperatorType, true, Unfold, AvxThroughput, _NRank, bool, _Type, _Type>(\
 			_Dest, \
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
@@ -88,66 +90,92 @@ namespace ComparisonOperators
 {
 	using namespace DragonianLib::Operators::SimdTypeTraits;
 
-	template <typename Type, typename = std::enable_if_t <
-		requires(Type& _Left, Type& _Right) { { std::fabs(_Left - _Right) <= std::numeric_limits<Type>::epsilon() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left == _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left == _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Equal(const Type& A, const Type& B)
 	{
 		if constexpr (IsAnyOfValue<Type, float, double>)
 			return std::fabs(A - B) <= std::numeric_limits<Type>::epsilon();
-		else
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left == _Right }; })
 			return A == B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Equal(_Right) }; })
+			return A.Equal(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.equal(_Right) }; })
+			return A.equal(B);
+		else
+			return std::nullopt;
 	}
 
-	template <typename Type, typename = std::enable_if_t <
-		(requires(Type& _Left, Type& _Right) { { std::fabs(_Left - _Right) > std::numeric_limits<Type>::epsilon() }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; }) ||
-		requires(Type & _Left, Type & _Right) { { _Left != _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left != _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		NotEqual(const Type& A, const Type& B)
 	{
 		if constexpr (IsAnyOfValue<Type, float, double>)
 			return std::fabs(A - B) > std::numeric_limits<Type>::epsilon();
-		else
+		else if constexpr (requires(Type & _Left, Type & _Right) { {_Left != _Right}; })
 			return A != B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.NotEqual(_Right) }; })
+			return A.NotEqual(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.not_equal(_Right) }; })
+			return A.not_equal(B);
+		else
+			return std::nullopt;
 	}
 
-	template <typename Type, typename = std::enable_if_t <
-		(requires(Type& _Left, Type& _Right) { { _Left > _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; }) ||
-		(requires(Type & _Left, Type & _Right) { { _Left > _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; })
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Greater(const Type& A, const Type& B)
 	{
-		return A > B;
+		if constexpr (requires(Type & _Left, Type & _Right) { {_Left > _Right}; })
+			return A > B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Greater(_Right) }; })
+			return A.Greater(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.greater(_Right) }; })
+			return A.greater(B);
+		else
+			return std::nullopt;
 	}
 
-	template <typename Type, typename = std::enable_if_t <
-		requires(Type& _Left, Type& _Right) { { _Left >= _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left >= _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		GreaterEqual(const Type& A, const Type& B)
 	{
-		return A >= B;
+		if constexpr (requires(Type & _Left, Type & _Right) { {_Left >= _Right}; })
+			return A >= B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.GreaterEqual(_Right) }; })
+			return A.GreaterEqual(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.greater_equal(_Right) }; })
+			return A.greater_equal(B);
+		else
+			return std::nullopt;
 	}
 
-	template <typename Type, typename = std::enable_if_t <
-		requires(Type& _Left, Type& _Right) { { _Left < _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left < _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Less(const Type& A, const Type& B)
 	{
-		return A < B;
+		if constexpr (requires(Type & _Left, Type & _Right) { {_Left < _Right}; })
+			return A < B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Less(_Right) }; })
+			return A.Less(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.less(_Right) }; })
+			return A.less(B);
+		else
+			return std::nullopt;
 	}
 
-	template <typename Type, typename = std::enable_if_t <
-		requires(Type& _Left, Type& _Right) { { _Left <= _Right }->_D_Dragonian_Lib_Namespace TypeTraits::IsType<bool>; } ||
-		requires(Type & _Left, Type & _Right) { { _Left <= _Right }->_D_Dragonian_Lib_Namespace Operators::SimdTypeTraits::IsSimdVector<>; }
-	>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	template <typename Type>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		LessEqual(const Type& A, const Type& B)
 	{
-		return A <= B;
+		if constexpr (requires(Type & _Left, Type & _Right) { {_Left <= _Right}; })
+			return A <= B;
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.LessEqual(_Right) }; })
+			return A.LessEqual(B);
+		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.less_equal(_Right) }; })
+			return A.less_equal(B);
+		else
+			return std::nullopt;
 	}
 }
 

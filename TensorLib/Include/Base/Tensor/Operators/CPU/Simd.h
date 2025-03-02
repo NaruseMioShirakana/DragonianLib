@@ -24,6 +24,23 @@
 #define _D_Dragonian_Lib_Simd_Not_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(0)))
 #define _D_Dragonian_Lib_Simd_Complement_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(-1)))
 
+#define _D_Dragonian_Lib_Simd_Int8_Fp(_Function) do {\
+auto BLower = _mm256_cvtepi8_epi16(_mm256_extractf128_si256(*this, 0)); \
+auto BHigher = _mm256_cvtepi8_epi16(_mm256_extractf128_si256(*this, 1)); \
+auto LowerLower = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(BLower, 0)))))); \
+auto LowerHigher = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(BLower, 1)))))); \
+auto HigherLower = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(BHigher, 0)))))); \
+auto HigherHigher = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(BHigher, 1)))))); \
+auto CLower = _mm256_cvtepi16_epi8(_mm256_insertf128_si256(_mm256_castsi128_si256(LowerLower), LowerHigher, 1)); \
+auto CHigher = _mm256_cvtepi16_epi8(_mm256_insertf128_si256(_mm256_castsi128_si256(HigherLower), HigherHigher, 1)); \
+return _mm256_insertf128_si256(_mm256_castsi128_si256(CLower), CHigher, 1);} while(false)
+
+#define _D_Dragonian_Lib_Simd_Int16_Fp(_Function) do {\
+auto Lower = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(*this, 0)))))); \
+auto Higher = _mm256_cvtepi32_epi16(_mm256_cvtps_epi32(_mm256_##_Function##_ps(_mm256_cvtepi32_ps(_mm256_cvtepi16_epi32(_mm256_extractf128_si256(*this, 1)))))); \
+return _mm256_insertf128_si256(_mm256_castsi128_si256(Lower), Higher, 1); \
+} while(false)
+
 _D_Dragonian_Lib_Operator_Space_Begin
 
 /**
@@ -44,9 +61,9 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(const Type* _ValPtr)
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			_YMMX = _mm256_castps_si256(_mm256_load_ps(reinterpret_cast<float const*>(_ValPtr)));
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			_YMMX = _mm256_castpd_si256(_mm256_load_pd(reinterpret_cast<double const*>(_ValPtr)));
 		else
 			_YMMX = _mm256_load_si256((const __m256i*)_ValPtr);
@@ -56,11 +73,11 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256d _Val) : _YMMX(_mm256_castpd_si256(_Val)) {}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(Type _Val)
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			_YMMX = _mm256_castps_si256(_mm256_set1_ps(_Val));
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			_YMMX = _mm256_castpd_si256(_mm256_set1_pd(_Val));
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			_YMMX = _mm256_castps_si256(
 				_mm256_set_ps(
@@ -71,7 +88,7 @@ public:
 				)
 			);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			_YMMX = _mm256_castpd_si256(
 				_mm256_set_pd(
@@ -80,13 +97,13 @@ public:
 				)
 			);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_YMMX = _mm256_set1_epi8(_Val);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			_YMMX = _mm256_set1_epi16(_Val);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			_YMMX = _mm256_set1_epi32(_Val);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			_YMMX = _mm256_set1_epi64x(_Val);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -94,72 +111,71 @@ public:
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline void Store(Type* _Dest) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			_mm256_store_ps(reinterpret_cast<float*>(_Dest), *this);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			_mm256_store_pd(reinterpret_cast<double*>(_Dest), *this);
 		else
 			_mm256_store_si256((__m256i*)_Dest, _YMMX);
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline void Store(Type* _Dest, __mmask32 _Mask) const
-	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
-			_mm256_mask_storeu_ps(_Dest, _Mask >> 24, *this);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
-			_mm256_mask_storeu_pd(_Dest, _Mask >> 24, *this);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_mm256_mask_storeu_epi8(_Dest, _Mask, _YMMX);
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_mm256_mask_storeu_epi16(_Dest, _Mask >> 16, _YMMX);
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_mm256_mask_storeu_epi32(_Dest, _Mask >> 24, _YMMX);
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_mm256_mask_storeu_epi64(_Dest, _Mask >> 24, _YMMX);
-		else
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline void MaskedStore(void* _Dest, const Vectorized& _Mask) const
-	{
-		_mm256_store_si256((__m256i*)_Dest, _mm256_and_si256(*this, _Mask));
-	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline void StoreBool(void* _Dest) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex64>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
+		{
+			bool Dest[8];
+			auto Mask = _mm256_movemask_ps(_mm256_castsi256_ps(*this));
+			for (int i = 0; i < 8; ++i)
+				Dest[i] = Mask & (1 << i);
+			((bool*)_Dest)[0] = Dest[0] && Dest[1];
+			((bool*)_Dest)[1] = Dest[2] && Dest[3];
+			((bool*)_Dest)[2] = Dest[4] && Dest[5];
+			((bool*)_Dest)[3] = Dest[6] && Dest[7];
+		}
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
+		{
+			bool Dest[4];
+			auto Mask = _mm256_movemask_pd(_mm256_castsi256_pd(*this));
+			for (int i = 0; i < 4; ++i)
+				Dest[i] = Mask & (1 << i);
+			((bool*)_Dest)[0] = Dest[0] && Dest[1];
+			((bool*)_Dest)[1] = Dest[2] && Dest[3];
+		}
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			const auto Mask = _mm256_movemask_ps(*this);
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 8; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			const auto Mask = _mm256_movemask_pd(*this);
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 4; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 		{
 			const auto Mask = _mm256_movemask_epi8(*this);
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 32; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, int16_t> || std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 		{
 			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi16_epi8(*this)));
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 16; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 		{
 			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi32_epi8(*this)));
 			auto Dest = (bool*)_Dest;
 			for (int i = 0; i < 8; ++i)
 				Dest[i] = Mask & (1 << i);
 		}
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 		{
 			const auto Mask = _mm256_movemask_epi8(_mm256_castsi128_si256(_mm256_cvtepi64_epi8(*this)));
 			auto Dest = (bool*)_Dest;
@@ -172,17 +188,17 @@ public:
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256i() const
 	{
-		static_assert(std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool> || std::is_same_v<Type, int16_t> || std::is_same_v<Type, int32_t> || std::is_same_v<Type, int64_t>);
+		static_assert(TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean> || TypeTraits::IsAnyOfValue<Type, Int16, UInt16> || TypeTraits::IsAnyOfValue<Type, Int32, UInt32> || TypeTraits::IsAnyOfValue<Type, Int64, UInt64>);
 		return _YMMX;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256() const
 	{
-		static_assert(std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>);
+		static_assert(TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>);
 		return _mm256_castsi256_ps(_YMMX);
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline operator __m256d() const
 	{
-		static_assert(std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>);
+		static_assert(TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>);
 		return _mm256_castsi256_pd(_YMMX);
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline operator __mmask32() const
@@ -200,90 +216,90 @@ public:
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LT_OQ);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_LT_OQ);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_cmpgt_epi8(_Right, *this);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_cmpgt_epi16(_Right, *this);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cmpgt_epi32(_Right, *this);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cmpgt_epi64(_Right, *this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<=(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_LE_OQ);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_LE_OQ);
 		else
 			return *this < _Right || *this == _Right;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GT_OQ);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_GT_OQ);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_cmpgt_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_cmpgt_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cmpgt_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cmpgt_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>=(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cmp_ps(*this, _Right, _CMP_GE_OQ);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cmp_pd(*this, _Right, _CMP_GE_OQ);
 		else
 			return *this > _Right || *this == _Right;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator==(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			const auto Diff = _mm256_sub_ps(*this, _Right);
 			const auto Abs = _mm256_and_ps(Diff, _mm256_set1_ps(-0.0f));
 			return _mm256_cmp_ps(Abs, _mm256_set1_ps(FLT_EPSILON), _CMP_LE_OQ);
 		}
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			const auto Diff = _mm256_sub_pd(*this, _Right);
 			const auto Abs = _mm256_and_pd(Diff, _mm256_set1_pd(-0.0));
 			return _mm256_cmp_pd(Abs, _mm256_set1_pd(DBL_EPSILON), _CMP_LE_OQ);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_cmpeq_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_cmpeq_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cmpeq_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cmpeq_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator!=(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			const auto Diff = _mm256_sub_ps(*this, _Right);
 			const auto Abs = _mm256_and_ps(Diff, _mm256_set1_ps(-0.0f));
 			return _mm256_cmp_ps(Abs, _mm256_set1_ps(FLT_EPSILON), _CMP_GT_OQ);
 		}
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			const auto Diff = _mm256_sub_pd(*this, _Right);
 			const auto Abs = _mm256_and_pd(Diff, _mm256_set1_pd(-0.0));
@@ -295,17 +311,17 @@ public:
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator+(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_add_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_add_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_add_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_add_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_add_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_add_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -316,17 +332,17 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator-(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_sub_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_sub_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_sub_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_sub_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_sub_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_sub_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -337,9 +353,9 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator*(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_mul_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -351,9 +367,9 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_mul_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -365,11 +381,11 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool> || std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean> || TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_mullo_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_mullo_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_mullo_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -380,9 +396,9 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator/(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_div_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -396,9 +412,9 @@ public:
 
 			return _mm256_div_ps(_mm256_blend_ps(real_part, imag_part, 0b10101010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_div_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -412,30 +428,30 @@ public:
 
 			return _mm256_div_pd(_mm256_blend_pd(real_part, imag_part, 0b1010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_div_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_div_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_div_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_div_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator%(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_rem_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_rem_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_rem_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_rem_epi64(*this, _Right);
-		else if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_fmod_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_fmod_pd(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -460,32 +476,28 @@ public:
 	{
 		return _mm256_xor_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Complement(const Vectorized& _Mask) const
-	{
-		return _mm256_xor_si256(*this, _Mask);
-	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator<<(const int _Count) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32> || std::is_same_v<Type, int32_t>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_slli_epi32(*this, _Count);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64> || std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_slli_epi64(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_slli_epi16(*this, _Count);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator>>(const int _Count) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32> || std::is_same_v<Type, int32_t>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_srli_epi32(*this, _Count);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64> || std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_srli_epi64(*this, _Count);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_srli_epi16(*this, _Count);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -498,50 +510,67 @@ public:
 	{
 		return _mm256_or_si256(*this, _Right);
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Not() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator!() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
-			return _mm256_cmp_ps(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type), _CMP_EQ_OQ);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
-			return _mm256_cmp_pd(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type), _CMP_EQ_OQ);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			return _mm256_cmpeq_epi8(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			return _mm256_cmpeq_epi16(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			return _mm256_cmpeq_epi32(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			return _mm256_cmpeq_epi64(*this, _D_Dragonian_Lib_Simd_Not_Mask(Type));
+		if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			return _mm256_cmpeq_epi8(*this, _mm256_setzero_ps());
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			return _mm256_cmpeq_epi16(*this, _mm256_setzero_ps());
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cmpeq_epi32(*this, _mm256_setzero_ps());
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cmpeq_epi64(*this, _mm256_setzero_ps());
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
+			return _mm256_cmp_ps(*this, _mm256_setzero_ps(), _CMP_EQ_OQ);
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
+			return _mm256_cmp_pd(*this, _mm256_setzero_pd(), _CMP_EQ_OQ);
+		else
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized operator~() const
+	{
+		return _mm256_xor_si256(*this, _mm256_set1_epi64x(-1));
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Complement() const
+	{
+		if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			return _mm256_sub_epi8(_mm256_set1_epi8(UINT8_MAX), *this);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			return _mm256_sub_epi16(_mm256_set1_epi16(UINT16_MAX), *this);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32, Float32>)
+			return _mm256_sub_epi32(_mm256_set1_epi32(UINT32_MAX), *this);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64, Float64>)
+			return _mm256_sub_epi64(_mm256_set1_epi64x(UINT64_MAX), *this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Negative() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_xor_ps(*this, _mm256_set1_ps(-0.0f));
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_xor_pd(*this, _mm256_set1_pd(-0.0));
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_sub_epi8(_mm256_setzero_si256(), *this);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_sub_epi16(_mm256_setzero_si256(), *this);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_sub_epi32(_mm256_setzero_si256(), *this);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_sub_epi64(_mm256_setzero_si256(), *this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractAngle() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 
 			return _mm256_atan2_ps(b_imag, a_real);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -553,14 +582,14 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractMagnitude() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 
 			return _mm256_sqrt_ps(_mm256_fmadd_ps(a_real, a_real, _mm256_mul_ps(b_imag, b_imag)));
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -572,13 +601,13 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractReal() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 magnitude = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 angle = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 			return _mm256_mul_ps(magnitude, _mm256_cos_ps(angle));
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d magnitude = _mm256_movedup_pd(*this);
 			__m256d angle = _mm256_permute_pd(*this, 0b0101);
@@ -589,13 +618,13 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractImag() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 magnitude = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 angle = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
 			return _mm256_mul_ps(magnitude, _mm256_sin_ps(angle));
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d magnitude = _mm256_movedup_pd(*this);
 			__m256d angle = _mm256_permute_pd(*this, 0b0101);
@@ -604,57 +633,49 @@ public:
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractAngle(
-		const Vectorized& Real, const Vectorized& Imag
-	)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractAngle(const Vectorized& Real, const Vectorized& Imag)
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_atan2_ps(Imag, Real);
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_atan2_pd(Imag, Real);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractMagnitude(
-		const Vectorized& Real, const Vectorized& Imag
-	)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractMagnitude(const Vectorized& Real, const Vectorized& Imag)
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_sqrt_ps(_mm256_fmadd_ps(Real, Real, _mm256_mul_ps(Imag, Imag)));
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_sqrt_pd(_mm256_fmadd_pd(Real, Real, _mm256_mul_pd(Imag, Imag)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractReal(
-		const Vectorized& Magnitude, const Vectorized& Angle
-	)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractReal(const Vectorized& Magnitude, const Vectorized& Angle)
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_mul_ps(Magnitude, _mm256_cos_ps(Angle));
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_mul_pd(Magnitude, _mm256_cos_pd(Angle));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractImag(
-		const Vectorized& Magnitude, const Vectorized& Angle
-	)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ExtractImag(const Vectorized& Magnitude, const Vectorized& Angle)
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_mul_ps(Magnitude, _mm256_sin_ps(Angle));
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_mul_pd(Magnitude, _mm256_sin_pd(Angle));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Pow(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_pow_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_pow_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 pow = _mm256_shuffle_ps(_Right, _Right, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
@@ -671,7 +692,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d pow = _mm256_movedup_pd(_Right);
 			__m256d a_real = _mm256_movedup_pd(*this);
@@ -688,24 +709,24 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_pow_ps(_mm256_cvtepi32_ps(*this), _mm256_cvtepi32_ps(_Right)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_pow_pd(_mm256_cvtepi64_pd(*this), _mm256_cvtepi64_pd(_Right)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sqrt() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_sqrt_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_sqrt_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -721,7 +742,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -737,24 +758,24 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(sqrt);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(sqrt);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_sqrt_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_sqrt_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized RSqrt() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_rsqrt_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cvtps_pd(_mm256_castps256_ps128(_mm256_rsqrt_ps(_mm256_castps128_ps256(_mm256_cvtpd_ps(*this)))));
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -770,7 +791,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -786,24 +807,16 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+			return _mm256_setzero_si256();
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Reciprocal() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_rcp_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cvtps_pd(_mm256_castps256_ps128(_mm256_rcp_ps(_mm256_castps128_ps256(_mm256_cvtpd_ps(*this)))));
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -817,7 +830,7 @@ public:
 
 			return _mm256_div_ps(_mm256_blend_ps(real_part, imag_part, 0b10101010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -831,30 +844,24 @@ public:
 
 			return _mm256_div_pd(_mm256_blend_pd(real_part, imag_part, 0b1010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 		else
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+			return _mm256_setzero_si256();
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Abs() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (std::is_unsigned_v<Type>)
+			return *this;
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_and_ps(*this, _mm256_castsi256_ps(_mm256_set1_epi32(INT32_MAX)));
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_and_pd(*this, _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_MAX)));
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_abs_epi8(*this);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_abs_epi16(*this);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_abs_epi32(*this);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_abs_epi64(*this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -862,11 +869,11 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sin() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_sin_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_sin_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -883,7 +890,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d real = _mm256_movedup_pd(*this);
 			__m256d imag = _mm256_permute_pd(*this, 0b0101);
@@ -900,24 +907,24 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(sin);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(sin);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_sin_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_sin_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Cos() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cos_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cos_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -934,7 +941,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d real = _mm256_movedup_pd(*this);
 			__m256d imag = _mm256_permute_pd(*this, 0b0101);
@@ -951,24 +958,24 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(cos);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(cos);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_cos_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_cos_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tan() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_tan_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_tan_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -985,7 +992,7 @@ public:
 
 			return _mm256_div_ps(_mm256_blend_ps(sin_2a, sinh_2b, 0b10101010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a = _mm256_movedup_pd(*this);
 			__m256d b = _mm256_permute_pd(*this, 0b0101);
@@ -1002,95 +1009,95 @@ public:
 
 			return _mm256_div_pd(_mm256_blend_pd(sin_2a, sinh_2b, 0b1010), denominator);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(tan);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(tan);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_tan_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_tan_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ASin() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_asin_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_asin_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(asin);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(asin);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_asin_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_asin_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ACos() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_acos_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_acos_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(acos);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(acos);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_acos_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_acos_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATan() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_atan_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_atan_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int64_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(atan);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(atan);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
+			return _mm256_cvtps_epi32(_mm256_atan_ps(_mm256_cvtepi32_ps(*this)));
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
+			return _mm256_cvtpd_epi64(_mm256_atan_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATan2() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 a_real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b_imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -1100,7 +1107,7 @@ public:
 
 			return _mm256_blend_ps(magnitude, angle, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d a_real = _mm256_movedup_pd(*this);
 			__m256d b_imag = _mm256_permute_pd(*this, 0b0101);
@@ -1115,7 +1122,7 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tan2() const
 	{
-		if constexpr (std::is_same_v<Type, Complex32> || std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32> || TypeTraits::IsSameTypeValue<Type, Float32>)
 		{
 			__m256 magnitude = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 angle = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -1125,7 +1132,7 @@ public:
 
 			return _mm256_mul_ps(magnitude, _mm256_blend_ps(real, imag, 0b10101010));
 		}
-		else if constexpr (std::is_same_v<Type, Complex64> || std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64> || TypeTraits::IsSameTypeValue<Type, Float64>)
 		{
 			__m256d magnitude = _mm256_movedup_pd(*this);
 			__m256d angle = _mm256_permute_pd(*this, 0b0101);
@@ -1140,11 +1147,11 @@ public:
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Sinh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_sinh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_sinh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -1160,7 +1167,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a = _mm256_movedup_pd(*this);
 			__m256d b = _mm256_permute_pd(*this, 0b0101);
@@ -1176,24 +1183,24 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(sinh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(sinh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_sinh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_sinh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Cosh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_cosh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_cosh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 			__m256 a = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
 			__m256 b = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
@@ -1209,7 +1216,7 @@ public:
 
 			return _mm256_blend_ps(real_part, imag_part, 0b10101010);
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 			__m256d a = _mm256_movedup_pd(*this);
 			__m256d b = _mm256_permute_pd(*this, 0b0101);
@@ -1225,351 +1232,351 @@ public:
 
 			return _mm256_blend_pd(real_part, imag_part, 0b1010);
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(cosh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(cosh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_cosh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_cosh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Tanh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_tanh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_tanh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(tanh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(tanh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_tanh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_tanh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ASinh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_asinh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_asinh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(asinh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(asinh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_asinh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_asinh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ACosh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_acosh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_acosh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(acosh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(acosh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_acosh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_acosh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized ATanh() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_atanh_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_atanh_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(atanh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(atanh);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_atanh_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_atanh_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_log_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_log_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(log);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(log);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_log_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_log_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log2() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_log2_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_log2_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(log2);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(log2);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_log2_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_log2_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Log10() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_log10_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_log10_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(log10);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(log10);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_log10_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_log10_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_exp_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_exp_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(exp);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(exp);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_exp_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_exp_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp2() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_exp2_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_exp2_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(exp2);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(exp2);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_exp2_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_exp2_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Exp10() const
 	{
-		if constexpr (std::is_same_v<Type, float>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_exp10_ps(*this);
-		else if constexpr (std::is_same_v<Type, double>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_exp10_pd(*this);
-		else if constexpr (std::is_same_v<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
 
 		}
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int16_t>)
-			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
+			_D_Dragonian_Lib_Simd_Int8_Fp(exp10);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
+			_D_Dragonian_Lib_Simd_Int16_Fp(exp10);
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_cvtps_epi32(_mm256_exp10_ps(_mm256_cvtepi32_ps(*this)));
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_cvtpd_epi64(_mm256_exp10_pd(_mm256_cvtepi64_pd(*this)));
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Ceil() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_ceil_ps(*this);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_ceil_pd(*this);
 		else
 			return *this;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Floor() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_floor_ps(*this);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_floor_pd(*this);
 		else
 			return *this;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Round() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_NEAREST_INT);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_round_pd(*this, _MM_FROUND_TO_NEAREST_INT);
 		else
 			return *this;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Trunc() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_round_ps(*this, _MM_FROUND_TO_ZERO);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_round_pd(*this, _MM_FROUND_TO_ZERO);
 		else
 			return *this;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Frac() const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_sub_ps(*this, _mm256_floor_ps(*this));
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_sub_pd(*this, _mm256_floor_pd(*this));
 		else
-			return *this;
+			return _mm256_setzero_si256();
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Min(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_min_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_min_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_min_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_min_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_min_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_min_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Max(const Vectorized& _Right) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_max_ps(*this, _Right);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_max_pd(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int8_t> || std::is_same_v<Type, bool>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_max_epi8(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int16_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int16, UInt16>)
 			return _mm256_max_epi16(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int32_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int32, UInt32>)
 			return _mm256_max_epi32(*this, _Right);
-		else if constexpr (std::is_same_v<Type, int64_t>)
+		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int64, UInt64>)
 			return _mm256_max_epi64(*this, _Right);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Lerp(const Vectorized& _Right, const Vectorized& _Alpha) const
 	{
-		if constexpr (std::is_same_v<Type, float> || std::is_same_v<Type, Complex32>)
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
 			return _mm256_add_ps(_mm256_mul_ps(_mm256_sub_ps(_Right, *this), _Alpha), *this);
-		else if constexpr (std::is_same_v<Type, double> || std::is_same_v<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
 			return _mm256_add_pd(_mm256_mul_pd(_mm256_sub_pd(_Right, *this), _Alpha), *this);
 		else
 			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
@@ -1843,54 +1850,35 @@ template <
 
 			while (_DestSize >= LoopStride)
 			{
+				for (Int64 i = 0; i < OpThroughput; ++i)
+					VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
+
 				if constexpr (_OType == TypeDef::UnaryOperatorType)
-				{
-					for (Int64 i = 0; i < OpThroughput; ++i)
-						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
 					for (Int64 i = 0; i < OpThroughput; ++i)
 						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i]);
-					for (Int64 i = 0; i < OpThroughput; ++i)
-						if constexpr (IsCompare)
-							VectorizedValue[i].StoreBool(_Dest + i * Stride);
-						else
-							VectorizedValue[i].Store(_Dest + i * Stride);
-				}
 				else if constexpr (_OType == TypeDef::BinaryOperatorType)
 				{
 					for (Int64 i = 0; i < OpThroughput; ++i)
-					{
-						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
 						VectorizedValue[i + OpThroughput] = Vectorized<_InputType>(_Src2 + i * Stride);
-					}
 					for (Int64 i = 0; i < OpThroughput; ++i)
 						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i], VectorizedValue[i + OpThroughput]);
-					for (Int64 i = 0; i < OpThroughput; ++i)
-						if constexpr (IsCompare)
-							VectorizedValue[i].StoreBool(_Dest + i * Stride);
-						else
-							VectorizedValue[i].Store(_Dest + i * Stride);
 				}
 				else if constexpr (_OType == TypeDef::ConstantOperatorType)
-				{
-					for (Int64 i = 0; i < OpThroughput; ++i)
-						VectorizedValue[i] = Vectorized<_InputType>(_Src1 + i * Stride);
 					for (Int64 i = 0; i < OpThroughput; ++i)
 						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i], VectorizedValue[OpThroughput]);
-					for (Int64 i = 0; i < OpThroughput; ++i)
-						if constexpr (IsCompare)
-							VectorizedValue[i].StoreBool(_Dest + i * Stride);
-						else
-							VectorizedValue[i].Store(_Dest + i * Stride);
-				}
-				_Dest += LoopStride;
-				_Src1 += LoopStride;
-				if constexpr (_OType == TypeDef::BinaryOperatorType)
-					_Src2 += LoopStride;
-				_DestSize -= LoopStride;
+
+				for (Int64 i = 0; i < OpThroughput; ++i)
+					if constexpr (IsCompare)
+						VectorizedValue[i].StoreBool(_Dest + i * Stride);
+					else
+						VectorizedValue[i].Store(_Dest + i * Stride);
+
+				_Dest += LoopStride; _Src1 += LoopStride; _DestSize -= LoopStride;
+				if constexpr (_OType == TypeDef::BinaryOperatorType) _Src2 += LoopStride;
 			}
 		}
 	}
-
+	
 	while (_DestSize >= LoopStride)
 	{
 		for (Int64 i = 0; i < LoopStride; ++i)
