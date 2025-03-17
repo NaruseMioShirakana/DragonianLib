@@ -12,13 +12,13 @@ using f16base_t = uint16_t;
  * @brief Half precision floating point struct
  */
 struct float16_t {
-	float16_t(float _Val);
-	float16_t& operator=(float _Val);
-	operator float() const;
+	float16_t(float _Val) noexcept;
+	float16_t& operator=(float _Val) noexcept;
+	operator float() const noexcept;
 private:
 	uint16_t Val;
-	static float16_t float32_to_float16(uint32_t f32);
-	static uint32_t float16_to_float32(float16_t f16);
+	static float16_t float32_to_float16(uint32_t f32) noexcept;
+	static uint32_t float16_to_float32(float16_t f16) noexcept;
 };
 
 /**
@@ -27,13 +27,13 @@ private:
  */
 struct float8_t
 {
-	float8_t(float _Val);
-	float8_t& operator=(float _Val);
-	operator float() const;
+	float8_t(float _Val) noexcept;
+	float8_t& operator=(float _Val) noexcept;
+	operator float() const noexcept;
 private:
 	uint8_t Val;
-	static float8_t float32_to_float8(uint32_t f32);
-	static uint32_t float8_to_float32(float8_t f8);
+	static float8_t float32_to_float8(uint32_t f32) noexcept;
+	static uint32_t float8_to_float32(float8_t f8) noexcept;
 };
 
 /**
@@ -42,13 +42,13 @@ private:
  */
 struct bfloat16_t
 {
-	bfloat16_t(float _Val);
-	bfloat16_t& operator=(float _Val);
-	operator float() const;
+	bfloat16_t(float _Val) noexcept;
+	bfloat16_t& operator=(float _Val) noexcept;
+	operator float() const noexcept;
 private:
 	uint16_t Val;
-	static bfloat16_t float32_to_bfloat16(uint32_t f32);
-	static uint32_t bfloat16_to_float32(bfloat16_t bf16);
+	static bfloat16_t float32_to_bfloat16(uint32_t f32) noexcept;
+	static uint32_t bfloat16_to_float32(bfloat16_t bf16) noexcept;
 };
 
 using Boolean = bool; ///< Boolean

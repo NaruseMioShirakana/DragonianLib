@@ -1,7 +1,5 @@
 ﻿#include "../stft.hpp"
-#include "Libraries/Base.h"
 #include "cblas.h"
-#include "Libraries/Util/Logger.h"
 #include "fftw3.h"
 
 _D_Dragonian_Lib_Space_Begin
@@ -76,16 +74,10 @@ namespace FunctionTransform
 
 	STFT::~STFT() = default;
 
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::GetMel(const DragonianLibSTL::Vector<int16_t>& audioData) const
-	{
-		DragonianLibSTL::Vector<double> floatAudio(audioData.Size());
-		for (size_t i = 0; i < audioData.Size(); ++i)
-			floatAudio[i] = double(audioData[i]) / 32768.;
-		return operator()(floatAudio);
-	}
-
 	std::pair<DragonianLibSTL::Vector<float>, int64_t> STFT::operator()(const DragonianLibSTL::Vector<double>& audioData) const
 	{
+		if (audioData.Size() < static_cast<UInt64>(WINDOW_SIZE))
+			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
 		const int NUM_FRAMES = (int(audioData.Size()) - WINDOW_SIZE) / HOP_SIZE + 1;
 		DragonianLibSTL::Vector hannWindow(WINDOW_SIZE, 0.0);
 		const auto fftOut = (fftw_complex*)(fftw_malloc(sizeof(fftw_complex) * FFT_SIZE));
@@ -104,11 +96,24 @@ namespace FunctionTransform
 		return { std::move(spectrogram), int64_t(NUM_FRAMES) };
 	}
 
+	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::GetMel(const DragonianLibSTL::Vector<int16_t>& audioData) const
+	{
+		if (audioData.Size() < static_cast<UInt64>(stft.WINDOW_SIZE))
+			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
+		DragonianLibSTL::Vector<double> floatAudio(audioData.Size());
+		for (size_t i = 0; i < audioData.Size(); ++i)
+			floatAudio[i] = double(audioData[i]) / 32768.;
+		return operator()(floatAudio);
+	}
+
 	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::GetMel(const DragonianLibSTL::Vector<double>& audioData) const
 	{
+		if (audioData.Size() < static_cast<UInt64>(stft.WINDOW_SIZE))
+			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
 		auto BgnTime = clock();
 		const auto Spec = stft(audioData);  //[frame, nfft] * [nfft, mel_bins]  |  [mel_bins, nfft] * [nfft, frame]
-		DragonianLib::LogInfo(L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms");
+		if (logger)
+			logger->Log(LogLevel::Info,(L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms").c_str());
 		const auto NFrames = Spec.second;
 		DragonianLibSTL::Vector Mel(MEL_SIZE * NFrames, 0.f);
 		BgnTime = clock();
@@ -130,7 +135,8 @@ namespace FunctionTransform
 		);
 		for (auto& it : Mel)
 			it = log(std::max(1e-5f, it));
-		DragonianLib::LogInfo(L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms");
+		if (logger)
+			logger->Log(LogLevel::Info, (L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms").c_str());
 		return { std::move(Mel), (int64_t)NFrames };
 	}
 
@@ -139,8 +145,8 @@ namespace FunctionTransform
 		return GetMel(audioData);
 	}
 
-	Mel::Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize, double FreqMin, double FreqMax) :
-		stft(WindowSize, HopSize, WindowSize / 2 + 1)
+	Mel::Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize, double FreqMin, double FreqMax, Logger* _Logger) :
+		stft(WindowSize, HopSize, WindowSize / 2 + 1), logger(_Logger)
 	{
 		double mel_min = HZ2Mel(FreqMin);
 		double mel_max = HZ2Mel(FreqMax);

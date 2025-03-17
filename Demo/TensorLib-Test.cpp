@@ -47,11 +47,29 @@ int main()
 	DragonianLib::SetWorkerCount(16);
 	DragonianLib::SetMaxTaskCountPerOperator(8);
 	DragonianLib::SetRandomSeed(114514);
-	const auto Ten1 = DragonianLib::Functional::Ones(DragonianLib::IDim(11, 4, 5)).Evaluate();
-	std::cout << DragonianLib::Functional::Cat(
-		DragonianLib::Functional::ConstantOf(DragonianLib::IDim(3, 4), 0),
-		DragonianLib::Functional::ConstantOf(DragonianLib::IDim(3, 4), 1)
-	).Evaluate();
+
+	try
+	{
+		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
+		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
+		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
+		auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
+		auto _Audio = AudioStream.DecodeAll( 44100);
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		{ _Audio = AudioStream.DecodeAll(44100); }
+		DragonianLib::AvCodec::WritePCMData(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.wav)", CRanges(_Audio), 44100);
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << e.what();
+	}
+
 	return 0;
 	auto Codec = DragonianLib::AvCodec::AvCodec();
 

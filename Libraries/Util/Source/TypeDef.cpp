@@ -2,24 +2,24 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-float16_t::float16_t(float _Val)
+float16_t::float16_t(float _Val) noexcept
 {
 	Val = float32_to_float16(*(uint32_t*)(&_Val)).Val;
 }
 
-float16_t& float16_t::operator=(float _Val)
+float16_t& float16_t::operator=(float _Val) noexcept
 {
 	Val = float32_to_float16(*(uint32_t*)(&_Val)).Val;
 	return *this;
 }
 
-float16_t::operator float() const
+float16_t::operator float() const noexcept
 {
 	auto f32 = float16_to_float32(*this);
 	return *(float*)(&f32);
 }
 
-float16_t float16_t::float32_to_float16(uint32_t f32)
+float16_t float16_t::float32_to_float16(uint32_t f32) noexcept
 {
 	uint32_t f16;
 	uint32_t sign = (f32 & 0x80000000) >> 16;
@@ -44,7 +44,7 @@ float16_t float16_t::float32_to_float16(uint32_t f32)
 	return *reinterpret_cast<float16_t*>(&f16);
 }
 
-uint32_t float16_t::float16_to_float32(float16_t f16)
+uint32_t float16_t::float16_to_float32(float16_t f16) noexcept
 {
 	uint32_t f32;
 	uint32_t sign = (f16.Val & 0x8000) << 16;
@@ -69,24 +69,24 @@ uint32_t float16_t::float16_to_float32(float16_t f16)
 	return f32;
 }
 
-float8_t::float8_t(float _Val)
+float8_t::float8_t(float _Val) noexcept
 {
 	Val = float32_to_float8(*(uint32_t*)(&_Val)).Val;
 }
 
-float8_t& float8_t::operator=(float _Val)
+float8_t& float8_t::operator=(float _Val) noexcept
 {
 	Val = float32_to_float8(*(uint32_t*)(&_Val)).Val;
 	return *this;
 }
 
-float8_t::operator float() const
+float8_t::operator float() const noexcept
 {
 	auto f32 = float8_to_float32(*this);
 	return *(float*)(&f32);
 }
 
-float8_t float8_t::float32_to_float8(uint32_t f32)
+float8_t float8_t::float32_to_float8(uint32_t f32) noexcept
 {
 	uint32_t f8;
 	uint32_t sign = (f32 & 0x80000000) >> 24;
@@ -111,7 +111,7 @@ float8_t float8_t::float32_to_float8(uint32_t f32)
 	return *reinterpret_cast<float8_t*>(&f8);
 }
 
-uint32_t float8_t::float8_to_float32(float8_t f8)
+uint32_t float8_t::float8_to_float32(float8_t f8) noexcept
 {
 	uint32_t f32;
 	uint32_t sign = (f8.Val & 0x80) << 24;
@@ -136,24 +136,24 @@ uint32_t float8_t::float8_to_float32(float8_t f8)
 	return f32;
 }
 
-bfloat16_t::bfloat16_t(float _Val)
+bfloat16_t::bfloat16_t(float _Val) noexcept
 {
 	Val = float32_to_bfloat16(*(uint32_t*)(&_Val)).Val;
 }
 
-bfloat16_t& bfloat16_t::operator=(float _Val)
+bfloat16_t& bfloat16_t::operator=(float _Val) noexcept
 {
 	Val = float32_to_bfloat16(*(uint32_t*)(&_Val)).Val;
 	return *this;
 }
 
-bfloat16_t::operator float() const
+bfloat16_t::operator float() const noexcept
 {
 	auto f32 = bfloat16_to_float32(*this);
 	return *(float*)(&f32);
 }
 
-bfloat16_t bfloat16_t::float32_to_bfloat16(uint32_t f32)
+bfloat16_t bfloat16_t::float32_to_bfloat16(uint32_t f32) noexcept
 {
 	uint32_t bf16;
 	uint32_t sign = (f32 & 0x80000000) >> 16;
@@ -178,7 +178,7 @@ bfloat16_t bfloat16_t::float32_to_bfloat16(uint32_t f32)
 	return *reinterpret_cast<bfloat16_t*>(&bf16);
 }
 
-uint32_t bfloat16_t::bfloat16_to_float32(bfloat16_t bf16)
+uint32_t bfloat16_t::bfloat16_to_float32(bfloat16_t bf16) noexcept
 {
 	uint32_t f32;
 	uint32_t sign = (bf16.Val & 0x8000) << 16;

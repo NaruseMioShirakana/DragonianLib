@@ -622,6 +622,26 @@ bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
 }
 
 #else
+Image::Image(const wchar_t* input, int interp_mode)
+{
+	_D_Dragonian_Lib_Throw_Exception("GDIPLUS is not supported on this platform.");
+}
+
+Image::Image(const wchar_t* input, int width, int height, int len, float pad, bool line, const wchar_t* debug_dir)
+{
+	_D_Dragonian_Lib_Throw_Exception("GDIPLUS is not supported on this platform.");
+}
+
+Image::Image(unsigned char* input, int src_width, int src_height, int width, int height, int len, float pad, bool line, const wchar_t* debug_dir)
+{
+	_D_Dragonian_Lib_Throw_Exception("GDIPLUS is not supported on this platform.");
+}
+
+bool Image::MergeWrite(const wchar_t* path, int scale, UINT quality) const
+{
+	_D_Dragonian_Lib_Throw_Exception("GDIPLUS is not supported on this platform.");
+	return false;
+}
 #endif
 
 void Image::Transpose(size_t scale)

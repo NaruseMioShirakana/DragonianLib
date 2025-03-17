@@ -288,26 +288,20 @@ public:
 		return std::forward<_ThisType>(Self);
 	}
 
-	template <typename _ValType = _TensorType>
-	std::enable_if_t<
-		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::string> CastToString(bool _Fold = true) const
+	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
+	decltype(auto) CastToString(bool _Fold = true) const
 	{
 		return CastToString(TotalSize(), _Fold);
 	}
 
-	template <typename _ValType = _TensorType>
-	std::enable_if_t<
-		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::string> to_string() const
+	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
+	decltype(auto) to_string() const
 	{
 		return CastToString(TotalSize());
 	}
 
-	template <typename _ValType = _TensorType>
-	std::enable_if_t<
-		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::wstring> CastToWideString(bool _Fold = true) const
+	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
+	decltype(auto) CastToWideString(bool _Fold = true) const
 	{
 		return UTF8ToWideString(CastToString(TotalSize()), _Fold);
 	}
@@ -332,10 +326,8 @@ protected:
 
 private:
 
-	template <typename _ValType = _TensorType>
-	std::enable_if_t<
-		TypeTraits::IsSameTypeValue<_ValType, _TensorType>,
-		std::string> CastToString(SizeType _MyTotalSize, bool _Fold = true) const
+	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
+	decltype(auto) CastToString(SizeType _MyTotalSize, bool _Fold = true) const
 	{
 		if constexpr (_NRank > 1)
 		{
@@ -375,10 +367,8 @@ private:
 		}
 	}
 
-	template <size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		(_TmpTank > 1) && _TmpTank == _NRank,
-		Tensor<_TensorType, _TmpTank - 1, _MyDevice>>
+	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<(_TmpTank > 1) && _TmpTank == _NRank>>
+		_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		ViewFirstDim(SizeType _Index) const
 	{
 		const auto Idx = CalcIndex(_Index, _MyShape.Front());
@@ -397,10 +387,8 @@ private:
 		return Ret;
 	}
 
-	template <size_t _TRank>
-	constexpr std::enable_if_t<
-		(_NRank > _TRank),
-		Tensor<_TensorType, _NRank - _TRank, _MyDevice>> ViewDimensions(const Dimensions<_TRank>& _Indice) const
+	template <size_t _TRank, typename = std::enable_if_t<(_NRank > _TRank)>>
+	constexpr decltype(auto) ViewDimensions(const Dimensions<_TRank>& _Indice) const
 
 	{
 		Tensor<_TensorType, _NRank - _TRank, _MyDevice> Ret;
@@ -493,10 +481,9 @@ private:
 		return Ret;
 	}
 
-	template <typename _Type2, size_t _Rank2, Device _Device2>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		_Rank2 <= _NRank,
-		Tensor> BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
+	template <typename _Type2, size_t _Rank2, Device _Device2, typename = std::enable_if_t<_Rank2 <= _NRank>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+	BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
 	{
 		decltype(auto) Bd = BroadCast(*this, _Other, Inplace);
 		return std::move(Bd.second);
@@ -508,7 +495,7 @@ public:
 	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
 
 	template <size_t _TRank, typename = std::enable_if_t<(_NRank >= _TRank)>>
-	constexpr Tensor& TensorAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
+	Tensor& TensorAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
 	{
 		if constexpr (std::is_copy_assignable_v<ValueType>)
 		{
@@ -520,6 +507,12 @@ public:
 			_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
+	template <size_t _TRank, typename = std::enable_if_t<(_NRank >= _TRank)>>
+	Tensor& Inplace(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
+	{
+		return TensorAssign(_Left);
+	}
+
 	constexpr Tensor& operator=(const Tensor& _Left) = delete;
 
 	/**
@@ -527,7 +520,7 @@ public:
 	 * @param _Val The scalar value.
 	 * @return Reference of this.
 	 */
-	constexpr Tensor& operator=(const ValueType& _Val)
+	Tensor& operator=(const ValueType& _Val)
 	{
 		if constexpr (std::is_copy_assignable_v<ValueType>)
 		{
@@ -792,7 +785,7 @@ public:
 		return Tensor(_ShapeReference._MyShape);
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_move_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
 	static constexpr decltype(auto) Arange(ValueType _Begin, ValueType _End, ValueType _Step)
 	{
 		if (_Step == ValueType(0))
@@ -814,7 +807,7 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_move_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
 	static constexpr decltype(auto) Linspace(ValueType _Begin, ValueType _End, size_t _Count, bool _EndPoint = false)
 	{
 		if (_EndPoint)
@@ -1077,82 +1070,84 @@ public:
 	 * @brief Get the buffer of the tensor.
 	 * @return The buffer of the tensor.
 	 */
+	template <typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Buffer()
+		decltype(auto) Buffer(this _ThisType&& Self)
 	{
-		return _MyFirst;
+		return std::forward<_ThisType>(Self)._MyFirst;
 	}
 
 	/**
 	 * @brief Get the data pointer of the tensor.
 	 * @return The data pointer of the tensor.
 	 */
+	template <typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Data() const
+		decltype(auto) Data(this _ThisType&& Self)
 	{
-		return _MyData;
+		return std::forward<_ThisType>(Self)._MyData;
 	}
 
 	/**
 	 * @brief Get the data pointer of the tensor with the specified indices.
-	 * @param _Indices The indices of the tensor.
 	 * @return The data pointer of the tensor.
 	 */
-	template <size_t _TRank>
+	template <size_t _TRank, typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Data(const Dimensions<_TRank>& _Indices) const
+		decltype(auto) Data(this _ThisType&& Self, const Dimensions<_TRank>& _Indices)
 	{
 		static_assert(_TRank <= _NRank, "The rank of the indices must be less than or equal to the rank of the tensor!");
 		SizeType Index = 0;
 		for (size_t i = 0; i < _Indices.Size(); ++i)
 		{
-			const SizeType Idx = CalcIndex(_Indices[i], _MyShape[i]);
-			Index += (Idx * _MyViewStride[i]);
+			const SizeType Idx = CalcIndex(_Indices[i], std::forward<_ThisType>(Self)._MyShape[i]);
+			Index += (Idx * std::forward<_ThisType>(Self)._MyViewStride[i]);
 		}
-		return _MyData + Index;
+		return std::forward<_ThisType>(Self)._MyData + Index;
 	}
 
 	/**
 	 * @brief Get a val of the tensor with the specified index.
-	 * @param Index The index.
 	 * @return The val.
 	 */
+	template <typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Get(SizeType Index) const
+		decltype(auto) Get(this _ThisType&& Self, SizeType Index)
 	{
-		return *Data<1>({ Index });
+		return *(std::forward<_ThisType>(Self).template Data<1>({ Index }));
 	}
 
 	/**
 	 * @brief Get a val of the tensor with the specified indices.
-	 * @param _Indices The indices.
 	 * @return The val.
 	 */
-	template <size_t _TRank>
+	template <size_t _TRank, typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Item(const Dimensions<_TRank>& _Indices) const
+		decltype(auto) Item(this _ThisType&& Self, const Dimensions<_TRank>& _Indices)
 	{
-		return *Data(_Indices);
+		return *(std::forward<_ThisType>(Self).Data(_Indices));
 	}
 
 	/**
 	 * @brief Get the first val of the tensor.
 	 * @return The val.
 	 */
+	template <typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Item() const
+		decltype(auto) Item(this _ThisType&& Self)
 	{
-		return *_MyData;
+		return *std::forward<_ThisType>(Self)._MyData;
 	}
 
 	/**
 	 * @brief Get the pointer of the first val of the tensor.
 	 * @return The pointer.
 	 */
+	template <typename _ThisType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) ItemPointer() const
+		decltype(auto) ItemPointer(this _ThisType&& Self)
 	{
-		return _MyData;
+		return std::forward<_ThisType>(Self)._MyData;
 	}
 
 	//******************************************************Operator******************************************************//

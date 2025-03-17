@@ -517,9 +517,11 @@ template<
 	auto CreateTask = [&](std::shared_future<void> TaskFuture)
 		{
 			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
-			_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
+			if (_Src1InfoOld->ArgumentDependency != _DestInfoOld->ArgumentDependency)
+				_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_OType == TypeDef::BinaryOperatorType)
-				_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
+				if (_Src1InfoOld->ArgumentDependency != _Src2InfoOld->ArgumentDependency)
+					_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 		};
 
 	if (Continuous)
@@ -645,9 +647,11 @@ void ImplMultiThreadCaller(
 		{
 			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_ArgCount > 1)
-				_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
+				if (_Src1InfoOld->ArgumentDependency != _DestInfoOld->ArgumentDependency)
+					_Src1InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_ArgCount > 2)
-				_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
+				if (_Src1InfoOld->ArgumentDependency != _Src2InfoOld->ArgumentDependency)
+					_Src2InfoOld->ArgumentDependency->emplace_back(TaskFuture, _DataPointer);
 		};
 
 	if constexpr (IsCallableValue<_ContinuousFunctionType>)

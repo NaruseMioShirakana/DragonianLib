@@ -60,6 +60,19 @@
 // Define cuda error
 #define _D_Dragonian_Lib_CUDA_Error _D_Dragonian_Lib_Throw_Exception(cudaGetErrorString(cudaGetLastError()))
 
+#define _D_Dragonian_Lib_Rethrow_Block(Expr) \
+do{ \
+	try \
+	{ \
+		Expr \
+	} \
+	catch(std::exception& _M_EXCEPT) \
+	{ \
+		_D_Dragonian_Lib_Throw_Exception(_M_EXCEPT.what()); \
+	} \
+} \
+while (0) \
+
 // Define registration layer macro
 #define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
 

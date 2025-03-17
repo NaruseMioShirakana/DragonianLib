@@ -4,7 +4,7 @@ import time
 emb = torch.randn((114,514,1919))
 for i in range(20):
     begin = time.time()
-    torch.cos(emb)
+    emb + emb
     print(time.time() - begin)
 
 

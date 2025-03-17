@@ -60,36 +60,20 @@ public:
 };
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) Begin(const _Type& _Container)
+decltype(auto) Begin(_Type&& _Container)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
-		return _Container.begin();
+		return std::forward<_Type>(_Container).begin();
 	else if constexpr (TypeTraits::HasHRange<_Type>)
-		return _Container.Begin();
+		return std::forward<_Type>(_Container).Begin();
 }
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) End(const _Type& _Container)
+decltype(auto) End(_Type&& _Container)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
-		return _Container.end();
+		return std::forward<_Type>(_Container).end();
 	else if constexpr (TypeTraits::HasHRange<_Type>)
-		return _Container.End();
-}
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) Begin(_Type& _Container)
-{
-	if constexpr (TypeTraits::HasLRange<_Type>)
-		return _Container.begin();
-	else if constexpr (TypeTraits::HasHRange<_Type>)
-		return _Container.Begin();
-}
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) End(_Type& _Container)
-{
-	if constexpr (TypeTraits::HasLRange<_Type>)
-		return _Container.end();
-	else if constexpr (TypeTraits::HasHRange<_Type>)
-		return _Container.End();
+		return std::forward<_Type>(_Container).End();
 }
 
 template <typename _IteratorType, typename = std::enable_if_t<TypeTraits::IsIterator<_IteratorType>>>
@@ -355,15 +339,15 @@ decltype(auto) Ranges(_Type* _Begin, _Type* _End)
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) Ranges(_Type& _Container)
+decltype(auto) Ranges(_Type&& _Container)
 {
-	return Ranges(&*Begin(_Container), &*End(_Container));
+	return Ranges(&*Begin(std::forward<_Type>(_Container)), &*End(std::forward<_Type>(_Container)));
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) Ranges(const _Type& _Container)
+decltype(auto) CRanges(_Type&& _Container)
 {
-	return Ranges(&*Begin(_Container), &*End(_Container));
+	return ConstantRanges(&*Begin(std::forward<_Type>(_Container)), &*End(std::forward<_Type>(_Container)));
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>&& TypeTraits::IsPointerLike<decltype(Begin(TypeTraits::InstanceOf<_Type>()))>>>

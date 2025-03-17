@@ -67,27 +67,27 @@ public:
 	{
         if (!InstantRun_ && !Stoped_ && _TaskCount > 0 && _TaskCount <= Tasks_.size()) Condition_.release((Int64)_TaskCount);
 	}
-    bool Enabled() const
+    bool Enabled() const noexcept
     {
         return !Stoped_;
     }
-    Int64 GetThreadCount() const
+    Int64 GetThreadCount() const noexcept
     {
         return ThreadCount_;
     }
-    operator ThreadPool*()
+    operator ThreadPool*() noexcept
     {
         return this;
     }
-    void EnableTimeLogger(bool _Enabled)
+    void EnableTimeLogger(bool _Enabled) noexcept
     {
         LogTime_ = _Enabled;
     }
-	void EnableInstantRun(bool _Enabled)
+	void EnableInstantRun(bool _Enabled) noexcept
 	{
 		InstantRun_ = _Enabled;
 	}
-	void SetRandomSeed(Int64 _Seed)
+	void SetRandomSeed(Int64 _Seed) noexcept
 	{
 		_MySeed = _Seed;
 	}

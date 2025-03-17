@@ -35,40 +35,45 @@ class Logger
 {
 public:
 	using LoggerFunction = void(*)(unsigned Level, const wchar_t* Message, const wchar_t* Id);
-	Logger();
-	~Logger();
-	Logger(LoggerFunction Function);
-	Logger(const Logger&) = delete;
-	Logger(Logger&&) = delete;
-	Logger& operator=(const Logger&) = delete;
-	Logger& operator=(Logger&&) = delete;
-	void Log(LogLevel Level, const wchar_t* Message, const wchar_t* Id);
-	void Message(const wchar_t* Message);
-	Logger& operator<<(const wchar_t* Message);
-	Logger& operator<<(const std::wstring& Message);
-	void SetLoggerId(const wchar_t* Id) { Id_ = Id; }
-	void SetLoggerLevel(LogLevel Level) { Level_ = Level; }
-	void SetLoggerFunction(LoggerFunction Function) { LoggerFn_ = Function; }
-	std::wstring& GetLoggerId() { return Id_; }
+
+	virtual ~Logger() noexcept;
+	virtual void Log(LogLevel Level, const wchar_t* Message, const wchar_t* Id = nullptr) noexcept;
+	virtual void Message(const wchar_t* Message) noexcept;
+	
 private:
 	LoggerFunction LoggerFn_;
 	std::mutex Mutex_;
 	std::wstring Id_ = L"DragonianLib";
 	LogLevel Level_ = LogLevel::Info;
+
+public:
+	Logger() noexcept;
+	Logger(LoggerFunction Function) noexcept;
+	Logger(const Logger&) = delete;
+	Logger(Logger&&) = delete;
+	Logger& operator=(const Logger&) = delete;
+	Logger& operator=(Logger&&) = delete;
+	void Log(LogLevel Level, const std::wstring& Message, const std::wstring& Id = L"") noexcept;
+	Logger& operator<<(const wchar_t* Message) noexcept;
+	Logger& operator<<(const std::wstring& Message) noexcept;
+	void SetLoggerId(const wchar_t* Id) noexcept { Id_ = Id; }
+	void SetLoggerLevel(LogLevel Level) noexcept { Level_ = Level; }
+	void SetLoggerFunction(LoggerFunction Function) noexcept { LoggerFn_ = Function; }
+	std::wstring& GetLoggerId() noexcept { return Id_; }
 };
 
-Logger& GetLogger();
-void SetLoggerId(const wchar_t* Id);
-void SetLoggerLevel(LogLevel Level);
-void SetLoggerFunction(Logger::LoggerFunction Function);
-void LogInfo(const wchar_t* Message);
-void LogWarn(const wchar_t* Message);
-void LogError(const wchar_t* Message);
-void LogMessage(const wchar_t* Message);
-void LogInfo(const std::wstring& Message);
-void LogWarn(const std::wstring& Message);
-void LogError(const std::wstring& Message);
-void LogMessage(const std::wstring& Message);
+Logger& GetLogger() noexcept;
+void SetLoggerId(const wchar_t* Id) noexcept;
+void SetLoggerLevel(LogLevel Level) noexcept;
+void SetLoggerFunction(Logger::LoggerFunction Function) noexcept;
+void LogInfo(const wchar_t* Message) noexcept;
+void LogWarn(const wchar_t* Message) noexcept;
+void LogError(const wchar_t* Message) noexcept;
+void LogMessage(const wchar_t* Message) noexcept;
+void LogInfo(const std::wstring& Message) noexcept;
+void LogWarn(const std::wstring& Message) noexcept;
+void LogError(const std::wstring& Message) noexcept;
+void LogMessage(const std::wstring& Message) noexcept;
 
 _D_Dragonian_Lib_Space_End
 

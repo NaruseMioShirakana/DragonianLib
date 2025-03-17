@@ -6,79 +6,79 @@ _D_Dragonian_Lib_MJson_Namespace_Begin
 void ValueDeleter(void*) {}
 void DocDeleter(void* _Pointer) { yyjson_doc_free((yyjson_doc*)_Pointer); }
 
-MJsonValue::MJsonValue(void* _Object, std::shared_ptr<YYJsonDoc> _Doc) :
+MJsonValue::MJsonValue(void* _Object, std::shared_ptr<YYJsonDoc> _Doc) noexcept :
 	_MyObject((YYJsonVal*)_Object, ValueDeleter), _MyDocument(std::move(_Doc))
 {
 
 }
 
-bool MJsonValue::IsNull() const
+bool MJsonValue::IsNull() const noexcept
 {
 	return yyjson_is_null((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsBoolean() const
+bool MJsonValue::IsBoolean() const noexcept
 {
 	return yyjson_is_bool((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsBool() const
+bool MJsonValue::IsBool() const noexcept
 {
 	return yyjson_is_bool((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsInt() const
+bool MJsonValue::IsInt() const noexcept
 {
 	return yyjson_is_num((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsFloat() const
+bool MJsonValue::IsFloat() const noexcept
 {
 	return yyjson_is_num((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsInt64() const
+bool MJsonValue::IsInt64() const noexcept
 {
 	return yyjson_is_num((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsDouble() const
+bool MJsonValue::IsDouble() const noexcept
 {
 	return yyjson_is_num((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsString() const
+bool MJsonValue::IsString() const noexcept
 {
 	return yyjson_is_str((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::IsArray() const
+bool MJsonValue::IsArray() const noexcept
 {
 	return yyjson_is_arr((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::GetBool() const
+bool MJsonValue::GetBool() const noexcept
 {
 	return yyjson_get_bool((yyjson_val*)_MyObject.get());
 }
-bool MJsonValue::GetBoolean() const
+bool MJsonValue::GetBoolean() const noexcept
 {
 	return yyjson_get_bool((yyjson_val*)_MyObject.get());
 }
-int MJsonValue::GetInt() const
+int MJsonValue::GetInt() const noexcept
 {
 	return int(yyjson_get_num((yyjson_val*)_MyObject.get()));
 }
-int64_t MJsonValue::GetInt64() const
+int64_t MJsonValue::GetInt64() const noexcept
 {
 	return int64_t(yyjson_get_num((yyjson_val*)_MyObject.get()));
 }
-float MJsonValue::GetFloat() const
+float MJsonValue::GetFloat() const noexcept
 {
 	return float(yyjson_get_num((yyjson_val*)_MyObject.get()));
 }
-double MJsonValue::GetDouble() const
+double MJsonValue::GetDouble() const noexcept
 {
 	return yyjson_get_num((yyjson_val*)_MyObject.get());
 }
-std::string MJsonValue::GetString() const
+std::string MJsonValue::GetString() const noexcept
 {
 	if (const auto _str = yyjson_get_str((yyjson_val*)_MyObject.get()))
 		return _str;
 	return "";
 }
-MJsonValue::Vector<MJsonValue> MJsonValue::GetArray() const
+MJsonValue::Vector<MJsonValue> MJsonValue::GetArray() const noexcept
 {
 	Vector<MJsonValue> Result;
 	if (!IsArray())
@@ -90,35 +90,35 @@ MJsonValue::Vector<MJsonValue> MJsonValue::GetArray() const
 		Result.EmplaceBack(Object, _MyDocument);
 	return Result;
 }
-size_t MJsonValue::GetSize() const
+size_t MJsonValue::GetSize() const noexcept
 {
 	return yyjson_get_len((yyjson_val*)_MyObject.get());
 }
-size_t MJsonValue::Size() const
+size_t MJsonValue::Size() const noexcept
 {
 	return yyjson_get_len((yyjson_val*)_MyObject.get());
 }
-size_t MJsonValue::GetStringLength() const
+size_t MJsonValue::GetStringLength() const noexcept
 {
 	return yyjson_get_len((yyjson_val*)_MyObject.get());
 }
-MJsonValue MJsonValue::Get(const std::string& _Key) const
+MJsonValue MJsonValue::Get(const std::string& _Key) const noexcept
 {
 	return {yyjson_obj_get((yyjson_val*)_MyObject.get(), _Key.c_str()), _MyDocument};
 }
-MJsonValue MJsonValue::operator[](const std::string& _Key) const
+MJsonValue MJsonValue::operator[](const std::string& _Key) const noexcept
 {
 	return {yyjson_obj_get((yyjson_val*)_MyObject.get(), _Key.c_str()), _MyDocument};
 }
 MJsonValue MJsonValue::operator[](size_t _Index) const
 {
 	if (!IsArray())
-		_D_Dragonian_Lib_Fatal_Error;
+		_D_Dragonian_Lib_Throw_Exception("Object is not an array!");
 	_Index = std::min(_Index, yyjson_arr_size((yyjson_val*)_MyObject.get()) - 1);
 	const auto First = yyjson_arr_get_first((yyjson_val*)_MyObject.get());
 	return {First + _Index, _MyDocument};
 }
-bool MJsonValue::Empty() const
+bool MJsonValue::Empty() const noexcept
 {
 	if (!IsArray() && !IsString())
 		return true;
@@ -126,11 +126,11 @@ bool MJsonValue::Empty() const
 	if (IsString()) Size = yyjson_get_len((yyjson_val*)_MyObject.get());
 	return !Size;
 }
-size_t MJsonValue::GetMemberCount() const
+size_t MJsonValue::GetMemberCount() const noexcept
 {
 	return yyjson_obj_size((yyjson_val*)_MyObject.get());
 }
-MJsonValue::Vector<std::pair<std::string, MJsonValue>> MJsonValue::GetMemberArray() const
+MJsonValue::Vector<std::pair<std::string, MJsonValue>> MJsonValue::GetMemberArray() const noexcept
 {
 	Vector<std::pair<std::string, MJsonValue>> Result;
 	yyjson_val* KeyValue;
@@ -141,7 +141,7 @@ MJsonValue::Vector<std::pair<std::string, MJsonValue>> MJsonValue::GetMemberArra
 	}
 	return Result;
 }
-bool MJsonValue::HasMember(const std::string& _Key) const
+bool MJsonValue::HasMember(const std::string& _Key) const noexcept
 {
 	return yyjson_obj_get((yyjson_val*)_MyObject.get(), _Key.c_str());
 }

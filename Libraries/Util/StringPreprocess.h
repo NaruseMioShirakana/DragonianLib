@@ -105,7 +105,7 @@ decltype(auto) CvtToString(const _Type& _Value)
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.string() } -> TypeTraits::IsType<std::wstring>; } || requires(const _Type & _Tmp) { { _Tmp.string() } -> TypeTraits::IsType<const wchar_t*>; })
 		return WideStringToUTF8(_Value.string());
 	else
-		return "Object";
+		return "UnknownObject";
 }
 
 _D_Dragonian_Lib_Space_End

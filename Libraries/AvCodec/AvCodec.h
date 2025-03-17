@@ -18,6 +18,7 @@
 */
 
 #pragma once
+#include <mutex>
 #include <string>
 #include "Libraries/MyTemplateLibrary/Vector.h"
 
@@ -220,6 +221,309 @@ namespace AvCodec
 #else
 #pragma pack()
 #endif
+
+	/**
+	 * @class AudioFrame
+	 * @brief Implementation of audio frame
+	 */
+	class AudioFrame
+	{
+	public:
+		friend class AudioCodec;
+
+		AudioFrame(
+			long _SamplingRate, long _ChannelCount, AvCodec::PCMFormat _Format,
+			long SampleCount, long BufferCount = 0, uint8_t** Buffer = nullptr, long PaddingCount = 0	
+		);
+
+		static AudioFrame CreateReference();
+
+		/**
+		 * @brief Get the audio frame raw pointer
+		 * @return Audio frame raw pointer (AVFrame*)
+		 */
+		template <typename _ThisType>
+		decltype(auto) Get(this _ThisType&& Self)
+		{
+			return std::forward<_ThisType>(Self)._MyFrame.get();
+		}
+
+	private:
+		AudioFrame() = default;
+		std::shared_ptr<void> _MyFrame = nullptr;
+	};
+
+	/**
+	 * @class AudioPacket
+	 * @brief Implementation of audio packet
+	 */
+	class AudioPacket
+	{
+	public:
+		friend class AudioCodec;
+		friend class AudioIStream;
+		friend class AudioOStream;
+
+		/**
+		 * @brief Get the audio packet raw pointer
+		 * @return Audio packet raw pointer (AVPacket*)
+		 */
+		template <typename _ThisType>
+		decltype(auto) Get(this _ThisType&& Self)
+		{
+			return std::forward<_ThisType>(Self)._MyPacket.get();
+		}
+	protected:
+		AudioPacket() = default;
+		std::shared_ptr<void> _MyPacket = nullptr; ///< Packet pointer
+
+	public:
+		static AudioPacket New();
+		static AudioPacket CreateReference();
+	};
+
+	/**
+	 * @class AudioResampler
+	 * @brief Implementation of audio resampler, resample pcm data
+	 */
+	class AudioResampler
+	{
+	public:
+		struct AudioResamplerSettings
+		{
+			UInt32 _InputSamplingRate = 0; AvCodec::PCMFormat _InputFormat = AvCodec::PCM_FORMAT_NONE; UInt32 _InputChannels = 0;
+			UInt32 _OutputSamplingRate = 0; AvCodec::PCMFormat _OutputFormat = AvCodec::PCM_FORMAT_NONE; UInt32 _OutputChannels = 0;
+		};
+
+		AudioResampler() = default;
+
+		AudioResampler(
+			const AudioResamplerSettings& _Settings
+		);
+
+		/**
+		 * @brief Reset the resampler
+		 * @param _Settings Resampler settings
+		 */
+		void Reset(
+			const AudioResamplerSettings& _Settings
+		);
+
+		/**
+		 * @brief Resample audio data
+		 * @param _OutputFrame Output audio frame
+		 * @param _InputFrame Input audio frame
+		 */
+		void Resample(
+			AudioFrame& _OutputFrame,
+			const AudioFrame& _InputFrame
+		) const;
+
+		/**
+		 * @brief Resample audio data
+		 * @param _InputFrame Input audio frame
+		 * @return Output audio frame
+		 */
+		AudioFrame Resample(
+			const AudioFrame& _InputFrame
+		) const;
+
+		/**
+		 * @brief Resample audio data
+		 * @param _OutputData Output data, a [channel_count, sample_count] array
+		 * @param _OutputSampleCount Output sample count
+		 * @param _InputData Input data, a [channel_count, sample_count] array
+		 * @param _InputSampleCount Input sample count
+		 * @return Number of samples resampled
+		 */
+		Int32 Resample(
+			void* const* _OutputData,
+			size_t _OutputSampleCount,
+			const void* const* _InputData,
+			size_t _InputSampleCount
+		) const;
+
+		/**
+		 * @brief Resample audio data
+		 * @param _InputData Input data, a [channel_count, sample_count] array
+		 * @param _InputSampleCount Input sample count
+		 * @param _OutputSampleCount Output sample count, set by this function, can be nullptr if not needed
+		 * @param _Alloc Memory allocation function
+		 * @param _Free Memory free function
+		 * @return Resampled audio data
+		 */
+		std::shared_ptr<void> Resample(
+			const void* const* _InputData,
+			size_t _InputSampleCount,
+			size_t* _OutputSampleCount,
+			void* (*_Alloc)(size_t) = nullptr,
+			void (*_Free)(void*) = nullptr
+		) const;
+
+		/**
+		 * @brief Get the output buffer with the input sample count
+		 * @param _InputSampleCount Input sample count
+		 * @param _Alloc Memory allocation function
+		 * @param _Free Memory free function
+		 * @param _OutputSampleCount Output sample count, set by this function, can be nullptr if not needed
+		 * @return Output buffer
+		 */
+		std::shared_ptr<void> GetOutputBuffer(
+			size_t _InputSampleCount,
+			void* (*_Alloc)(size_t) = nullptr,
+			void (*_Free)(void*) = nullptr,
+			size_t* _OutputSampleCount = nullptr
+		) const;
+
+		/**
+		 * @brief Get the output sample count with the input sample count
+		 * @param _InputSampleCount Input sample count
+		 * @return Output sample count
+		 */
+		size_t GetOutputSampleCount(
+			size_t _InputSampleCount
+		) const;
+
+		bool Enabled() const noexcept
+		{
+			return _MySwrContext != nullptr;
+		}
+
+	private:
+		std::shared_ptr<void> _MySwrContext = nullptr; // Resampling context
+		AudioResamplerSettings _MySettings;
+		mutable std::mutex _MyMutex;
+	};
+
+	/**
+	 * @class AudioCodec
+	 * @brief Implementation of audio codec
+	 */
+	class AudioCodec
+	{
+	public:
+		enum CodecType
+		{
+			DECODER = 0,
+			ENCODER = 1
+		};
+
+		struct AudioCodecSettings
+		{
+			CodecType _Type = DECODER; ///< Codec type
+
+			UInt32 _Format = 0; ///< Codec format of ffmpeg, if the type is ENCODER, it is the encoder format, otherwise it is the decoder format
+			void* _ParameterDict = nullptr; ///< Codec parameter of ffmpeg (AVDictionary)
+			void* _Parameters = nullptr; ///< Codec parameter of ffmpeg (AVCodecParameters)
+			
+			UInt32 _InputSamplingRate = 0; ///< Input sampling rate
+			UInt32 _InputChannels = 0; ///< Input channels
+
+			UInt32 _OutputSamplingRate = 0; ///< Output sampling rate
+			UInt32 _OutputChannels = 0; ///< Output channels
+
+			AvCodec::PCMFormat _InputSampleFormat = AvCodec::PCM_FORMAT_NONE; ///< Input sample format, if the type is ENCODER, it must be set
+			AvCodec::PCMFormat _OutputSampleFormat = AvCodec::PCM_FORMAT_NONE; ///< Output sample format, if the type is DECODER, it must be set
+		};
+
+		AudioCodec() = default;
+
+		AudioCodec(
+			const AudioCodecSettings& _Settings
+		);
+
+		void Reset(
+			const AudioCodecSettings& _Settings
+		);
+
+		template <typename _ThisType>
+		decltype(auto) GetResampler(this _ThisType&& Self)
+		{
+			return std::forward<_ThisType>(Self)._MyResampler;
+		}
+
+		bool Enabled() const noexcept
+		{
+			return _MyContext != nullptr;
+		}
+	private:
+		std::shared_ptr<void> _MyContext = nullptr; // Decode context
+		AudioResampler _MyResampler;
+		bool _NeedResample = false;
+		AudioCodecSettings _MySettings;
+		mutable std::mutex _MyMutex;
+
+	public:
+		TemplateLibrary::Vector<AudioFrame> Decode(const AudioPacket& _Packet) const;
+		TemplateLibrary::Vector<AudioPacket> Encode(const AudioFrame& _Frame) const;
+	};
+
+	/**
+	 * @class AudioIStream
+	 * @brief Implementation of audio input stream
+	 */
+	class AudioIStream
+	{
+	public:
+		friend AudioIStream OpenInputStream(const std::wstring& _Path);
+
+	protected:
+		AudioIStream() = default;
+		std::shared_ptr<void> _MyFormatContext = nullptr; // Format context
+		long _MyStreamIndex = 0; // Stream index
+		std::wstring _MyExtension; // File extension
+
+	public:
+		bool Enabled() const noexcept
+		{
+			return _MyFormatContext != nullptr;
+		}
+		bool IsEnd() const noexcept
+		{
+			return _MyCode < 0;
+		}
+		AudioCodec::AudioCodecSettings GetCodecSettings() const noexcept;
+		void Reset(const std::wstring& _Path = L"");
+		AudioIStream& operator>>(AudioPacket& _Packet);
+
+	private:
+		int _MyCode = 0;
+
+	public:
+		TemplateLibrary::Vector<UInt8> DecodeAll(
+			UInt32 _OutputSamplingRate,
+			AvCodec::PCMFormat _OutputSampleFormat = AvCodec::PCM_FORMAT_FLOAT32,
+			UInt32 _OutputChannels = 1,
+			void* _ParameterDict = nullptr
+		);
+	};
+
+	/**
+	 * @class AudioOStream
+	 * @brief Implementation of audio output stream
+	 */
+	class AudioOStream
+	{
+	public:
+		friend AudioOStream OpenOutputStream(const std::wstring& _Path);
+
+	protected:
+		AudioOStream() = default;
+		std::shared_ptr<void> _MyFormatContext = nullptr; // Format context
+		long _MyStreamIndex = 0; // Stream index
+		std::wstring _MyExtension; // File extension
+
+	public:
+		bool Enabled() const noexcept
+		{
+			return _MyFormatContext != nullptr;
+		}
+		void Reset(const std::wstring& _Path = L"");
+	};
+
+	AudioIStream OpenInputStream(const std::wstring& _Path);
+
+	AudioOStream OpenOutputStream(const std::wstring& _Path);
 
 	/**
 	 * @brief Write PCM data to a file

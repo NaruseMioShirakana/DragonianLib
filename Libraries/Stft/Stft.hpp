@@ -19,11 +19,14 @@
 
 #pragma once
 #include "Libraries/MyTemplateLibrary/Vector.h"
+#include "Libraries/Util/Logger.h"
 
 _D_Dragonian_Lib_Space_Begin
 
 namespace FunctionTransform
 {
+	class Mel;
+
 	/**
 	* @class STFT
 	* @brief Implementation of Short-Time Fourier Transform (STFT)
@@ -34,6 +37,7 @@ namespace FunctionTransform
 		STFT() = default; ///< Default constructor
 		~STFT(); ///< Destructor
 		STFT(int WindowSize, int HopSize, int FFTSize = 0); ///< Parameterized constructor
+		friend class Mel; ///< Friend class
 		inline static double PI = 3.14159265358979323846; ///< Constant value of PI
 		/**
 		 * @brief Perform STFT on audio data
@@ -56,7 +60,8 @@ namespace FunctionTransform
 	public:
 		Mel() = delete; ///< Disable default constructor
 		~Mel() = default; ///< Default destructor
-		Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize = 0, double FreqMin = 20., double FreqMax = 11025.); ///< Parameterized constructor
+		Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize = 0, double FreqMin = 20., double FreqMax = 11025., Logger* _Logger = nullptr);
+
 		/**
 		 * @brief Get Mel spectrum
 		 * @param audioData Input audio data
@@ -71,6 +76,7 @@ namespace FunctionTransform
 		int FFT_SIZE = 0; ///< FFT size
 		int sr = 22050; ///< Sampling rate
 		DragonianLibSTL::Vector<float> MelBasis; ///< Mel basis
+		Logger* logger = nullptr; ///< Logger
 	};
 
 	/**
