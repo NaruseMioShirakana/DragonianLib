@@ -50,20 +50,15 @@ int main()
 
 	try
 	{
-		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
-		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
-		{ auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"); }
 		auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
-		auto _Audio = AudioStream.DecodeAll( 44100);
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		{ _Audio = AudioStream.DecodeAll(44100); }
-		DragonianLib::AvCodec::WritePCMData(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.wav)", CRanges(_Audio), 44100);
+		auto _Audio = AudioStream.DecodeAll( 44100, 2, true);
+		auto OStream = DragonianLib::AvCodec::OpenOutputStream(44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)");
+		OStream.EncodeAll(
+			CRanges(_Audio),
+			44100,
+			2,
+			true
+		);
 	}
 	catch (const std::exception& e)
 	{
@@ -71,6 +66,7 @@ int main()
 	}
 
 	return 0;
+	/*
 	auto Codec = DragonianLib::AvCodec::AvCodec();
 
 	auto Audio = Codec.DecodeFloat(
@@ -161,6 +157,7 @@ int main()
 
 	DragonianVoiceSvcFreeData(OutputAudio);
 	DragonianVoiceSvcDestoryEnv(Env);
+	 */
 
 	/*TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });
 

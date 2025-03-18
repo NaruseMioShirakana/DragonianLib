@@ -22,13 +22,6 @@
 #include <string>
 #include "Libraries/MyTemplateLibrary/Vector.h"
 
-// Forward declarations to avoid including unnecessary headers
-struct AVFrame;
-struct SwrContext;
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVPacket;
-
 _D_Dragonian_Lib_Space_Begin
 
 namespace AvCodec
@@ -36,6 +29,7 @@ namespace AvCodec
 	double CalculateRMS(const float* Begin, const float* End);
 	double CalculateDB(double rms);
 	double CalculateDB(const float* Begin, const float* End);
+	UInt64 GetAVTimeBase();
 
 	struct SlicerSettings
 	{
@@ -89,8 +83,8 @@ namespace AvCodec
 	class AvCodec
 	{
 	public:
-		AvCodec() = default;
-		~AvCodec();
+		AvCodec() = delete;
+		~AvCodec() = delete;
 		AvCodec(const AvCodec&) = delete;
 		AvCodec(AvCodec&&) = delete;
 		AvCodec operator=(const AvCodec&) = delete;
@@ -115,6 +109,29 @@ namespace AvCodec
 			PCM_FORMAT_NB					///< Number of sample formats. DO NOT USE if linking dynamically
 		};
 
+		static bool PCMFormatIsPlannar(PCMFormat Format) noexcept;
+
+		static UInt64 PCMFormatBytes(PCMFormat Format) noexcept;
+
+		template <typename _ThisType>
+		static PCMFormat Type2PCMFormat(bool IsPlannar = false)
+		{
+			if constexpr (std::is_same_v<_ThisType, UInt8>)
+				return IsPlannar ? PCM_FORMAT_UINT8_PLANAR : PCM_FORMAT_UINT8;
+			else if constexpr (std::is_same_v<_ThisType, Int16>)
+				return IsPlannar ? PCM_FORMAT_INT16_PLANAR : PCM_FORMAT_INT16;
+			else if constexpr (std::is_same_v<_ThisType, Int32>)
+				return IsPlannar ? PCM_FORMAT_INT32_PLANAR : PCM_FORMAT_INT32;
+			else if constexpr (std::is_same_v<_ThisType, Float32>)
+				return IsPlannar ? PCM_FORMAT_FLOAT32_PLANAR : PCM_FORMAT_FLOAT32;
+			else if constexpr (std::is_same_v<_ThisType, Float64>)
+				return IsPlannar ? PCM_FORMAT_FLOAT64_PLANAR : PCM_FORMAT_FLOAT64;
+			else if constexpr (std::is_same_v<_ThisType, Int64>)
+				return IsPlannar ? PCM_FORMAT_INT64_PLANAR : PCM_FORMAT_INT64;
+			else
+				return PCM_FORMAT_NONE;
+		}
+
 		/**
 		 * @brief Decode an audio file
 		 * @param AudioPath Path to the audio file
@@ -128,7 +145,7 @@ namespace AvCodec
 			int OutputSamplingRate,
 			PCMFormat OutputFormat = PCM_FORMAT_FLOAT32,
 			bool OutputStero = false
-		);
+		) = delete;
 
 		/**
 		 * @brief Decode an audio file
@@ -143,7 +160,7 @@ namespace AvCodec
 			int OutputSamplingRate,
 			bool OutputStero = false,
 			bool OutputPlanar = false
-		);
+		) = delete;
 
 		/**
 		 * @brief Decode an audio file
@@ -158,7 +175,7 @@ namespace AvCodec
 			int OutputSamplingRate,
 			bool OutputStero = false,
 			bool OutputPlanar = false
-		);
+		) = delete;
 
 		/**
 		 * @brief Encode an audio file
@@ -176,23 +193,13 @@ namespace AvCodec
 			PCMFormat PCMType = PCM_FORMAT_FLOAT32,
 			int EncoderFormatID = 0,
 			bool IsStero = false
-		);
+		) = delete;
 
 		// Release the encoder/decoder
-		void Release();
+		void Release() = delete;
 
 		// Initialize the encoder/decoder
-		void Init();
-
-	private:
-		AVFrame* InFrame = nullptr; // Input frame
-		AVFrame* OutFrame = nullptr; // Input frame
-		SwrContext* SwrContext = nullptr; // Resampling context
-		AVCodecContext* AvCodecContext = nullptr; // Codec context
-		AVFormatContext* AvFormatContext = nullptr; // Format context
-		AVPacket* Packet = nullptr; // Packet
-		bool InputMode = false;
-		uint8_t* OutBuffer[8] = { nullptr , nullptr , nullptr , nullptr , nullptr , nullptr , nullptr , nullptr }; // Output buffer
+		void Init() = delete;
 	};
 
 #ifdef _MSC_VER
@@ -232,8 +239,7 @@ namespace AvCodec
 		friend class AudioCodec;
 
 		AudioFrame(
-			long _SamplingRate, long _ChannelCount, AvCodec::PCMFormat _Format,
-			long SampleCount, long BufferCount = 0, uint8_t** Buffer = nullptr, long PaddingCount = 0	
+			long _SamplingRate, long _ChannelCount, AvCodec::PCMFormat _Format, long _SampleCount	
 		);
 
 		static AudioFrame CreateReference();
@@ -247,6 +253,14 @@ namespace AvCodec
 		{
 			return std::forward<_ThisType>(Self)._MyFrame.get();
 		}
+
+		const uint8_t* const* GetDataPointerArray() const;
+
+		int GetLinesize() const;
+
+		AudioFrame& SetDataPointer(uint8_t** _Data, ULong _BufferCount);
+
+		AudioFrame& CopyData(const uint8_t* const* _Data, ULong _BufferCount, ULong _SampleCount, ULong _PaddingCount = 0);
 
 	private:
 		AudioFrame() = default;
@@ -446,6 +460,10 @@ namespace AvCodec
 		{
 			return _MyContext != nullptr;
 		}
+
+		Long GetFrameSize() const;
+
+		UInt32 GetBitRate() const;
 	private:
 		std::shared_ptr<void> _MyContext = nullptr; // Decode context
 		AudioResampler _MyResampler;
@@ -485,17 +503,94 @@ namespace AvCodec
 		AudioCodec::AudioCodecSettings GetCodecSettings() const noexcept;
 		void Reset(const std::wstring& _Path = L"");
 		AudioIStream& operator>>(AudioPacket& _Packet);
+		UInt64 GetDurations() const;
 
 	private:
 		int _MyCode = 0;
 
 	public:
-		TemplateLibrary::Vector<UInt8> DecodeAll(
+		template <typename _RetType = Float32>
+		TemplateLibrary::Vector<_RetType> DecodeAll(
 			UInt32 _OutputSamplingRate,
-			AvCodec::PCMFormat _OutputSampleFormat = AvCodec::PCM_FORMAT_FLOAT32,
 			UInt32 _OutputChannels = 1,
+			bool _OutputPlanar = false,
 			void* _ParameterDict = nullptr
-		);
+		)
+		{
+			if (!Enabled())
+				_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
+			if (_MyStreamIndex == -1)
+				_D_Dragonian_Lib_Throw_Exception("Stream is not opened!");
+			if (_OutputChannels == 0)
+				_D_Dragonian_Lib_Throw_Exception("Output channel count is zero!");
+			if (_OutputSamplingRate == 0)
+				_D_Dragonian_Lib_Throw_Exception("Output sampling rate is zero!");
+			const auto MOutputFormat = AvCodec::Type2PCMFormat<_RetType>(_OutputPlanar);
+			if (MOutputFormat == AvCodec::PCM_FORMAT_NONE)
+				_D_Dragonian_Lib_Throw_Exception("Invalid output format!");
+			
+			auto DecoderSetting = GetCodecSettings();
+			DecoderSetting._ParameterDict = _ParameterDict;
+			DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
+			DecoderSetting._OutputSampleFormat = MOutputFormat;
+			DecoderSetting._OutputChannels = _OutputChannels;
+			auto _MyCodec = AudioCodec(DecoderSetting);
+
+			const auto nSample = size_t(GetDurations() * DecoderSetting._OutputSamplingRate / GetAVTimeBase());
+			const auto nBuffer = nSample + (nSample >> 1);
+
+			if (_OutputPlanar)
+			{
+				UInt64 TotalSize = 0;
+				auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
+				for (auto& Buf : MyBuf)
+					Buf.Reserve(nBuffer);
+				_D_Dragonian_Lib_Rethrow_Block(
+					{
+						AudioPacket Packet;
+						while (!(*this >> Packet).IsEnd())
+						{
+							auto Frames = _MyCodec.Decode(Packet);
+							for (auto& Frame : Frames)
+							{
+								for (UInt32 i = 0; i < _OutputChannels; ++i)
+								{
+									auto& Buf = MyBuf[i];
+									auto Data = (const _RetType* const)Frame.GetDataPointerArray()[i];
+									auto Size = Frame.GetLinesize() / sizeof(_RetType);
+									Buf.Insert(Buf.End(), Data, Data + Size);
+									TotalSize += Size;
+								}
+							}
+						}
+					}
+				);
+
+				TemplateLibrary::Vector<_RetType> Ret;
+				Ret.Reserve(TotalSize);
+				for (auto& Buf : MyBuf)
+					Ret.Insert(Ret.End(), Buf.Begin(), Buf.End());
+				return Ret;
+			}
+			TemplateLibrary::Vector<_RetType> Ret;
+			Ret.Reserve(nBuffer * _OutputChannels);
+			_D_Dragonian_Lib_Rethrow_Block(
+				{
+					AudioPacket Packet;
+					while (!(*this >> Packet).IsEnd())
+					{
+						auto Frames = _MyCodec.Decode(Packet);
+						for (auto& Frame : Frames)
+						{
+							auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
+							auto Size = Frame.GetLinesize() / sizeof(_RetType);
+							Ret.Insert(Ret.End(), Data, Data + Size);
+						}
+					}
+				}
+			);
+			return Ret;
+		}
 	};
 
 	/**
@@ -505,12 +600,19 @@ namespace AvCodec
 	class AudioOStream
 	{
 	public:
-		friend AudioOStream OpenOutputStream(const std::wstring& _Path);
+		friend AudioOStream OpenOutputStream(
+			UInt32 _OutputSamplingRate,
+			const std::wstring& _Path,
+			AvCodec::PCMFormat _OutputDataFormat,
+			UInt32 _OutputChannelCount,
+			Int32 _OutputCodecID
+		);
+		AudioCodec::AudioCodecSettings GetCodecSettings() const noexcept;
 
 	protected:
 		AudioOStream() = default;
 		std::shared_ptr<void> _MyFormatContext = nullptr; // Format context
-		long _MyStreamIndex = 0; // Stream index
+		long _MyStreamIndex = -1; // Stream index
 		std::wstring _MyExtension; // File extension
 
 	public:
@@ -518,12 +620,109 @@ namespace AvCodec
 		{
 			return _MyFormatContext != nullptr;
 		}
-		void Reset(const std::wstring& _Path = L"");
+
+		void Close()
+		{
+			_MyFormatContext = nullptr;
+			_MyStreamIndex = -1;
+			_MyExtension.clear();
+		}
+
+		void Reset(
+			UInt32 _OutputSamplingRate,
+			const std::wstring& _Path = L"",
+			AvCodec::PCMFormat _OutputDataFormat = AvCodec::PCM_FORMAT_FLOAT32,
+			UInt32 _OutputChannelCount = 1,
+			Int32 _OutputCodecID = -1
+		);
+
+		AudioOStream& SetBitRate(UInt32 _BitRate);
+
+		AudioOStream& operator<<(const AudioPacket& _Packet);
+
+		template <typename _InputType>
+		void EncodeAll(
+			const TemplateLibrary::ConstantRanges<_InputType>& _PCMData,
+			UInt32 _InputSamplingRate,
+			UInt32 _InputChannelCount = 1,
+			bool _InputPlanar = false,
+			void* _ParameterDict = nullptr
+		)
+		{
+			if (!Enabled())
+				_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
+			if (_MyStreamIndex == -1)
+				_D_Dragonian_Lib_Throw_Exception("Stream is not opened!");
+			if (!_PCMData.Size())
+				_D_Dragonian_Lib_Throw_Exception("PCM data is empty!");
+			if (_InputChannelCount < 1)
+				_D_Dragonian_Lib_Throw_Exception("Invalid channel count!");
+			if (_InputSamplingRate < 640)
+				_D_Dragonian_Lib_Throw_Exception("Invalid sampling rate!");
+			if (_InputChannelCount > 8)
+				_D_Dragonian_Lib_Throw_Exception("Too many channels!");
+			const auto _InputDataFormat = AvCodec::Type2PCMFormat<_InputType>(_InputPlanar);
+			if (_InputDataFormat == AvCodec::PCM_FORMAT_NONE)
+				_D_Dragonian_Lib_Throw_Exception("Invalid sample format!");
+
+			auto DecoderSetting = GetCodecSettings();
+			DecoderSetting._ParameterDict = _ParameterDict;
+			DecoderSetting._InputSamplingRate = _InputSamplingRate;
+			DecoderSetting._InputSampleFormat = _InputDataFormat;
+			DecoderSetting._InputChannels = _InputChannelCount;
+
+			auto Codec = AudioCodec(DecoderSetting);
+			SetBitRate(Codec.GetBitRate());
+
+			const auto TotalSampleCount = _PCMData.Size() / _InputChannelCount;
+			const _InputType* Buffer[8]{
+				_PCMData.Data(), nullptr, nullptr, nullptr,
+				nullptr, nullptr, nullptr, nullptr
+			};
+			UInt64 AudioShape[]{ 1 ,TotalSampleCount, _InputChannelCount };
+			if (_InputPlanar)
+			{
+				std::swap(AudioShape[0], AudioShape[2]);
+				for (UInt32 i = 0; i < AudioShape[0]; ++i)
+					Buffer[i] = _PCMData.Data() + i * AudioShape[1];
+			}
+
+			const auto FrameSize = static_cast<UInt64>(Codec.GetFrameSize() ? Codec.GetFrameSize() : 2048);
+			AudioFrame MyFrame(
+				static_cast<long>(_InputSamplingRate),
+				static_cast<long>(_InputChannelCount),
+				_InputDataFormat,
+				static_cast<long>(FrameSize)
+			);
+			for (UInt64 Time = 0; Time < AudioShape[1]; Time += FrameSize)
+			{
+				const auto ChannelSampleCount = std::min(FrameSize, AudioShape[1] - Time);
+				const auto ChannelPaddingCount = FrameSize - ChannelSampleCount;
+				const auto SampleCount = ChannelSampleCount * AudioShape[2];
+				const auto PaddingCount = ChannelPaddingCount * AudioShape[2];
+				TemplateLibrary::Vector<AudioPacket> Packets;
+
+				_D_Dragonian_Lib_Rethrow_Block(Packets = Codec.Encode(MyFrame.CopyData((const uint8_t* const*)Buffer, (ULong)AudioShape[0], (ULong)SampleCount, (ULong)PaddingCount)););
+
+				for (auto& Packet : Packets)
+					*this << Packet;
+
+				for (UInt32 i = 0; i < AudioShape[0]; ++i)
+					Buffer[i] += SampleCount;
+			}
+			Close();
+		}
 	};
 
 	AudioIStream OpenInputStream(const std::wstring& _Path);
 
-	AudioOStream OpenOutputStream(const std::wstring& _Path);
+	AudioOStream OpenOutputStream(
+		UInt32 _OutputSamplingRate,
+		const std::wstring& _Path,
+		AvCodec::PCMFormat _OutputDataFormat = AvCodec::PCM_FORMAT_FLOAT32,
+		UInt32 _OutputChannelCount = 1,
+		Int32 _OutputCodecID = -1
+	);
 
 	/**
 	 * @brief Write PCM data to a file

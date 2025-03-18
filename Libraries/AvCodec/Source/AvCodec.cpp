@@ -56,6 +56,11 @@ namespace AvCodec
 		return CalculateDB(sqrt(sum / count));
 	}
 
+	UInt64 GetAVTimeBase()
+	{
+		return AV_TIME_BASE;
+	}
+
 	AVSampleFormat PCMFormat2AVSampleFormat(const AvCodec::PCMFormat& Format) noexcept
 	{
 		switch (Format)
@@ -100,7 +105,24 @@ namespace AvCodec
 		return AvCodec::PCM_FORMAT_NONE;
 	}
 
-	DragonianLibSTL::Vector<unsigned char> AvCodec::Decode(
+	bool AvCodec::PCMFormatIsPlannar(PCMFormat Format) noexcept
+	{
+		if (Format == PCM_FORMAT_UINT8_PLANAR ||
+			Format == PCM_FORMAT_INT16_PLANAR ||
+			Format == PCM_FORMAT_INT32_PLANAR ||
+			Format == PCM_FORMAT_FLOAT32_PLANAR ||
+			Format == PCM_FORMAT_FLOAT64_PLANAR ||
+			Format == PCM_FORMAT_INT64_PLANAR)
+			return true;
+		return false;
+	}
+
+	UInt64 AvCodec::PCMFormatBytes(PCMFormat Format) noexcept
+	{
+		return av_get_bytes_per_sample(PCMFormat2AVSampleFormat(Format));
+	}
+
+	/*DragonianLibSTL::Vector<unsigned char> AvCodec::Decode(
 		const std::wstring& AudioPath,
 		int OutputSamplingRate,
 		PCMFormat OutputFormat,
@@ -666,7 +688,258 @@ namespace AvCodec
 	AvCodec::~AvCodec()
 	{
 		Release();
-	}
+	}*/
+
+	/*void AvCodec::Encode(
+		const std::wstring& OutputPath,
+		const DragonianLibSTL::ConstantRanges<Byte>& PCMData,
+		int SamplingRate,
+		PCMFormat PCMType,
+		int EncoderFormatID,
+		bool IsStero
+	)
+	{
+		AvCodecContext = avcodec_alloc_context3(Encoder);
+		if (!AvCodecContext)
+			_D_Dragonian_Lib_Throw_Exception("Could not allocate audio codec context");
+		AvCodecContext->codec_id = Encoder->id;
+		AvCodecContext->codec_type = AVMEDIA_TYPE_AUDIO;
+		AvCodecContext->sample_fmt = Encoder->sample_fmts[EncoderFormatID];
+		AvCodecContext->sample_rate = SamplingRate;
+		if (!IsStero)
+			AvCodecContext->ch_layout = AV_CHANNEL_LAYOUT_MONO;
+		else
+			AvCodecContext->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+		AvCodecContext->time_base = { 1, SamplingRate };
+
+		ErrorCode = avcodec_open2(AvCodecContext, Encoder, nullptr);
+		if (ErrorCode < 0)
+		{
+			av_strerror(ErrorCode, ErrorMessage, 1024);
+			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+		}
+
+		auto Stream = avformat_new_stream(AvFormatContext, nullptr);
+		if (!Stream)
+			_D_Dragonian_Lib_Throw_Exception("Could not create stream");
+
+		Stream->time_base = { 1, SamplingRate };
+		Stream->codecpar->codec_id = Encoder->id;
+		Stream->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
+		Stream->codecpar->format = AvCodecContext->sample_fmt;
+		Stream->codecpar->bit_rate = AvCodecContext->bit_rate;
+		Stream->codecpar->sample_rate = AvCodecContext->sample_rate;
+		if (!IsStero)
+			Stream->codecpar->ch_layout = AV_CHANNEL_LAYOUT_MONO;
+		else
+			Stream->codecpar->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+
+		if (!(AvFormatContext->oformat->flags & AVFMT_NOFILE))
+		{
+			ErrorCode = avio_open(&AvFormatContext->pb, WideStringToUTF8(OutputPath).c_str(), AVIO_FLAG_WRITE);
+			if (ErrorCode < 0)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+		}
+
+		ErrorCode = avformat_write_header(AvFormatContext, nullptr);
+		if (ErrorCode < 0)
+		{
+			av_strerror(ErrorCode, ErrorMessage, 1024);
+			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+		}
+
+		OutFrame = av_frame_alloc();
+		if (!OutFrame)
+			_D_Dragonian_Lib_Throw_Exception("Could not allocate audio frame");
+
+		OutFrame->nb_samples = AvCodecContext->frame_size ? AvCodecContext->frame_size : 2048;
+		OutFrame->format = AvCodecContext->sample_fmt;
+		if (!IsStero)
+			OutFrame->ch_layout = AV_CHANNEL_LAYOUT_MONO;
+		else
+			OutFrame->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+		OutFrame->sample_rate = SamplingRate;
+
+		ErrorCode = av_frame_get_buffer(OutFrame, 0);
+		if (ErrorCode < 0)
+		{
+			av_strerror(ErrorCode, ErrorMessage, 1024);
+			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+		}
+
+		Packet = av_packet_alloc();
+		if (!Packet)
+			_D_Dragonian_Lib_Throw_Exception("Could not allocate AVPacket");
+
+		const AVSampleFormat InFormat = PCMFormat2AVSampleFormat(PCMType);
+		if (InFormat != AvCodecContext->sample_fmt)
+		{
+			InFrame = av_frame_alloc();
+			if (!InFrame)
+				_D_Dragonian_Lib_Throw_Exception("Could not allocate audio frame");
+
+			InFrame->nb_samples = AvCodecContext->frame_size ? AvCodecContext->frame_size : 2048;
+			InFrame->format = InFormat;
+			if (!IsStero)
+				InFrame->ch_layout = AV_CHANNEL_LAYOUT_MONO;
+			else
+				InFrame->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+			InFrame->sample_rate = SamplingRate;
+
+			ErrorCode = av_frame_get_buffer(InFrame, 0);
+			if (ErrorCode < 0)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+
+			AVChannelLayout inChannelLayout, outChannelLayout;
+			if (!IsStero)
+			{
+				inChannelLayout = AV_CHANNEL_LAYOUT_MONO;
+				outChannelLayout = AV_CHANNEL_LAYOUT_MONO;
+			}
+			else
+			{
+				inChannelLayout = AV_CHANNEL_LAYOUT_STEREO;
+				outChannelLayout = AV_CHANNEL_LAYOUT_STEREO;
+			}
+			SwrContext = swr_alloc();
+			ErrorCode = swr_alloc_set_opts2(
+				&SwrContext,
+				&outChannelLayout,
+				AvCodecContext->sample_fmt,
+				SamplingRate,
+				&inChannelLayout,
+				InFormat,
+				SamplingRate,
+				0,
+				nullptr
+			);
+			if (ErrorCode)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+
+			ErrorCode = swr_init(SwrContext);
+			if (ErrorCode)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+		}
+
+		bool IsPlanar = av_sample_fmt_is_planar(InFormat);
+		const auto ChannelCount = static_cast<UInt64>(OutFrame->ch_layout.nb_channels);
+		const auto SSegmentCount = (UInt64)OutFrame->nb_samples * ChannelCount * av_get_bytes_per_sample(InFormat);
+
+		const TemplateLibrary::Array PCMShape{
+			IsPlanar ? ChannelCount : 1ull,
+			IsPlanar ? PCMData.Size() / ChannelCount : PCMData.Size()
+		};
+		const auto SegmentCount = IsPlanar ? SSegmentCount / ChannelCount : SSegmentCount;
+		const auto PCMPointer = PCMData.Data();
+		UInt64 PCMOffset = 0;
+		while (PCMOffset < PCMShape[1]) {
+			const auto FrameSize = std::min(
+				SegmentCount,
+				PCMShape[1] - PCMOffset
+			);
+
+			auto FixFrameFn = [&](const AVFrame* Frame ,UInt64 i)
+				{
+					//Frame->data[i][0 : FrameSize]  PCMData[i][PCMOffset : PCMOffset + FrameSize]
+					memcpy(Frame->data[i], PCMPointer + i * PCMShape[1] + PCMOffset, FrameSize);
+					if (FrameSize < SegmentCount)
+						memset(Frame->data[i] + FrameSize, 0, SegmentCount - FrameSize);
+				};
+
+			if (InFormat != AvCodecContext->sample_fmt)
+			{
+				if (IsPlanar)
+					for (UInt64 i = 0; i < ChannelCount; ++i)
+						FixFrameFn(InFrame, i);
+				else
+					FixFrameFn(InFrame, 0);
+
+				ErrorCode = swr_convert(
+					SwrContext,
+					OutFrame->data,
+					OutFrame->nb_samples,
+					InFrame->data,
+					InFrame->nb_samples
+				);
+				if (ErrorCode < 0)
+				{
+					av_strerror(ErrorCode, ErrorMessage, 1024);
+					_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+				}
+			}
+			else
+			{
+				if (IsPlanar)
+					for (UInt64 i = 0; i < ChannelCount; ++i)
+						FixFrameFn(OutFrame, i);
+				else
+					FixFrameFn(OutFrame, 0);
+			}
+
+			ErrorCode = avcodec_send_frame(AvCodecContext, OutFrame);
+			if (ErrorCode)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+
+			PCMOffset += FrameSize;
+
+			while (true) {
+				ErrorCode = avcodec_receive_packet(AvCodecContext, Packet);
+				if (ErrorCode == AVERROR(EAGAIN) || ErrorCode == AVERROR_EOF)
+					break;
+				if (ErrorCode < 0)
+				{
+					av_strerror(ErrorCode, ErrorMessage, 1024);
+					_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+				}
+
+				ErrorCode = av_interleaved_write_frame(AvFormatContext, Packet);
+				if (ErrorCode < 0)
+				{
+					av_strerror(ErrorCode, ErrorMessage, 1024);
+					_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+				}
+				av_packet_unref(Packet);
+			}
+		}
+
+		avcodec_send_frame(AvCodecContext, nullptr);
+		while (true) {
+			ErrorCode = avcodec_receive_packet(AvCodecContext, Packet);
+			if (ErrorCode == AVERROR(EAGAIN) || ErrorCode == AVERROR_EOF)
+				break;
+			if (ErrorCode < 0)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+
+			ErrorCode = av_interleaved_write_frame(AvFormatContext, Packet);
+			if (ErrorCode < 0)
+			{
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+			av_packet_unref(Packet);
+		}
+		av_write_trailer(AvFormatContext);
+
+		Release();
+	}*/
 
 	AudioFrame AudioFrame::CreateReference()
 	{
@@ -692,17 +965,14 @@ namespace AvCodec
 		long _SamplingRate,
 		long _ChannelCount,
 		AvCodec::PCMFormat _Format,
-		long SampleCount,
-		long BufferCount,
-		uint8_t** Buffer,
-		long PaddingCount
+		long _SampleCount
 	)
 	{
 		auto Frame = av_frame_alloc();
 		if (!Frame)
 			_D_Dragonian_Lib_Throw_Exception("Could not allocate audio frame");
 
-		Frame->nb_samples = SampleCount;
+		Frame->nb_samples = _SampleCount;
 		Frame->format = PCMFormat2AVSampleFormat(_Format);
 		av_channel_layout_default(&Frame->ch_layout, _ChannelCount);
 		Frame->sample_rate = _SamplingRate;
@@ -714,16 +984,6 @@ namespace AvCodec
 			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
 		}
 
-		const auto Bps = size_t(av_get_bytes_per_sample(PCMFormat2AVSampleFormat(_Format)));
-		const auto BufferSampleCount = SampleCount - PaddingCount;
-		const auto BufferSize = BufferSampleCount * Bps;
-		const auto PaddingSize = PaddingCount * Bps;
-
-		for (int i = 0; i < BufferCount; ++i)
-			memcpy(Frame->data[i], Buffer[i], BufferSize);
-		for (int i = 0; i < BufferCount; ++i)
-			memset(Frame->data[i] + BufferSize, 0, PaddingSize);
-
 		_MyFrame = std::shared_ptr<void>(
 			Frame,
 			[](void* Frame)
@@ -732,6 +992,70 @@ namespace AvCodec
 					av_frame_free((AVFrame**)&Frame);
 			}
 		);
+	}
+
+	const uint8_t* const* AudioFrame::GetDataPointerArray() const
+	{
+		auto Frame = (AVFrame*)_MyFrame.get();
+		if (!Frame || Frame->nb_samples == 0 || Frame->data[0] == nullptr)
+			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
+		return Frame->data;
+	}
+
+	int AudioFrame::GetLinesize() const
+	{
+		auto Frame = (AVFrame*)_MyFrame.get();
+		if (!Frame || Frame->nb_samples == 0 || Frame->linesize[0] == 0)
+			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
+		return *Frame->linesize;
+	}
+
+	AudioFrame& AudioFrame::SetDataPointer(uint8_t** _Data, ULong _BufferCount)
+	{
+		auto Frame = (AVFrame*)_MyFrame.get();
+		if (!Frame || Frame->nb_samples == 0 || Frame->data[0] == nullptr)
+			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
+
+		_BufferCount = std::min(_BufferCount, static_cast<ULong>(Frame->ch_layout.nb_channels));
+		if (!av_sample_fmt_is_planar(static_cast<AVSampleFormat>(Frame->format)) && _BufferCount > 1)
+			_D_Dragonian_Lib_Throw_Exception("Buffer count should be 1 for packed format");
+
+		for (ULong i = 0; i < _BufferCount; ++i)
+			Frame->data[i] = _Data[i];
+
+		return *this;
+	}
+
+	AudioFrame& AudioFrame::CopyData(const uint8_t* const* _Data, ULong _BufferCount, ULong _SampleCount, ULong _PaddingCount)
+	{
+		auto Frame = (AVFrame*)_MyFrame.get();
+		if (!Frame || Frame->nb_samples == 0 || Frame->data[0] == nullptr)
+			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
+
+		const auto TotalSampleCount = _SampleCount + _PaddingCount;
+		const bool IsPlanar = av_sample_fmt_is_planar(static_cast<AVSampleFormat>(Frame->format));
+		const bool IsPack = !IsPlanar;
+		const auto Bps = size_t(av_get_bytes_per_sample(static_cast<AVSampleFormat>(Frame->format)));
+
+		_BufferCount = std::min(_BufferCount, static_cast<ULong>(Frame->ch_layout.nb_channels));
+		if (IsPlanar && TotalSampleCount != static_cast<ULong>(Frame->nb_samples))
+			_D_Dragonian_Lib_Throw_Exception("Total sample count (including padding) should be equal to frame's sample count");
+		if (IsPack && TotalSampleCount != Frame->nb_samples * static_cast<ULong>(Frame->ch_layout.nb_channels))
+			_D_Dragonian_Lib_Throw_Exception("Total sample count (including padding) should be equal to frame's sample count");
+		if (IsPack && _BufferCount != 1)
+			_D_Dragonian_Lib_Throw_Exception("Buffer count should be 1 for packed format");
+
+		const auto BufferSize = _SampleCount * Bps;
+		const auto PaddingSize = _PaddingCount * Bps;
+
+		if (BufferSize)
+			for (ULong i = 0; i < _BufferCount; ++i)
+				memcpy(Frame->data[i], _Data[i], BufferSize);
+		if (PaddingSize)
+			for (ULong i = 0; i < _BufferCount; ++i)
+				memset(Frame->data[i] + BufferSize, 0, PaddingSize);
+
+		return *this;
 	}
 
 	AudioPacket AudioPacket::New()
@@ -874,7 +1198,7 @@ namespace AvCodec
 					_MySettings._OutputSamplingRate,
 					_MySettings._OutputChannels,
 					_MySettings._OutputFormat,
-					dstNbSamples
+					(long)dstNbSamples
 				);
 				Resample(_OutputFrame, _InputFrame);
 				return _OutputFrame;
@@ -1078,12 +1402,12 @@ namespace AvCodec
 			if (!EncoderContext)
 				_D_Dragonian_Lib_Throw_Exception("Could not create audio codec context");
 
-			ErrorCode = avcodec_parameters_to_context(EncoderContext, static_cast<const AVCodecParameters*>(_MySettings._Parameters));
-			if (ErrorCode)
-			{
-				av_strerror(ErrorCode, ErrorMessage, 128);
-				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
-			}
+			EncoderContext->codec_id = AVEncodec->id;
+			EncoderContext->codec_type = AVMEDIA_TYPE_AUDIO;
+			EncoderContext->sample_fmt = PCMFormat2AVSampleFormat(_MySettings._OutputSampleFormat);
+			EncoderContext->sample_rate = static_cast<int>(_MySettings._OutputSamplingRate);
+			av_channel_layout_default(&EncoderContext->ch_layout, static_cast<int>(_MySettings._OutputChannels));
+			EncoderContext->time_base = { 1, static_cast<int>(_MySettings._OutputSamplingRate) };
 
 			ErrorCode = avcodec_open2(EncoderContext, AVEncodec, static_cast<AVDictionary**>(_MySettings._ParameterDict));
 			if (ErrorCode)
@@ -1118,6 +1442,21 @@ namespace AvCodec
 				_NeedResample = true;
 			}
 		}
+	}
+
+	Long AudioCodec::GetFrameSize() const
+	{
+		if (!_MyContext)
+			_D_Dragonian_Lib_Throw_Exception("Codec is not initialized!");
+		return static_cast<AVCodecContext*>(_MyContext.get())->frame_size;
+	}
+
+	UInt32 AudioCodec::GetBitRate() const
+	{
+		if (!_MyContext)
+			_D_Dragonian_Lib_Throw_Exception("Codec is not initialized!");
+		auto MyContext = static_cast<AVCodecContext*>(_MyContext.get());
+		return static_cast<UInt32>(MyContext->bit_rate);
 	}
 
 	TemplateLibrary::Vector<AudioFrame> AudioCodec::Decode(const AudioPacket& _Packet) const
@@ -1171,6 +1510,13 @@ namespace AvCodec
 		char ErrorMessage[128];
 		auto MyFrame = static_cast<AVFrame*>(_Frame._MyFrame.get());
 		auto MyContext = static_cast<AVCodecContext*>(_MyContext.get());
+
+		AudioFrame ResampledFrame = _Frame;
+		if (_NeedResample)
+		{
+			_D_Dragonian_Lib_Rethrow_Block(ResampledFrame = _MyResampler.Resample(_Frame););
+			MyFrame = static_cast<AVFrame*>(ResampledFrame.Get());
+		}
 
 		int ErrorCode = avcodec_send_frame(MyContext, MyFrame);
 		if (ErrorCode)
@@ -1284,66 +1630,96 @@ namespace AvCodec
 		return *this;
 	}
 
-	TemplateLibrary::Vector<UInt8> AudioIStream::DecodeAll(
-		UInt32 _OutputSamplingRate,
-		AvCodec::PCMFormat _OutputSampleFormat,
-		UInt32 _OutputChannels,
-		void* _ParameterDict
-	)
+	UInt64 AudioIStream::GetDurations() const
 	{
-		if (!Enabled())
-			_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
+		auto MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
+		return MyContext->streams[_MyStreamIndex]->duration;
+	}
 
-		auto _MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
-		auto DecoderSetting = GetCodecSettings();
-		DecoderSetting._ParameterDict = _ParameterDict;
-		DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
-		DecoderSetting._OutputSampleFormat = _OutputSampleFormat;
-		DecoderSetting._OutputChannels = _OutputChannels;
-		auto _MyCodec = AudioCodec(DecoderSetting);
-		TemplateLibrary::Vector MyBuf(_OutputChannels, TemplateLibrary::Vector<UInt8>());
-		UInt64 TotalSize = 0;
+	AudioCodec::AudioCodecSettings AudioOStream::GetCodecSettings() const noexcept
+	{
+		const auto MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
+		const auto MyCodecPar = MyContext->streams[_MyStreamIndex]->codecpar;
 
-		const auto nSample = size_t(_MyContext->duration * DecoderSetting._OutputSamplingRate / AV_TIME_BASE) * DecoderSetting._OutputChannels;
-		const auto sampleBytes = av_get_bytes_per_sample(PCMFormat2AVSampleFormat(DecoderSetting._OutputSampleFormat));
-		const auto nBytes = nSample * sampleBytes;
+		AudioCodec::AudioCodecSettings Ret;
+		Ret._Type = AudioCodec::ENCODER;
+		Ret._Parameters = MyContext->streams[_MyStreamIndex]->codecpar;
+		Ret._Format = static_cast<int>(MyCodecPar->codec_id);
+		Ret._OutputSamplingRate = MyCodecPar->sample_rate;
+		Ret._OutputChannels = MyCodecPar->ch_layout.nb_channels;
+		Ret._OutputSampleFormat = static_cast<AvCodec::PCMFormat>(MyCodecPar->format);
 
-		_D_Dragonian_Lib_Rethrow_Block(
-			{
-				AudioPacket Packet;
-				while (!(*this >> Packet).IsEnd())
-				{
-					auto Frames = _MyCodec.Decode(Packet);
-					for (auto& Frame : Frames)
-					{
-						for (UInt32 i = 0; i < _OutputChannels; ++i)
-						{
-							auto& Buf = MyBuf[i];
-							auto FrameData = (AVFrame*)Frame.Get();
-							auto Data = FrameData->data[i];
-							auto Size = FrameData->linesize[i];
-							Buf.Insert(Buf.End(), Data, Data + Size);
-							TotalSize += Size;
-						}
-					}
-				}
-			}
-		);
-		TemplateLibrary::Vector<UInt8> Ret;
-		Ret.Reserve(TotalSize);
-		for (auto& Buf : MyBuf)
-			Ret.Insert(Ret.End(), Buf.Begin(), Buf.End());
-		Ret.Resize(nBytes, 0);
 		return Ret;
 	}
 
-	void AudioOStream::Reset(const std::wstring& _Path)
+	void AudioOStream::Reset(
+		UInt32 _OutputSamplingRate,
+		const std::wstring& _Path,
+		AvCodec::PCMFormat _OutputDataFormat,
+		UInt32 _OutputChannelCount,
+		Int32 _OutputCodecID
+	)
 	{
 		if (_Path.empty())
 		{
 			_MyFormatContext = nullptr;
 			_MyStreamIndex = -1;
 			_MyExtension.clear();
+		}
+
+		_MyExtension = std::filesystem::path(_Path).extension().wstring().substr(1);
+		AVCodecID CodecId;
+		if (_OutputCodecID < 0)
+		{
+			if (_MyExtension == L"mp3")
+				CodecId = AV_CODEC_ID_MP3;
+			else if (_MyExtension == L"aac" || _MyExtension == L"m4a")
+				CodecId = AV_CODEC_ID_AAC;
+			else if (_MyExtension == L"flac")
+				CodecId = AV_CODEC_ID_FLAC;
+			else if (_MyExtension == L"wav")
+				CodecId = AV_CODEC_ID_PCM_S16LE;
+			else if (_MyExtension == L"ogg")
+				CodecId = AV_CODEC_ID_VORBIS;
+			else if (_MyExtension == L"opus")
+				CodecId = AV_CODEC_ID_OPUS;
+			else if (_MyExtension == L"wma")
+				CodecId = AV_CODEC_ID_WMAV2;
+			else if (_MyExtension == L"wav")
+			{
+				if (_OutputDataFormat == AvCodec::PCM_FORMAT_UINT8 || _OutputDataFormat == AvCodec::PCM_FORMAT_UINT8_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_U8;
+				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT16 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT16_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_S16LE;
+				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT32 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT32_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_S32LE;
+				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT32 || _OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT32_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_F32LE;
+				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT64 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT64_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_S64LE;
+				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT64 || _OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT64_PLANAR)
+					CodecId = AV_CODEC_ID_PCM_F64LE;
+				else
+					_D_Dragonian_Lib_Throw_Exception("Unsupported output format!");
+			}
+			else
+				_D_Dragonian_Lib_Throw_Exception("Unsupported output format!");
+		}
+		else
+			CodecId = static_cast<AVCodecID>(_OutputCodecID);
+
+		bool Found = false;
+		auto Codec = avcodec_find_encoder(CodecId);
+		for (auto Iter = Codec->sample_fmts; *Iter != AV_SAMPLE_FMT_NONE; ++Iter)
+			if (*Iter == PCMFormat2AVSampleFormat(_OutputDataFormat))
+			{
+				Found = true;
+				break;
+			}
+		if (!Found)
+		{
+			GetLogger().Log(LogLevel::Warn, L"Codec does not support the specified sample format, using the first supported format instead", GetLogger().GetLoggerId() + L"::AVCodec");
+			_OutputDataFormat = AVSampleFormat2PCMFormat(Codec->sample_fmts[0]);
 		}
 
 		char ErrorMessage[128];
@@ -1356,8 +1732,16 @@ namespace AvCodec
 			_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
 		}
 
-		if (!avformat_new_stream(_MyContext, nullptr))
+		auto Stream = avformat_new_stream(_MyContext, nullptr);
+		if (!Stream)
 			_D_Dragonian_Lib_Throw_Exception("Could not create stream");
+
+		Stream->time_base = { 1, static_cast<Int32>(_OutputSamplingRate) };
+		Stream->codecpar->codec_id = CodecId;
+		Stream->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
+		Stream->codecpar->format = PCMFormat2AVSampleFormat(_OutputDataFormat);
+		Stream->codecpar->sample_rate = static_cast<int>(_OutputSamplingRate);
+		av_channel_layout_default(&Stream->codecpar->ch_layout, static_cast<int>(_OutputChannelCount));
 
 		if (!(_MyContext->oformat->flags & AVFMT_NOFILE))
 		{
@@ -1390,7 +1774,33 @@ namespace AvCodec
 			}
 		);
 		_MyStreamIndex = 0;
-		_MyExtension = std::filesystem::path(_Path).extension().wstring().substr(1);
+	}
+
+	AudioOStream& AudioOStream::SetBitRate(UInt32 _BitRate)
+	{
+		if (!_MyFormatContext)
+			_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
+		if (_MyStreamIndex == -1)
+			_D_Dragonian_Lib_Throw_Exception("Stream is not opened!");
+		auto _MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
+		auto _MyStream = _MyContext->streams[_MyStreamIndex];
+		_MyStream->codecpar->bit_rate = _BitRate;
+		return *this;
+	}
+
+	AudioOStream& AudioOStream::operator<<(const AudioPacket& _Packet)
+	{
+		if (!_MyFormatContext)
+			_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
+		if (_MyStreamIndex == -1)
+			_D_Dragonian_Lib_Throw_Exception("Stream is not opened!");
+		if (!_Packet._MyPacket)
+			_D_Dragonian_Lib_Throw_Exception("Packet is not initialized!");
+		auto _MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
+		auto _MyPacket = static_cast<AVPacket*>(_Packet._MyPacket.get());
+		_MyPacket->stream_index = _MyStreamIndex;
+		av_interleaved_write_frame(_MyContext, _MyPacket);
+		return *this;
 	}
 
 	AudioIStream OpenInputStream(const std::wstring& _Path)
@@ -1400,10 +1810,16 @@ namespace AvCodec
 		return _MyStream;
 	}
 
-	AudioOStream OpenOutputStream(const std::wstring& _Path)
+	AudioOStream OpenOutputStream(
+		UInt32 _OutputSamplingRate,
+		const std::wstring& _Path,
+		AvCodec::PCMFormat _OutputDataFormat,
+		UInt32 _OutputChannelCount,
+		Int32 _OutputCodecID
+	)
 	{
 		AudioOStream _MyStream;
-		_D_Dragonian_Lib_Rethrow_Block(_MyStream.Reset(_Path););
+		_D_Dragonian_Lib_Rethrow_Block(_MyStream.Reset(_OutputSamplingRate, _Path, _OutputDataFormat, _OutputChannelCount, _OutputCodecID););
 		return _MyStream;
 	}
 
@@ -1487,6 +1903,7 @@ namespace AvCodec
 		const auto BytesPerSamples = av_get_bytes_per_sample(SampleFormat);
 		bool IsFloat = SampleFormat == AV_SAMPLE_FMT_FLT || SampleFormat == AV_SAMPLE_FMT_DBL || SampleFormat == AV_SAMPLE_FMT_FLTP || SampleFormat == AV_SAMPLE_FMT_DBLP;
 		int Channels = IsStero ? 2 : 1;
+		bool IsPlannar = av_sample_fmt_is_planar(SampleFormat);
 		const RiffWaveHeader Header{
 			.RiffChunkSize = uint32_t(36 + PCMData.Size()),
 			.WaveChunkSize = 16,
@@ -1494,7 +1911,7 @@ namespace AvCodec
 			.ChannelCount = uint16_t(Channels),
 			.SamplingRate = uint32_t(SamplingRate),
 			.ByteRate = uint32_t(SamplingRate * BytesPerSamples * Channels),
-			.SampleAlign = uint16_t(BytesPerSamples * Channels),
+			.SampleAlign = IsPlannar ? uint16_t(BytesPerSamples) : uint16_t(BytesPerSamples * Channels),
 			.SampleBits = uint16_t(BytesPerSamples * 8),
 			.DataChunkSize = (uint32_t)PCMData.Size()
 		};

@@ -350,6 +350,12 @@ decltype(auto) CRanges(_Type&& _Container)
 	return ConstantRanges(&*Begin(std::forward<_Type>(_Container)), &*End(std::forward<_Type>(_Container)));
 }
 
+template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+decltype(auto) CBRanges(_Type&& _Container)
+{
+	return ConstantRanges((const Byte*)&*Begin(std::forward<_Type>(_Container)), (const Byte*)&*End(std::forward<_Type>(_Container)));
+}
+
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>&& TypeTraits::IsPointerLike<decltype(Begin(TypeTraits::InstanceOf<_Type>()))>>>
 decltype(auto) ByteRanges(const _Type& _Container)
 {
