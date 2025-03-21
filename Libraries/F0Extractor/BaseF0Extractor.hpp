@@ -44,6 +44,8 @@ struct F0ExtractorParams
 	void* UserParameter = nullptr; ///< User parameter
 };
 
+using Parameters = F0ExtractorParams;
+
 /**
  * @class BaseF0Extractor
  * @brief Base class for F0 extraction

@@ -1,5 +1,5 @@
 ﻿/**
- * @file Util.hpp
+ * @file Vits-Svc.hpp
  * @author NaruseMioShirakana
  * @email shirakanamio@foxmail.com
  * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -16,29 +16,17 @@
  *
  *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
  *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- * @brief Utility functions for SingingVoiceConversion
+ * @brief Vits based Singing Voice Conversion
  * @changes
- *  > 2025/3/19 NaruseMioShirakana Created <
+ *  > 2025/3/21 NaruseMioShirakana Created <
  */
 
 #pragma once
-#include "OnnxLibrary/Base/OrtBase.hpp"
-#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
-#include "Libraries/Cluster/ClusterManager.hpp"
-
-#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header \
-	_D_Dragonian_Lib_Onnx_Runtime_Header \
-	namespace SingingVoiceConversion \
-	{
-
-#define _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End \
-	} \
-	_D_Dragonian_Lib_Onnx_Runtime_End
-
-#define _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space _D_Dragonian_Lib_Onnx_Runtime_Space SingingVoiceConversion::
+#include "Base.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-DLogger& GetDefaultLogger() noexcept;
+
+
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End
