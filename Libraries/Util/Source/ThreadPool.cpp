@@ -7,6 +7,15 @@
 
 _D_Dragonian_Lib_Space_Begin
 
+DLogger& GetThreadLogger(Int64 ThreadId) noexcept
+{
+	static DLogger _MyLogger = std::make_shared<Logger>(
+        *_D_Dragonian_Lib_Namespace GetDefaultLogger(),
+		L"Thread: [" + std::to_wstring(ThreadId) + L"]"
+    );
+    return _MyLogger;
+}
+
 ThreadPool::ThreadPool(Int64 _ThreadCount) : Stoped_(true), ThreadCount_(_ThreadCount) {
     Init(_ThreadCount);
 }
@@ -50,7 +59,7 @@ void ThreadPool::Run() {
         if (LogTime_)
         {
             std::chrono::duration<double, std::milli> CostTime = std::chrono::high_resolution_clock::now() - Start;
-            LogInfo(L"Task Cost Time:" + std::to_wstring(CostTime.count()) + L"ms");
+            GetThreadLogger(std::this_thread::get_id()._Get_underlying_id())->LogInfo(L"Task Cost Time:" + std::to_wstring(CostTime.count()) + L"ms");
         }
     }
 }
@@ -61,7 +70,7 @@ void ThreadPool::Join()
     Condition_.release((ptrdiff_t)Threads_.size());
     for (auto& CurTask : Threads_) if (CurTask.joinable()) CurTask.join();
 	while (Condition_.try_acquire()) {}
-    if (LogTime_) LogInfo(L"All Task Finished!");
+    if (LogTime_) GetThreadLogger(std::this_thread::get_id()._Get_underlying_id())->LogInfo(L"All Task Finished!");
 }
 
 _D_Dragonian_Lib_Space_End

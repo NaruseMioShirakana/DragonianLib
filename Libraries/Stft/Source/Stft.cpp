@@ -34,7 +34,7 @@ namespace FunctionTransform
 
 	void HannWindow(double* data, int size) {
 		for (int i = 0; i < size; i++) {
-			const double windowValue = 0.5 * (1 - cos(2 * STFT::PI * i / (size - 1)));
+			const double windowValue = 0.5 * (1 - cos(2 * StftKernel::PI * i / (size - 1)));
 			data[i] *= windowValue;
 		}
 	}
@@ -62,7 +62,7 @@ namespace FunctionTransform
 		}
 	}
 
-	STFT::STFT(int WindowSize, int HopSize, int FFTSize)
+	StftKernel::StftKernel(int WindowSize, int HopSize, int FFTSize)
 	{
 		WINDOW_SIZE = WindowSize;
 		HOP_SIZE = HopSize;
@@ -72,125 +72,193 @@ namespace FunctionTransform
 			FFT_SIZE = WINDOW_SIZE / 2 + 1;
 	}
 
-	STFT::~STFT() = default;
+	StftKernel::~StftKernel() = default;
 
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> STFT::operator()(const DragonianLibSTL::Vector<double>& audioData) const
+	struct _M_MCPX
 	{
-		if (audioData.Size() < static_cast<UInt64>(WINDOW_SIZE))
-			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
-		const int NUM_FRAMES = (int(audioData.Size()) - WINDOW_SIZE) / HOP_SIZE + 1;
-		DragonianLibSTL::Vector hannWindow(WINDOW_SIZE, 0.0);
-		const auto fftOut = (fftw_complex*)(fftw_malloc(sizeof(fftw_complex) * FFT_SIZE));
-		const fftw_plan plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, hannWindow.Data(), fftOut, FFTW_ESTIMATE);
-		DragonianLibSTL::Vector spectrogram(size_t(NUM_FRAMES) * FFT_SIZE, 0.f);
-		for (int i = 0; i < NUM_FRAMES; i++) {
-			std::memcpy(hannWindow.Data(), &audioData[size_t(i) * HOP_SIZE], size_t(sizeof(double)) * WINDOW_SIZE);
-			HannWindow(hannWindow.Data(), WINDOW_SIZE);
-			fftw_execute(plan);
-			const auto BgnPtn = size_t(unsigned(i * FFT_SIZE));
-			for (int j = 0; j < FFT_SIZE; j++)
-				spectrogram[BgnPtn + j] = float(CalculatePowerSpectrum(fftOut[j]));
+		fftw_complex Complex;
+		operator fftw_complex& () { return Complex; }
+		operator const fftw_complex& () const { return Complex; }
+	};
+
+	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
+	{
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		return operator()(Signal.Cast<Float64>());
+	}
+
+	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
+	{
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		return operator()(Signal.Cast<Float64>());
+	}
+
+	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	{
+		const auto BatchSize = Signal.Size(0);
+		const auto Channel = Signal.Size(1);
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		const auto NUM_FRAMES = (SignalSize - WINDOW_SIZE) / HOP_SIZE + 1;
+		const auto Shape = Dimensions<4>{ BatchSize, Channel, NUM_FRAMES, FFT_SIZE };
+		auto Output = Tensor<Float32, 4, Device::CPU>::New(Shape);
+		auto SignalCont = Signal.Continuous().Evaluate();
+		const auto& SignalDataBegin = SignalCont.Data();
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < Channel; c++)
+			{
+				const auto SignalData = SignalDataBegin + (b * Channel + c) * SignalSize;
+				auto SpectrogramData = Output.Data() + (b * Channel + c) * NUM_FRAMES * FFT_SIZE;
+				Output.AppendTask(
+					[this, NUM_FRAMES, SignalData, SpectrogramData]
+					{
+						DragonianLibSTL::Vector hannWindow(WINDOW_SIZE, 0.0);
+						const auto fftOut = std::shared_ptr<_M_MCPX>(
+							(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_SIZE)),
+							fftw_free
+						);
+						const auto plan = std::shared_ptr<fftw_plan_s>(
+							fftw_plan_dft_r2c_1d(WINDOW_SIZE, hannWindow.Data(), (fftw_complex*)fftOut.get(), FFTW_ESTIMATE),
+							fftw_destroy_plan
+						);
+						for (int i = 0; i < NUM_FRAMES; i++) {
+							std::memcpy(hannWindow.Data(), &SignalData[size_t(i) * HOP_SIZE], size_t(sizeof(double)) * WINDOW_SIZE);
+							HannWindow(hannWindow.Data(), WINDOW_SIZE);
+							fftw_execute(plan.get());
+							const auto BgnPtn = size_t(unsigned(i * FFT_SIZE));
+							for (int j = 0; j < FFT_SIZE; j++)
+								SpectrogramData[BgnPtn + j] = float(CalculatePowerSpectrum(fftOut.get()[j]));
+						}
+					}
+				);
+			}
 		}
-		fftw_destroy_plan(plan);
-		fftw_free(fftOut);
-		return { std::move(spectrogram), int64_t(NUM_FRAMES) };
+		return std::move(Output.Evaluate());
 	}
 
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::GetMel(const DragonianLibSTL::Vector<int16_t>& audioData) const
-	{
-		if (audioData.Size() < static_cast<UInt64>(stft.WINDOW_SIZE))
-			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
-		DragonianLibSTL::Vector<double> floatAudio(audioData.Size());
-		for (size_t i = 0; i < audioData.Size(); ++i)
-			floatAudio[i] = double(audioData[i]) / 32768.;
-		return operator()(floatAudio);
-	}
-
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::GetMel(const DragonianLibSTL::Vector<double>& audioData) const
-	{
-		if (audioData.Size() < static_cast<UInt64>(stft.WINDOW_SIZE))
-			_D_Dragonian_Lib_Throw_Exception("Audio data is too short.");
-		auto BgnTime = clock();
-		const auto Spec = stft(audioData);  //[frame, nfft] * [nfft, mel_bins]  |  [mel_bins, nfft] * [nfft, frame]
-		if (logger)
-			logger->Log(LogLevel::Info,(L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms").c_str());
-		const auto NFrames = Spec.second;
-		DragonianLibSTL::Vector Mel(MEL_SIZE * NFrames, 0.f);
-		BgnTime = clock();
-		cblas_sgemm(
-			CblasRowMajor,
-			CblasNoTrans,
-			CblasTrans,
-			MEL_SIZE,
-			blasint(NFrames),
-			FFT_SIZE,
-			1.f,
-			MelBasis.Data(),
-			FFT_SIZE,
-			Spec.first.Data(),
-			blasint(FFT_SIZE),
-			0.f,
-			Mel.Data(),
-			blasint(NFrames)
-		);
-		for (auto& it : Mel)
-			it = log(std::max(1e-5f, it));
-		if (logger)
-			logger->Log(LogLevel::Info, (L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms").c_str());
-		return { std::move(Mel), (int64_t)NFrames };
-	}
-
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Mel::operator()(const DragonianLibSTL::Vector<double>& audioData) const
-	{
-		return GetMel(audioData);
-	}
-
-	Mel::Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize, double FreqMin, double FreqMax, Logger* _Logger) :
-		stft(WindowSize, HopSize, WindowSize / 2 + 1), logger(_Logger)
+	MFCCKernel::MFCCKernel(
+		int WindowSize, int HopSize, int SamplingRate, int MelBins,
+		double FreqMin, double FreqMax, DLogger _Logger
+	) : _MyStftKernel(WindowSize, HopSize, WindowSize / 2 + 1), _MyLogger(std::move(_Logger))
 	{
 		double mel_min = HZ2Mel(FreqMin);
 		double mel_max = HZ2Mel(FreqMax);
 
-		if (MelSize > 0)
-			MEL_SIZE = MelSize;
-		FFT_SIZE = WindowSize / 2 + 1;
-		sr = SamplingRate;
+		if (MelBins > 0)
+			_MyMelBins = MelBins;
+		_MyFFTSize = WindowSize / 2 + 1;
+		_MySamplingRate = SamplingRate;
 
-		const int nfft = (FFT_SIZE - 1) * 2;
+		const int nfft = (_MyFFTSize - 1) * 2;
 		const double fftfreqval = 1. / (double(nfft) / double(SamplingRate));
-		auto fftfreqs = DragonianLibSTL::Arange<double>(0, FFT_SIZE + 2);
-		fftfreqs.Resize(FFT_SIZE, 0.f);
+		auto fftfreqs = DragonianLibSTL::Arange<double>(0, _MyFFTSize + 2);
+		fftfreqs.Resize(_MyFFTSize, 0.f);
 		for (auto& i : fftfreqs)
 			i *= fftfreqval;
 
-		auto mel_f = DragonianLibSTL::Arange<double>(mel_min, mel_max + 1., (mel_max - mel_min) / (MEL_SIZE + 1));
-		mel_f.Resize(MEL_SIZE + 2, 0.f); //[MEL_SIZE + 2]
+		auto mel_f = DragonianLibSTL::Arange<double>(mel_min, mel_max + 1., (mel_max - mel_min) / (_MyMelBins + 1));
+		mel_f.Resize(_MyMelBins + 2, 0.f); //[_MyMelBins + 2]
 
 		std::vector<double> fdiff;
-		std::vector<std::vector<double>> ramps; //[MEL_SIZE + 2, FFTSize]
+		std::vector<std::vector<double>> ramps; //[_MyMelBins + 2, FFTSize]
 
-		ramps.reserve(MEL_SIZE + 2);
+		ramps.reserve(_MyMelBins + 2);
 		for (auto& i : mel_f)
 		{
 			i = Mel2HZ(i);
-			ramps.emplace_back(FFT_SIZE, i);
+			ramps.emplace_back(_MyFFTSize, i);
 		}
 		for (auto& i : ramps)
-			for (int j = 0; j < FFT_SIZE; ++j)
+			for (int j = 0; j < _MyFFTSize; ++j)
 				i[j] -= fftfreqs[j];
 
-		fdiff.reserve(MEL_SIZE + 2); //[MEL_SIZE + 1]
+		fdiff.reserve(_MyMelBins + 2); //[_MyMelBins + 1]
 		for (size_t i = 1; i < mel_f.Size(); ++i)
 			fdiff.emplace_back(mel_f[i] - mel_f[i - 1]);
 
-		MelBasis = DragonianLibSTL::Vector(size_t(FFT_SIZE) * MelSize, 0.f);
+		_MyMelBasis = DragonianLibSTL::Vector(size_t(_MyFFTSize) * MelBins, 0.f);
 
-		for (int i = 0; i < MelSize; ++i)
+		for (int i = 0; i < MelBins; ++i)
 		{
 			const auto enorm = 2. / (mel_f[i + 2] - mel_f[i]);
-			for (int j = 0; j < FFT_SIZE; ++j)
-				MelBasis[i * FFT_SIZE + j] = (float)(std::max(0., std::min(-ramps[i][j] / fdiff[i], ramps[i + 2][j] / fdiff[i + 1])) * enorm);
+			for (int j = 0; j < _MyFFTSize; ++j)
+				_MyMelBasis[i * _MyFFTSize + j] = (float)(std::max(0., std::min(-ramps[i][j] / fdiff[i], ramps[i + 2][j] / fdiff[i + 1])) * enorm);
 		}
+	}
+
+	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	{
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+
+		auto BgnTime = clock();
+		const auto Spec = _MyStftKernel(Signal);
+		if (_MyLogger)
+			_MyLogger->Log((L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
+
+		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] = Spec.Shape().RawArray();
+		const auto MelShape = Dimensions<4>{ BatchSize, ChannelCount, _MyMelBins, FrameCount };
+		auto Result = Tensor<Float32, 4, Device::CPU>::New(MelShape);
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < ChannelCount; c++)
+			{
+				const auto SpecData = Spec.Data() + (b * ChannelCount + c) * FrameCount * FFTSize;
+				auto MelData = Result.Data() + (b * ChannelCount + c) * _MyMelBins * FrameCount;
+				Result.AppendTask(
+					[this, SpecData, MelData, FrameCount]
+					{
+						cblas_sgemm(
+							CblasRowMajor,
+							CblasNoTrans,
+							CblasTrans,
+							_MyMelBins,
+							blasint(FrameCount),
+							_MyFFTSize,
+							1.f,
+							_MyMelBasis.Data(),
+							_MyFFTSize,
+							SpecData,
+							blasint(_MyFFTSize),
+							0.f,
+							MelData,
+							blasint(FrameCount)
+						);
+						for (int i = 0; i < _MyMelBins * FrameCount; i++)
+							MelData[i] = log(std::max(1e-5f, MelData[i]));
+					}
+				);
+			}
+		}
+
+		BgnTime = clock();
+		Result.Evaluate();
+		if (_MyLogger)
+			_MyLogger->Log((L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
+		return Result;
+	}
+
+	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
+	{
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		return operator()(Signal.Cast<Float64>());
+	}
+
+	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
+	{
+		const auto SignalSize = Signal.Size(2);
+		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		return operator()(Signal.Cast<Float64>());
 	}
 
 	DragonianLibSTL::Vector<float> CQT(

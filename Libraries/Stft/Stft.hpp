@@ -1,50 +1,68 @@
 ﻿/**
- * FileName: Stft.hpp
+ * @file Stft.hpp
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib.
- * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Implementation of Short-Time Fourier Transform (STFT) and Mel Extractor and other signal processing functions
+ * @changes
+ *  > 2025/3/19 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
-#include "Libraries/MyTemplateLibrary/Vector.h"
-#include "Libraries/Util/Logger.h"
+#include "TensorLib/Include/Base/Tensor/Tensor.h"
 
 _D_Dragonian_Lib_Space_Begin
 
 namespace FunctionTransform
 {
-	class Mel;
+	class MFCCKernel;
 
 	/**
-	* @class STFT
+	* @class StftKernel
 	* @brief Implementation of Short-Time Fourier Transform (STFT)
 	*/
-	class STFT
+	class StftKernel
 	{
 	public:
-		STFT() = default; ///< Default constructor
-		~STFT(); ///< Destructor
-		STFT(int WindowSize, int HopSize, int FFTSize = 0); ///< Parameterized constructor
-		friend class Mel; ///< Friend class
+		StftKernel() = default; ///< Default constructor
+		~StftKernel(); ///< Destructor
+		StftKernel(int WindowSize, int HopSize, int FFTSize = 0); ///< Parameterized constructor
+		friend class MFCCKernel; ///< Friend class
 		inline static double PI = 3.14159265358979323846; ///< Constant value of PI
+
 		/**
-		 * @brief Perform STFT on audio data
-		 * @param audioData Input audio data
-		 * @return Transformed data and timestamp
+		 * @brief Short-Time Fourier Transform
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
 		 */
-		std::pair<DragonianLibSTL::Vector<float>, int64_t> operator()(const DragonianLibSTL::Vector<double>& audioData) const;
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Short-Time Fourier Transform
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 */
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Short-Time Fourier Transform
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 */
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
 	private:
 		int WINDOW_SIZE = 2048; ///< Window size
 		int HOP_SIZE = WINDOW_SIZE / 4; ///< Hop size
@@ -52,31 +70,47 @@ namespace FunctionTransform
 	};
 
 	/**
-	 * @class Mel
+	 * @class MFCCKernel
 	 * @brief Implementation of Mel Frequency Cepstral Coefficients (MFCC)
 	 */
-	class Mel
+	class MFCCKernel
 	{
 	public:
-		Mel() = delete; ///< Disable default constructor
-		~Mel() = default; ///< Default destructor
-		Mel(int WindowSize, int HopSize, int SamplingRate, int MelSize = 0, double FreqMin = 20., double FreqMax = 11025., Logger* _Logger = nullptr);
+		MFCCKernel() = delete; ///< Disable default constructor
+		~MFCCKernel() = default; ///< Default destructor
+		MFCCKernel(
+			int WindowSize, int HopSize, int SamplingRate, int MelBins = 0,
+			double FreqMin = 20., double FreqMax = 11025.,
+			DLogger _Logger = nullptr
+		);
 
 		/**
-		 * @brief Get Mel spectrum
-		 * @param audioData Input audio data
-		 * @return Mel spectrum and timestamp
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
 		 */
-		std::pair<DragonianLibSTL::Vector<float>, int64_t> GetMel(const DragonianLibSTL::Vector<int16_t>& audioData) const;
-		std::pair<DragonianLibSTL::Vector<float>, int64_t> GetMel(const DragonianLibSTL::Vector<double>& audioData) const;
-		std::pair<DragonianLibSTL::Vector<float>, int64_t> operator()(const DragonianLibSTL::Vector<double>& audioData) const;
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
+		 */
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
+		 */
+		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
 	private:
-		STFT stft; ///< STFT instance
-		int MEL_SIZE = 128; ///< Mel spectrum size
-		int FFT_SIZE = 0; ///< FFT size
-		int sr = 22050; ///< Sampling rate
-		DragonianLibSTL::Vector<float> MelBasis; ///< Mel basis
-		Logger* logger = nullptr; ///< Logger
+		StftKernel _MyStftKernel; ///< STFT instance
+		int _MyMelBins = 128; ///< Mel spectrum size
+		int _MyFFTSize = 0; ///< FFT size
+		int _MySamplingRate = 22050; ///< Sampling rate
+		DragonianLibSTL::Vector<float> _MyMelBasis; ///< Mel basis [MelBins, FFTSize]
+		DLogger _MyLogger = nullptr; ///< Logger
 	};
 
 	/**

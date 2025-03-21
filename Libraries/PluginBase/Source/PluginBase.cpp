@@ -10,6 +10,14 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace Plugin
 {
+	DLogger& GetDefaultLogger() noexcept
+	{
+		static std::shared_ptr<Logger> DefaultLogger = std::make_shared<Logger>(
+			*_D_Dragonian_Lib_Namespace GetDefaultLogger(),
+			L"PluginApi"
+		);
+		return DefaultLogger;
+	}
 
 	MPlugin::MPlugin(const std::wstring& RelativePath) : _MyLibrary(MyLoadLibrary(RelativePath), Free)
 	{

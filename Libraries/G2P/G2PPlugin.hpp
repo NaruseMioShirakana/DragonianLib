@@ -1,9 +1,36 @@
-﻿#pragma once
+﻿/**
+ * @file G2PPlugin.hpp
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
+ *
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
+ *
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief G2P plugin
+ * @changes
+ *  > 2025/3/19 NaruseMioShirakana Refactored <
+ */
+
+#pragma once
 #include "G2PBase.hpp"
 #include "Libraries/PluginBase/PluginBase.h"
 
 _D_Dragonian_Lib_G2P_Header
 
+/**
+ * @namespace PreDefinedExtra
+ * @brief Pre-defined extra information structures, openjtalk format
+ */
 namespace PreDefinedExtra
 {
 	struct _MyPhoneme { wchar_t P_2[8]; wchar_t P_1[8]; wchar_t P0[8]; wchar_t P1[8]; wchar_t P2[8]; };
@@ -26,6 +53,10 @@ namespace PreDefinedExtra
 	};
 }
 
+/**
+ * @class BasicG2P
+ * @brief Basic G2P plugin
+ */
 class BasicG2P : public G2PBase
 {
 public:
@@ -36,12 +67,23 @@ public:
 	BasicG2P(const void* UserParameter, Plugin::Plugin PluginInp);
 	~BasicG2P() override;
 
+	/**
+	 * @brief Convert text to phonemes
+	 * @param InputText Input text
+	 * @param LanguageID Language ID
+	 * @param UserParameter User parameter
+	 * @return Pair of phonemes and tones
+	 */
 	std::pair<Vector<std::wstring>, Vector<Int64>> Convert(
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
 	) override;
 
+	/**
+	 * @brief Get extra information
+	 * @return Pair of lock and extra information
+	 */
 	std::pair<std::unique_lock<std::mutex>, void*> GetExtraInfo() override
 	{
 		if (!_MyGetExtraInfo)

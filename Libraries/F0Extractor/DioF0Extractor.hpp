@@ -1,49 +1,60 @@
 ﻿/**
- * FileName: DioF0Extractor.hpp
- * Note: DragonianLib Dio F0Extractor
+ * @file DioF0Extractor.hpp
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib library.
- * DragonianLib library is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
- * date: 2022-10-17 Create
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Dio F0 extractor
+ * @changes
+ *  > 2025/3/21 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
 #include "BaseF0Extractor.hpp"
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
+/**
+ * @class DioF0Extractor
+ * @brief Dio F0 extractor
+ */
 class DioF0Extractor : public BaseF0Extractor
 {
 public:
-	DioF0Extractor() = default;
-	~DioF0Extractor() override = default;
+	DioF0Extractor() noexcept = default;
+	~DioF0Extractor() noexcept override = default;
+	DioF0Extractor(const DioF0Extractor&) noexcept = default;
+	DioF0Extractor(DioF0Extractor&&) noexcept = default;
+	DioF0Extractor& operator=(const DioF0Extractor&) noexcept = default;
+	DioF0Extractor& operator=(DioF0Extractor&&) noexcept = default;
 
-	static Vector<double> Dio(
-		const Vector<double>& PCMData,
-		const F0ExtractorParams& Params
-	);
-
-	Vector<float> ExtractF0(
-		const Vector<double>& PCMData,
+	/**
+	 * @brief Extract F0 from PCM data
+	 * @param PCMData PCM data, Shape [Channel, Samples], Channel not mean the channel of audio, it means the channel of the tensor, so it should be any value except zero and negative
+	 * @param Params Parameters for F0 extraction
+	 * @return F0, Shape [Channel, Frames], you don't need to call the evaluate function before using it
+	 */
+	Tensor<Float32, 2, Device::CPU> ExtractF0(
+		const Tensor<Float64, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
 	) override;
 private:
-	DioF0Extractor(const DioF0Extractor&) = delete;
-	DioF0Extractor(DioF0Extractor&&) = delete;
-	DioF0Extractor operator=(const DioF0Extractor&) = delete;
-	DioF0Extractor operator=(DioF0Extractor&&) = delete;
+	static Tensor<Float64, 2, Device::CPU> Dio(
+		const Tensor<Float64, 2, Device::CPU>& PCMData,
+		const F0ExtractorParams& Params
+	);
 };
 
 _D_Dragonian_Lib_F0_Extractor_End

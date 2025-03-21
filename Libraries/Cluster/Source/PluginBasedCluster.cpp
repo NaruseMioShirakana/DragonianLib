@@ -3,20 +3,26 @@
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 
 PluginCluster::PluginCluster(const Plugin::Plugin& Plugin, const PluginClusterInfo& Params)
-	:_MyInstance(Plugin->GetInstance(&Params)), _MyPlugin(Plugin),
-	_MyClusterDimension(Params.ClusterDimension), _MyClusterSize(Params.ClusterSize),
-	_MySearchFunction((SearchFunctionType)Plugin->GetFunction("ClusterSearch", true)) {}
+	: BaseCluster(Params.ClusterDimension), _MyInstance(Plugin->GetInstance(&Params)), _MyPlugin(Plugin),
+	_MySearchFunction((SearchFunctionType)Plugin->GetFunction("ClusterSearch", true))
+{
+
+}
 
 PluginCluster::~PluginCluster()
 {
 	_MyPlugin->DestoryInstance(_MyInstance);
 }
 
-DragonianLibSTL::Vector<float> PluginCluster::Search(float* Point, long SpeakerId, int64_t Count)
+Tensor<Float32, 2, Device::CPU> PluginCluster::Search(Float32* Points, Long CodebookID, Int64 Count)
 {
-	DragonianLibSTL::Vector<float> Result(Count * _MyClusterDimension);
-	_MySearchFunction(_MyInstance, Point, SpeakerId, Count, Result.Data());
-	return Result;
+	DragonianLibSTL::Vector<float> Result(Count * _MyDimension);
+	_MySearchFunction(_MyInstance, Points, CodebookID, Count, Result.Data());
+	auto Allocator = Result.GetAllocator();
+	auto [Data, Size] = Result.Release();
+	return Tensor<Float32, 2, Device::CPU>::FromBuffer(
+		Dimensions<2>{Count, _MyDimension }, Data, Size, Allocator
+	);
 }
 
 _D_Dragonian_Lib_Cluster_Namespace_End

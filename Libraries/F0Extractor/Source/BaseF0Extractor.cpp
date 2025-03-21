@@ -1,36 +1,44 @@
 ﻿#include "../BaseF0Extractor.hpp"
-#include "Libraries/Base.h"
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-Vector<float> BaseF0Extractor::ExtractF0(
-	const Vector<Float64>& PCMData,
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
+	const Tensor<Float64, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
 )
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
 }
 
-Vector<float> BaseF0Extractor::ExtractF0(
-	const Vector<Float32>& PCMData,
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
+	const Tensor<Float32, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
 )
 {
-	return ExtractF0(
-		SignalCast<Float64>(PCMData),
-		Params
-	);
+	return ExtractF0(PCMData.Cast<Float64>(), Params);
 }
 
-Vector<float> BaseF0Extractor::ExtractF0(
-	const Vector<Int16>& PCMData,
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
+	const Tensor<Int16, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
 )
 {
-	return ExtractF0(
-		SignalCast<Float64>(PCMData),
-		Params
-	);
+	return ExtractF0(PCMData.Cast<Float64>(), Params);
+}
+
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+{
+	return ExtractF0(PCMData, Params);
+}
+
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+{
+	return ExtractF0(PCMData, Params);
+}
+
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+{
+	return ExtractF0(PCMData, Params);
 }
 
 _D_Dragonian_Lib_F0_Extractor_End

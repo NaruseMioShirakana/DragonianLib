@@ -32,7 +32,10 @@ static inline constexpr SizeType RangeBeginPos = INT64_MAX; ///< Begin index
 static inline constexpr SizeType RangeEndPos = INT64_MIN; ///< End index
 static inline SizeType ZeroConstantVal = 0; ///< None index
 
-class _D_Dragonian_Lib_Impl_Functional;
+namespace Functional
+{
+	class FunctionalImpl;
+}
 
 /**
  * @brief Struct representing a range with begin, step, and end values.
@@ -168,6 +171,12 @@ void SetRandomSeed(SizeType _Seed);
 void SetWorkerCount(SizeType _ThreadCount);
 
 /**
+ * @brief Set the task pool size.
+ * @param _Size The size of the task pool.
+ */
+void SetTaskPoolSize(SizeType _Size);
+
+/**
  * @brief Set the maximum task count per operator.
  * @param _MaxTaskCount The maximum task count per operator.
  */
@@ -218,7 +227,7 @@ public:
 
 	template <typename _TensorType_, size_t _NRank_, Device _MyDevice_>
 	friend class Tensor;
-	friend class _D_Dragonian_Lib_Impl_Functional;
+	friend class Functional::FunctionalImpl;
 	using ValueType = std::remove_reference_t<_TensorType>;
 	static_assert(!Operators::SimdTypeTraits::IsVectorizedValue<ValueType>, "Vectorized value type is not supported!");
 	using Pointer = std::shared_ptr<void>;
@@ -227,6 +236,8 @@ public:
 	using ConstReference = const ValueType&;
 	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace DlibValue>);
 
+	using DependencyChainDataPointers = typename Operators::OperatorParameter<_NRank>::DependencyChainDataPointers;
+	using DependencyChainPair = typename Operators::OperatorParameter<_NRank>::DependencyChainPair;
 	using DependencyChainType = typename Operators::OperatorParameter<_NRank>::DependencyChainType;
 	using DependencyChainPointer = typename Operators::OperatorParameter<_NRank>::DependencyChainPointer;
 	static constexpr auto _Device = _MyDevice;
@@ -311,6 +322,27 @@ public:
 		if (IsContinuous())
 			return TemplateLibrary::Vector<ValueType>::CreateView(_MyData, TotalSize(), GetAllocator());
 		_D_Dragonian_Lib_Throw_Exception("Could Not Convert Non-Continuous Tensor To Vector View!");
+	}
+
+	template <typename _Type2, size_t _Rank2, Device _Device2, typename = std::enable_if_t<_Rank2 <= _NRank>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+		BroadCast2AndCpy(const Tensor<_Type2, _Rank2, _Device2>& _Other) const
+	{
+		decltype(auto) Bd = BroadCast(*this, _Other, false);
+		return Bd.first.Continuous();
+	}
+
+	template <typename _ThisType, typename _TFn, typename = std::enable_if_t<TypeTraits::IsInvokeableValue<_TFn>>>
+	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn)
+	{
+		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst, nullptr, nullptr };
+		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
+			std::forward<_ThisType>(_Self)._MyFuturesAsResult->emplace_back(
+				Operators::GetTaskPool().Commit(std::forward<_TFn>(_Fn)), _DataPointer
+			);
+		else
+			std::forward<_TFn>(_Fn)();
+		return std::forward<_ThisType>(_Self);
 	}
 
 protected:
@@ -483,7 +515,7 @@ private:
 
 	template <typename _Type2, size_t _Rank2, Device _Device2, typename = std::enable_if_t<_Rank2 <= _NRank>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-	BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
+		BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
 	{
 		decltype(auto) Bd = BroadCast(*this, _Other, Inplace);
 		return std::move(Bd.second);
@@ -617,6 +649,17 @@ public:
 		return Tensor(MyShape);
 	}
 
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> ||
+		std::is_default_constructible_v<_CurValueType>)>>
+		static constexpr decltype(auto) NewVector(SizeType MySize)
+	{
+		Dimensions<_NRank> MyShape;
+		for (size_t i = 0; i < _NRank; ++i)
+			MyShape[i] = 1;
+		MyShape.Back() = MySize;
+		return Tensor(MyShape);
+	}
+
 	template <typename _CurValueType = ValueType, typename _First, typename ..._Rest, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_constructible_v<_CurValueType, _First, _Rest...>>>
 	static constexpr decltype(auto) New(const Dimensions<_NRank>& MyShape, _First&& Arg0, _Rest&& ...Args)
 	{
@@ -631,6 +674,11 @@ public:
 	static constexpr decltype(auto) New()
 	{
 		return Tensor();
+	}
+
+	static constexpr decltype(auto) New(const Dimensions<_NRank>& MyShape, const Pointer& Buffer, size_t BufferSize)
+	{
+		return Tensor(MyShape, Buffer, BufferSize);
 	}
 
 	/**
@@ -908,7 +956,7 @@ private:
 		if (BufferSize < TSize)
 			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
 		if (BufferSize > TSize)
-			LogWarn(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!");
+			_D_Dragonian_Lib_Namespace GetDefaultLogger()->Log(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!", Logger::LogLevel::Warn);
 		_MyFirst = Pointer(
 			Buffer,
 			[Alloc](void* _Pointer) { Alloc.deallocate(_Pointer); }
@@ -920,17 +968,32 @@ private:
 
 	Tensor(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
 	{
-		auto TSize = MyShape.Multiply();
+		auto TSize = static_cast<size_t>(MyShape.Multiply());
 		if (MyShape.Empty())
 			return;
 		if (BufferSize < TSize)
 			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
 		if (BufferSize > TSize)
-			LogWarn(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!");
+			_D_Dragonian_Lib_Namespace GetDefaultLogger()->Log(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!", Logger::LogLevel::Warn);
 		_MyFirst = Pointer(
 			Buffer,
 			[](void*) {}
 		);
+		_MyData = (RawPointer)_MyFirst.get();
+		_MyLast = _MyData + BufferSize;
+		ConstructViewInfo(MyShape);
+	}
+
+	Tensor(const Dimensions<_NRank>& MyShape, const Pointer& Buffer, size_t BufferSize) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
+	{
+		auto TSize = static_cast<size_t>(MyShape.Multiply());
+		if (MyShape.Empty())
+			return;
+		if (BufferSize < TSize)
+			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
+		if (BufferSize > TSize)
+			_D_Dragonian_Lib_Namespace GetDefaultLogger()->Log(L"Buffer Size Is Greater Than Elememt Count, This Could Cause Undefined Behavior!", Logger::LogLevel::Warn);
+		_MyFirst = Buffer;
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + BufferSize;
 		ConstructViewInfo(MyShape);
@@ -1150,6 +1213,12 @@ public:
 		return std::forward<_ThisType>(Self)._MyData;
 	}
 
+	decltype(auto) GetShared()const
+	{
+		auto Shared = _MyFirst;
+		return Shared;
+	}
+
 	//******************************************************Operator******************************************************//
 
 	/**
@@ -1351,9 +1420,6 @@ public:
 		Ret.Begin.AssignConstant(0);
 		Ret.Shape.Assign(_MyShape.Data() + _Begin);
 		Ret.ViewStride.Assign(_MyViewStride.Data() + _Begin);
-		if (_CheckIsContinuous)
-			for (size_t i = 0; i < CurrentRank; ++i)
-				Ret.IsContinuous[i] = IsContinuous(_Begin + i, _End);
 		Ret.ResultDependency = _MyFuturesAsResult;
 		Ret.ArgumentDependency = _MyFuturesAsArgument;
 		Ret.Data = _MyFirst;
@@ -1408,8 +1474,8 @@ public:
 
 	/**
 	 * @brief Get the shape of the specified axis of the tensor.
-	 * @param _Index
-	 * @return
+	 * @param _Index The index of the axis.
+	 * @return The shape of the specified axis of the tensor.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
 	{
@@ -1500,40 +1566,19 @@ public:
 
 	/**
 	 * @brief Check if the tensor is continuous in the specified range.
-	 * @tparam _Begin start axis
-	 * @tparam _End end axis
 	 * @return True if the tensor is continuous, false otherwise.
 	 */
-	template <size_t _Begin = 0, size_t _End = _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
 	{
-		static_assert(_End <= _NRank);
+		if (_MyViewStride[_NRank - 1] != 1)
+			return false;
 
 		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
-
-		for (size_t i = _Begin + 1; i < _End; ++i)
+		for (SizeType i = 1; i < _NRank; ++i)
 			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
-	}
-
-	/**
-	 * @brief Check if the tensor is continuous in the specified range.
-	 * @param _Begin start axis
-	 * @param _End end axis
-	 * @return True if the tensor is continuous, false otherwise.
-	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin = 0, SizeType _End = _NRank) const
-	{
-		_Begin = CalcIndex(_Begin, Rank());
-		_End = CalcIterator(_End, Rank());
-
-		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
-		for (SizeType i = _Begin + 1; i < _End; ++i)
-			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
-				return false;
-
-		return true;
+		
 	}
 
 	/**
@@ -1542,7 +1587,7 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsView() const
 	{
-		return _MyData != (RawPointer)_MyFirst.get() || !IsContinuous<0, _NRank>();
+		return _MyData != (RawPointer)_MyFirst.get() || !IsContinuous();
 	}
 
 	/**
@@ -2058,6 +2103,16 @@ public:
 		return Clone();
 	}
 
+	/**
+	 * @brief If the tensor is not contiguous, make output contiguous.
+	 * @return New tensor (view or clone).
+	 */
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	decltype(auto) Contiguous() const
+	{
+		return Continuous();
+	}
+
 	template <typename _CurValueType = ValueType, size_t _TRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>>>
 	decltype(auto) Continuous(Tensor<_CurValueType, _TRank, _MyDevice>& _Buffer) const
 	{
@@ -2387,6 +2442,24 @@ public:
 	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>>>
 	decltype(auto) ArgMin(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body(ArgMin, ArgMin, RetType);
 
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumSum(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumSum);
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumSub(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumSub);
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumProd(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumProd);
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumDiv(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumDiv);
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumMax(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumMax);
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) CumMin(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumMin);
+
 	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>>>
 	decltype(auto) ReduceLp(SizeType _Axis,const ValueType& _P) const
 	{
@@ -2428,6 +2501,104 @@ public:
 	decltype(auto) ReduceL2(SizeType _Axis) const
 	{
 		return ReduceLp<KeepDim>(_Axis, 2);
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>>>
+	decltype(auto) Diff(SizeType _Axis) const
+	{
+		if constexpr (_NRank == 1)
+			return UnSqueeze(0).Diff(-1).Squeeze(0);
+		else
+		{
+			_Axis = CalcIndex(_Axis, Rank());
+			if (Shape()[_Axis] == 1)
+				return View();
+			auto TensorTmp = AxisFromTo(_Axis, -1);
+			TensorTmp.WaitingAsArgument();
+			auto OutShape = Shape();
+			OutShape[_Axis] -= 1;
+			auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape);
+			auto ResView = Ret.AxisFromTo(_Axis, -1);
+			ResView.WaitingAsResult();
+			Operators::OperatorsBase<ValueType, _MyDevice>::ImplDiffUnary
+			(
+				ResView.Data(),
+				ResView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				ResView.IsContinuous() && TensorTmp.IsContinuous()
+			);
+			return Ret;
+		}
+	}
+
+	template <
+		Operators::InterpolateMode _Mode = Operators::InterpolateMode::Nearest,
+		typename _CurValueType = ValueType,
+		typename = std::enable_if_t <
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>&&
+		Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&&
+		Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&&
+		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType
+		>>>
+	decltype(auto) Interpolate(const Dimensions<Operators::GetInterpolateModeRank<_Mode>>& _Dims, Operators::InterpolateParam<_Mode> _InterpParams) const
+	{
+		using ParamsType = Operators::InterpolateParam<_Mode>;
+
+		auto OutShape = Shape();
+		if (_InterpParams._MyScale.has_value())
+		{
+			if (!_InterpParams._MySize.has_value())
+				_InterpParams._MySize = ParamsType::SizeTypeArrayT();
+			auto& Scales = _InterpParams._MyScale.value();
+			auto& Sizes = _InterpParams._MySize.value();
+			for (size_t i = 0; i < _Dims.Size(); ++i)
+			{
+				const auto Axis = CalcIndex(_Dims[i], Rank());
+				if (Scales[i] <= 0)
+					_D_Dragonian_Lib_Throw_Exception("Scale Should Be Greater Than 0!");
+				OutShape[Axis] = std::max(static_cast<SizeType>(double(OutShape[Axis]) * Scales[i]), 1ll);
+				Sizes[i] = OutShape[Axis];
+			}
+		}
+		else if (_InterpParams._MySize.has_value())
+		{
+			if (!_InterpParams._MyScale.has_value())
+				_InterpParams._MyScale = ParamsType::DoubleArrayT();
+			auto& Scales = _InterpParams._MyScale.value();
+			auto& Sizes = _InterpParams._MySize.value();
+			for (size_t i = 0; i < _Dims.Size(); ++i)
+			{
+				const auto Axis = CalcIndex(_Dims[i], Rank());
+				if (Sizes[i] <= 0)
+					_D_Dragonian_Lib_Throw_Exception("Size Should Be Greater Than 0!");
+				Scales[i] = double(OutShape[Axis]) / double(Shape()[Axis]);
+				OutShape[Axis] = Sizes[i];
+			}
+		}
+
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape);
+		auto RetView = Ret.View();
+		auto MyView = View();
+		for (size_t i = 0; i < _Dims.Size(); ++i)
+		{
+			const auto Axis = CalcIndex(_Dims[i], Rank());
+			RetView = RetView.AxisFromTo(Axis, -1);
+			MyView = MyView.AxisFromTo(Axis, -1);
+		}
+		
+		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplInterpolate<_Mode, _NRank>
+			(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				MyView.Data(),
+				MyView.GetDefaultOperatorParameter(),
+				_InterpParams,
+				RetView.IsContinuous() && MyView.IsContinuous()
+			);
+
+		return Ret;
 	}
 
 	/*

@@ -3,14 +3,24 @@
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include <ostream>
 
-#define DMIODLETT(_MyTensor) decltype(_MyTensor)::ValueType, decltype(_MyTensor)::Rank(), decltype(_MyTensor)::GetDevice()
-
 _D_Dragonian_Lib_Space_Begin
 
 template <typename ..._TIndices>
 _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IDim(_TIndices&& ..._Indices)
 {
 	return Dimensions<sizeof...(_TIndices)>({ std::forward<_TIndices>(_Indices)... });
+}
+
+template <typename ..._TIndices>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ISize(_TIndices&& ..._Indices)
+{
+	return Dimensions<sizeof...(_TIndices)>({ std::forward<_TIndices>(_Indices)... });
+}
+
+template <typename ..._TIndices>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) IScale(_TIndices&& ..._Indices)
+{
+	return IDLArray<double, sizeof...(_TIndices)>({ std::forward<_TIndices>(_Indices)... });
 }
 
 template <typename ..._ValueTypes>
@@ -184,17 +194,18 @@ namespace Functional
 				Tensor<void, 1, Device::CUSTOM>
 			>;
 			static constexpr bool _MyFirstTensorTypeIsNotPointer = !TypeTraits::IsPointerValue<_MyFirstTensorArgumentType>;
-			static constexpr bool _AllTensorTypeIsSame = AllTensorTypeIsSame<_MyFirstTensorArgumentType, _ArgTypes...>::Value;
+			using _MyFirstTensorArgumentTypeUnref = TypeTraits::RemoveARPCVType<_MyFirstTensorArgumentType>;
+			static constexpr bool _AllTensorTypeIsSame = AllTensorTypeIsSame<_MyFirstTensorArgumentTypeUnref, _ArgTypes...>::Value;
 
-			static constexpr auto _MyFirstTensorArgumentRank = _MyFirstTensorArgumentType::Rank();
-			using _MyFirstTensorArgumentValueType = typename _MyFirstTensorArgumentType::ValueType;
-			static constexpr auto _MyFirstTensorArgumentDevice = _MyFirstTensorArgumentType::_Device;
+			static constexpr auto _MyFirstTensorArgumentRank = _MyFirstTensorArgumentTypeUnref::Rank();
+			using _MyFirstTensorArgumentValueType = typename _MyFirstTensorArgumentTypeUnref::ValueType;
+			static constexpr auto _MyFirstTensorArgumentDevice = _MyFirstTensorArgumentTypeUnref::_Device;
 
 			static constexpr bool _IsDefaultConstructible = std::is_default_constructible_v<_MyFirstTensorArgumentValueType>;
 
 			static constexpr auto _Enabled = _HasOnlyOneIntegerArgument && _HasTensorArgument && _MyFirstTensorTypeIsNotPointer && _AllTensorTypeIsSame && _IsDefaultConstructible;
 
-			_MyFirstTensorArgumentType _Tensors[_MyTensorArgumentCount];
+			_MyFirstTensorArgumentTypeUnref _Tensors[_MyTensorArgumentCount];
 			SizeType _Axis = 0;
 		};
 		template <>
@@ -203,6 +214,9 @@ namespace Functional
 			StackCatTraits() = delete;
 			static constexpr auto _Enabled = false;
 		};
+
+		template <typename ..._ArgTypes>
+		StackCatTraits(_ArgTypes&& ...) -> StackCatTraits<_ArgTypes...>;
 	}
 
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
@@ -229,6 +243,31 @@ namespace Functional
 		if (Ret.second != static_cast<size_t>(Shape.Multiply()))
 			_D_Dragonian_Lib_Throw_Exception("The data size of the tensor is not compatible with the numpy file.");
 		return Tensor<_MyValueType, _NRank, _MyDevice>::FromBuffer(Shape, (_MyValueType*)Ret.first, Ret.second, Alloc);
+	}
+
+	template <typename _MyValueType = Float32, size_t _NRank, Device _MyDevice = Device::CPU>
+	Tensor<_MyValueType, _NRank, _MyDevice> FromShared(const Dimensions<_NRank>& MyShape, const std::shared_ptr<void>& Buffer, size_t BufferSize)
+	{
+		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape, Buffer, BufferSize);
+	}
+
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
+	Tensor<_MyValueType, 1, _MyDevice> FromVector(TemplateLibrary::Vector<_MyValueType, _MyDevice>& Buffer)
+	{
+		return Tensor<_MyValueType, 1, _MyDevice>::FromBuffer(
+			IDim(static_cast<SizeType>(Buffer.Size())),
+			Buffer.Data(),
+			Buffer.Size()
+		);
+	}
+
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
+	Tensor<_MyValueType, 1, _MyDevice> FromVector(TemplateLibrary::Vector<_MyValueType>&& Buffer)
+	{
+		auto Allocator = Buffer.GetAllocator();
+		auto [Data, Size] = Buffer.Release();
+		auto Shape = IDim(static_cast<SizeType>(Size));
+		return Tensor<_MyValueType, 1, _MyDevice>::FromBuffer(Shape, Data, Size, Allocator);
 	}
 
 	/**
@@ -709,32 +748,32 @@ namespace Functional
 	}
 }
 
-template <typename _MyValueType, size_t _NRank, Device _MyDevice>
-std::ostream& operator<<(std::ostream& _OStream, const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+_D_Dragonian_Lib_Space_End
+
+template <typename _MyValueType, size_t _NRank, DragonianLib::Device _MyDevice>
+std::ostream& operator<<(std::ostream& _OStream, const DragonianLib::Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
 {
 	_OStream << _Tensor.CastToString();
 	return _OStream;
 }
 
-template <typename _MyValueType, size_t _NRank, Device _MyDevice>
-std::wostream& operator<<(std::wostream& _OStream, const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+template <typename _MyValueType, size_t _NRank, DragonianLib::Device _MyDevice>
+std::wostream& operator<<(std::wostream& _OStream, const DragonianLib::Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
 {
 	_OStream << _Tensor.CastToWideString();
 	return _OStream;
 }
 
 template <typename _MyValueType, size_t _NRank>
-std::ostream& operator<<(std::ostream& _OStream, const IDLArray<_MyValueType, _NRank>& _Array)
+std::ostream& operator<<(std::ostream& _OStream, const DragonianLib::TemplateLibrary::Array<_MyValueType, _NRank>& _Array)
 {
 	_OStream << _Array.ToString();
 	return _OStream;
 }
 
 template <typename _MyValueType, size_t _NRank>
-std::wostream& operator<<(std::wostream& _OStream, const IDLArray<_MyValueType, _NRank>& _Array)
+std::wostream& operator<<(std::wostream& _OStream, const DragonianLib::TemplateLibrary::Array<_MyValueType, _NRank>& _Array)
 {
 	_OStream << _Array.ToWString();
 	return _OStream;
 }
-
-_D_Dragonian_Lib_Space_End

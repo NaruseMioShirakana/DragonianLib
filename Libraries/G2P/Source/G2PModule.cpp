@@ -8,19 +8,19 @@
 
 _D_Dragonian_Lib_G2P_Header
 
-using GetG2PModuleFn = std::function<G2PModule(const void*)>;
-std::vector<std::wstring> G2PModulesList;
-std::unordered_map<std::wstring, GetG2PModuleFn> RegisteredG2PModules;
 
-G2PModule GetG2P(
+std::vector<std::wstring> _GlobalG2PModulesList;
+std::unordered_map<std::wstring, Constructor> _GlobalRegisteredG2PModules;
+
+G2PModule New(
 	const std::wstring& Name,
 	const void* Parameter
 )
 {
-	const auto G2PModuleIt = RegisteredG2PModules.find(Name);
+	const auto G2PModuleIt = _GlobalRegisteredG2PModules.find(Name);
 	try
 	{
-		if (G2PModuleIt != RegisteredG2PModules.end())
+		if (G2PModuleIt != _GlobalRegisteredG2PModules.end())
 			return G2PModuleIt->second(Parameter);
 	}
 	catch (std::exception& e)
@@ -30,83 +30,85 @@ G2PModule GetG2P(
 	_D_Dragonian_Lib_Throw_Exception("Unable To Find An Available G2PModule");
 }
 
-void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring& _PluginName)
+void RegisterPlugin(
+	const std::wstring& _PluginPath,
+	const std::wstring& _PluginName
+)
 {
-	if (RegisteredG2PModules.contains(_PluginName))
+	if (_PluginPath.empty() || _PluginName.empty())
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Could not register plugin: " + _PluginName + L" at " + _PluginPath, L"G2PModules");
 		return;
-	const auto PluginPath = _PluginRootDirectory + L"\\" + _PluginName;
-	const auto _PluginFileName = _PluginName.substr(0, _PluginName.find_last_of('.'));
+	}
+
+	if (_GlobalRegisteredG2PModules.contains(_PluginName))
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"G2PModules");
+		return;
+	}
 	try
 	{
-		auto Plugin = std::make_shared<Plugin::MPlugin>(PluginPath);
-		RegisteredG2PModules.emplace(_PluginFileName, [Plugin](const void* UserParameter) -> G2PModule {
-			return std::make_shared<BasicG2P>(UserParameter, Plugin);
-			});
+		auto Plugin = std::make_shared<Plugin::MPlugin>(_PluginPath);
+		_GlobalRegisteredG2PModules.emplace(
+			_PluginName,
+			[Plugin](const void* UserParameter) -> G2PModule {
+				return std::make_shared<BasicG2P>(UserParameter, Plugin);
+			}
+		);
 	}
 	catch (std::exception& e)
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	G2PModulesList.emplace_back(_PluginFileName);
+	_GlobalG2PModulesList.emplace_back(_PluginName);
 }
 
-void RegisterG2PModule(const std::wstring& _PluginRootDirectory)
+void RegisterG2PModules(
+	const std::wstring& _PluginRootDirectory
+)
 {
 	if (_PluginRootDirectory.empty())
 		return;
-#ifdef _WIN32
-	WIN32_FIND_DATAW FindFileData;
-	HANDLE hFind = FindFirstFileW((_PluginRootDirectory + L"\\*.dll").c_str(), &FindFileData);
-	if (hFind == INVALID_HANDLE_VALUE)
-		return;
-	do
+	std::filesystem::path PluginRootDirectory(_PluginRootDirectory);
+	for (const auto& PluginDirectoryEntry : std::filesystem::directory_iterator(PluginRootDirectory))
 	{
-		if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			continue;
-		if (FindFileData.cFileName[0] == L'.')
-			continue;
-		const auto PluginName = FindFileData.cFileName;
-		try
+		if (PluginDirectoryEntry.is_regular_file())
 		{
-			RegisterPlugin(_PluginRootDirectory, PluginName);
+			const auto Extension = PluginDirectoryEntry.path().extension().wstring();
+			if (Extension != L".dll" && Extension != L".so" && Extension != L".dylib")
+				continue;
+			const auto PluginName = PluginDirectoryEntry.path().stem().wstring();
+			RegisterPlugin(PluginDirectoryEntry.path().wstring(), PluginName);
 		}
-		catch (std::exception& e)
+		else if (PluginDirectoryEntry.is_directory())
 		{
-			FindClose(hFind);
-			_D_Dragonian_Lib_Throw_Exception(e.what());
-		}
-	} while (FindNextFileW(hFind, &FindFileData));
-	FindClose(hFind);
-#else
-	DIR* dir;
-	struct dirent* ptr;
-	if ((dir = opendir(_PluginRootDirectory.c_str())) == nullptr)
-		return;
-
-	while ((ptr = readdir(dir)) != nullptr)
-	{
-		if (ptr->d_type == DT_DIR)
-			continue;
-		const auto PluginName = ptr->d_name;
-		try {
-			RegisterPlugin(_PluginRootDirectory, PluginName);
-		}
-		catch (std::exception& e)
-		{
-			closedir(dir);
-			_D_Dragonian_Lib_Throw_Exception(e.what());
+			const auto PluginName = PluginDirectoryEntry.path().filename().wstring();
+			const auto PluginPath = PluginDirectoryEntry.path() / (PluginName + (_WIN32 ? L".dll" : L".so"));
+			RegisterPlugin(PluginPath.wstring(), PluginName);
 		}
 	}
-	closedir(dir);
-#endif
+}
+
+void RegisterG2PModele(
+	const std::wstring& _PluginName,
+	const Constructor& _Constructor
+)
+{
+	if (_GlobalRegisteredG2PModules.contains(_PluginName))
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"G2PModules");
+		return;
+	}
+	_GlobalRegisteredG2PModules.emplace(_PluginName, _Constructor);
+	_GlobalG2PModulesList.emplace_back(_PluginName);
 }
 
 const std::vector<std::wstring>& GetG2PModuleList()
 {
-	return G2PModulesList;
+	return _GlobalG2PModulesList;
 }
 
-struct Init { Init() { RegisterG2PModule(GetCurrentFolder() + L"/Plugins/G2P"); } };
+struct Init { Init() { RegisterG2PModules(GetCurrentFolder() + L"/Plugins/G2P"); } };
 Init _Init;
 
 _D_Dragonian_Lib_G2P_End

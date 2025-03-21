@@ -9,11 +9,13 @@
 _D_Dragonian_Lib_Operator_Space_Begin
 
 ThreadPool& GetThreadPool();
+ThreadPool& GetTaskPool();
 SizeType GetMaxTaskCountPerOperator();
 void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount);
 bool GetInstantRunFlag();
 void SetInstantRunFlag(bool _Flag);
 std::atomic_uint64_t& GetRandomDeviceId();
+void SetTaskPoolSize(SizeType _Size);
 
 template<typename _Type>
 class OperatorsBase<_Type, Device::CPU>
@@ -99,6 +101,27 @@ public:
 		const OperatorParameter<_NRank>& _SrcInfo,
 		const _IndexType* _Index,
 		const OperatorParameter<_NRank>& _IndexInfo
+	);
+
+	template<typename _MaskType, size_t _NRank>
+	static void ImplMaskedAssign(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		const _MaskType* _Mask,
+		const OperatorParameter<_NRank>& _MaskInfo,
+		bool Continuous
+	);
+
+	template<typename _MaskType, size_t _NRank>
+	static void ImplMaskedAssignScalar(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _MaskType* _Mask,
+		const OperatorParameter<_NRank>& _MaskInfo,
+		const _Type& _Value,
+		bool Continuous
 	);
 
 	_D_Dragonian_Lib_Operator_Binary_Define(Add);
@@ -190,9 +213,22 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMin);
 
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSum);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSub);
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumProd);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumDiv);
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMax);
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMin);
+	_D_Dragonian_Lib_Operator_Unary_St_Define(Diff);
+
+	template <InterpolateMode _Mode, size_t _NRank>
+	static void ImplInterpolate(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		const InterpolateParam<_Mode>& _Param,
+		bool Continuous
+	);
 
 };
 
@@ -249,7 +285,9 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> S
 	_Fn _Func
 )
 {
-	if constexpr (LoopCount - 1)
+	if constexpr (LoopCount == 0)
+		_Func(Value);
+	else if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
 			const auto Val = Value + i * *Stride;
@@ -289,7 +327,9 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> D
 	_Fn _Func
 )
 {
-	if constexpr (LoopCount - 1)
+	if constexpr (LoopCount == 0)
+		_Func(Value1, Value2);
+	else if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
 			const auto Val1 = Value1 + i * *Stride1;
@@ -332,7 +372,9 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> T
 	_Fn _Func
 )
 {
-	if constexpr (LoopCount - 1)
+	if constexpr (LoopCount == 0)
+		_Func(Value1, Value2, Value3);
+	else if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
 			const auto Val1 = Value1 + i * *Stride1;
@@ -378,7 +420,9 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> I
 	_Fn _Func
 )
 {
-	if constexpr (LoopCount - 1)
+	if constexpr (LoopCount == 0)
+		_Func(Value1, Value2, Value3, Value4);
+	else if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)
 		{
 			const auto Val1 = Value1 + i * *Stride1;
@@ -503,7 +547,7 @@ template<
 {
 	if constexpr (!IsCallableValue<_FunctionType>)
 	{
-		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
+		_D_Dragonian_Lib_Namespace GetDefaultLogger()->LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
 		return;
 	}
 
@@ -728,7 +772,7 @@ void ImplMultiThreadCaller(
 
 	if constexpr (!IsCallableValue<_FunctionType>)
 	{
-		LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
+		_D_Dragonian_Lib_Namespace GetDefaultLogger()->LogWarn(L"This Op Is Not Implemented, So It Will Has No Effect.");
 		return;
 	}
 

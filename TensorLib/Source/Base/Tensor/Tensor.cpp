@@ -28,6 +28,11 @@ void SetWorkerCount(SizeType _ThreadCount)
 	SetMaxTaskCountPerOperator(Operators::GetThreadPool().GetThreadCount() / 2);
 }
 
+void SetTaskPoolSize(SizeType _Size)
+{
+	Operators::SetTaskPoolSize(_Size);
+}
+
 void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount)
 {
 	

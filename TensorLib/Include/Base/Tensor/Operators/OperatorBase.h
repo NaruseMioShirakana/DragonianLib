@@ -25,6 +25,68 @@ _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndexOp(SizeType _Index, Si
 	return _Index;
 }
 
+/**
+* @brief Enum class representing interpolation mode.
+*/
+enum class InterpolateMode
+{
+	Nearest, ///< Nearest neighbor interpolation (1D)
+	Nearest2D, ///< Nearest neighbor interpolation (2D)
+	Nearest3D, ///< Nearest neighbor interpolation (3D)
+	Linear, ///< Linear interpolation
+	Bilinear, ///< Bilinear interpolation
+	Bicubic, ///< Bicubic interpolation
+	Trilinear, ///< Trilinear interpolation
+	Area, ///< Area interpolation
+};
+
+template <InterpolateMode _Mode>
+constexpr size_t GetInterpolateModeRank = 0;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Nearest> = 1;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Nearest2D> = 2;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Nearest3D> = 3;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Linear> = 1;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Bilinear> = 2;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Bicubic> = 2;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Trilinear> = 3;
+template <>
+constexpr size_t GetInterpolateModeRank<InterpolateMode::Area> = 2;
+
+template <InterpolateMode _Mode>
+struct InterpolateParam
+{
+	static constexpr auto _MyMode = _Mode;
+	static constexpr auto _IsLinear =
+		_MyMode == InterpolateMode::Linear || _MyMode == InterpolateMode::Bilinear || _MyMode == InterpolateMode::Trilinear ||
+		_MyMode == InterpolateMode::Nearest || _MyMode == InterpolateMode::Nearest2D || _MyMode == InterpolateMode::Nearest3D;
+	static constexpr auto _MyRank = GetInterpolateModeRank<_MyMode>;
+	using DoubleArrayT = IDLArray<double, _MyRank>;
+	using SizeTypeArrayT = IDLArray<SizeType, _MyRank>;
+
+	std::optional<DoubleArrayT> _MyScale;
+	bool _MyAlignCorners = false;
+	std::optional<SizeTypeArrayT> _MySize;
+
+	InterpolateParam(const DoubleArrayT& _Scale, bool _AlignCorners = false)
+		: _MyScale(_Scale), _MyAlignCorners(_AlignCorners), _MySize(std::nullopt)
+	{
+
+	}
+
+	InterpolateParam(const SizeTypeArrayT& _Size, bool _AlignCorners = false)
+		: _MyScale(std::nullopt), _MyAlignCorners(_AlignCorners), _MySize(_Size)
+	{
+
+	}
+};
+
 template<size_t _NRank>
 struct OperatorParameter
 {
@@ -36,7 +98,6 @@ struct OperatorParameter
 	IDLArray<SizeType, _NRank> Shape; ///< Shape: The [view end/shape] of the tensor.
 	IDLArray<SizeType, _NRank> Begin; ///< Begin: The [view begin] of the tensor.
 	IDLArray<SizeType, _NRank> ViewStride; ///< ViewStep: The step of the view.
-	IDLArray<bool, _NRank> IsContinuous; ///< IsContinuous: The continuous flag of the view.
 	DependencyChainPointer ResultDependency = nullptr; ///< Dependency: Block All the operations until the dependency is finished.
 	DependencyChainPointer ArgumentDependency = nullptr; ///< InplaceLock: Block the inplace operation until the dependency is finished.
 	void* UserParameter = nullptr; ///< UserParameter: The user parameter.
@@ -140,6 +201,30 @@ public:
 		_D_Dragonian_Lib_Not_Implemented_Error;
 	}
 
+	template<typename _MaskType, size_t _NRank>
+	static void ImplMaskedAssign(
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src, const OperatorParameter<_NRank>& _SrcInfo,
+		const _MaskType* _Mask, const OperatorParameter<_NRank>& _MaskInfo,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<typename _MaskType, size_t _NRank>
+	static void ImplMaskedAssignScalar(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _MaskType* _Mask,
+		const OperatorParameter<_NRank>& _MaskInfo,
+		const _Type& _Value,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
 	_D_Dragonian_Lib_Operator_Binary_Define(Add) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define(Sub) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define(Mul) { _D_Dragonian_Lib_Not_Implemented_Error; }
@@ -229,9 +314,25 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(ReduceArgMin) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumSub) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumProd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(CumDiv) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMax) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_St_Define(CumMin) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_St_Define(Diff) { _D_Dragonian_Lib_Not_Implemented_Error; }
+
+	template <InterpolateMode _Mode, size_t _NRank>
+	static void ImplInterpolate(
+		_Type* _Dest,
+		const OperatorParameter<_NRank>& _DestInfo,
+		const _Type* _Src,
+		const OperatorParameter<_NRank>& _SrcInfo,
+		const InterpolateParam<_Mode>& _Param,
+		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
 
 };
 

@@ -71,7 +71,8 @@ DragonianLibSTL::Vector<float> IndexClusterCore::find(const float* points, faiss
 	return result;
 }
 
-IndexCluster::IndexCluster(const std::wstring& RootPath, size_t, size_t)
+IndexCluster::IndexCluster(const std::wstring& RootPath, Int64 Dimension, Int64)
+	:BaseCluster(Dimension)
 {
 	const auto RawPath = RootPath + L"/Index-";
 	size_t idx = 0;
@@ -82,14 +83,21 @@ IndexCluster::IndexCluster(const std::wstring& RootPath, size_t, size_t)
 		Indexs.emplace_back(std::make_shared<IndexClusterCore>(IndexPath.string().c_str()));
 	}
 	if (Indexs.empty())
-		_D_Dragonian_Lib_Throw_Exception("Index Is Empty");
+		_D_Dragonian_Lib_Throw_Exception("Could not find any index file");
 }
 
-DragonianLibSTL::Vector<float> IndexCluster::Search(float* Point, long SpeakerID, int64_t PointCount)
+Tensor<Float32, 2, Device::CPU> IndexCluster::Search(Float32* Point, Long CodebookID, Int64 PointCount)
 {
-	if (size_t(SpeakerID) < Indexs.size())
-		return Indexs[SpeakerID]->find(Point, PointCount);
-	return { Point, Point + n_hidden_size * PointCount };
+	if (size_t(CodebookID) < Indexs.size())
+	{
+		auto Result = Indexs[CodebookID]->find(Point, PointCount);
+		auto Allocator = Result.GetAllocator();
+		auto [Data, Size] = Result.Release();
+		return Tensor<Float32, 2, Device::CPU>::FromBuffer(
+			Dimensions<2>{PointCount, _MyDimension }, Data, Size, Allocator
+		);
+	}
+	_D_Dragonian_Lib_Throw_Exception("CodebookID out of range");
 }
 
 _D_Dragonian_Lib_Cluster_Namespace_End

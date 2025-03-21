@@ -1,79 +1,74 @@
 ﻿/**
- * FileName: Logger.h
+ * @file Logger.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib.
- * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Base logger of DragonianLib
+ * @changes
+ *  > 2025/3/19 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
-#include <mutex>
 #include "Util.h"
 
 _D_Dragonian_Lib_Space_Begin
 
-enum class LogLevel
-{
-	Info,
-	Warn,
-	Error,
-	None
-};
-
-class Logger
+class Logger : public std::enable_shared_from_this<Logger>
 {
 public:
-	using LoggerFunction = void(*)(unsigned Level, const wchar_t* Message, const wchar_t* Id);
+	using LoggerFunction = void(*)(const wchar_t* Message, unsigned Level);
+	enum class LogLevel { Info, Warn, Error, None };
 
 	virtual ~Logger() noexcept;
-	virtual void Log(LogLevel Level, const wchar_t* Message, const wchar_t* Id = nullptr) noexcept;
-	virtual void Message(const wchar_t* Message) noexcept;
-	
+	virtual void Log(const std::wstring& _Message, LogLevel _Level = LogLevel::Info, const wchar_t* _NameSpace = nullptr) noexcept;
+
 private:
-	LoggerFunction LoggerFn_;
-	std::mutex Mutex_;
-	std::wstring Id_ = L"DragonianLib";
-	LogLevel Level_ = LogLevel::Info;
+	LoggerFunction _MyLoggerFn;
+	std::wstring _MyId = L"DragonianLib";
+	LogLevel _MyLevel = LogLevel::Info;
 
 public:
-	Logger() noexcept;
-	Logger(LoggerFunction Function) noexcept;
-	Logger(const Logger&) = delete;
-	Logger(Logger&&) = delete;
-	Logger& operator=(const Logger&) = delete;
-	Logger& operator=(Logger&&) = delete;
-	void Log(LogLevel Level, const std::wstring& Message, const std::wstring& Id = L"") noexcept;
-	Logger& operator<<(const wchar_t* Message) noexcept;
-	Logger& operator<<(const std::wstring& Message) noexcept;
-	void SetLoggerId(const wchar_t* Id) noexcept { Id_ = Id; }
-	void SetLoggerLevel(LogLevel Level) noexcept { Level_ = Level; }
-	void SetLoggerFunction(LoggerFunction Function) noexcept { LoggerFn_ = Function; }
-	std::wstring& GetLoggerId() noexcept { return Id_; }
+	Logger(std::wstring _LoggerId = L"DragonianLib", LogLevel _LogLevel = LogLevel::Info, LoggerFunction _LogFunction = nullptr) noexcept;
+	Logger(const Logger& _Parent, const std::wstring& _NameSpace) noexcept;
+	Logger(const Logger&) = default;
+	Logger(Logger&&) = default;
+	Logger& operator=(const Logger&) = default;
+	Logger& operator=(Logger&&) = default;
+
+	void SetLoggerId(const std::wstring& Id) noexcept { _MyId = Id; }
+	void SetLoggerLevel(LogLevel Level) noexcept { _MyLevel = Level; }
+	void SetLoggerFunction(LoggerFunction Function) noexcept { _MyLoggerFn = Function; }
+
+	template <typename _ThisType>
+	decltype(auto) GetLoggerId(this _ThisType&& _Self) noexcept
+	{
+		return std::forward<_ThisType>(_Self)._MyId;
+	}
+
+	LogLevel GetLoggerLevel() const noexcept { return _MyLevel; }
+
+	void LogWarn(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Warn, _NameSpace); }
+	void LogMessage(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Info, _NameSpace); }
+	void LogInfo(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Info, _NameSpace); }
+	void LogError(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Error, _NameSpace); }
 };
 
-Logger& GetLogger() noexcept;
-void SetLoggerId(const wchar_t* Id) noexcept;
-void SetLoggerLevel(LogLevel Level) noexcept;
-void SetLoggerFunction(Logger::LoggerFunction Function) noexcept;
-void LogInfo(const wchar_t* Message) noexcept;
-void LogWarn(const wchar_t* Message) noexcept;
-void LogError(const wchar_t* Message) noexcept;
-void LogMessage(const wchar_t* Message) noexcept;
-void LogInfo(const std::wstring& Message) noexcept;
-void LogWarn(const std::wstring& Message) noexcept;
-void LogError(const std::wstring& Message) noexcept;
-void LogMessage(const std::wstring& Message) noexcept;
+using DLogger = std::shared_ptr<Logger>;
+
+DLogger& GetDefaultLogger() noexcept;
 
 _D_Dragonian_Lib_Space_End
 

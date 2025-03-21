@@ -1,26 +1,28 @@
 ﻿/**
- * FileName: AvCodec.h
+ * @file AvCodec.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib.
- * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Implementation of audio codec
+ * @changes
+ *  > 2025/3/21 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
-#include <mutex>
-#include <string>
-#include "Libraries/MyTemplateLibrary/Vector.h"
+#include "TensorLib/Include/Base/Tensor/Tensor.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -509,8 +511,16 @@ namespace AvCodec
 		int _MyCode = 0;
 
 	public:
+		/**
+		 * @brief Decode all audio data
+		 * @param _OutputSamplingRate Output sampling rate
+		 * @param _OutputChannels Output channel count
+		 * @param _OutputPlanar Whether the output data is planar
+		 * @param _ParameterDict Codec parameter dictionary (AVDictionary)
+		 * @return Decoded audio data
+		 */
 		template <typename _RetType = Float32>
-		TemplateLibrary::Vector<_RetType> DecodeAll(
+		Tensor<_RetType, 2, Device::CPU> DecodeAll(
 			UInt32 _OutputSamplingRate,
 			UInt32 _OutputChannels = 1,
 			bool _OutputPlanar = false,
@@ -528,7 +538,7 @@ namespace AvCodec
 			const auto MOutputFormat = AvCodec::Type2PCMFormat<_RetType>(_OutputPlanar);
 			if (MOutputFormat == AvCodec::PCM_FORMAT_NONE)
 				_D_Dragonian_Lib_Throw_Exception("Invalid output format!");
-			
+
 			auto DecoderSetting = GetCodecSettings();
 			DecoderSetting._ParameterDict = _ParameterDict;
 			DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
@@ -539,12 +549,12 @@ namespace AvCodec
 			const auto nSample = size_t(GetDurations() * DecoderSetting._OutputSamplingRate / GetAVTimeBase());
 			const auto nBuffer = nSample + (nSample >> 1);
 
+			auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
+			for (auto& Buf : MyBuf)
+				Buf.Reserve(nBuffer);
+
 			if (_OutputPlanar)
 			{
-				UInt64 TotalSize = 0;
-				auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
-				for (auto& Buf : MyBuf)
-					Buf.Reserve(nBuffer);
 				_D_Dragonian_Lib_Rethrow_Block(
 					{
 						AudioPacket Packet;
@@ -559,23 +569,17 @@ namespace AvCodec
 									auto Data = (const _RetType* const)Frame.GetDataPointerArray()[i];
 									auto Size = Frame.GetLinesize() / sizeof(_RetType);
 									Buf.Insert(Buf.End(), Data, Data + Size);
-									TotalSize += Size;
 								}
 							}
 						}
 					}
 				);
-
-				TemplateLibrary::Vector<_RetType> Ret;
-				Ret.Reserve(TotalSize);
-				for (auto& Buf : MyBuf)
-					Ret.Insert(Ret.End(), Buf.Begin(), Buf.End());
-				return Ret;
 			}
-			TemplateLibrary::Vector<_RetType> Ret;
-			Ret.Reserve(nBuffer * _OutputChannels);
+
+
 			_D_Dragonian_Lib_Rethrow_Block(
 				{
+					auto & OutputBuffer = MyBuf[0];
 					AudioPacket Packet;
 					while (!(*this >> Packet).IsEnd())
 					{
@@ -584,11 +588,24 @@ namespace AvCodec
 						{
 							auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
 							auto Size = Frame.GetLinesize() / sizeof(_RetType);
-							Ret.Insert(Ret.End(), Data, Data + Size);
+							OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
 						}
 					}
 				}
 			);
+
+			const auto MBufSize = static_cast<SizeType>(MyBuf[0].Size());
+
+			Dimensions<2> OutputDimensions{
+				(_OutputPlanar ? static_cast<SizeType>(_OutputChannels) : static_cast<SizeType>(MBufSize / _OutputChannels)),
+				(_OutputPlanar ? static_cast<SizeType>(MBufSize) : static_cast<SizeType>(_OutputChannels))
+			};
+
+			auto Ret = Tensor<_RetType, 2, Device::CPU>::Zeros(OutputDimensions).Evaluate();
+
+			for (auto [i, Buf] : TemplateLibrary::Enumrate(MyBuf))
+				memcpy(Ret.Data() + i * Buf.Size(), Buf.Data(), Buf.Size() * sizeof(_RetType));
+
 			return Ret;
 		}
 	};
@@ -640,6 +657,14 @@ namespace AvCodec
 
 		AudioOStream& operator<<(const AudioPacket& _Packet);
 
+		/**
+		 * @brief Encode all PCM data
+		 * @param _PCMData PCM data
+		 * @param _InputSamplingRate Input sampling rate
+		 * @param _InputChannelCount Input channel count
+		 * @param _InputPlanar Whether the input data is planar
+		 * @param _ParameterDict Codec Parameter dictionary (AVDictionary)
+		 */
 		template <typename _InputType>
 		void EncodeAll(
 			const TemplateLibrary::ConstantRanges<_InputType>& _PCMData,
@@ -714,8 +739,22 @@ namespace AvCodec
 		}
 	};
 
+	/**
+	 * @brief Open an audio input stream
+	 * @param _Path Path to the input file
+	 * @return Audio input stream
+	 */
 	AudioIStream OpenInputStream(const std::wstring& _Path);
 
+	/**
+	 * @brief Open an audio output stream
+	 * @param _OutputSamplingRate Output sampling rate
+	 * @param _Path Path to the output file
+	 * @param _OutputDataFormat Output data format
+	 * @param _OutputChannelCount Output channel count
+	 * @param _OutputCodecID Output codec ID (AVCodecID)
+	 * @return Audio output stream
+	 */
 	AudioOStream OpenOutputStream(
 		UInt32 _OutputSamplingRate,
 		const std::wstring& _Path,
@@ -760,13 +799,19 @@ namespace AvCodec
 	 * @brief Slice audio data into segments
 	 * @param PcmData Input audio data
 	 * @param SlicerSettings Slice settings
-	 * @return
+	 * @return Slice positions
 	 */
 	DragonianLibSTL::Vector<size_t> SliceAudio(
 		const DragonianLibSTL::Vector<float>& PcmData,
 		const SlicerSettings& SlicerSettings
 	);
 
+	/**
+	 * @brief Slice audio data into segments
+	 * @param PcmData Input audio data
+	 * @param SlicerSettings Slice settings
+	 * @return Slice positions
+	 */
 	DragonianLibSTL::Vector<size_t> SliceAudio(
 		const TemplateLibrary::ConstantRanges<float>& PcmData,
 		const SlicerSettings& SlicerSettings

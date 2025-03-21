@@ -1,7 +1,28 @@
-﻿#pragma once
-#include "Libraries/Base.h"
-#include "Libraries/MyTemplateLibrary/Vector.h"
-#include <regex>
+﻿/**
+ * @file Dict.hpp
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
+ *
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
+ *
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Dictionary and tokenizer for neural networks
+ * @changes
+ *  > 2025/3/21 NaruseMioShirakana Refactored <
+ */
+
+#pragma once
+#include "TensorLib/Include/Base/Tensor/Tensor.h"
 
 #define _D_Dragonian_Lib_Dict_Header _D_Dragonian_Lib_Space_Begin namespace Dict {
 #define _D_Dragonian_Lib_Dict_End _D_Dragonian_Lib_Space_End }
@@ -10,6 +31,12 @@ _D_Dragonian_Lib_Dict_Header
 
 using namespace DragonianLibSTL;
 
+DLogger& GetDefaultLogger() noexcept;
+
+/**
+ * @class Tokenizer
+ * @brief Tokenizer
+ */
 class Tokenizer
 {
 public:
@@ -19,6 +46,15 @@ public:
 
 	Tokenizer() = delete;
 	~Tokenizer() = default;
+
+	/**
+	 * @brief Construct a new Tokenizer object
+	 * @param _TokenizerModulePath Path to the tokenizer module, a tokenizer module is a text file which contains the vocabulary (json format) which is key-value pairs of token and token id or vector of token text
+	 * @param _BeginText Begin token text
+	 * @param _EndText End token text
+	 * @param _EOSText End of sentence token text
+	 * @param _UNKText Unknown token text
+	 */
 	Tokenizer(
 		const std::wstring& _TokenizerModulePath,
 		std::wstring _BeginText = L"[CLS]",
@@ -32,6 +68,14 @@ public:
 	Tokenizer& operator=(const Tokenizer&) = default;
 	Tokenizer& operator=(Tokenizer&&) noexcept = default;
 
+	/**
+	 * @brief Tokenize the input text
+	 * @param _InputText Text to be tokenized
+	 * @param _OutputTokens Result buffer for tokenized tokens
+	 * @param _Method Tokenizer method
+	 * @param _SkipNonLatin Skip non-latin characters
+	 * @param _MaximumMatching Maximum matching length
+	 */
 	void Tokenize(
 		const std::wstring& _InputText,
 		Vector<std::wstring>& _OutputTokens,
@@ -40,6 +84,14 @@ public:
 		size_t _MaximumMatching = 32
 	) const;
 
+	/**
+	 * @brief Tokenize the input text
+	 * @param _InputSeq Text sequence to be tokenized
+	 * @param _OutputTokens Result buffer for tokenized tokens
+	 * @param _Method Tokenizer method
+	 * @param _SkipNonLatin Skip non-latin characters
+	 * @param _MaximumMatching Maximum matching length
+	 */
 	void Tokenize(
 		const Vector<std::wstring>& _InputSeq,
 		Vector<std::wstring>& _OutputTokens,
@@ -48,8 +100,24 @@ public:
 		size_t _MaximumMatching = 32
 	) const;
 
-	Vector<TokenizerType> operator()(const Vector<std::wstring>& _Tokens, bool _AddBegin = true, bool _AddEnd = true) const;
+	/**
+	 * @brief Convert tokens to tensor which includes token ids
+	 * @param _Tokens Tokens to be converted, each vector represents a sentence, Shape [BatchSize, TokenCount]
+	 * @param _AddBegin Whether to add begin token
+	 * @param _AddEnd Whether to add end token
+	 * @return Tensor which includes token ids, Shape [BatchSize, TokenCount (+ 1 if _AddBegin) (+ 1 if _AddEnd)], you don't need to call evaluate function
+	 */
+	Tensor<TokenizerType, 2, Device::CPU> operator()(
+		const Vector<Vector<std::wstring>>& _Tokens,
+		bool _AddBegin = true,
+		bool _AddEnd = true
+		) const;
 
+	/**
+	 * @brief Get token id of a token
+	 * @param _Token Token to be converted
+	 * @return Token id
+	 */
 	TokenizerType GetToken(const std::wstring& _Token) const;
 
 private:
@@ -68,16 +136,39 @@ private:
 		size_t _MaximumMatching = 32
 	) const;
 public:
+	/**
+	 * @brief Split the input text with regular expression
+	 * @param _InputText Text to be split
+	 * @param _RegularExpression Regular expression for splitting
+	 * @param _SubMatch Submatch index
+	 * @return Splitted tokens
+	 */
 	static Vector<std::wstring> SplitWithSymbol(
 		const std::wstring& _InputText,
 		const std::wregex& _RegularExpression,
 		const std::initializer_list<int>& _SubMatch = { -1 }
 	);
+
+	/**
+	 * @brief Split the input text with regular expression
+	 * @param _InputSeq Text sequence to be split
+	 * @param _RegularExpression Regular expression for splitting
+	 * @param _SubMatch Submatch index
+	 * @return Splitted tokens
+	 */
 	static Vector<std::wstring> SplitWithSymbol(
 		const Vector<std::wstring>& _InputSeq,
 		const std::wregex& _RegularExpression,
 		const std::initializer_list<int>& _SubMatch = { -1 }
 	);
+
+	/**
+	 * @brief Split the input text with regular expression
+	 * @param _InputSeq Text sequence to be split
+	 * @param _RegularExpression Regular expression for splitting
+	 * @param _SubMatch Submatch index
+	 * @return Splitted tokens
+	 */
 	static Vector<std::wstring_view> SplitWithSymbolToViews(
 		const std::wstring& _InputSeq,
 		const std::wregex& _RegularExpression,
@@ -85,13 +176,26 @@ public:
 	);
 };
 
+/**
+ * @class Dict
+ * @brief Dictionary
+ */
 class Dict
 {
 public:
 	using DictType = std::wstring;
 	Dict() = delete;
+	/**
+	 * @brief Construct a new Dict object
+	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
+	 */
 	Dict(const std::wstring& _DictModulePath);
 
+	/**
+	 * @brief Search tokens in the dictionary and replace them with the corresponding token text
+	 * @param _Tokens Tokens to be searched
+	 * @return Tokens with replaced token text
+	 */
 	Vector<DictType> operator()(const Vector<std::wstring>& _Tokens) const;
 private:
 	std::unordered_map<std::wstring, std::vector<DictType>> _MyDict;

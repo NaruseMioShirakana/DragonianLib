@@ -1,4 +1,27 @@
-﻿#pragma once
+﻿/**
+ * @file Util.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
+ *
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
+ *
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Utility functions for DragonianLib
+ * @changes
+ *  > 2025/3/19 NaruseMioShirakana Refactored <
+ */
+
+#pragma once
 #include "Libraries/Base.h"
 
 #define _D_Dragonian_Lib_Template_Library_Space_Begin _D_Dragonian_Lib_Space_Begin namespace TemplateLibrary {
@@ -108,8 +131,7 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& operator=(const IteratorRanges& _Right) = delete;
 
 	template <typename _IteratorType2, typename = std::enable_if_t<
-		TypeTraits::IsIterator<_IteratorType2>&&
-		TypeTraits::CouldBeConvertedFromValue<_ValueType, decltype(*TypeTraits::InstanceOf<_IteratorType2>())>>>
+		TypeTraits::IsIterator<_IteratorType2>&& std::is_assignable_v<_ValueType, decltype(*TypeTraits::InstanceOf<_IteratorType2>())>>>
 		_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& Assign(const IteratorRanges<_IteratorType2>& _Right)
 	{
 		if (Size() != _Right.Size())
@@ -333,9 +355,21 @@ decltype(auto) Ranges(const _Type* _Begin, const _Type* _End)
 }
 
 template <typename _Type>
+decltype(auto) CRanges(const _Type* _Begin, const _Type* _End)
+{
+	return ConstantRanges<_Type>(_Begin, _End);
+}
+
+template <typename _Type>
 decltype(auto) Ranges(_Type* _Begin, _Type* _End)
 {
 	return MutableRanges<_Type>(_Begin, _End);
+}
+
+template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+decltype(auto) IRanges(_Type&& _Container)
+{
+	return IteratorRanges(Begin(std::forward<_Type>(_Container)), End(std::forward<_Type>(_Container)));
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>

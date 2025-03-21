@@ -1,4 +1,4 @@
-﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
+﻿#ifdef DRAGONIANLIB_ONNXRT_LIB_DDD
 #include "Libraries/Base.h"
 #include "../NetF0Predictors.hpp"
 #include "../DioF0Extractor.hpp"
@@ -23,6 +23,7 @@ Vector<float> RMVPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F
 			16000,
 			Params.HopSize * 16000 / Params.SamplingRate,
 			Params.F0Bins,
+			Params.WindowSize,
 			Params.F0Max,
 			Params.F0Min,
 			Params.UserParameter
@@ -41,6 +42,7 @@ Vector<float> RMVPEF0Extractor::ExtractF0(const Vector<int16_t>& PCMData, const 
 			16000,
 			Params.HopSize * 16000 / Params.SamplingRate,
 			Params.F0Bins,
+			Params.WindowSize,
 			Params.F0Max,
 			Params.F0Min,
 			Params.UserParameter
@@ -63,6 +65,7 @@ Vector<float> RMVPEF0Extractor::ExtractF0(
 				16000,
 				Params.HopSize * 16000 / Params.SamplingRate,
 				Params.F0Bins,
+				Params.WindowSize,
 				Params.F0Max,
 				Params.F0Min,
 				Params.UserParameter
@@ -111,6 +114,7 @@ Vector<float> MELPEF0Extractor::ExtractF0(const Vector<double>& PCMData, const F
 			16000,
 			Params.HopSize * 16000 / Params.SamplingRate,
 			Params.F0Bins,
+			Params.WindowSize,
 			Params.F0Max,
 			Params.F0Min,
 			Params.UserParameter
@@ -129,6 +133,7 @@ Vector<float> MELPEF0Extractor::ExtractF0(const Vector<int16_t>& PCMData, const 
 			16000,
 			Params.HopSize * 16000 / Params.SamplingRate,
 			Params.F0Bins,
+			Params.WindowSize,
 			Params.F0Max,
 			Params.F0Min,
 			Params.UserParameter
@@ -151,6 +156,7 @@ Vector<float> MELPEF0Extractor::ExtractF0(
 				16000,
 				Params.HopSize * 16000 / Params.SamplingRate,
 				Params.F0Bins,
+				Params.WindowSize,
 				Params.F0Max,
 				Params.F0Min,
 				Params.UserParameter

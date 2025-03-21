@@ -1,4 +1,27 @@
-﻿#pragma once
+﻿/**
+ * @file TypeTraits.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
+ *
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
+ *
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Type traits for DragonianLib
+ * @changes
+ *  > 2025/3/19 NaruseMioShirakana Refactored <
+ */
+
+#pragma once
 #include "TypeDef.h"
 
 #define _D_Dragonian_Lib_Type_Traits_Namespace_Begin _D_Dragonian_Lib_Space_Begin namespace TypeTraits {
@@ -292,6 +315,17 @@ template<typename Objt>
 constexpr bool IsCallableValue = _D_Dragonian_Lib_Type_Traits_Namespace IsCallable<
 	_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<Objt>>::_IsCallable;
 
+template <typename _Type>
+struct RemoveNoexcept { using _MyType = _Type; };
+template <typename _Ret, typename ..._ArgTypes>
+struct RemoveNoexcept<_Ret(_ArgTypes...) noexcept> { using _MyType = _Ret(_ArgTypes...); };
+template <typename _Ret, typename ..._ArgTypes>
+struct RemoveNoexcept<_Ret(_ArgTypes...) const noexcept> { using _MyType = _Ret(_ArgTypes...) const; };
+template <typename _Ret, typename ..._ArgTypes>
+struct RemoveNoexcept<_Ret(* const)(_ArgTypes...) noexcept> { using _MyType = _Ret(* const)(_ArgTypes...); };
+template <typename _Type>
+using RemoveNoexceptType = typename _D_Dragonian_Lib_Type_Traits_Namespace RemoveNoexcept<_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>>::_MyType;
+
 template<typename Objt>
 struct ExtractCallableTypeInfo
 {
@@ -315,7 +349,7 @@ struct ExtractCallableTypeInfo<_Ret(_ArgTypes...) const>
 template<typename Objt>
 struct ExtractCallableInfo
 {
-	using _Obj = _D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<Objt>;
+	using _Obj = _D_Dragonian_Lib_Type_Traits_Namespace RemoveNoexceptType<_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<Objt>>;
 	using _My_Callable = _D_Dragonian_Lib_Type_Traits_Namespace ExtractCallableTypeInfo<_Obj>;
 	using _Callable = _D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<typename _My_Callable::_Callable>;
 	using _ReturnType = typename _D_Dragonian_Lib_Type_Traits_Namespace ExtractCallableTypeInfo<_Callable>::_ReturnType;
@@ -325,24 +359,17 @@ template<typename Objt>
 using CallableType = typename _D_Dragonian_Lib_Type_Traits_Namespace
 ExtractCallableInfo<Objt>::_Callable;
 template<typename Objt>
-using Return_TypeType = typename _D_Dragonian_Lib_Type_Traits_Namespace
+using ReturnTypeType = typename _D_Dragonian_Lib_Type_Traits_Namespace
 ExtractCallableInfo<Objt>::_ReturnType;
 template<typename Objt>
-using Argument_TypesType = typename _D_Dragonian_Lib_Type_Traits_Namespace
+using ArgumentTypesType = typename _D_Dragonian_Lib_Type_Traits_Namespace
 ExtractCallableInfo<Objt>::_ArgumentTypes;
 
 template<typename FunType, typename ...ArgTypes>
-class IsInvokeable
+concept IsInvokeableValue = requires(FunType&& fn, ArgTypes&&... args)
 {
-	template<typename _FunType, typename ..._ArgTypes>
-	static constexpr auto Check(int) -> decltype(std::declval<_FunType>()(std::declval<_ArgTypes>()...), std::true_type()) { return{}; }
-	template<typename, typename ...>
-	static constexpr std::false_type Check(...) { return{}; }
-public:
-	static constexpr bool _IsInvokeable = decltype(Check<FunType, ArgTypes...>(0))::value;
+	{ std::forward<FunType>(fn)(std::forward<ArgTypes>(args)...) }; // Check if the function is callable
 };
-template<typename FunType, typename ...ArgTypes>
-constexpr bool IsInvokeableValue = _D_Dragonian_Lib_Type_Traits_Namespace IsInvokeable<FunType, ArgTypes...>::_IsInvokeable;
 
 template <int64_t Idx, int64_t Range>
 struct CalculateIndex

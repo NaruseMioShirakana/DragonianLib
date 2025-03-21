@@ -1,23 +1,25 @@
 ﻿/**
- * FileName: F0ExtractorManager.hpp
- * Note: DragonianLib F0提取器管理
+ * @file F0ExtractorManager.hpp
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib library.
- * DragonianLib library is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
- * date: 2022-10-17 Create
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief F0 Extractor Manager
+ * @changes
+ *  > 2025/3/21 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
 #include "BaseF0Extractor.hpp"
@@ -28,6 +30,7 @@
 _D_Dragonian_Lib_F0_Extractor_Header
 
 using F0Extractor = std::shared_ptr<BaseF0Extractor>;
+using Constructor = std::function<F0Extractor(const void*)>;
 
 struct NetF0ExtractorSetting
 {
@@ -36,18 +39,30 @@ struct NetF0ExtractorSetting
 };
 
 /**
- * @brief Register All F0Extractors in the directory
+ * @brief Register All F0Extractors in the directory, the name of the F0Extractor is the name of the file
  * @param _PluginRootDirectory Root directory of the F0Extractors
  */
-void RegisterF0Extractor(const std::wstring& _PluginRootDirectory);
+void RegisterF0Extractors(
+	const std::wstring& _PluginRootDirectory
+);
 
 /**
- * @brief Get a F0Extractor
+ * @brief Register a F0Extractor
+ * @param _PluginName Name of the F0Extractor
+ * @param _Constructor Constructor of the F0Extractor
+ */
+void RegisterF0Extractor(
+	const std::wstring& _PluginName,
+	const Constructor& _Constructor
+);
+
+/**
+ * @brief Create a new F0Extractor instance
  * @param Name Name of the F0Extractor
  * @param UserParameter User parameter
  * @return F0Extractor
  */
-F0Extractor GetF0Extractor(
+F0Extractor New(
     const std::wstring& Name,
     const void* UserParameter
 );

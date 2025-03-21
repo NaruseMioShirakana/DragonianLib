@@ -4,6 +4,15 @@
 
 _D_Dragonian_Lib_Dict_Header
 
+DLogger& GetDefaultLogger() noexcept
+{
+	static std::shared_ptr<Logger> DefaultLogger = std::make_shared<Logger>(
+		*_D_Dragonian_Lib_Namespace GetDefaultLogger(),
+		L"Tokenizer"
+	);
+	return DefaultLogger;
+}
+
 Vector<std::wstring> Tokenizer::SplitWithSymbol(
 	const std::wstring& _InputText,
 	const std::wregex& _RegularExpression,
@@ -341,26 +350,50 @@ void Tokenizer::Tokenize(
 	}
 }
 
-Vector<Tokenizer::TokenizerType> Tokenizer::operator()(const Vector<std::wstring>& _Tokens, bool _AddBegin, bool _AddEnd) const
+Tensor<Tokenizer::TokenizerType, 2, Device::CPU> Tokenizer::operator()(
+	const Vector<Vector<std::wstring>>& _Tokens,
+	bool _AddBegin,
+	bool _AddEnd
+	) const
 {
-	auto Result = DragonianLibSTL::Vector<TokenizerType>();
+	if (_Tokens.Empty())
+		_D_Dragonian_Lib_Throw_Exception("Tokens is empty");
 
-	if (_AddBegin)
-		Result.EmplaceBack(_MyVocab.at(_MyBeginText));
+	const auto TokenCount = static_cast<SizeType>(_Tokens.Front().Size()) + (_AddBegin ? 1 : 0) + (_AddEnd ? 1 : 0);
+	const auto Shape = Dimensions<2>{ static_cast<SizeType>(_Tokens.Size()), TokenCount };
+	
 
-	for (const auto& Token : _Tokens)
+	auto Result = Tensor<Tokenizer::TokenizerType, 2, Device::CPU>::New(Shape);
+	auto GDataBuffer = Result.Data();
+	TokenizerType UnkId;
+	_D_Dragonian_Lib_Rethrow_Block(UnkId = _MyVocab.at(_MyUNKText););
+
+	for (const auto [Index, _MyTokens] : Enumrate(_Tokens))
 	{
-		auto Match = _MyVocab.find(Token);
-		if (Match == _MyVocab.end())
-			Result.EmplaceBack(_MyVocab.at(_MyUNKText));
-		else
-			Result.EmplaceBack(Match->second);
+		Result.AppendTask(
+			[_AddBegin, _AddEnd, this, &_MyTokens, GDataBuffer, Index, TokenCount, UnkId]
+			{
+				auto DataBuffer = GDataBuffer + Index * TokenCount;
+
+				if (_AddBegin)
+					_D_Dragonian_Lib_Rethrow_Block(*DataBuffer++ = _MyVocab.at(_MyBeginText););
+
+				for (const auto& Token : _MyTokens)
+				{
+					auto Match = _MyVocab.find(Token);
+					if (Match == _MyVocab.end())
+						*DataBuffer++ = UnkId;
+					else
+						*DataBuffer++ = Match->second;
+				}
+
+				if (_AddEnd)
+					_D_Dragonian_Lib_Rethrow_Block(*DataBuffer = _MyVocab.at(_MyEndText););
+			}
+		);
 	}
 
-	if (_AddEnd)
-		Result.EmplaceBack(_MyVocab.at(_MyEndText));
-
-	return Result;
+	return std::move(Result.Evaluate());
 }
 
 Tokenizer::TokenizerType Tokenizer::GetToken(const std::wstring& _Token) const

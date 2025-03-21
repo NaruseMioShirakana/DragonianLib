@@ -51,7 +51,9 @@ template <
 			);
 		};
 
-	auto ContRedeceFn = [=](_Type* _DestBegin, const _Type* _SrcBegin, SizeType BatchCount, const std::shared_ptr<int>&)
+	if (TypeTraits::IsAvx256SupportedValue<_Type>)
+	{
+		auto ContRedeceFn = [=](_Type* _DestBegin, const _Type* _SrcBegin, SizeType BatchCount, const std::shared_ptr<int>&)
 		{
 			const auto _DestEnd = _DestBegin + BatchCount;
 			while (_DestBegin < _DestEnd)
@@ -66,18 +68,34 @@ template <
 			}
 		};
 
-	ImplMultiThreadCaller<2, _NRank, 1, _Type>(
-		_Dest,
-		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
-		_Src,
-		std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
-		nullptr,
-		nullptr,
-		std::make_shared<int>(0),
-		Continuous,
-		LoopFn,
-		ContRedeceFn
-	);
+		ImplMultiThreadCaller<2, _NRank, 1, _Type>(
+			_Dest,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			_Src,
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
+			nullptr,
+			nullptr,
+			std::make_shared<int>(0),
+			Continuous,
+			LoopFn,
+			ContRedeceFn
+		);
+	}
+	else
+	{
+		ImplMultiThreadCaller<2, _NRank, 1, _Type>(
+			_Dest,
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+			_Src,
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
+			nullptr,
+			nullptr,
+			std::make_shared<int>(0),
+			Continuous,
+			LoopFn,
+			0
+		);
+	}
 }
 
 template <typename _Type>

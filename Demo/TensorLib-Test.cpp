@@ -1,6 +1,10 @@
 ﻿#include "TensorLib/Include/Base/Tensor/Functional.h"
 #include <iostream>
 
+#include "Libraries/F0Extractor/DioF0Extractor.hpp"
+#include "OnnxLibrary/UnitsEncoder/Hubert.hpp"
+#include "OnnxLibrary/UnitsEncoder/TTA2X.hpp"
+
 auto MyLastTime = std::chrono::high_resolution_clock::now();
 size_t TotalStep = 0;
 void ShowProgressBar(size_t progress) {
@@ -39,33 +43,150 @@ void WithTimer(const Fn& fn)
 	std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
-#include "OnnxLibrary/SingingVoiceConversion/Api/header/NativeApi.h"	
+#include "OnnxLibrary/Base/OrtBase.hpp"
 #include "Libraries/AvCodec/AvCodec.h"
-
+	
 int main()
 {
 	DragonianLib::SetWorkerCount(16);
+	DragonianLib::SetTaskPoolSize(4);
 	DragonianLib::SetMaxTaskCountPerOperator(8);
 	DragonianLib::SetRandomSeed(114514);
 
+	auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
+	auto Tensor = AudioStream.DecodeAll(44100, 2);
+	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
+	);
+
+	auto Tensor1 = Tensor[{"441000:882000"}].Transpose(-1, -2).Continuous().Evaluate();
+
+	WithTimer(
+		[&]()
+		{
+			auto F0 = DragonianLib::F0Extractor::DioF0Extractor()(Tensor1, { 44100, 512, 256, 2048, 1100., 65., nullptr });
+			std::cout << F0[0] << '\n';
+			std::cout << F0[1] << '\n';
+		}
+	);
+	
+
+	OutStream.EncodeAll(
+		DragonianLib::TemplateLibrary::CRanges(Tensor1.Data(), Tensor1.Data() + Tensor1.ElementCount()),
+		44100,
+		2,
+		true
+	);
+
 	try
 	{
-		auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
-		auto _Audio = AudioStream.DecodeAll( 44100, 2, true);
-		auto OStream = DragonianLib::AvCodec::OpenOutputStream(44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)");
-		OStream.EncodeAll(
-			CRanges(_Audio),
-			44100,
-			2,
-			true
+		DragonianLib::OnnxRuntime::UnitsEncoder::HubertBase Model(
+			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
+			DragonianLib::OnnxRuntime::CreateEnvironment(
+				DragonianLib::OnnxRuntime::ExecutionProviders::CPU,
+				0,
+				8
+			),
+			16000,
+			768
+		);
+		DragonianLib::OnnxRuntime::UnitsEncoder::TTA2X Model2(
+			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
+			DragonianLib::OnnxRuntime::CreateEnvironment(
+				DragonianLib::OnnxRuntime::ExecutionProviders::CPU,
+				0,
+				8
+			),
+			16000,
+			768
+		);
+		WithTimer(
+			[&Model, &Tensor1]()
+			{
+				auto Ret = Model.Forward(Tensor1.View(1, 1, -1), 44100);
+				std::cout << Ret.Size() << '\n';
+			}
+		);
+		WithTimer(
+			[&Model2, &Tensor1]()
+			{
+				auto Ret = Model2.Forward(Tensor1.View(1, 1, -1), 44100);
+				std::cout << Ret.Size() << '\n';
+			}
 		);
 	}
 	catch (const std::exception& e)
 	{
-		std::cout << e.what();
+		std::wcout << e.what() << '\n';
 	}
 
 	return 0;
+
+	/*DragonianLib::SingingVoiceConversion::ReflowSvc Model(
+		{
+			L"DDSPSvc",
+			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
+			{},
+			{},
+			{
+				LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\encoder.onnx)",
+				LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\velocity.onnx)",
+				LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\after.onnx)",
+			},
+			{},
+			44100,
+			512,
+			768,
+			92,
+			true,
+			true,
+			false,
+			128,
+			0,
+			1000,
+			-12,
+			2,
+			65.f,
+			850.f,
+			1000.f,
+		},
+		ProgressCb,
+		DragonianLib::SingingVoiceConversion::LibSvcModule::ExecutionProviders::CUDA,
+		0,
+		8
+	);
+
+	DragonianLib::SingingVoiceConversion::InferenceParams Params;
+	DragonianLib::SingingVoiceConversion::CrossFadeParams Crossfade;
+	Params.VocoderModel = DragonianLib::DragonianLibOrtEnv::RefOrtCachedModel(
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)",
+		Model.GetDlEnv()
+	);
+	Params.Step = 10;
+	Params.TBegin = 1.0;
+	Params.MelFactor = 1.4f;
+	try
+	{
+		Audio = Model.InferenceWithCrossFade(
+		   CRanges(Audio),
+		   44100,
+		   Params,
+		   Crossfade,
+		   {
+			   44100, 512, 256, 2048, 850., 65., nullptr
+		   },
+		   L"Dio",
+		   {},
+		   -60.f
+	   );
+	}
+	catch (const std::exception& e)
+	{
+		std::wcout << e.what() << '\n';
+		return 0;
+	}*/
+
 	/*
 	auto Codec = DragonianLib::AvCodec::AvCodec();
 

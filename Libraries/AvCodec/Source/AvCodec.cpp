@@ -16,6 +16,7 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace AvCodec
 {
+	Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
 
 	static void* DefaultAlloc(size_t Size)
 	{
@@ -1718,7 +1719,7 @@ namespace AvCodec
 			}
 		if (!Found)
 		{
-			GetLogger().Log(LogLevel::Warn, L"Codec does not support the specified sample format, using the first supported format instead", GetLogger().GetLoggerId() + L"::AVCodec");
+			_D_Dragonian_Lib_Namespace AvCodec::AvCodecLogger.Log(L"Codec does not support the specified sample format, using the first supported format instead", Logger::LogLevel::Warn);
 			_OutputDataFormat = AVSampleFormat2PCMFormat(Codec->sample_fmts[0]);
 		}
 

@@ -405,3 +405,30 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 	} \
 } \
 struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
+
+#define _D_Dragonian_Lib_Operator_Cumulate_Function_Body(_Function) \
+{ \
+	if constexpr (_NRank == 1) \
+		return UnSqueeze(0)._Function##(-1).Squeeze(0); \
+	else \
+	{ \
+		_Axis = CalcIndex(_Axis, Rank()); \
+		if (Shape()[_Axis] == 1) \
+			return View(); \
+		auto TensorTmp = AxisFromTo(_Axis, -1); \
+		TensorTmp.WaitingAsArgument(); \
+		auto Result = Tensor<_TensorType, _NRank, _MyDevice>::New(Shape()); \
+		auto ResultView = Result.AxisFromTo(_Axis, -1); \
+		ResultView.WaitingAsResult(); \
+		Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \
+		( \
+			ResultView.Data(), \
+			ResultView.GetDefaultOperatorParameter(), \
+			TensorTmp.Data(), \
+			TensorTmp.GetDefaultOperatorParameter(), \
+			ResultView.IsContinuous() && TensorTmp.IsContinuous() \
+		); \
+		return Result; \
+	} \
+} \
+struct _D_Dragonian_Lib_Cumulate##_Function##_Defined_Tag

@@ -891,4 +891,124 @@ void OperatorsBase<_Type, Device::CPU>::ImplGather(
 	);
 }
 
+template<typename _Type>
+template<typename _MaskType, size_t _NRank>
+void OperatorsBase<_Type, Device::CPU>::ImplMaskedAssign(
+	_Type* _Dest,
+	const OperatorParameter<_NRank>& _DestInfo,
+	const _Type* _Src,
+	const OperatorParameter<_NRank>& _SrcInfo,
+	const _MaskType* _Mask,
+	const OperatorParameter<_NRank>& _MaskInfo,
+	bool Continuous
+)
+{
+	using OPP = std::shared_ptr<OperatorParameter<_NRank>>;
+
+	const auto Func = [=](int64_t _IndexA, int64_t _IndexB, int64_t _IndexC)
+		{
+			if (_Mask[_IndexC])
+				_Dest[_IndexA] = _Src[_IndexB];
+		};
+
+	auto Fn = [Func](_Type*, const OPP _MyDestInfoPointer, const _Type*, const OPP _MySrcInfoPointer, const _MaskType*, const OPP _MyMaskInfoPointer, const std::shared_ptr<int>&)
+		{
+
+			const auto& _MyDestInfo = *_MyDestInfoPointer;
+			const auto& _MySrcInfo = *_MySrcInfoPointer;
+			const auto& _MyMaskInfo = *_MyMaskInfoPointer;
+
+			const SizeType* __restrict Shape = _MyDestInfo.Shape.Data();
+			const SizeType* __restrict Begin = _MyDestInfo.Begin.Data();
+			const SizeType* __restrict ViewStride = _MyDestInfo.ViewStride.Data();
+			const SizeType* __restrict SrcViewStride = _MySrcInfo.ViewStride.Data();
+			const SizeType* __restrict MaskViewStride = _MyMaskInfo.ViewStride.Data();
+
+			TripleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
+				0, 0, 0,
+				Shape, Begin,
+				ViewStride, SrcViewStride, MaskViewStride,
+				Func
+			);
+		};
+
+	auto ContFn = [](_Type* _MyDest, const _Type* _MySrc, const _MaskType* _MyMask, SizeType _Count, const std::shared_ptr<int>&)
+		{
+			for (SizeType i = 0; i < _Count; ++i)
+				if (_MyMask[i])
+					_MyDest[i] = _MySrc[i];
+		};
+
+	ImplMultiThreadCaller<3, _NRank, 0>(
+		_Dest,
+		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+		_Src,
+		std::make_shared<OperatorParameter<_NRank>>(_SrcInfo),
+		_Mask,
+		std::make_shared<OperatorParameter<_NRank>>(_MaskInfo),
+		std::make_shared<int>(0),
+		Continuous,
+		Fn,
+		ContFn
+	);
+}
+
+template<typename _Type>
+template<typename _MaskType, size_t _NRank>
+void OperatorsBase<_Type, Device::CPU>::ImplMaskedAssignScalar(
+	_Type* _Dest,
+	const OperatorParameter<_NRank>& _DestInfo,
+	const _MaskType* _Mask,
+	const OperatorParameter<_NRank>& _MaskInfo,
+	const _Type& _Value,
+	bool Continuous
+)
+{
+	using OPP = std::shared_ptr<OperatorParameter<_NRank>>;
+
+	const auto Func = [=](int64_t _IndexA, int64_t _IndexC)
+		{
+			if (_Mask[_IndexC])
+				_Dest[_IndexA] = _Value;
+		};
+
+	auto Fn = [Func](_Type*, const OPP _MyDestInfoPointer, const _MaskType*, const OPP _MyMaskInfoPointer, const std::shared_ptr<int>&)
+		{
+			const auto& _MyDestInfo = *_MyDestInfoPointer;
+			const auto& _MyMaskInfo = *_MyMaskInfoPointer;
+
+			const SizeType* __restrict Shape = _MyDestInfo.Shape.Data();
+			const SizeType* __restrict Begin = _MyDestInfo.Begin.Data();
+			const SizeType* __restrict ViewStride = _MyDestInfo.ViewStride.Data();
+			const SizeType* __restrict MaskViewStride = _MyMaskInfo.ViewStride.Data();
+
+			DoubleTensorLoop<_NRank, _D_Dragonian_Lib_Operator_Assign_Tensor_Unfold>(
+				0, 0,
+				Shape, Begin,
+				ViewStride, MaskViewStride,
+				Func
+			);
+		};
+
+	auto ContFn = [=](_Type* _MyDest, const _MaskType* _MyMask, SizeType _Count, const std::shared_ptr<int>&)
+		{
+			for (SizeType i = 0; i < _Count; ++i)
+				if (_MyMask[i])
+					_MyDest[i] = _Value;
+		};
+
+	ImplMultiThreadCaller<2, _NRank, 0>(
+		_Dest,
+		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
+		_Mask,
+		std::make_shared<OperatorParameter<_NRank>>(_MaskInfo),
+		nullptr,
+		nullptr,
+		std::make_shared<int>(0),
+		Continuous,
+		Fn,
+		ContFn
+	);
+}
+
 _D_Dragonian_Lib_Operator_Space_End

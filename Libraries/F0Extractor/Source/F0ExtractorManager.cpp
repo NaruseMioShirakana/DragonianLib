@@ -5,28 +5,94 @@
 #include "Libraries/F0Extractor/NetF0Predictors.hpp"
 #include "Libraries/F0Extractor/PluginBasedF0Extractor.hpp"
 #include "Libraries/Base.h"
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <dirent.h>
-#include <sys/types.h>
-#endif
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-using GetF0ExtractorFn = std::function<F0Extractor(const void*)>;
-std::vector<std::wstring> F0ExtractorsList;
-std::unordered_map<std::wstring, GetF0ExtractorFn> RegisteredF0Extractors;
+std::vector<std::wstring> _GlobalF0ExtractorsList;
+std::unordered_map<std::wstring, Constructor> _GlobalRegisteredF0Extractors;
 
-F0Extractor GetF0Extractor(
+void RegisterPlugin(
+	const std::wstring& _PluginPath,
+	const std::wstring& _PluginName
+)
+{
+	if (_PluginPath.empty() || _PluginName.empty())
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Could not register plugin: " + _PluginName + L" at " + _PluginPath, L"F0ExtractorManager");
+		return;
+	}
+
+	if (_GlobalRegisteredF0Extractors.contains(_PluginName))
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"F0ExtractorManager");
+		return;
+	}
+	try
+	{
+		auto Plugin = std::make_shared<Plugin::MPlugin>(_PluginPath);
+		_GlobalRegisteredF0Extractors.emplace(
+			_PluginName,
+			[Plugin](const void* UserParameter) -> F0Extractor {
+				return std::make_shared<PluginF0Extractor>(Plugin, UserParameter);
+			}
+		);
+	}
+	catch (std::exception& e)
+	{
+		_D_Dragonian_Lib_Throw_Exception(e.what());
+	}
+	_GlobalF0ExtractorsList.emplace_back(_PluginName);
+}
+
+void RegisterF0Extractors(
+	const std::wstring& _PluginRootDirectory
+)
+{
+	if (_PluginRootDirectory.empty())
+		return;
+	std::filesystem::path PluginRootDirectory(_PluginRootDirectory);
+	for (const auto& PluginDirectoryEntry : std::filesystem::directory_iterator(PluginRootDirectory))
+	{
+		if (PluginDirectoryEntry.is_regular_file())
+		{
+			const auto Extension = PluginDirectoryEntry.path().extension().wstring();
+			if (Extension != L".dll" && Extension != L".so" && Extension != L".dylib")
+				continue;
+			const auto PluginName = PluginDirectoryEntry.path().stem().wstring();
+			RegisterPlugin(PluginDirectoryEntry.path().wstring(), PluginName);
+		}
+		else if (PluginDirectoryEntry.is_directory())
+		{
+			const auto PluginName = PluginDirectoryEntry.path().filename().wstring();
+			const auto PluginPath = PluginDirectoryEntry.path() / (PluginName + (_WIN32 ? L".dll" : L".so"));
+			RegisterPlugin(PluginPath.wstring(), PluginName);
+		}
+	}
+}
+
+void RegisterF0Extractor(
+	const std::wstring& _PluginName,
+	const Constructor& _Constructor
+)
+{
+	if (_GlobalRegisteredF0Extractors.contains(_PluginName))
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"F0ExtractorManager");
+		return;
+	}
+	_GlobalRegisteredF0Extractors.emplace(_PluginName, _Constructor);
+	_GlobalF0ExtractorsList.emplace_back(_PluginName);
+}
+
+F0Extractor New(
 	const std::wstring& Name,
 	const void* UserParameter
 )
 {
-	const auto F0ExtractorIt = RegisteredF0Extractors.find(Name);
+	const auto F0ExtractorIt = _GlobalRegisteredF0Extractors.find(Name);
 	try
 	{
-		if (F0ExtractorIt != RegisteredF0Extractors.end())
+		if (F0ExtractorIt != _GlobalRegisteredF0Extractors.end())
 			return F0ExtractorIt->second(UserParameter);
 	}
 	catch (std::exception& e)
@@ -36,154 +102,31 @@ F0Extractor GetF0Extractor(
 	_D_Dragonian_Lib_Throw_Exception("Unable To Find An Available F0Extractor");
 }
 
-void RegisterPlugin(const std::wstring& _PluginRootDirectory, const std::wstring& _PluginName)
-{
-	if (RegisteredF0Extractors.contains(_PluginName))
-		return;
-	const auto PluginPath = _PluginRootDirectory + L"\\" + _PluginName;
-	const auto _PluginFileName = _PluginName.substr(0, _PluginName.find_last_of('.'));
-	try
-	{
-		auto Plugin = std::make_shared<Plugin::MPlugin>(PluginPath);
-		RegisteredF0Extractors.emplace(_PluginFileName, [Plugin](const void* UserParameter) -> F0Extractor {
-			return std::make_shared<PluginF0Extractor>(Plugin, UserParameter);
-			});
-	}
-	catch (std::exception& e)
-	{
-		_D_Dragonian_Lib_Throw_Exception(e.what());
-	}
-	F0ExtractorsList.emplace_back(_PluginFileName);
-}
-
-void RegisterF0Extractor(const std::wstring& _PluginRootDirectory)
-{
-	if (_PluginRootDirectory.empty())
-		return;
-
-#ifdef _WIN32
-	WIN32_FIND_DATAW FindFileData;
-	HANDLE hFind = FindFirstFileW((_PluginRootDirectory + L"\\*.dll").c_str(), &FindFileData);
-	if (hFind == INVALID_HANDLE_VALUE)
-		return;
-	do
-	{
-		if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			continue;
-		if (FindFileData.cFileName[0] == L'.')
-			continue;
-		const auto PluginName = FindFileData.cFileName;
-		try
-		{
-			RegisterPlugin(_PluginRootDirectory, PluginName);
-		}
-		catch (std::exception& e)
-		{
-			FindClose(hFind);
-			_D_Dragonian_Lib_Throw_Exception(e.what());
-		}
-	} while (FindNextFileW(hFind, &FindFileData));
-	FindClose(hFind);
-#else
-	DIR* dir;
-	struct dirent* ptr;
-	if ((dir = opendir(_PluginRootDirectory.c_str())) == nullptr)
-		return;
-
-	while ((ptr = readdir(dir)) != nullptr)
-	{
-		if (ptr->d_type == DT_DIR)
-			continue;
-		const auto PluginName = ptr->d_name;
-		try {
-			RegisterPlugin(_PluginRootDirectory, PluginName);
-		}
-		catch (std::exception& e)
-		{
-			closedir(dir);
-			_D_Dragonian_Lib_Throw_Exception(e.what());
-		}
-	}
-	closedir(dir);
-#endif
-}
-
 const std::vector<std::wstring>& GetF0ExtractorList()
 {
-	return F0ExtractorsList;
+	return _GlobalF0ExtractorsList;
 }
 
 struct Init
 {
 	Init()
 	{
-		F0ExtractorsList.clear();
-		RegisteredF0Extractors.clear();
-		F0ExtractorsList.emplace_back(L"Dio");
-		RegisteredF0Extractors.emplace(L"Dio", [](const void* UserParameter) -> F0Extractor {
-			return std::make_shared<DioF0Extractor>();
-			});
-		F0ExtractorsList.emplace_back(L"Harvest");
-		RegisteredF0Extractors.emplace(L"Harvest", [](const void* UserParameter) -> F0Extractor {
-			return std::make_shared<HarvestF0Extractor>();
-			});
-#ifdef DRAGONIANLIB_ONNXRT_LIB
-		F0ExtractorsList.emplace_back(L"RMVPE");
-		RegisteredF0Extractors.emplace(L"RMVPE", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<RMVPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"MELPE");
-		RegisteredF0Extractors.emplace(L"MELPE", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"FCPE");
-		RegisteredF0Extractors.emplace(L"FCPE", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"Rmvpe");
-		RegisteredF0Extractors.emplace(L"Rmvpe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<RMVPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"Melpe");
-		RegisteredF0Extractors.emplace(L"Melpe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"Fcpe");
-		RegisteredF0Extractors.emplace(L"Fcpe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"RmvPe");
-		RegisteredF0Extractors.emplace(L"RmvPe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<RMVPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"MelPe");
-		RegisteredF0Extractors.emplace(L"MelPe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-		F0ExtractorsList.emplace_back(L"FcPe");
-		RegisteredF0Extractors.emplace(L"FcPe", [](const void* UserParameter) -> F0Extractor {
-			auto Params = (const NetF0ExtractorSetting*)UserParameter;
-			const auto& OrtEnv = *(std::shared_ptr<DragonianLibOrtEnv>*)Params->OrtEnv;
-			return std::make_shared<MELPEF0Extractor>(Params->ModelPath, OrtEnv);
-			});
-#endif
-		RegisterF0Extractor(GetCurrentFolder() + L"/Plugins/F0Extractor");
+		_GlobalF0ExtractorsList.clear();
+		_GlobalRegisteredF0Extractors.clear();
+
+		RegisterF0Extractor(
+			L"Dio",
+			[](const void*) -> F0Extractor {
+				return std::make_shared<DioF0Extractor>();
+			}
+		);
+		RegisterF0Extractor(
+			L"Harvest",
+			[](const void*) -> F0Extractor {
+				return std::make_shared<HarvestF0Extractor>();
+			}
+		);
+		RegisterF0Extractors(GetCurrentFolder() + L"/Plugins/F0Extractor");
 	}
 };
 Init _Valdef_Init;

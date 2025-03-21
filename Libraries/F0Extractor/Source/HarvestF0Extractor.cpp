@@ -4,20 +4,8 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-Vector<float> HarvestF0Extractor::ExtractF0(
-    const Vector<double>& PCMData,
-    const F0ExtractorParams& Params
-)
-{
-    auto RawF0 = Harvest(PCMData, Params);
-    auto Output = Vector<float>(RawF0.Size());
-    for (size_t i = 0; i < RawF0.Size(); ++i)
-        Output[i] = (float)RawF0[i];
-    return Output;
-}
-
-Vector<double> HarvestF0Extractor::Harvest(
-    const Vector<double>& PCMData,
+Tensor<Float64, 2, Device::CPU> HarvestF0Extractor::Harvest(
+    const Tensor<Float64, 2, Device::CPU>& PCMData,
     const F0ExtractorParams& Params
 )
 {
@@ -26,30 +14,52 @@ Vector<double> HarvestF0Extractor::Harvest(
     HarvestOption.f0_ceil = Params.F0Max;
     HarvestOption.f0_floor = Params.F0Min;
     HarvestOption.frame_period = 1000.0 * double(Params.HopSize) / double(Params.SamplingRate);
-	const auto PCMLen = PCMData.Size();
+    const auto PCMLen = PCMData.Size(1);
 
-    const size_t F0Length = GetSamplesForHarvest(int(Params.SamplingRate), (int)PCMLen, HarvestOption.frame_period);
-    auto TemporalPositions = Vector<double>(F0Length);
-    auto RawF0 = Vector<double>(F0Length);
-    auto ResultF0 = Vector<double>(F0Length);
-    ::Harvest(
-        PCMData.Data(),
-        (int)PCMLen,
+    const auto f0Length = GetSamplesForHarvest(
         int(Params.SamplingRate),
-        &HarvestOption,
-        TemporalPositions.Data(),
-        RawF0.Data()
-    );
-    StoneMask(
-        PCMData.Data(),
         (int)PCMLen,
-        int(Params.SamplingRate),
-        TemporalPositions.Data(),
-        RawF0.Data(),
-        (int)F0Length,
-        ResultF0.Data()
+        HarvestOption.frame_period
     );
-	return ResultF0;
+    auto MySamplingRate = int(Params.SamplingRate);
+
+    auto Shape = Dimensions<2>{ PCMData.Size(0), static_cast<Int64>(f0Length) };
+    auto ResultF0 = Tensor<Float64, 2, Device::CPU>::New(Shape);
+
+    for (SizeType i = 0; i < PCMData.Size(0); ++i)
+    {
+        ResultF0.AppendTask([=]
+            {
+                auto RawF0 = TemplateLibrary::Vector<double>(f0Length);
+                auto TemporalPositions = TemplateLibrary::Vector<double>(f0Length);
+                ::Harvest(
+                    PCMData.Data() + i * PCMLen,
+                    (int)PCMLen,
+                    MySamplingRate,
+                    &HarvestOption,
+                    TemporalPositions.Data(),
+                    RawF0.Data()
+                );
+                ::StoneMask(
+                    PCMData.Data() + i * PCMLen,
+                    (int)PCMLen,
+                    MySamplingRate,
+                    TemporalPositions.Data(),
+                    RawF0.Data(),
+                    f0Length,
+                    ResultF0.Data() + i * f0Length
+                );
+            });
+    }
+    return ResultF0;
+}
+
+Tensor<Float32, 2, Device::CPU> HarvestF0Extractor::ExtractF0(
+    const Tensor<Float64, 2, Device::CPU>& PCMData,
+    const F0ExtractorParams& Params
+)
+{
+    return Harvest(PCMData.Continuous().Evaluate(), Params).Cast<Float32>().Evaluate();
 }
 
 _D_Dragonian_Lib_F0_Extractor_End

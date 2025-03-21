@@ -1704,7 +1704,7 @@ namespace SimdTypeTraits
 					}
 					catch (std::exception& _Except)
 					{
-						LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
+						_D_Dragonian_Lib_Namespace GetDefaultLogger()->LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
 					}
 				}
 				else if constexpr (requires(Vectorized<_Type>&_a) { _Function(_a); })
@@ -1717,7 +1717,7 @@ namespace SimdTypeTraits
 					}
 					catch (std::exception& _Except)
 					{
-						LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
+						_D_Dragonian_Lib_Namespace GetDefaultLogger()->LogWarn(UTF8ToWideString(_Except.what()) + L" Some operator is not Avx256 implemented! It will fall back to scalar mode! ");
 					}
 				}
 			}

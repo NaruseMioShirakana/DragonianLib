@@ -1,11 +1,9 @@
 import torch
 import time
 
-emb = torch.randn((114,514,1919))
-for i in range(20):
-    begin = time.time()
-    emb + emb
-    print(time.time() - begin)
+
+emb = torch.arange(0, 36).view(1, 1, 6, 6).float()
+print(torch.nn.functional.interpolate(emb, scale_factor=1.5, align_corners=True, mode='bicubic'))
 
 
 '''
