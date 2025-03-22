@@ -41,10 +41,16 @@ template <typename ValueType, UInt64 Rank, Device Provider>
 using Tensor = DragonianLib::Tensor<ValueType, Rank, Provider>;
 
 /**
+ * @typedef OrtTuple
+ * @brief Tuple of Ort values
+ */
+using OrtTuple = std::vector<Ort::Value>;
+
+/**
  * @typedef ProgressCallback
  * @brief Callback function for progress updates
  */
-using ProgressCallback = std::function<void(size_t, size_t)>;
+using ProgressCallback = std::function<void(bool, Int64)>;
 
 /**
  * @enum ExecutionProviders
@@ -88,7 +94,8 @@ public:
         const std::shared_ptr<Logger>& _Logger = nullptr
     ) : _MyModelExecutionProvider(static_cast<ExecutionProviders>(_Environment->GetCurProvider())), _MyEnvironment(_Environment),
         _MyOnnxEnvironment(_Environment->GetEnv()), _MySessionOptions(_Environment->GetSessionOptions()),
-        _MyMemoryInfo(_Environment->GetMemoryInfo())
+		_MyMemoryInfo(_Environment->GetMemoryInfo()), _MyRunOptions(std::make_shared<Ort::RunOptions>()),
+		_MyModelPath(_ModelPath)
     {
         _D_Dragonian_Lib_Rethrow_Block(
             _MyModel = _D_Dragonian_Lib_Onnx_Runtime_Space RefOnnxRuntimeModel(_ModelPath, _Environment);
@@ -99,7 +106,17 @@ public:
 		_D_Dragonian_Lib_Rethrow_Block(GetIOInfo(););
     }
 
-    ~OnnxModelBase() noexcept = default;
+    ~OnnxModelBase() noexcept
+    {
+		static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+		std::wstring HexPtr;
+		{
+			std::wstringstream wss;
+			wss << std::hex << _MyModel.get();
+			wss >> HexPtr;
+		}
+		_MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L", PATH:\"" + _MyModelPath + L"\"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
+    }
 
     /**
      * @brief Get the DragonianLibOrtEnv
@@ -219,10 +236,6 @@ private:
 	{
 		_MyInputCount = _MyModel->GetInputCount();
 		_MyOutputCount = _MyModel->GetOutputCount();
-		if (_MyInputCount < 1 || _MyInputCount > 2)
-			_D_Dragonian_Lib_Throw_Exception("Invalid input count");
-		if (_MyOutputCount != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid output count");
 		for (Int64 i = 0; i < _MyInputCount; ++i)
 		{
 			_MyIONames.EmplaceBack(_MyModel->GetInputNameAllocated(i, GetDefaultOrtAllocator()).get());
@@ -251,6 +264,16 @@ public:
 		return static_cast<_TMyChild*>(this)->Forward(std::forward<_ArgumentTypes>(_Arguments)...);
 	}
 
+	void SetTerminate() const
+	{
+		_MyRunOptions->SetTerminate();
+	}
+
+	void UnTerminate() const
+	{
+		_MyRunOptions->UnsetTerminate();
+	}
+
 protected:
 	ExecutionProviders _MyModelExecutionProvider = ExecutionProviders::CPU; ///< Execution provider (device) of the model
 
@@ -274,6 +297,9 @@ protected:
 	TemplateLibrary::Vector<const char*> _MyOutputNames;
 	TemplateLibrary::Vector<TemplateLibrary::Vector<Int64>> _MyInputDims;
 	TemplateLibrary::Vector<TemplateLibrary::Vector<Int64>> _MyOutputDims;
+
+	std::shared_ptr<Ort::RunOptions> _MyRunOptions;
+	std::wstring _MyModelPath;
 };
 
 _D_Dragonian_Lib_Onnx_Runtime_End

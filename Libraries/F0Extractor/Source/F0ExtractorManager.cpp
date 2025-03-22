@@ -51,6 +51,11 @@ void RegisterF0Extractors(
 	if (_PluginRootDirectory.empty())
 		return;
 	std::filesystem::path PluginRootDirectory(_PluginRootDirectory);
+	if (!std::filesystem::exists(PluginRootDirectory))
+	{
+		Plugin::GetDefaultLogger()->LogWarn(L"Plugin root directory: " + _PluginRootDirectory + L" does not exist", L"F0ExtractorManager");
+		return;
+	}
 	for (const auto& PluginDirectoryEntry : std::filesystem::directory_iterator(PluginRootDirectory))
 	{
 		if (PluginDirectoryEntry.is_regular_file())

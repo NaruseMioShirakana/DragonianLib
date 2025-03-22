@@ -23,7 +23,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 	const F0ExtractorParams& Params
 )
 {
-	return ExtractF0(PCMData.Cast<Float64>(), Params);
+	return ExtractF0(PCMData.Cast<Float64>() / 32768., Params);
 }
 
 Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)

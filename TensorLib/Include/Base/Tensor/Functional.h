@@ -1,4 +1,27 @@
-﻿#pragma once
+﻿/**
+ * @file Functional.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
+ *
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
+ *
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Functional
+ * @changes
+ *  > 2025/3/22 NaruseMioShirakana Refactored <
+ */
+
+#pragma once
 #include "Tensor.h"
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include <ostream>
@@ -217,6 +240,45 @@ namespace Functional
 
 		template <typename ..._ArgTypes>
 		StackCatTraits(_ArgTypes&& ...) -> StackCatTraits<_ArgTypes...>;
+	}
+
+	template <typename _MyValueType>
+	void SimpleDrawVector(
+		const TemplateLibrary::ConstantRanges<_MyValueType>& _MyData,
+		std::ostream& _Stream, const int _GraphHeight = 10, const int _GraphWidth = 70
+	) {
+		if (!_MyData.Size()) {
+			_Stream << "No data to display.\n";
+			return;
+		}
+		auto [MinIt, MaxIt] = std::minmax_element(_MyData.Begin(), _MyData.End());
+		double MinValue = static_cast<double>(*MinIt); double MaxValue = static_cast<double>(*MaxIt);
+		TemplateLibrary::Vector<double> GraphData(_GraphWidth);
+		TemplateLibrary::Resample(
+			_MyData.Data(),
+			_MyData.Size(),
+			GraphData.Data(),
+			static_cast<size_t>(_GraphWidth)
+		);
+		for (auto& Value : GraphData)
+			Value = std::round((Value - MinValue) / (MaxValue - MinValue) * (_GraphHeight - 1));
+
+		for (size_t x = 0; x < _GraphWidth + 2; ++x)
+			_Stream << "-";
+		_Stream << "\n";
+		for (int y = _GraphHeight - 1; y >= 0; --y) {
+			_Stream << "|";
+			for (auto& Value : GraphData) {
+				if (static_cast<int>(Value) == y)
+					_Stream << "*";
+				else
+					_Stream << " ";
+			}
+			_Stream << "|\n";
+		}
+		for (size_t x = 0; x < _GraphWidth + 2; ++x)
+			_Stream << "-";
+		_Stream << "\n";
 	}
 
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice>

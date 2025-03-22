@@ -1,9 +1,6 @@
-﻿#include "TensorLib/Include/Base/Tensor/Functional.h"
-#include <iostream>
-
-#include "Libraries/F0Extractor/DioF0Extractor.hpp"
-#include "OnnxLibrary/UnitsEncoder/Hubert.hpp"
-#include "OnnxLibrary/UnitsEncoder/TTA2X.hpp"
+﻿#include <iostream>
+#include "Libraries/AvCodec/AvCodec.h"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Vits-Svc.hpp"
 
 auto MyLastTime = std::chrono::high_resolution_clock::now();
 size_t TotalStep = 0;
@@ -43,8 +40,7 @@ void WithTimer(const Fn& fn)
 	std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
 }
 
-#include "OnnxLibrary/Base/OrtBase.hpp"
-#include "Libraries/AvCodec/AvCodec.h"
+
 	
 int main()
 {
@@ -60,66 +56,60 @@ int main()
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
 	);
 
-	auto Tensor1 = Tensor[{"441000:882000"}].Transpose(-1, -2).Continuous().Evaluate();
+	auto Tensor1 = Tensor[{"882000:1764000"}].Transpose(-1, -2).Continuous().Evaluate();
 
-	WithTimer(
-		[&]()
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
+
+	hParams.OutputSamplingRate = 32000;
+	hParams.HopSize = 320;
+	hParams.ModelPaths = {
+		{ L"Model", LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ShirohaSo\ShirohaSo_SoVits.onnx)" }
+	};
+	hParams.HasSpeakerEmbedding = true;
+
+	auto Env = DragonianLib::OnnxRuntime::CreateEnvironment();
+
+	std::shared_ptr<DragonianLib::OnnxRuntime::SingingVoiceConversion::SingingVoiceConversionModule> Model =
+		std::make_shared<DragonianLib::OnnxRuntime::SingingVoiceConversion::SoftVitsSvcV2>(
+			Env,
+			hParams
+		);
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params;
+
+	auto Audio = Model->Inference(
+		Params,
+		Tensor1[0].View(1, 1, -1),
+		44100,
+		DragonianLib::OnnxRuntime::UnitsEncoder::New(
+			L"HubertBase",
+			LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\hubert.onnx)",
+			Env,
+			16000,
+			256
+		),
+		DragonianLib::F0Extractor::New(
+			L"Dio",
+			nullptr
+		),
 		{
-			auto F0 = DragonianLib::F0Extractor::DioF0Extractor()(Tensor1, { 44100, 512, 256, 2048, 1100., 65., nullptr });
-			std::cout << F0[0] << '\n';
-			std::cout << F0[1] << '\n';
+			44100,
+			320,
+			256,
+			2048,
+			1100.0,
+			50.0,
+			nullptr
 		}
 	);
+
+	DragonianLib::OnnxRuntime::UnrefOnnxRuntimeModel(LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ShirohaSo\ShirohaSo_SoVits.onnx)", Env);
 	
-
 	OutStream.EncodeAll(
-		DragonianLib::TemplateLibrary::CRanges(Tensor1.Data(), Tensor1.Data() + Tensor1.ElementCount()),
-		44100,
-		2,
-		true
+		DragonianLib::TemplateLibrary::CRanges(Audio.Data(), Audio.Data() + Audio.ElementCount()),
+		32000,
+		1
 	);
-
-	try
-	{
-		DragonianLib::OnnxRuntime::UnitsEncoder::HubertBase Model(
-			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
-			DragonianLib::OnnxRuntime::CreateEnvironment(
-				DragonianLib::OnnxRuntime::ExecutionProviders::CPU,
-				0,
-				8
-			),
-			16000,
-			768
-		);
-		DragonianLib::OnnxRuntime::UnitsEncoder::TTA2X Model2(
-			LR"(D:\VSGIT\MoeVoiceStudioSvc - Core - Cmd\x64\Debug\hubert\vec-768-layer-12.onnx)",
-			DragonianLib::OnnxRuntime::CreateEnvironment(
-				DragonianLib::OnnxRuntime::ExecutionProviders::CPU,
-				0,
-				8
-			),
-			16000,
-			768
-		);
-		WithTimer(
-			[&Model, &Tensor1]()
-			{
-				auto Ret = Model.Forward(Tensor1.View(1, 1, -1), 44100);
-				std::cout << Ret.Size() << '\n';
-			}
-		);
-		WithTimer(
-			[&Model2, &Tensor1]()
-			{
-				auto Ret = Model2.Forward(Tensor1.View(1, 1, -1), 44100);
-				std::cout << Ret.Size() << '\n';
-			}
-		);
-	}
-	catch (const std::exception& e)
-	{
-		std::wcout << e.what() << '\n';
-	}
 
 	return 0;
 

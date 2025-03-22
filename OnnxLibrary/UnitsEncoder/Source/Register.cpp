@@ -21,7 +21,6 @@ void RegisterUnitsEncoder(
 	_GlobalUnitsEncoderList.push_back(_PluginName);
 }
 
-
 UnitsEncoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,

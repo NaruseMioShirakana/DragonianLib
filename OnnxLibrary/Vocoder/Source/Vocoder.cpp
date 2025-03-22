@@ -23,15 +23,15 @@ VocoderBase::VocoderBase(
 	const bool InvalidInputCount = _MyInputCount != 1 && _MyInputCount != 2;
 	const bool InvalidOutputCount = _MyOutputCount != 1;
 	if (InvalidInputCount)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input count");
+		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected 1 or 2, got " + std::to_string(_MyInputCount));
 	if (InvalidOutputCount)
-		_D_Dragonian_Lib_Throw_Exception("Invalid output count");
+		_D_Dragonian_Lib_Throw_Exception("Invalid output count, expected 1, got " + std::to_string(_MyOutputCount));
 	const bool InvalidInputShape = _MyInputDims[0].Size() < 2 || _MyInputDims[0].Size() > 4 || _MyInputDims[1].Size() < 1 || _MyInputDims[1].Size() > 3;
 	const bool InvalidOutputShape = _MyOutputDims[0].Size() < 1 || _MyOutputDims[0].Size() > 3;
 	if (InvalidInputShape)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input shape");
+		_D_Dragonian_Lib_Throw_Exception("Invalid input shape, expected 2 to 4 and 1 to 3, got " + std::to_string(_MyInputDims[0].Size()) + " and " + std::to_string(_MyInputDims[1].Size()));
 	if (InvalidOutputShape)
-		_D_Dragonian_Lib_Throw_Exception("Invalid output shape");
+		_D_Dragonian_Lib_Throw_Exception("Invalid output shape, expected 1 to 3, got " + std::to_string(_MyOutputDims[0].Size()));
 
 	for (auto [Axis, Dim] : Enumrate(_MyInputDims[0]))
 		if (Dim == _MyMelBins)
@@ -49,10 +49,10 @@ VocoderBase::VocoderBase(
 			_MyBinAxis = 3;
 		}
 		else
-			_D_Dragonian_Lib_Throw_Exception("Invalid output dims");
+			_D_Dragonian_Lib_Throw_Exception("Invalid output dims, could not found the units axis");
 	}
 	if (_MyBinAxis < 2)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units axis");
+		_D_Dragonian_Lib_Throw_Exception("Invalid units axis, expected 2 or greater, got " + std::to_string(_MyBinAxis));
 
 	if (_MyBinAxis != 2)
 		LogWarn(L"Units axis is not the last axis, operations may be slow!");
@@ -177,7 +177,7 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	std::vector<Ort::Value> Outputs;
 
 	_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyModel->Run(
-		Ort::RunOptions{ nullptr },
+		*_MyRunOptions,
 		_MyInputNames.Data(),
 		Inputs.data(),
 		_MyInputCount,

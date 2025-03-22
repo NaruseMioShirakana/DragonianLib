@@ -1,21 +1,25 @@
 ﻿/**
- * FileName: Tensor.h
+ * @file Tensor.h
+ * @author NaruseMioShirakana
+ * @email shirakanamio@foxmail.com
+ * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
+ * @license GNU Affero General Public License v3.0
+ * @attentions
+ *  - This file is part of DragonianLib.
+ *  - DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
+ *  - GNU Affero General Public License as published by the Free Software Foundation, either version 3
+ *  - of the License, or any later version.
  *
- * Copyright (C) 2022-2024 NaruseMioShirakana (shirakanamio@foxmail.com)
+ *  - DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  - without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  - See the GNU Affero General Public License for more details.
  *
- * This file is part of DragonianLib.
- * DragonianLib is free software: you can redistribute it and/or modify it under the terms of the
- * GNU Affero General Public License as published by the Free Software Foundation, either version 3
- * of the License, or any later version.
- *
- * DragonianLib is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License along with Foobar.
- * If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- *
-*/
+ *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
+ *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+ * @brief Tensor of DragonianLib
+ * @changes
+ *  > 2025/3/22 NaruseMioShirakana Refactored <
+ */
 
 #pragma once
 
@@ -517,8 +521,8 @@ private:
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
 	{
-		decltype(auto) Bd = BroadCast(*this, _Other, Inplace);
-		return std::move(Bd.second);
+		auto [_Self, _That] = BroadCast(*this, _Other, Inplace);
+		return _That;
 	}
 
 public:
@@ -876,19 +880,7 @@ public:
 		return Tensor(MyShape, Buffer, BufferSize);
 	}
 
-	~Tensor() override
-	{
-		if constexpr (!std::is_trivially_copy_assignable_v<ValueType>)
-		{
-			if (_MyFirst.use_count() <= 1)
-			{
-				Evaluate();
-				auto IterData = (RawPointer)_MyFirst.get();
-				while (IterData != _MyLast)
-					IterData++->~ValueType();
-			}
-		}
-	}
+	~Tensor() override = default;
 
 private:
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool AllocateMemory(const Dimensions<_NRank>& MyShape, Allocator MyAlloc)
@@ -898,7 +890,12 @@ private:
 		const auto Size = MyShape.Multiply();
 		_MyFirst = Pointer(
 			MyAlloc.allocate(std::max(Size * sizeof(ValueType), 256ull)),
-			[MyAlloc](void* _Pointer) { MyAlloc.deallocate(_Pointer); }
+			[MyAlloc, Size](void* _Pointer)
+			{
+				auto _DataPointer = static_cast<ValueType*>(_Pointer);
+				TemplateLibrary::_Impl_Dragonian_Lib_Destroy_Range(_DataPointer, _DataPointer + Size);
+				MyAlloc.deallocate(_Pointer);
+			}
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + Size;
@@ -941,9 +938,10 @@ private:
 			ConstructViewInfo(MyShape);
 			if constexpr (std::is_constructible_v<ValueType, _First, _Rest...>)
 			{
+				auto NewObj = ValueType(std::forward<_First>(Arg0), std::forward<_Rest>(Args)...);
 				auto IterData = _MyData;
 				while (IterData != _MyLast)
-					TemplateLibrary::_Impl_Dragonian_Lib_Construct_At(*IterData++, std::forward<_First>(Arg0), std::forward<_Rest>(Args)...);
+					TemplateLibrary::_Impl_Dragonian_Lib_Construct_At(*IterData++, NewObj);
 			}
 		}
 	}
@@ -1501,6 +1499,37 @@ public:
 	}
 
 	/**
+	 * @brief Whether the tensor is empty (null).
+	 * @return true if the tensor is empty, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool Empty() const
+	{
+		return _MyFirst == nullptr;
+	}
+
+	/**
+	 * @brief Whether the tensor is null (empty).
+	 * @return true if the tensor is null, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool Null() const
+	{
+		return _MyData == nullptr;
+	}
+
+	/**
+	 * @brief Reset the tensor to null.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline void Clear()
+	{
+		_MyFirst = nullptr;
+		_MyData = nullptr;
+		_MyLast = nullptr;
+		_MyShapeIsBroadCasted = false;
+		_MyFuturesAsResult = nullptr;
+		_MyFuturesAsArgument = nullptr;
+	}
+
+	/**
 	 * @brief Get the default slice vector of the tensor.
 	 * @return The default slice vector of the tensor.
 	 */
@@ -1570,15 +1599,50 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
 	{
+		if (IsBroadCasted())
+			return false;
+
 		if (_MyViewStride[_NRank - 1] != 1)
 			return false;
 
-		auto Diff = _MyData - (const ValueType*)_MyFirst.get();
+		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = 1; i < _NRank; ++i)
 			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
 		
+	}
+
+	/**
+	 * @brief Check if the tensor is continuous in the specified range.
+	 * @return True if the tensor is continuous, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin, SizeType _End) const
+	{
+		_Begin = CalcIndex(_Begin, Rank());
+		_End = CalcIterator(_End, Rank());
+
+		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
+		for (SizeType i = _Begin; i < _End; ++i)
+			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
+				return false;
+		return true;
+	}
+
+	/**
+	 * @brief Check if the tensor is not sliced.
+	 * @return True if the tensor is not sliced, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool NotSliced(SizeType _Begin, SizeType _End) const
+	{
+		_Begin = CalcIndex(_Begin, Rank());
+		_End = CalcIterator(_End, Rank());
+
+		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
+		for (SizeType i = _Begin; i < _End; ++i)
+			if (Diff % _MyShape[i])
+				return false;
+		return true;
 	}
 
 	/**
@@ -2023,7 +2087,7 @@ public:
 
 		Tensor<_TensorType, _TRank, _MyDevice> Ret;
 		Ret._MyShape = _ViewShape;
-		if (DynamicAxes > 1)
+		if (DynamicAxes >= 1)
 			*std::ranges::find(Ret._MyShape, -1) = DynamicAxes;
 		auto _Begin = Ret._MyViewStride.ReversedBegin();
 		const auto _End = Ret._MyViewStride.ReversedEnd();
@@ -2273,8 +2337,9 @@ public:
 			NewTensorSlice[i].Begin = _PaddingCount[i].Begin;
 			NewTensorSlice[i].End = _PaddingCount[i].Begin + _MyShape[i];
 		}
-
+		
 		auto Ret = New(Shape);
+
 		Ret.WaitingAsResult();
 		Ret[NewTensorSlice].TensorAssign(*this);
 		if (_Type == PaddingType::Zero)
@@ -2337,7 +2402,7 @@ public:
 							const auto _Remainder = _MyShape[i] - _ThisCount;
 							SrcFront[i] = { ConstantPaddingPos + _Remainder, ConstantPaddingPos + _Remainder + _ThisCount };
 							RngFront[i].End = RngFront[i].Begin + _ThisCount;
-							Ret[RngFront].Assign(Ret.Slice(SrcFront));
+							Ret[RngFront].Assign(Ret[SrcFront]);
 							RngFront[i].Begin += _ThisCount;
 							PaddingPos -= _ThisCount;
 						}
@@ -2352,7 +2417,7 @@ public:
 							const auto _ThisCount = PaddingPos < _MyShape[i] ? PaddingPos : _MyShape[i];
 							SrcBack[i] = { ConstantPaddingPos, ConstantPaddingPos + _ThisCount };
 							RngBack[i].End = RngBack[i].Begin + _ThisCount;
-							Ret[RngBack].Assign(Ret.Slice(SrcBack));
+							Ret[RngBack].Assign(Ret[SrcBack]);
 							RngBack[i].Begin += _ThisCount;
 							PaddingPos -= _ThisCount;
 						}
@@ -2599,6 +2664,71 @@ public:
 			);
 
 		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&&
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>>>
+		decltype(auto) ClampMin(ValueType _Min) const
+	{
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape);
+		Ret.WaitingAsResult();
+		WaitingAsArgument();
+		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplMaxScalar
+		(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			Data(),
+			GetDefaultOperatorParameter(),
+			_Min,
+			Ret.IsContinuous() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&&
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>>>
+		decltype(auto) ClampMax(ValueType _Max) const
+	{
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape);
+		Ret.WaitingAsResult();
+		WaitingAsArgument();
+		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplMinScalar
+		(
+			Ret.Data(),
+			Ret.GetDefaultOperatorParameter(),
+			Data(),
+			GetDefaultOperatorParameter(),
+			_Max,
+			Ret.IsContinuous() && IsContinuous()
+		);
+		return Ret;
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&&
+		Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&&
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>>>
+		decltype(auto) Clamp(ValueType _Min, ValueType _Max) const
+	{
+		return ClampMin(_Min).ClampMax(_Max);
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&&
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>>>
+		decltype(auto) Min(ValueType _Min) const
+	{
+		return ClampMax(_Min);
+	}
+
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&&
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_default_constructible_v<_CurValueType>>>
+		decltype(auto) Max(ValueType _Max) const
+	{
+		return ClampMin(_Max);
 	}
 
 	/*

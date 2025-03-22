@@ -48,11 +48,10 @@ template <typename ValueType>
 _D_Dragonian_Lib_Constexpr_Force_Inline void
 _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
 {
-    if (_First >= _Last)
-        return;
-
     if constexpr (!std::is_trivially_destructible_v<ValueType>)
     {
+        if (_First >= _Last)
+            return;
         const auto Size = static_cast<size_t>(_Last - _First);
         size_t i = 0;
         if (Size >= _D_Dragonian_Lib_Stl_Unfold_Count)

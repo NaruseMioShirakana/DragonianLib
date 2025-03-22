@@ -9,8 +9,6 @@
 
 _D_Dragonian_Lib_Onnx_Runtime_Header
 
-std::unordered_map<std::wstring, std::shared_ptr<OnnxRuntimeEnviromentBase>> GlobalOrtEnvCache;
-
 DLogger& GetDefaultLogger() noexcept
 {
 	static DLogger _MyLogger = std::make_shared<Logger>(
@@ -19,6 +17,8 @@ DLogger& GetDefaultLogger() noexcept
 	);
 	return _MyLogger;
 }
+
+std::unordered_map<std::wstring, std::shared_ptr<OnnxRuntimeEnviromentBase>> GlobalOrtEnvCache;
 
 const char* logger_id = "DragonianLib-OnnxRuntime";
 
@@ -69,10 +69,16 @@ inline std::vector<std::string> GlobalOrtCUDAOptionValueStrings{
 
 OnnxRuntimeEnviromentBase::~OnnxRuntimeEnviromentBase()
 {
-	auto _MLogger = Logger(L"DragonianLib::OnnxRuntime");
-	_MLogger.LogMessage(L"Destroying Env With Provider:[" + std::to_wstring(_MyProvider) + L"] DeviceID:[" + std::to_wstring(_MyDeviceID) + L']' + L" ThreadCount:[" + std::to_wstring(_MyThreadCount) + L']');
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring HexPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << this;
+		wss >> HexPtr;
+	}
+	_MyStaticLogger->LogMessage(L"Destroying Envireoment: Instance[PTR:" + HexPtr + L", Provider:" + std::to_wstring(GetCurProvider()) + L", DeviceID:" + std::to_wstring(GetCurDeviceID()) + L", ThreadCount:" + std::to_wstring(GetCurThreadCount()) + L']');
 	GlobalOrtModelCache.clear();
-	_MLogger.LogMessage(L"Env Destroyed");
+	_MyStaticLogger->LogMessage(L"Envireoment Destroyed: Instance[PTR:" + HexPtr + L']');
 }
 
 OnnxRuntimeEnviromentBase::OnnxRuntimeEnviromentBase(unsigned ThreadCount, unsigned DeviceID, unsigned Provider)
@@ -101,12 +107,15 @@ void OnnxRuntimeEnviromentBase::Load(unsigned ThreadCount, unsigned DeviceID, un
 
 void OnnxRuntimeEnviromentBase::Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_)
 {
-	_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->LogInfo(
-		L"Creating Env With Provider:[" +
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	_MyStaticLogger->LogInfo(
+		L"Creating Envireoment With Provider:[" +
 		std::to_wstring(ExecutionProvider_) +
-		L"] DeviceID:[" +
+		L"], DeviceID:[" +
 		std::to_wstring(DeviceID_)
-		+ L']'
+		+ L"], ThreadCount:[" +
+		std::to_wstring(ThreadCount_) +
+		L"]"
 	);
 
 	static const OrtApi& GlobalOrtApi = Ort::GetApi();
@@ -180,7 +189,7 @@ void OnnxRuntimeEnviromentBase::Create(unsigned ThreadCount_, unsigned DeviceID_
 		_D_Dragonian_Lib_Throw_Exception("Invalid Execution Provider");
 	}
 
-	_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->LogInfo(L"Env Created");
+	_MyStaticLogger->LogInfo(L"Envireoment Created With Provider:[" + std::to_wstring(ExecutionProvider_) + L"], DeviceID:[" + std::to_wstring(DeviceID_) + L"], ThreadCount:[" + std::to_wstring(ThreadCount_) + L"]");
 }
 
 OnnxRuntimeModel& OnnxRuntimeEnviromentBase::RefOrtCachedModel(
@@ -188,16 +197,50 @@ OnnxRuntimeModel& OnnxRuntimeEnviromentBase::RefOrtCachedModel(
 	const OnnxRuntimeEnviroment& Env_
 )
 {
-	const auto ID = std::to_wstring(uint64_t(&Env_)) + L" EP:" + std::to_wstring(Env_->GetCurProvider()) +
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+
+	std::wstring EnvPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << Env_.get();
+		wss >> EnvPtr;
+	}
+	const auto RawID = EnvPtr +
+		L" EP:" + std::to_wstring(Env_->GetCurProvider()) +
 		L" DEVICE:" + std::to_wstring(Env_->GetCurDeviceID()) +
-		L" THREAD:" + std::to_wstring(Env_->GetCurThreadCount()) +
-		L" PATH:" + Path_;
+		L" THREAD:" + std::to_wstring(Env_->GetCurThreadCount());
+	const auto ID = RawID + L" PATH:" + Path_;
+
 	auto Iter = Env_->GlobalOrtModelCache.find(ID);
 	if (Iter != Env_->GlobalOrtModelCache.end())
+	{
+		std::wstring HexPtr;
+		{
+			std::wstringstream wss;
+			wss << std::hex << Iter->second.get();
+			wss >> HexPtr;
+		}
+		_MyStaticLogger->LogInfo(L"Referencing Model: Instance[PTR:" + HexPtr + L", PATH:\"" + Path_ + L"\"], Current Referece Count: " + std::to_wstring(Iter->second.use_count()));
 		return Iter->second;
+	}
 	try
 	{
-		return Env_->GlobalOrtModelCache[ID] = std::make_shared<Ort::Session>(*Env_->GetEnv(), Path_.c_str(), *Env_->GetSessionOptions());
+		_MyStaticLogger->LogInfo(L"Loading Model: \"" + Path_ + L"\" With OnnxEnvironment: Instance[PTR:" + RawID + L"], Current Referece Count: 1");
+		auto _DeleterLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+		return Env_->GlobalOrtModelCache[ID] = std::shared_ptr<Ort::Session>(
+			new Ort::Session(*Env_->GetEnv(), Path_.c_str(), *Env_->GetSessionOptions()),
+			[_DeleterLogger, Path_](const Ort::Session* Ptr)
+			{
+				std::wstring HexPtr;
+				{
+					std::wstringstream wss;
+					wss << std::hex << Ptr;
+					wss >> HexPtr;
+				}
+				delete Ptr;
+				_DeleterLogger->LogInfo(L"Model Unloaded: Instance[PTR:" + HexPtr + L", PATH:\"" + Path_ + L"\"], Current Referece Count: 0");
+			}
+		);
 	}
 	catch (std::exception& e)
 	{
@@ -210,13 +253,30 @@ void OnnxRuntimeEnviromentBase::UnRefOrtCachedModel(
 	const OnnxRuntimeEnviroment& Env_
 )
 {
-	const auto ID = std::to_wstring(uint64_t(&Env_)) + L" EP:" + std::to_wstring(Env_->GetCurProvider()) +
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring EnvPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << Env_.get();
+		wss >> EnvPtr;
+	}
+	const auto RawID = EnvPtr +
+		L" EP:" + std::to_wstring(Env_->GetCurProvider()) +
 		L" DEVICE:" + std::to_wstring(Env_->GetCurDeviceID()) +
-		L" THREAD:" + std::to_wstring(Env_->GetCurThreadCount()) +
-		L" PATH:" + Path_;
+		L" THREAD:" + std::to_wstring(Env_->GetCurThreadCount());
+	const auto ID = RawID + L" PATH:" + Path_;
 	auto Iter = Env_->GlobalOrtModelCache.find(ID);
 	if (Iter != Env_->GlobalOrtModelCache.end())
+	{
+		std::wstring HexPtr;
+		{
+			std::wstringstream wss;
+			wss << std::hex << Iter->second.get();
+			wss >> HexPtr;
+		}
+		_MyStaticLogger->LogInfo(L"UnReference Model: Instance[PTR:" + HexPtr + L", PATH:\"" + Path_ + L"\"], Current Referece Count: " + std::to_wstring(Iter->second.use_count()));
 		Env_->GlobalOrtModelCache.erase(Iter);
+	}
 }
 
 void OnnxRuntimeEnviromentBase::ClearModelCache(

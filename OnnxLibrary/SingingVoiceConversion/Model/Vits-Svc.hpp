@@ -19,6 +19,8 @@
  * @brief Vits based Singing Voice Conversion
  * @changes
  *  > 2025/3/21 NaruseMioShirakana Created <
+ *  > 2025/3/22 NaruseMioShirakana Add VitsSvc <
+ *	> 2025/3/23 NaruseMioShirakana Add SoftVitsSvcV2 <
  */
 
 #pragma once
@@ -26,7 +28,63 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
+/**
+* @class VitsSvc
+* @brief Vits based Singing Voice Conversion, extended parameters is ["NoiseDims"], model path is ["Model"]
+*/
+class VitsSvc : public SingingVoiceConversionModule, public OnnxModelBase<VitsSvc>
+{
+public:
+	using _MyBase = OnnxModelBase<VitsSvc>;
 
+	VitsSvc() = delete;
+	VitsSvc(
+		const OnnxRuntimeEnviroment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()
+	);
+	~VitsSvc() override = default;
 
+	Tensor<Float32, 4, Device::CPU> Inference(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
+
+	SliceDatas PreProcess(
+		const Parameters& Params,
+		SliceDatas&& InputDatas
+	) const override = 0;
+
+protected:
+	Int64 _MyNoiseDims = 192;
+
+public:
+	VitsSvc(const VitsSvc&) = default;
+	VitsSvc(VitsSvc&&) noexcept = default;
+	VitsSvc& operator=(const VitsSvc&) = default;
+	VitsSvc& operator=(VitsSvc&&) noexcept = default;
+};
+
+class SoftVitsSvcV2 : public VitsSvc
+{
+public:
+	SoftVitsSvcV2() = delete;
+	SoftVitsSvcV2(
+		const OnnxRuntimeEnviroment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()
+	);
+	~SoftVitsSvcV2() override = default;
+
+	SoftVitsSvcV2(const SoftVitsSvcV2&) = default;
+	SoftVitsSvcV2(SoftVitsSvcV2&&) noexcept = default;
+	SoftVitsSvcV2& operator=(const SoftVitsSvcV2&) = default;
+	SoftVitsSvcV2& operator=(SoftVitsSvcV2&&) noexcept = default;
+
+	SliceDatas PreProcess(
+		const Parameters& Params,
+		SliceDatas&& InputDatas
+	) const override;
+};
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

@@ -367,7 +367,7 @@ decltype(auto) Ranges(_Type* _Begin, _Type* _End)
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) IRanges(_Type&& _Container)
+decltype(auto) ORanges(_Type&& _Container)
 {
 	return IteratorRanges(Begin(std::forward<_Type>(_Container)), End(std::forward<_Type>(_Container)));
 }

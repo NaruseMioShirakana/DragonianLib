@@ -66,7 +66,7 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float6
 Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
 {
 	if (!_MyExtractI16)
-		return ExtractF0(PCMData.Cast<Float32>(), Params);
+		return ExtractF0(PCMData.Cast<Float32>() / 32768.f, Params);
 
 	const auto Channel = PCMData.Size(0);
 	const auto DataSize = PCMData.Size(1);

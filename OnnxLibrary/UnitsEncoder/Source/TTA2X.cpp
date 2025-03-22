@@ -17,32 +17,44 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 
 	Tensor<Float32, 3, Device::CPU> _MaskPadded;
 
-	std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> _MaskPaddedOpt = std::nullopt;
 	if (_Mask.has_value())
 	{
-		_MaskPadded = _Mask->get().Padding(
+		_D_Dragonian_Lib_Rethrow_Block(_MaskPadded = _Mask->get().Padding(
 			{
 				None,
 				None,
 				{160, 0}
 			},
 			PaddingType::Zero
-		).Evaluate();
-		_MaskPaddedOpt = _MaskPadded;
+		).Evaluate(););
 	}
 
-	_D_Dragonian_Lib_Rethrow_Block(Feats2 = InferenceModel(
-		_PCMData.Padding(
-			{
-				None,
-				None,
-				{160, 0}
-			},
-			PaddingType::Zero
-		).Evaluate(),
-		_SamplingRate,
-		_MaskPaddedOpt
-	).Evaluate(););
+	if (_Mask.has_value())
+		_D_Dragonian_Lib_Rethrow_Block(Feats2 = InferenceModel(
+			_PCMData.Padding(
+				{
+					None,
+					None,
+					{160, 0}
+				},
+				PaddingType::Zero
+			).Evaluate(),
+			_SamplingRate,
+			_MaskPadded
+		).Evaluate(););
+	else
+		_D_Dragonian_Lib_Rethrow_Block(Feats2 = InferenceModel(
+			_PCMData.Padding(
+				{
+					None,
+					None,
+					{160, 0}
+				},
+				PaddingType::Zero
+			).Evaluate(),
+			_SamplingRate,
+			std::nullopt
+		).Evaluate(););
 
 	const auto PaddingCount = Feats2.Size(2) - Feats.Size(2);
 	const auto BatchSize = Feats.Size(0);
@@ -70,7 +82,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	return FeatsTTA.Continuous().Evaluate();
+	_D_Dragonian_Lib_Rethrow_Block(return FeatsTTA.Continuous().Evaluate(););
 }
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_End
