@@ -245,8 +245,10 @@ public:
 	using DependencyChainType = typename Operators::OperatorParameter<_NRank>::DependencyChainType;
 	using DependencyChainPointer = typename Operators::OperatorParameter<_NRank>::DependencyChainPointer;
 	static constexpr auto _Device = _MyDevice;
-	static constexpr auto _DType = _Impl_Dragonian_Lib_Decldtype_v<_TensorType>;
+	static constexpr auto _DType = Type2TensorType<_TensorType>;
 	using Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>;
+
+	auto CreateShared() const { return std::make_shared<Tensor<_TensorType, _NRank, _MyDevice>>(*this); }
 
 	Tensor() = default;
 
@@ -1440,6 +1442,7 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
 	{
+		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
 		return _MyShape[_Index];
 	}
 
@@ -1477,6 +1480,7 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
 	{
+		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
 		return _MyShape[_Index];
 	}
 

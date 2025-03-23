@@ -60,43 +60,56 @@ enum class DType
 	Complex32,
 	Complex64,
 	BFloat16,
+	Float8E4M3FN,
+	Float8E4M3FNUZ,
+	Float8E5M2,
+	Float8E5M2FNUZ,
 	Unknown
 };
 
 template<typename _Type>
-struct _Impl_Dragonian_Lib_Decldtype { static constexpr auto _DType = DType::Unknown; };
+struct _ImplType2TensorType { static constexpr auto _DType = DType::Unknown; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<bool> { static constexpr auto _DType = DType::Bool; };
+struct _ImplType2TensorType<bool> { static constexpr auto _DType = DType::Bool; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Int8> { static constexpr auto _DType = DType::Int8; };
+struct _ImplType2TensorType<Int8> { static constexpr auto _DType = DType::Int8; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Int16> { static constexpr auto _DType = DType::Int16; };
+struct _ImplType2TensorType<Int16> { static constexpr auto _DType = DType::Int16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Int32> { static constexpr auto _DType = DType::Int32; };
+struct _ImplType2TensorType<Int32> { static constexpr auto _DType = DType::Int32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Int64> { static constexpr auto _DType = DType::Int64; };
+struct _ImplType2TensorType<Int64> { static constexpr auto _DType = DType::Int64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<UInt8> { static constexpr auto _DType = DType::UInt8; };
+struct _ImplType2TensorType<UInt8> { static constexpr auto _DType = DType::UInt8; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<UInt16> { static constexpr auto _DType = DType::UInt16; };
+struct _ImplType2TensorType<UInt16> { static constexpr auto _DType = DType::UInt16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<UInt32> { static constexpr auto _DType = DType::UInt32; };
+struct _ImplType2TensorType<UInt32> { static constexpr auto _DType = DType::UInt32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<UInt64> { static constexpr auto _DType = DType::UInt64; };
+struct _ImplType2TensorType<UInt64> { static constexpr auto _DType = DType::UInt64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Float16> { static constexpr auto _DType = DType::Float16; };
+struct _ImplType2TensorType<Float16> { static constexpr auto _DType = DType::Float16; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Float32> { static constexpr auto _DType = DType::Float32; };
+struct _ImplType2TensorType<Float32> { static constexpr auto _DType = DType::Float32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Float64> { static constexpr auto _DType = DType::Float64; };
+struct _ImplType2TensorType<Float64> { static constexpr auto _DType = DType::Float64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Complex32> { static constexpr auto _DType = DType::Complex32; };
+struct _ImplType2TensorType<Complex32> { static constexpr auto _DType = DType::Complex32; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<Complex64> { static constexpr auto _DType = DType::Complex64; };
+struct _ImplType2TensorType<Complex64> { static constexpr auto _DType = DType::Complex64; };
 template<>
-struct _Impl_Dragonian_Lib_Decldtype<BFloat16> { static constexpr auto _DType = DType::BFloat16; };
+struct _ImplType2TensorType<BFloat16> { static constexpr auto _DType = DType::BFloat16; };
+template<>
+struct _ImplType2TensorType<Float8E4M3FN> { static constexpr auto _DType = DType::Float8E4M3FN; };
+template<>
+struct _ImplType2TensorType<Float8E4M3FNUZ> { static constexpr auto _DType = DType::Float8E4M3FNUZ; };
+template<>
+struct _ImplType2TensorType<Float8E5M2> { static constexpr auto _DType = DType::Float8E5M2; };
+template<>
+struct _ImplType2TensorType<Float8E5M2FNUZ> { static constexpr auto _DType = DType::Float8E5M2FNUZ; };
+
 template<typename _Type>
-constexpr auto _Impl_Dragonian_Lib_Decldtype_v = _Impl_Dragonian_Lib_Decldtype<_Type>::_DType;
+constexpr auto Type2TensorType = _ImplType2TensorType<_Type>::_DType;
 
 //using Dimensions = Vector<SizeType>; ///< Alias for vector of size types
 //using ShapeIterator = Dimensions::Iterator; ///< Alias for iterator of shape type

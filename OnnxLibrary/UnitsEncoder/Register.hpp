@@ -29,7 +29,7 @@ _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 using UnitsEncoder = std::shared_ptr<UnitsEncoderBase>;
 using Constructor = std::function< UnitsEncoder(
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate,
 	Int64 _UnitsDims,
 	const std::shared_ptr<Logger>& _Logger
@@ -49,7 +49,7 @@ void RegisterUnitsEncoder(
  * @brief Create a new UnitsEncoder instance
  * @param Name Name of the UnitsEncoder
  * @param _Path Path of the model
- * @param _Enviroment OnnxRuntime enviroment
+ * @param _Environment OnnxRuntime enviroment
  * @param _SamplingRate Sampling rate of the model
  * @param _UnitsDims Units dims of the model
  * @param _Logger Logger
@@ -58,7 +58,7 @@ void RegisterUnitsEncoder(
 UnitsEncoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate = 16000,
 	Int64 _UnitsDims = 768,
 	const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_UnitsEncoder_Space GetDefaultLogger()

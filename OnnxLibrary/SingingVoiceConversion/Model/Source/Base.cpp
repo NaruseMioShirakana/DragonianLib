@@ -56,6 +56,9 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 
 	Audio.Evaluate();
 
+	InferenceDatas.SourceSampleRate = SourceSampleRate;
+	InferenceDatas.SourceSampleCount = Length;
+
 	_D_Dragonian_Lib_Rethrow_Block(
 		InferenceDatas.Units = (*UnitsEncoder)(Audio, SourceSampleRate, AudioMask).Evaluate();
 	);
@@ -81,42 +84,26 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 
 	if (_HasVolumeEmbedding)
 		_D_Dragonian_Lib_Rethrow_Block(
-			InferenceDatas.Volume = ExtractVolume(Audio, _MyHopSize >> 4, SourceSampleRate >> 3).Evaluate();
-		);
-
-	if (_HasSpeakerMixLayer)
-	{
-		using SpkMixType = Tensor<Float32, 4, Device::CPU>;
-		const auto OutputAudioLength = Length * _MyOutputSamplingRate / SourceSampleRate;
-		const auto OutputFrame = OutputAudioLength / _MyHopSize + 1;
-		_D_Dragonian_Lib_Rethrow_Block(
-			InferenceDatas.Speaker = SpkMixType::Zeros(
-				{ BatchSize, Channels, OutputFrame, _MySpeakerCount }
+			InferenceDatas.Volume = ExtractVolume(
+				Audio,
+				SourceSampleRate * _MyHopSize / _MyOutputSamplingRate,
+				SourceSampleRate >> 4
 			).Evaluate();
 		);
-	}
-	else if (_HasSpeakerEmbedding)
-	{
-		using SpkType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(
-			InferenceDatas.SpeakerId = SpkType::ConstantOf(
-				{ BatchSize, Channels, 1 }, Params.SpeakerId
-			).Evaluate();
-		);
-	}
 
 	InferenceDatas.GTAudio = Audio.View();
 	InferenceDatas.GTSampleRate = SourceSampleRate;
 
-	_D_Dragonian_Lib_Rethrow_Block(return Inference(Params, PreProcess(Params, InferenceDatas)););
+	_D_Dragonian_Lib_Rethrow_Block(return Forward(Params, VPreprocess(Params, std::move(InferenceDatas))););
 }
 
-SliceDatas SingingVoiceConversionModule::PreProcess(
+SliceDatas SingingVoiceConversionModule::Preprocess(
 	const Parameters& Params,
 	const SliceDatas& InferenceDatas
 ) const
 {
 	SliceDatas Ret;
+	Ret.SourceSampleRate = InferenceDatas.SourceSampleRate;
 	Ret.SourceSampleCount = InferenceDatas.SourceSampleCount;
 
 	if (!InferenceDatas.Units.Null())
@@ -127,6 +114,9 @@ SliceDatas SingingVoiceConversionModule::PreProcess(
 
 	if (InferenceDatas.Volume && !InferenceDatas.Volume->Null())
 		Ret.Volume = InferenceDatas.Volume->Clone();
+
+	if (InferenceDatas.UnVoice && !InferenceDatas.UnVoice->Null())
+		Ret.UnVoice = InferenceDatas.UnVoice->Clone();
 
 	if (InferenceDatas.F0Embed && !InferenceDatas.F0Embed->Null())
 		Ret.F0Embed = InferenceDatas.F0Embed->Clone();
@@ -154,7 +144,7 @@ SliceDatas SingingVoiceConversionModule::PreProcess(
 
 	Ret.GTSampleRate = InferenceDatas.GTSampleRate;
 
-	return PreProcess(Params, std::move(Ret));
+	return VPreprocess(Params, std::move(Ret));
 }
 
 Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::NormSpec(
@@ -271,5 +261,72 @@ Tensor<Int64, 3, Device::CPU> SingingVoiceConversionModule::GetF0Embed(
 	}
 	return std::move(F0Embed.Evaluate());
 }
+
+Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::InterpolateUnVoicedF0(
+	const Tensor<Float32, 3, Device::CPU>& F0
+)
+{
+	auto F0Cont = F0.Continuous().Evaluate();
+	const auto [BatchSize, Channels, Length] = F0Cont.Shape().RawArray();
+	auto InterpolatedF0 = Tensor<Float32, 3, Device::CPU>::New({ BatchSize, Channels, Length });
+	for (SizeType i = 0; i < BatchSize; ++i)
+	{
+		for (SizeType j = 0; j < Channels; ++j)
+		{
+			const auto F0Data = F0Cont.Data() + i * Channels * Length + j * Length;
+			auto InterpolatedF0Data = InterpolatedF0.Data() + i * Channels * Length + j * Length;
+			InterpolatedF0.AppendTask(
+				[InterpolatedF0Data, F0Data, Length]
+				{
+					constexpr Float32 epsilon = std::numeric_limits<Float32>::epsilon();
+
+					Int64 firstNonZeroIndex = 0;
+					while (firstNonZeroIndex < Length && F0Data[firstNonZeroIndex] < epsilon)
+						++firstNonZeroIndex;
+
+					if (firstNonZeroIndex == Length)
+						return;
+					for (Int64 i = 0; i < firstNonZeroIndex; ++i)
+						InterpolatedF0Data[i] = F0Data[firstNonZeroIndex];
+
+					Int64 start = firstNonZeroIndex;
+					while (start < Length) {
+						while (start < Length && F0Data[start] > epsilon)
+						{
+							InterpolatedF0Data[start] = F0Data[start];
+							++start;
+						}
+
+						if (start == Length)
+							break;
+						--start;
+
+						Int64 end = start + 1;
+						while (end < Length && F0Data[end] < epsilon)
+							++end;
+
+						if (end < Length) 
+						{
+							float startValue = F0Data[start];
+							float endValue = F0Data[end];
+							Int64 gap = end - start;
+							for (Int64 i = 1; i < gap; ++i)
+								InterpolatedF0Data[start + i] = startValue + (endValue - startValue) * (float(i) / float(gap));
+							start = end;
+						}
+						else 
+						{
+							for (Int64 i = start + 1; i < Length; ++i)
+								InterpolatedF0Data[i] = F0Data[start];
+							break;
+						}
+					}
+				}
+			);
+		}
+	}
+	return std::move(InterpolatedF0.Evaluate());
+}
+
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

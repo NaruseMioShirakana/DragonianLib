@@ -14,11 +14,11 @@ DLogger& GetDefaultLogger() noexcept
 
 VocoderBase::VocoderBase(
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate,
 	Int64 _MelBins,
 	const std::shared_ptr<Logger>& _Logger
-) : _MyBase(_Enviroment, _Path, _Logger), _MySamplingRate(_SamplingRate), _MyMelBins(_MelBins)
+) : _MyBase(_Environment, _Path, _Logger), _MySamplingRate(_SamplingRate), _MyMelBins(_MelBins)
 {
 	const bool InvalidInputCount = _MyInputCount != 1 && _MyInputCount != 2;
 	const bool InvalidOutputCount = _MyOutputCount != 1;
@@ -71,6 +71,10 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> _F0
 ) const
 {
+#ifdef _DEBUG
+	const auto TimeBegin = std::chrono::high_resolution_clock::now();
+#endif
+
 	bool M2A = _MyBinAxis == 2;
 	Int64 _MelShape[4] = { 1, 1, 1, 1 };
 	Int64 _F0Shape[3] = { 1, 1, 1 };
@@ -204,6 +208,22 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	}
 	else
 		_D_Dragonian_Lib_Throw_Exception("Invalid output dims");
+
+#ifdef _DEBUG
+	LogInfo(
+		L"Vocoder Forward Inference With Mel Shape: [" +
+		std::to_wstring(_MelShape[0]) + L", " +
+		std::to_wstring(_MelShape[1]) + L", " +
+		std::to_wstring(_MelShape[2]) + L", " +
+		std::to_wstring(_MelShape[3]) + L"], Cost Time: " +
+		std::to_wstring(
+			std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::high_resolution_clock::now() - TimeBegin
+			).count()
+		) +
+		L"ms"
+	);
+#endif
 
 	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<float>(
 		std::move(Outputs[0]),

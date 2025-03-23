@@ -272,24 +272,34 @@ struct HParams
 struct SliceDatas
 {
 	/**
-	 * @brief Source sample rate, it is the sample rate of the source audio, the source sample rate must be greater than (0)
+	 * @brief Source sample rate, it is the sample rate of the source audio, the source sample rate must be greater than (0), this value MUST be set by user
+	 */
+	Int64 SourceSampleRate = 0;
+
+	/**
+	 * @brief Source sample count, it is the sample count of the source audio, the source audio sample count must be greater than (0), this value MUST be set by user
 	 */
 	Int64 SourceSampleCount = 0;
 
 	/**
-	 * @brief Units, it is the units tensor, the units tensor must be a 4D tensor with the shape of [batch size, channels, audio frames, units dims], this tensor must be set by user
+	 * @brief Units, it is the units tensor, the units tensor must be a 4D tensor with the shape of [batch size, channels, audio frames, units dims], this tensor MUST be set by user
 	 */
 	Tensor<Float32, 4, Device::CPU> Units;
 
 	/**
-	 * @brief F0, it is the f0 tensor, the f0 tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], this tensor must be set by user
+	 * @brief F0, it is the f0 tensor, the f0 tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], this tensor MUST be set by user
 	 */
 	Tensor<Float32, 3, Device::CPU> F0;
 
 	/**
-	 * @brief Volume, it is the volume tensor, the volume tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], if the model has volume embedding layer, this tensor must be set by user
+	 * @brief Volume, it is the volume tensor, the volume tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], this tensor could be automatically generated if the model has volume embedding layer
 	 */
 	std::optional<Tensor<Float32, 3, Device::CPU>> Volume = std::nullopt;
+
+	/**
+	 * @brief UnVoice, it is the unvoice tensor, the unvoice tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], if the model has unvoice layer, this tensor MUST be set by user
+	 */
+	std::optional<Tensor<Float32, 3, Device::CPU>> UnVoice = std::nullopt;
 
 	/**
 	 * @brief F0Embed, it is the f0 embedding tensor, the f0 embedding tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], this tensor will be automatically generated if the model has f0 embedding layer and the f0 tensor is set by user
@@ -340,6 +350,21 @@ struct SliceDatas
 	 * @brief Ort values, it is the ort values, could not modify of set by user, it must be automatically generated.
 	 */
 	OrtTuple OrtValues;
+
+	/**
+	 * @brief Dlib tuple, it is the dlib tuple, could not modify of set by user, it must be automatically generated, it is used to store the dlib tensors with thr type of [BFloat16/Float16/Float8/Int32]
+	 */
+	DlibTuple DlibTuple;
+
+	/**
+	 * @brief could not call this function by user
+	 */
+	void Clear() noexcept;
+
+	/**
+	 * @brief could not call this function by user
+	 */
+	void Emplace(std::pair<Ort::Value, std::shared_ptr<DlibValue>>&& _InputTensor);
 };
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

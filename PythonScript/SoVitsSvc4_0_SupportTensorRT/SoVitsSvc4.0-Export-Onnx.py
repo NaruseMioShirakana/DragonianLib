@@ -104,7 +104,7 @@ def OnnxExport(path=None):
         output_names=output_names
     )
 
-    model, _ = onnxsim.simplify(f"{path}/Model.onnx")
+    model, _ = onnxsim.simplify(f"{path}/Model.onnx", )
     onnx.save(model, f"{path}/Model.onnx")
 
     vec_lay = "layer-12" if SVCVITS.gin_channels == 768 else "layer-9"

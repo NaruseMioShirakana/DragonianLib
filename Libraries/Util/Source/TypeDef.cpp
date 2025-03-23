@@ -2,205 +2,289 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-float16_t::float16_t(float _Val) noexcept
-{
-	Val = float32_to_float16(*(uint32_t*)(&_Val)).Val;
-}
+enum class endian {
+#if defined(_WIN32)
+	little = 0,
+	big = 1,
+	native = little,
+#elif defined(__GNUC__) || defined(__clang__)
+	little = __ORDER_LITTLE_ENDIAN__,
+	big = __ORDER_BIG_ENDIAN__,
+	native = __BYTE_ORDER__,
+#else
+#error onnxruntime_float16::detail::endian is not implemented in this environment.
+#endif
+};
 
-float16_t& float16_t::operator=(float _Val) noexcept
+namespace TypeDef
 {
-	Val = float32_to_float16(*(uint32_t*)(&_Val)).Val;
-	return *this;
-}
+	union float32_bits
+	{
+		uint32_t u;
+		float f;
+	};
 
-float16_t::operator float() const noexcept
-{
-	auto f32 = float16_to_float32(*this);
-	return *(float*)(&f32);
-}
+	F16Base Float16_t::FromFloat32(Float32 f32) noexcept
+	{
+		float32_bits f;
+		f.f = f32;
 
-float16_t float16_t::float32_to_float16(uint32_t f32) noexcept
-{
-	uint32_t f16;
-	uint32_t sign = (f32 & 0x80000000) >> 16;
-	uint32_t exp = (f32 & 0x7F800000) >> 23;
-	uint32_t frac = f32 & 0x007FFFFF;
-	if (exp == 0)
-	{
-		f16 = sign >> 16;
-	}
-	else if (exp == 0xFF)
-	{
-		f16 = (sign | 0x7C00) >> 16;
-		if (frac)
-			f16 |= 1;
-	}
-	else
-	{
-		exp = (exp + 0x70) << 10;
-		frac = (frac + 0x00000FFF) >> 13;
-		f16 = (sign | exp | frac) >> 16;
-	}
-	return *reinterpret_cast<float16_t*>(&f16);
-}
+		constexpr float32_bits f32infty = { 255 << 23 };
+		constexpr float32_bits f16max = { (127 + 16) << 23 };
+		constexpr float32_bits denorm_magic = { ((127 - 15) + (23 - 10) + 1) << 23 };
+		constexpr unsigned int sign_mask = 0x80000000u;
+		uint16_t val = static_cast<uint16_t>(0x0u);
 
-uint32_t float16_t::float16_to_float32(float16_t f16) noexcept
-{
-	uint32_t f32;
-	uint32_t sign = (f16.Val & 0x8000) << 16;
-	uint32_t exp = (f16.Val & 0x7C00) >> 10;
-	uint32_t frac = f16.Val & 0x03FF;
-	if (exp == 0)
-	{
-		f32 = sign;
-	}
-	else if (exp == 0x1F)
-	{
-		f32 = (sign | 0x7F800000);
-		if (frac)
-			f32 |= 0x007FFFFF;
-	}
-	else
-	{
-		exp = (exp - 0x70) << 23;
-		frac = (frac << 13);
-		f32 = (sign | exp | frac);
-	}
-	return f32;
-}
+		unsigned int sign = f.u & sign_mask;
+		f.u ^= sign;
 
-float8_t::float8_t(float _Val) noexcept
-{
-	Val = float32_to_float8(*(uint32_t*)(&_Val)).Val;
-}
+		// NOTE all the integer compares in this function can be safely
+		// compiled into signed compares since all operands are below
+		// 0x80000000. Important if you want fast straight SSE2 code
+		// (since there's no unsigned PCMPGTD).
 
-float8_t& float8_t::operator=(float _Val) noexcept
-{
-	Val = float32_to_float8(*(uint32_t*)(&_Val)).Val;
-	return *this;
-}
+		if (f.u >= f16max.u) {                         // result is Inf or NaN (all exponent bits set)
+			val = (f.u > f32infty.u) ? 0x7e00 : 0x7c00;  // NaN->qNaN and Inf->Inf
+		}
+		else {                                       // (De)normalized number or zero
+			if (f.u < (113 << 23)) {                     // resulting FP16 is subnormal or zero
+				// use a magic value to align our 10 mantissa bits at the bottom of
+				// the float. as long as FP addition is round-to-nearest-even this
+				// just works.
+				f.f += denorm_magic.f;
 
-float8_t::operator float() const noexcept
-{
-	auto f32 = float8_to_float32(*this);
-	return *(float*)(&f32);
-}
+				// and one integer subtract of the bias later, we have our final float!
+				val = static_cast<uint16_t>(f.u - denorm_magic.u);
+			}
+			else {
+				unsigned int mant_odd = (f.u >> 13) & 1;  // resulting mantissa is odd
 
-float8_t float8_t::float32_to_float8(uint32_t f32) noexcept
-{
-	uint32_t f8;
-	uint32_t sign = (f32 & 0x80000000) >> 24;
-	uint32_t exp = (f32 & 0x7F800000) >> 23;
-	uint32_t frac = f32 & 0x007FFFFF;
-	if (exp == 0)
-	{
-		f8 = sign >> 24;
-	}
-	else if (exp == 0xFF)
-	{
-		f8 = (sign | 0x7F) >> 24;
-		if (frac)
-			f8 |= 1;
-	}
-	else
-	{
-		exp = (exp + 0x70) << 1;
-		frac = (frac + 0x00000FFF) >> 12;
-		f8 = (sign | exp | frac) >> 24;
-	}
-	return *reinterpret_cast<float8_t*>(&f8);
-}
+				// update exponent, rounding bias part 1
+				// Equivalent to `f.u += ((unsigned int)(15 - 127) << 23) + 0xfff`, but
+				// without arithmetic overflow.
+				f.u += 0xc8000fffU;
+				// rounding bias part 2
+				f.u += mant_odd;
+				// take the bits!
+				val = static_cast<uint16_t>(f.u >> 13);
+			}
+		}
 
-uint32_t float8_t::float8_to_float32(float8_t f8) noexcept
-{
-	uint32_t f32;
-	uint32_t sign = (f8.Val & 0x80) << 24;
-	uint32_t exp = (f8.Val & 0x7F) >> 1;
-	uint32_t frac = f8.Val & 0x0F;
-	if (exp == 0)
-	{
-		f32 = sign;
+		val |= static_cast<uint16_t>(sign >> 16);
+		return { val };
 	}
-	else if (exp == 0x7F)
-	{
-		f32 = (sign | 0x7F800000);
-		if (frac)
-			f32 |= 0x007FFFFF;
-	}
-	else
-	{
-		exp = (exp - 0x70) << 23;
-		frac = (frac << 12);
-		f32 = (sign | exp | frac);
-	}
-	return f32;
-}
 
-bfloat16_t::bfloat16_t(float _Val) noexcept
-{
-	Val = float32_to_bfloat16(*(uint32_t*)(&_Val)).Val;
-}
+	Float32 Float16_t::Cast2Float32(F16Base f16) noexcept
+	{
+		constexpr float32_bits magic = { 113 << 23 };
+		constexpr unsigned int shifted_exp = 0x7c00 << 13;  // exponent mask after shift
+		float32_bits o;
 
-bfloat16_t& bfloat16_t::operator=(float _Val) noexcept
-{
-	Val = float32_to_bfloat16(*(uint32_t*)(&_Val)).Val;
-	return *this;
-}
+		o.u = (f16.U16 & 0x7fff) << 13;            // exponent/mantissa bits
+		unsigned int exp = shifted_exp & o.u;  // just the exponent
+		o.u += (127 - 15) << 23;               // exponent adjust
 
-bfloat16_t::operator float() const noexcept
-{
-	auto f32 = bfloat16_to_float32(*this);
-	return *(float*)(&f32);
-}
+		// handle exponent special cases
+		if (exp == shifted_exp) {   // Inf/NaN?
+			o.u += (128 - 16) << 23;  // extra exp adjust
+		}
+		else if (exp == 0) {      // Zero/Denormal?
+			o.u += 1 << 23;           // extra exp adjust
+			o.f -= magic.f;           // re-normalize
+		}
 
-bfloat16_t bfloat16_t::float32_to_bfloat16(uint32_t f32) noexcept
-{
-	uint32_t bf16;
-	uint32_t sign = (f32 & 0x80000000) >> 16;
-	uint32_t exp = (f32 & 0x7F800000) >> 23;
-	uint32_t frac = f32 & 0x007FFFFF;
-	if (exp == 0)
-	{
-		bf16 = sign >> 16;
+#if (defined _MSC_VER) && (defined _M_ARM || defined _M_ARM64 || defined _M_ARM64EC)
+		if (static_cast<int16_t>(f16) < 0) {
+			return -o.f;
+		}
+#else
+  // original code:
+		o.u |= (f16.U16 & 0x8000U) << 16U;  // sign bit
+#endif
+		return o.f;
 	}
-	else if (exp == 0xFF)
-	{
-		bf16 = (sign | 0x7F80) >> 16;
-		if (frac)
-			bf16 |= 1;
-	}
-	else
-	{
-		exp = (exp + 0x70) << 7;
-		frac = (frac + 0x00000FFF) >> 12;
-		bf16 = (sign | exp | frac) >> 16;
-	}
-	return *reinterpret_cast<bfloat16_t*>(&bf16);
-}
 
-uint32_t bfloat16_t::bfloat16_to_float32(bfloat16_t bf16) noexcept
-{
-	uint32_t f32;
-	uint32_t sign = (bf16.Val & 0x8000) << 16;
-	uint32_t exp = (bf16.Val & 0x7F80) >> 7;
-	uint32_t frac = bf16.Val & 0x007F;
-	if (exp == 0)
+	F16Base BFloat16_t::FromFloat32(Float32 f32) noexcept
 	{
-		f32 = sign;
+		uint16_t result;
+		if (std::isnan(f32))
+			result = kPositiveQNaNBits;
+		else 
+		{
+			auto get_msb_half = [](float fl)
+				{
+					uint16_t result;
+					if constexpr (endian::native == endian::little)
+						std::memcpy(&result, reinterpret_cast<char*>(&fl) + sizeof(uint16_t), sizeof(uint16_t));
+					else
+						std::memcpy(&result, &fl, sizeof(uint16_t));
+					return result;
+				};
+
+			uint16_t upper_bits = get_msb_half(f32);
+			union {
+				uint32_t U32;
+				float F32;
+			};
+			F32 = f32;
+			U32 += (upper_bits & 1) + kRoundToNearest;
+			result = get_msb_half(F32);
+		}
+		return { result };
 	}
-	else if (exp == 0x1F)
+
+	Float32 BFloat16_t::Cast2Float32(F16Base f16) noexcept
 	{
-		f32 = (sign | 0x7F800000);
-		if (frac)
-			f32 |= 0x007FFFFF;
+		if (static_cast<uint16_t>(f16.U16 & ~kSignMask) > kPositiveInfinityBits)
+			return std::numeric_limits<float>::quiet_NaN();
+		float result;
+		char* const first = reinterpret_cast<char*>(&result);
+		char* const second = first + sizeof(uint16_t);
+		if constexpr (endian::native == endian::little)
+		{
+			std::memset(first, 0, sizeof(uint16_t));
+			std::memcpy(second, &f16, sizeof(uint16_t));
+		}
+		else
+		{
+			std::memcpy(first, &f16, sizeof(uint16_t));
+			std::memset(second, 0, sizeof(uint16_t));
+		}
+		return result;
 	}
-	else
+
+	template <typename T>
+	struct Float8Traits;
+
+	template <>
+	struct Float8Traits<Float8E4M3FN_t> {
+		static constexpr uint8_t exp_bits = 4;
+		static constexpr uint8_t mant_bits = 3;
+		static constexpr bool has_zero = true;
+	};
+
+	template <>
+	struct Float8Traits<Float8E4M3FNUZ_t> {
+		static constexpr uint8_t exp_bits = 4;
+		static constexpr uint8_t mant_bits = 3;
+		static constexpr bool has_zero = false;
+	};
+
+	template <>
+	struct Float8Traits<Float8E5M2_t> {
+		static constexpr uint8_t exp_bits = 5;
+		static constexpr uint8_t mant_bits = 2;
+		static constexpr bool has_zero = true;
+	};
+
+	template <>
+	struct Float8Traits<Float8E5M2FNUZ_t> {
+		static constexpr uint8_t exp_bits = 5;
+		static constexpr uint8_t mant_bits = 2;
+		static constexpr bool has_zero = false;
+	};
+
+	template <typename T>
+	F8Base FromFloat32Impl(Float32 f32) noexcept {
+		constexpr uint8_t exp_bits = Float8Traits<T>::exp_bits;
+		constexpr uint8_t mant_bits = Float8Traits<T>::mant_bits;
+		constexpr bool has_zero = Float8Traits<T>::has_zero;
+
+		union {
+			Float32 f;
+			uint32_t u;
+		} v = { f32 };
+
+		uint32_t sign = (v.u >> 31) & 0x1;
+		int32_t exp = ((v.u >> 23) & 0xFF) - 127 + ((1 << (exp_bits - 1)) - 1);
+		uint32_t mant = (v.u >> (23 - mant_bits)) & ((1 << mant_bits) - 1);
+
+		if (exp <= 0) {
+			if (has_zero) {
+				exp = 0;
+				mant = 0;
+			}
+			else {
+				exp = 1;
+				mant >>= 1;
+			}
+		}
+		else if (exp >= (1 << exp_bits) - 1) {
+			exp = (1 << exp_bits) - 1;
+			mant = 0;
+		}
+
+		F8Base result;
+		result.U8 = (sign << 7) | (exp << mant_bits) | mant;
+		return result;
+	}
+
+	template <typename T>
+	Float32 Cast2Float32Impl(F8Base f8) noexcept {
+		constexpr uint8_t exp_bits = Float8Traits<T>::exp_bits;
+		constexpr uint8_t mant_bits = Float8Traits<T>::mant_bits;
+
+		uint32_t sign = (f8.U8 >> 7) & 0x1;
+		int32_t exp = ((f8.U8 >> mant_bits) & ((1 << exp_bits) - 1)) - ((1 << (exp_bits - 1)) - 1) + 127;
+		uint32_t mant = f8.U8 & ((1 << mant_bits) - 1);
+
+		if (exp <= 0) {
+			exp = 0;
+			mant = 0;
+		}
+		else if (exp >= 255) {
+			exp = 255;
+			mant = 0;
+		}
+
+		union {
+			Float32 f;
+			uint32_t u;
+		} v;
+		v.u = (sign << 31) | (exp << 23) | (mant << (23 - mant_bits));
+		return v.f;
+	}
+
+	F8Base Float8E4M3FN_t::FromFloat32(Float32 f32) noexcept
 	{
-		exp = (exp - 0x70) << 23;
-		frac = (frac << 12);
-		f32 = (sign | exp | frac);
+		return FromFloat32Impl<Float8E4M3FN_t>(f32);
 	}
-	return f32;
+
+	Float32 Float8E4M3FN_t::Cast2Float32(F8Base f16) noexcept
+	{
+		return Cast2Float32Impl<Float8E4M3FN_t>(f16);
+	}
+
+	F8Base Float8E4M3FNUZ_t::FromFloat32(Float32 f32) noexcept
+	{
+		return FromFloat32Impl<Float8E4M3FNUZ_t>(f32);
+	}
+
+	Float32 Float8E4M3FNUZ_t::Cast2Float32(F8Base f16) noexcept
+	{
+		return Cast2Float32Impl<Float8E4M3FNUZ_t>(f16);
+	}
+
+	F8Base Float8E5M2_t::FromFloat32(Float32 f32) noexcept
+	{
+		return FromFloat32Impl<Float8E5M2_t>(f32);
+	}
+
+	Float32 Float8E5M2_t::Cast2Float32(F8Base f16) noexcept
+	{
+		return Cast2Float32Impl<Float8E5M2_t>(f16);
+	}
+
+	F8Base Float8E5M2FNUZ_t::FromFloat32(Float32 f32) noexcept
+	{
+		return FromFloat32Impl<Float8E5M2FNUZ_t>(f32);
+	}
+
+	Float32 Float8E5M2FNUZ_t::Cast2Float32(F8Base f16) noexcept
+	{
+		return Cast2Float32Impl<Float8E5M2FNUZ_t>(f16);
+	}
+
 }
 
 _D_Dragonian_Lib_Space_End

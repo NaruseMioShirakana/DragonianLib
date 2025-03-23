@@ -32,11 +32,11 @@ public:
 	WaveGlow() = delete;
 	WaveGlow(
 		const std::wstring& _Path,
-		const OnnxRuntimeEnviroment& _Enviroment,
+		const OnnxRuntimeEnvironment& _Environment,
 		Int64 _SamplingRate = 16000,
 		Int64 _MelBins = 128,
 		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Vocoder_Space GetDefaultLogger()
-	) : VocoderBase(_Path, _Enviroment, _SamplingRate, _MelBins, _Logger)
+	) : VocoderBase(_Path, _Environment, _SamplingRate, _MelBins, _Logger)
 	{
 	}
 	~WaveGlow() override = default;

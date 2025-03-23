@@ -2,16 +2,12 @@
 
 _D_Dragonian_Lib_Onnx_Runtime_Header
 
-OnnxRuntimeEnviroment CreateEnvironment(
-	ExecutionProviders _Provider,
-	UInt64 _DeviceId,
-	UInt64 _IntraOpNumThreads
+OnnxRuntimeEnvironment CreateEnvironment(
+	const OnnxEnvironmentOptions& Options
 )
 {
-	_D_Dragonian_Lib_Rethrow_Block(return CreateOnnxRuntimeEnviroment(
-		static_cast<unsigned>(_IntraOpNumThreads),
-		static_cast<unsigned>(_DeviceId),
-		static_cast<unsigned>(_Provider)
+	_D_Dragonian_Lib_Rethrow_Block(return CreateOnnxRuntimeEnvironment(
+		Options
 	););
 }
 

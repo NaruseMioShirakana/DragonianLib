@@ -24,7 +24,7 @@ void RegisterUnitsEncoder(
 UnitsEncoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate,
 	Int64 _UnitsDims,
 	const std::shared_ptr<Logger>& _Logger
@@ -34,7 +34,7 @@ UnitsEncoder New(
 	try
 	{
 		if (fnpair != _GlobalUnitsEncoders.end())
-			return fnpair->second(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+			return fnpair->second(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 	}
 	catch (std::exception& e)
 	{
@@ -56,86 +56,86 @@ public:
 	{
 		RegisterUnitsEncoder(
 			L"HubertSoft",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"CNHubertSoftFish",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"HubertBase",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"HubertBase 768",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"HubertBase 768 l12",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"HubertBase 1024 l24",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hubert>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<Hubert>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<ContentVec>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<ContentVec>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec 256 l9",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<ContentVec>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<ContentVec>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec 256 l12",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<ContentVec>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<ContentVec>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec 768 l9",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<ContentVec>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<ContentVec>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec 768 l12",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<ContentVec>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<ContentVec>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 		RegisterUnitsEncoder(
 			L"ContentVec 768 l12 tta2x",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _UnitsDims, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<TTA2X>(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger);
+				return std::make_shared<TTA2X>(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 			}
 		);
 	}

@@ -25,7 +25,9 @@
 #pragma once
 
 #include "onnxruntime_cxx_api.h"
+#include "Libraries/MyTemplateLibrary/Util.h"
 #include "Libraries/Util/Logger.h"
+#include "Libraries/Util/TypeDef.h"
 #include "Libraries/Util/Util.h"
 
 #define _D_Dragonian_Lib_Onnx_Runtime_Header \
@@ -45,31 +47,77 @@ _D_Dragonian_Lib_Onnx_Runtime_Header
 
 DLogger& GetDefaultLogger() noexcept;
 
-class OnnxRuntimeEnviromentBase;
-
-using OnnxRuntimeEnviroment = std::shared_ptr<OnnxRuntimeEnviromentBase>;
+class OnnxRuntimeEnvironmentBase;
+using OnnxRuntimeEnvironment = std::shared_ptr<OnnxRuntimeEnvironmentBase>;
 using OnnxRuntimeModel = std::shared_ptr<Ort::Session>;
 
+struct OnnxEnvironmentOptions
+{
+    friend class OnnxRuntimeEnvironmentBase;
+
+	OnnxEnvironmentOptions() = default;
+	OnnxEnvironmentOptions(const OnnxEnvironmentOptions&) = default;
+	OnnxEnvironmentOptions(OnnxEnvironmentOptions&&) noexcept = default;
+	OnnxEnvironmentOptions& operator=(const OnnxEnvironmentOptions&) = default;
+	OnnxEnvironmentOptions& operator=(OnnxEnvironmentOptions&&) noexcept = default;
+	~OnnxEnvironmentOptions() = default;
+
+    OnnxEnvironmentOptions(
+        Device _Provider = Device::CPU,
+        Int64 _DeviceID = 0,
+        Int64 _IntraOpNumThreads = 4,
+        Int64 _InterOpNumThreads = 2,
+        OrtLoggingLevel _LoggingLevel = ORT_LOGGING_LEVEL_VERBOSE,
+        std::string _LoggerId = "DragonianLib"
+    ) : Provider(_Provider), DeviceID(_DeviceID), IntraOpNumThreads(_IntraOpNumThreads), InterOpNumThreads(_InterOpNumThreads), LoggingLevel(_LoggingLevel), LoggerId(std::move(_LoggerId))
+    {
+    }
+
+    Device Provider = Device::CPU; ///< Execution provider (device) of the environment.
+    Int64 DeviceID = 0; ///< Device ID of the environment.
+    Int64 IntraOpNumThreads = 4; ///< Number of threads for intra-op parallelism.
+	Int64 InterOpNumThreads = 2; ///< Number of threads for inter-op parallelism.
+	OrtLoggingLevel LoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level of the environment.
+	std::string LoggerId = "DragonianLib"; ///< Logger ID of the environment.
+
+	void SetCUDAOptions(const std::string& Key, const std::string& Value)
+	{
+		CUDAOptions[Key] = Value;
+	}
+
+protected:
+    std::unordered_map<std::string, std::string> CUDAOptions{
+        {"device_id", "0"},
+        {"gpu_mem_limit", "2147483648"},
+        {"arena_extend_strategy", "kNextPowerOfTwo"},
+        {"cudnn_conv_algo_search", "EXHAUSTIVE"},
+        {"do_copy_in_default_stream", "1"},
+        {"cudnn_conv_use_max_workspace", "1"},
+        {"cudnn_conv1d_pad_to_nc1d", "1"},
+        {"enable_cuda_graph", "1"}
+    };
+};
+
 /**
- * @class OnnxRuntimeEnviromentBase
+ * @class OnnxRuntimeEnvironmentBase
  * @brief Manages the ONNX Runtime environment and session options.
  */
-class OnnxRuntimeEnviromentBase
+class OnnxRuntimeEnvironmentBase
 {
 public:
-    friend std::shared_ptr<OnnxRuntimeEnviromentBase>;
+    friend std::shared_ptr<OnnxRuntimeEnvironmentBase>;
 
-    ~OnnxRuntimeEnviromentBase();
-    OnnxRuntimeEnviromentBase(const OnnxRuntimeEnviromentBase&) = default;
-    OnnxRuntimeEnviromentBase(OnnxRuntimeEnviromentBase&&) noexcept = default;
-    OnnxRuntimeEnviromentBase& operator=(const OnnxRuntimeEnviromentBase&) = default;
-    OnnxRuntimeEnviromentBase& operator=(OnnxRuntimeEnviromentBase&&) noexcept = default;
+    ~OnnxRuntimeEnvironmentBase();
+    OnnxRuntimeEnvironmentBase(const OnnxRuntimeEnvironmentBase&) = default;
+    OnnxRuntimeEnvironmentBase(OnnxRuntimeEnvironmentBase&&) noexcept = default;
+    OnnxRuntimeEnvironmentBase& operator=(const OnnxRuntimeEnvironmentBase&) = default;
+    OnnxRuntimeEnvironmentBase& operator=(OnnxRuntimeEnvironmentBase&&) noexcept = default;
 
     /**
      * @brief Gets the ONNX Runtime environment.
      * @return Pointer to the ONNX Runtime environment.
      */
-    [[nodiscard]] Ort::Env* GetEnv() const { return _MyOrtEnv.get(); }
+    [[nodiscard]] Ort::Env* GetEnvironment() const { return _MyOrtEnv.get(); }
 
     /**
      * @brief Gets the session options for the ONNX Runtime.
@@ -84,139 +132,136 @@ public:
     [[nodiscard]] Ort::MemoryInfo* GetMemoryInfo() const { return _MyOrtMemoryInfo.get(); }
 
     /**
-     * @brief Gets the current thread count.
-     * @return Current thread count.
+	 * @brief Gets the InterOpNumThreads.
+	 * @return Number of threads for inter-op parallelism.
      */
-    [[nodiscard]] int GetCurThreadCount() const { return (int)_MyThreadCount; }
+    [[nodiscard]] Int64 GetInterOpNumThreads() const { return _MyInterOpNumThreads; }
+
+    /**
+	 * @brief Gets the IntraOpNumThreads.
+	 * @return Number of threads for intra-op parallelism.
+     */
+    [[nodiscard]] Int64 GetIntraOpNumThreads() const { return _MyIntraOpNumThreads; }
 
     /**
      * @brief Gets the current device ID.
      * @return Current device ID.
      */
-    [[nodiscard]] int GetCurDeviceID() const { return (int)_MyDeviceID; }
+    [[nodiscard]] Int64 GetDeviceID() const { return _MyDeviceID; }
 
     /**
      * @brief Gets the current provider.
      * @return Current provider.
      */
-    [[nodiscard]] int GetCurProvider() const { return (int)_MyProvider; }
+    [[nodiscard]] Device GetProvider() const { return _MyProvider; }
 
     /**
-     * @brief References a cached ONNX model.
-     * @param Path_ Path to the model.
-     * @param Env_ ONNX Runtime environment.
+     * @brief References a ONNX model.
+     * @param ModelPath Path to the model.
      * @return Shared pointer to the ONNX session.
      */
-    static OnnxRuntimeModel& RefOrtCachedModel(const std::wstring& Path_, const OnnxRuntimeEnviroment& Env_);
+	OnnxRuntimeModel& RefOnnxRuntimeModel(const std::wstring& ModelPath);
 
     /**
-     * @brief Unreferences a cached ONNX model.
-     * @param Path_ Path to the model.
-     * @param Env_ ONNX Runtime environment.
+     * @brief Unreferences a ONNX model.
+     * @param ModelPath Path to the model.
      */
-    static void UnRefOrtCachedModel(const std::wstring& Path_, const OnnxRuntimeEnviroment& Env_);
+	void UnRefOnnxRuntimeModel(const std::wstring& ModelPath);
 
     /**
-     * @brief Clears the model cache.
+	 * @brief Clears all global ONNX models loaded by this environment.
      */
-    static void ClearModelCache(const OnnxRuntimeEnviroment& Env_);
-
-    /**
-     * @brief Sets a CUDA option.
-     * @param Key Key of the option.
-     * @param Value Value of the option.
-     */
-    static void SetCUDAOption(
-        const std::string& Key,
-        const std::string& Value
-    );
+	void ClearOnnxRuntimeModel();
 
     /**
      * @brief Creates an ONNX Runtime environment.
-     * @param ThreadCount Number of threads to use.
-     * @param DeviceID ID of the device to use.
-     * @param Provider Execution provider to use.
+	 * @param Options ONNX Runtime environment options.
      * @return Shared pointer to the ONNX Runtime environment.
      */
-    static OnnxRuntimeEnviroment& CreateEnv(unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
+    static OnnxRuntimeEnvironment& CreateEnv(const OnnxEnvironmentOptions& Options);
 
     /**
      * @brief Destroys an ONNX Runtime environment.
-     * @param ThreadCount Number of threads to use.
-     * @param DeviceID ID of the device to use.
-     * @param Provider Execution provider to use.
+	 * @param Options ONNX Runtime environment options.
      */
-    static void DestroyEnv(unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
+    static void DestroyEnv(const OnnxEnvironmentOptions& Options);
 
 protected:
     /**
      * @brief Constructor to initialize the ONNX Runtime environment.
-     * @param ThreadCount Number of threads to use.
-     * @param DeviceID ID of the device to use.
-     * @param Provider Execution provider to use.
+	 * @param Options ONNX Runtime environment options.
      */
-    OnnxRuntimeEnviromentBase(unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
+    OnnxRuntimeEnvironmentBase(const OnnxEnvironmentOptions& Options);
 
 private:
     /**
      * @brief Loads the ONNX Runtime environment.
-     * @param ThreadCount Number of threads to use.
-     * @param DeviceID ID of the device to use.
-     * @param Provider Execution provider to use.
+	 * @param Options ONNX Runtime environment options.
      */
-    void Load(unsigned ThreadCount, unsigned DeviceID, unsigned Provider);
+    void Load(const OnnxEnvironmentOptions& Options);
 
     /**
      * @brief Creates the ONNX Runtime environment.
-     * @param ThreadCount_ Number of threads to use.
-     * @param DeviceID_ ID of the device to use.
-     * @param ExecutionProvider_ Execution provider to use.
+	 * @param Options ONNX Runtime environment options.
      */
-    void Create(unsigned ThreadCount_, unsigned DeviceID_, unsigned ExecutionProvider_);
+    void Create(const OnnxEnvironmentOptions& Options);
 
     std::unordered_map<std::wstring, OnnxRuntimeModel> GlobalOrtModelCache; ///< Global ONNX model cache.
     std::shared_ptr<Ort::Env> _MyOrtEnv = nullptr; ///< Pointer to the ONNX Runtime environment.
     std::shared_ptr<Ort::SessionOptions> _MyOrtSessionOptions = nullptr; ///< Pointer to the session options.
     std::shared_ptr<Ort::MemoryInfo> _MyOrtMemoryInfo = nullptr; ///< Pointer to the memory info.
     std::shared_ptr <OrtCUDAProviderOptionsV2> _MyCudaOptionsV2 = nullptr; ///< CUDA provider options.
-    unsigned _MyThreadCount = 0; ///< Current thread count.
-    unsigned _MyDeviceID = 0; ///< Current device ID.
-    unsigned _MyProvider = 0; ///< Current provider.
+    Int64 _MyIntraOpNumThreads = 4; ///< Number of threads for intra-op parallelism.
+    Int64 _MyInterOpNumThreads = 2; ///< Number of threads for inter-op parallelism.
+    Int64 _MyDeviceID = 0; ///< Current device ID.
+    Device _MyProvider = Device::CPU; ///< Current provider.
+	OrtLoggingLevel _MyLoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level.
+    std::string _MyLoggerId = "DragonianLib"; ///< Logger ID.
+    std::unordered_map<std::string, std::string> _MyCUDAOptions{
+        {"device_id", "0"},
+        {"gpu_mem_limit", "2147483648"},
+        {"arena_extend_strategy", "kNextPowerOfTwo"},
+        {"cudnn_conv_algo_search", "EXHAUSTIVE"},
+        {"do_copy_in_default_stream", "1"},
+        {"cudnn_conv_use_max_workspace", "1"},
+        {"cudnn_conv1d_pad_to_nc1d", "1"},
+        {"enable_cuda_graph", "1"}
+    };
 };
 
 /**
  * @brief References a ONNX model, if it is not loaded, it will be loaded.
  * @param _ModelPath Path to the model.
- * @param _Enviroment ONNX Runtime environment.
+ * @param _Environment ONNX Runtime environment.
  * @return Shared pointer to the ONNX session.
  */
-inline OnnxRuntimeModel& RefOnnxRuntimeModel(const std::wstring& _ModelPath, const OnnxRuntimeEnviroment& _Enviroment)
+inline OnnxRuntimeModel& RefOnnxRuntimeModel(const std::wstring& _ModelPath, const OnnxRuntimeEnvironment& _Environment)
 {
-    return OnnxRuntimeEnviromentBase::RefOrtCachedModel(_ModelPath, _Enviroment);
+    return _Environment->RefOnnxRuntimeModel(_ModelPath);
 }
 
 /**
  * @brief Unreferences a ONNX model.
  * @param _ModelPath Path of the model when it was loaded.
- * @param _Enviroment ONNX Runtime environment.
+ * @param _Environment ONNX Runtime environment.
  */
-inline void UnrefOnnxRuntimeModel(const std::wstring& _ModelPath, const OnnxRuntimeEnviroment& _Enviroment)
+inline void UnrefOnnxRuntimeModel(const std::wstring& _ModelPath, const OnnxRuntimeEnvironment& _Environment)
 {
-    OnnxRuntimeEnviromentBase::UnRefOrtCachedModel(_ModelPath, _Enviroment);
+	_Environment->UnRefOnnxRuntimeModel(_ModelPath);
 }
 
 /**
  * @brief Unreferences all global ONNX models loaded by this environment.
- * @param _Enviroment ONNX Runtime environment.
+ * @param _Environment ONNX Runtime environment.
  */
-inline void UnrefAllOnnxRuntimeModel(const OnnxRuntimeEnviroment& _Enviroment)
+inline void UnrefAllOnnxRuntimeModel(const OnnxRuntimeEnvironment& _Environment)
 {
-    OnnxRuntimeEnviromentBase::ClearModelCache(_Enviroment);
+    _Environment->ClearOnnxRuntimeModel();
 }
 
-inline OnnxRuntimeEnviroment& CreateOnnxRuntimeEnviroment(unsigned _ThreadCount, unsigned _DeviceID, unsigned _Provider)
+inline OnnxRuntimeEnvironment& CreateOnnxRuntimeEnvironment(const OnnxEnvironmentOptions& _Options)
 {
-    return OnnxRuntimeEnviromentBase::CreateEnv(_ThreadCount, _DeviceID, _Provider);
+    return OnnxRuntimeEnvironmentBase::CreateEnv(_Options);
 }
 
 _D_Dragonian_Lib_Onnx_Runtime_End

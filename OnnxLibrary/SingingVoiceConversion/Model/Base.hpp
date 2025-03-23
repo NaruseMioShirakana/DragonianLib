@@ -33,12 +33,25 @@ public:
 
 	SingingVoiceConversionModule() = delete;
 	SingingVoiceConversionModule(const HParams& Params);
+	virtual ~SingingVoiceConversionModule() = default;
+
 	SingingVoiceConversionModule(const SingingVoiceConversionModule&) = default;
 	SingingVoiceConversionModule(SingingVoiceConversionModule&&) noexcept = default;
 	SingingVoiceConversionModule& operator=(const SingingVoiceConversionModule&) = default;
 	SingingVoiceConversionModule& operator=(SingingVoiceConversionModule&&) noexcept = default;
-	virtual ~SingingVoiceConversionModule() = default;
 
+	/**
+	 * @brief Inference
+	 * @param Params Inference parameters, see SingingVoiceConversion::Parameters
+	 * @param Audio Input audio, shape must be {BatchSize, Channels, Length}
+	 * @param SourceSampleRate Source sample rate
+	 * @param UnitsEncoder Units encoder
+	 * @param F0Extractor F0 extractor
+	 * @param F0Params F0 parameters
+	 * @param UnitsCluster Units cluster
+	 * @param AudioMask Audio mask
+	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio
+	 */
 	Tensor<Float32, 4, Device::CPU> Inference(
 		const Parameters& Params,
 		const Tensor<Float32, 3, Device::CPU>& Audio,
@@ -50,29 +63,35 @@ public:
 		std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> AudioMask = std::nullopt
 	) const;
 
-	SliceDatas PreProcess(
+	/**
+	 * @brief Check arguments and preprocess input datas for inference, will copy the input datas and return the new datas
+	 * @param Params Inference parameters, see SingingVoiceConversion::Parameters
+	 * @param InferenceDatas Input datas, see SingingVoiceConversion::SliceDatas
+	 * @return SliceDatas Preprocessed datas
+	 */
+	SliceDatas Preprocess(
 		const Parameters& Params,
 		const SliceDatas& InferenceDatas
 	) const;
 
 	/**
-	 * @brief Inference
-	 * @param Params Parameters
-	 * @param InputDatas Input datas
+	 * @brief Forward inference
+	 * @param Params Parameters, see SingingVoiceConversion::Parameters
+	 * @param InputDatas Input datas, see SingingVoiceConversion::SliceDatas
 	 * @return Tensor<Float32, 4, Device::CPU>
 	 */
-	virtual Tensor<Float32, 4, Device::CPU> Inference(
+	virtual Tensor<Float32, 4, Device::CPU> Forward(
 		const Parameters& Params,
 		const SliceDatas& InputDatas
 	) const = 0;
 
 	/**
-	 * @brief Check arguments and preprocess input datas for inference
-	 * @param Params Inference parameters
-	 * @param InputDatas 
-	 * @return InputDatas
+	 * @brief Check arguments and preprocess input datas for inference, this function will modify the input variables, input datas will be moved in this function
+	 * @param Params Inference parameters, see SingingVoiceConversion::Parameters
+	 * @param InputDatas Input datas, see SingingVoiceConversion::SliceDatas
+	 * @return Preprocessed datas (moved and modified from input datas)
 	 */
-	virtual SliceDatas PreProcess(
+	virtual SliceDatas VPreprocess(
 		const Parameters& Params,
 		SliceDatas&& InputDatas
 	) const = 0;
@@ -124,12 +143,10 @@ public:
 		Float32 F0Bin, Float32 F0MelMax, Float32 F0MelMin
 	);
 
-	static Tensor<Float32, 4, Device::CPU> GetGTSpec(
-		const Tensor<Float32, 4, Device::CPU>& Mel,
-		const Tensor<Float32, 4, Device::CPU>& Audio,
-		Int64 HopSize, Int64 WindowSize
+	static Tensor<Float32, 3, Device::CPU> InterpolateUnVoicedF0(
+		const Tensor<Float32, 3, Device::CPU>& F0
 	);
-
+	
 protected:
 	std::optional<ProgressCallback> _MyProgressCallback;
 

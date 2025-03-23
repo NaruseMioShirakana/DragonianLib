@@ -28,7 +28,7 @@ void RegisterVocoder(
 Vocoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate,
 	Int64 _MelBins,
 	const std::shared_ptr<Logger>& _Logger
@@ -38,7 +38,7 @@ Vocoder New(
 	try
 	{
 		if (fnpair != _GlobalVocoders.end())
-			return fnpair->second(_Path, _Enviroment, _SamplingRate, _MelBins, _Logger);
+			return fnpair->second(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 	}
 	catch (std::exception& e)
 	{
@@ -59,25 +59,25 @@ public:
 	{
 		RegisterVocoder(
 			L"WaveGlow",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<WaveGlow>(_Path, _Enviroment, _SamplingRate, _MelBins, _Logger);
+				return std::make_shared<WaveGlow>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 			}
 		);
 
 		RegisterVocoder(
 			L"Hifigan",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<Hifigan>(_Path, _Enviroment, _SamplingRate, _MelBins, _Logger);
+				return std::make_shared<Hifigan>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 			}
 		);
 
 		RegisterVocoder(
 			L"Nsf-Hifigan",
-			[](const std::wstring& _Path, const OnnxRuntimeEnviroment& _Enviroment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
 			{
-				return std::make_shared<NsfHifigan>(_Path, _Enviroment, _SamplingRate, _MelBins, _Logger);
+				return std::make_shared<NsfHifigan>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 			}
 		);
 	}

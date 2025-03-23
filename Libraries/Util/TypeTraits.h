@@ -366,7 +366,7 @@ using ArgumentTypesType = typename _D_Dragonian_Lib_Type_Traits_Namespace
 ExtractCallableInfo<Objt>::_ArgumentTypes;
 
 template<typename FunType, typename ...ArgTypes>
-concept IsInvokeableValue = requires(FunType&& fn, ArgTypes&&... args)
+concept IsInvokeableValue = requires(FunType && fn, ArgTypes&&... args)
 {
 	{ std::forward<FunType>(fn)(std::forward<ArgTypes>(args)...) }; // Check if the function is callable
 };
@@ -431,25 +431,25 @@ constexpr decltype(auto) GetValue(Types&&... args) {
 }
 
 template <typename _Type>
-constexpr auto IsFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, float, double, long double, Float16, Float8, BFloat16>;
+constexpr auto IsFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue <RemoveCVType<_Type>, Float32, Float64, long double, Float16, BFloat16, Float8E4M3FN, Float8E4M3FNUZ, Float8E5M2, Float8E5M2FNUZ>;
 template <typename _Type>
-constexpr auto IsIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, bool, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+constexpr auto IsIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Boolean, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
 template <typename _Type>
-constexpr auto IsSignedIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, bool, Int8, Int16, Int32, Int64>;
+constexpr auto IsSignedIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Boolean, Int8, Int16, Int32, Int64>;
 template <typename _Type>
 constexpr auto IsUnsignedIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, UInt8, UInt16, UInt32, UInt64>;
 template <typename _Type>
 constexpr auto IsComplexValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Complex32, Complex64>;
 template <typename _Type>
-constexpr auto IsBoolValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, bool>;
+constexpr auto IsBoolValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Boolean>;
 template <typename _Type>
 constexpr auto IsArithmeticValue = _D_Dragonian_Lib_Type_Traits_Namespace IsFloatingPointValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsIntegerValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsComplexValue<_Type> || IsBoolValue<_Type>;
 template <typename _Type>
-constexpr auto IsAvx256SupportedValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Complex32, Complex64, bool>;
+constexpr auto IsAvx256SupportedValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Complex32, Complex64, Boolean>;
 template <typename _Type>
 constexpr auto IsAvx256SupportedFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Float32, Float64>;
 template <typename _Type>
-constexpr auto IsAvx256SupportedIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, bool, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
+constexpr auto IsAvx256SupportedIntegerValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, Boolean, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64>;
 template <typename _Type>
 constexpr auto IsCppStringValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, std::string, std::wstring>;
 template <typename _Type>
@@ -720,15 +720,15 @@ struct AnyConvertible
 	template <typename ..._SrcType>
 	constexpr AnyConvertible(_SrcType&& ..._Src) {}
 	template <typename _DstType>
-	constexpr operator _DstType&() const;
+	constexpr operator _DstType& () const;
 	template <typename _DstType>
-	constexpr operator _DstType&&() const;
+	constexpr operator _DstType && () const;
 };
 
 template<typename _Type, size_t N>
 constexpr auto MemberCountLowerThan()
 {
-	return []<size_t... I>(IndexSequence<I...>)
+	return[]<size_t... I>(IndexSequence<I...>)
 	{
 		return requires{ _Type{ AnyConvertible(I)... }; };
 	}(MakeIndexSequence<N>{});
@@ -862,6 +862,5 @@ concept HasHRange = requires(_Type & _Val)
 };
 template <typename _Type>
 concept HasRange = HasLRange<_Type> || HasHRange<_Type>;
-
 
 _D_Dragonian_Lib_Type_Traits_Namespace_End

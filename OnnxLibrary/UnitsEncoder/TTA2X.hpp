@@ -33,11 +33,11 @@ public:
 	TTA2X() = delete;
 	TTA2X(
 		const std::wstring& _Path,
-		const OnnxRuntimeEnviroment& _Enviroment,
+		const OnnxRuntimeEnvironment& _Environment,
 		Int64 _SamplingRate = 16000,
 		Int64 _UnitsDims = 768,
 		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_UnitsEncoder_Space GetDefaultLogger()
-	) : HubertBase(_Path, _Enviroment, _SamplingRate, _UnitsDims, _Logger)
+	) : HubertBase(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger)
 	{
 	}
 	~TTA2X() override = default;

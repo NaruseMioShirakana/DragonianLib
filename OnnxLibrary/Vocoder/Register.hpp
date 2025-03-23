@@ -29,7 +29,7 @@ _D_Dragonian_Lib_Onnx_Vocoder_Header
 using Vocoder = std::shared_ptr<VocoderBase>;
 using Constructor = std::function<Vocoder(
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate,
 	Int64 _MelBins,
 	const std::shared_ptr<Logger>& _Logger
@@ -49,7 +49,7 @@ void RegisterVocoder(
  * @brief Create a new Vocoder instance
  * @param Name Name of the Vocoder
  * @param _Path Path of the model
- * @param _Enviroment OnnxRuntime enviroment
+ * @param _Environment OnnxRuntime enviroment
  * @param _SamplingRate Sampling rate of the model
  * @param _MelBins MelBins of the model
  * @param _Logger Logger
@@ -58,7 +58,7 @@ void RegisterVocoder(
 Vocoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,
-	const OnnxRuntimeEnviroment& _Enviroment,
+	const OnnxRuntimeEnvironment& _Environment,
 	Int64 _SamplingRate = 16000,
 	Int64 _MelBins = 168,
 	const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Vocoder_Space GetDefaultLogger()
