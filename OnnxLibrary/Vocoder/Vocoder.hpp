@@ -71,6 +71,12 @@ public:
 		return _MyBinAxis;
 	}
 
+	/**
+	 * @brief Inference with Mel spectrogram and F0
+	 * @param _Mel Mel spectrogram, shape: [BatchSize, Channel, MelBins/Frames, Frames/MelBins]
+	 * @param _F0 F0, shape: [BatchSize, Channel, Frames]
+	 * @return Audio, shape: [BatchSize, Channel, AudioLength]
+	 */
 	virtual Tensor<Float32, 3, Device::CPU> Forward(
 		const Tensor<Float32, 4, Device::CPU>& _Mel,
 		std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> _F0 = std::nullopt

@@ -1,4 +1,5 @@
 ﻿#include "../Hubert.hpp"
+#include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 
@@ -55,9 +56,6 @@ HubertBase::HubertBase(
 	}
 	if (_MyUnitsAxis < 2)
 		_D_Dragonian_Lib_Throw_Exception("Invalid units axis, expected 2 or greater, got " + std::to_string(_MyUnitsAxis));
-
-	if (_MyUnitsAxis != 3)
-		LogWarn(L"Units axis is not the last axis, operations may be slow!");
 }
 
 Tensor<Float32, 4, Device::CPU> HubertBase::InferenceModel(
@@ -70,162 +68,103 @@ Tensor<Float32, 4, Device::CPU> HubertBase::InferenceModel(
 	const auto TimeBegin = std::chrono::high_resolution_clock::now();
 #endif
 
-	const auto AudioInputAxisCount = static_cast<Int64>(_MyInputDims[0].Size());	// 3,  2,  1
-	const auto AIBI = AudioInputAxisCount - 3;								// 0, -1, -2
-	const auto AICI = AudioInputAxisCount - 2;								// 1,  0, -1
-	const auto AISI = AudioInputAxisCount - 1;								// 2,  1,  0
+	if (_PCMData.Null())
+		_D_Dragonian_Lib_Throw_Exception("PCMData is Null, please check the input tensor");
 
-	std::optional<Tensor<Float32, 3, Device::CPU>> Audio = std::nullopt;
+	if (_MyInputCount == 2)
+	{
+		const auto FrameAxis = _MyUnitsAxis == 2 ? 3 : 2;
+		if (!_Mask.has_value() || _Mask.value().get().Null())
+			_D_Dragonian_Lib_Throw_Exception("Mask is required");
+
+		if (_Mask->get().Size(0) != _PCMData.Size(0))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Batch/Channel of Mask and PCMData is mismatched, excepted mask: " +
+				std::to_string(_PCMData.Size(0)) +
+				", got: " +
+				std::to_string(_Mask->get().Size(0))
+			);
+		if (_Mask->get().Size(1) != _PCMData.Size(1))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Channel/Batch of Mask and PCMData is mismatched, excepted mask: " +
+				std::to_string(_PCMData.Size(1)) +
+				", got: " +
+				std::to_string(_Mask->get().Size(1))
+			);
+		if (_Mask->get().Size(2) != _PCMData.Size(FrameAxis))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Frames of Mask and PCMData is mismatched, excepted mask: " +
+				std::to_string(_PCMData.Size(FrameAxis)) +
+				", got: " +
+				std::to_string(_Mask->get().Size(2))
+			);
+	}
+
+	InputTensorsType Inputs;
+
+	auto AudioCont = _PCMData.Continuous().Evaluate();
 	if (_SamplingRate != _MySamplingRate)
 		_D_Dragonian_Lib_Rethrow_Block(
-			Audio = _PCMData.Interpolate<Operators::InterpolateMode::Linear>(
+			AudioCont = AudioCont.Interpolate<Operators::InterpolateMode::Linear>(
 				IDim(2),
 				IScale(double(_MySamplingRate) / double(_SamplingRate))
 			).Evaluate();
 		);
-	else
-		_D_Dragonian_Lib_Rethrow_Block(
-			Audio = _PCMData.Continuous().Evaluate();
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		Inputs.Emplace(
+			CheckAndTryCreateValueFromTensor(
+				*_MyMemoryInfo,
+				AudioCont,
+				_MyInputTypes[0],
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"SampleCount" },
+				"Audio",
+				GetLoggerPtr()
+			)
 		);
+	);
 
-	if (!Audio.has_value())
-		_D_Dragonian_Lib_Throw_Exception("Invalid audio data");
-
-	if (AIBI >= 0 && _MyInputDims[0][AIBI] != -1 && Audio->Size(0) != _MyInputDims[0][AIBI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input batch size");
-	if (AICI >= 0 && _MyInputDims[0][AICI] != -1 && Audio->Size(1) != _MyInputDims[0][AICI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input channel count");
-	if (AISI >= 0 && _MyInputDims[0][AISI] != -1 && Audio->Size(2) != _MyInputDims[0][AISI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input sample count");
-
-	Int64 MaskShape[3] = { 1, 1, 1 };
-	Int64 AudioShape[3] = { 1, 1, 1 };
-
-	std::optional<Tensor<Float32, 3, Device::CPU>> Mask = std::nullopt;
 	if (_MyInputCount == 2)
 	{
-		if (!_Mask.has_value())
-			_D_Dragonian_Lib_Throw_Exception("Mask is required");
-
-		const auto MaskInputAxisCount = static_cast<Int64>(_MyInputDims[1].Size());
-		const auto MIBI = MaskInputAxisCount - 3;
-		const auto MICI = MaskInputAxisCount - 2;
-		const auto MISI = MaskInputAxisCount - 1;
-		if (MIBI >= 0 && _MyInputDims[1][MIBI] != -1 && _Mask->get().Size(0) != _MyInputDims[1][MIBI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid mask batch size");
-		if (MICI >= 0 && _MyInputDims[1][MICI] != -1 && _Mask->get().Size(1) != _MyInputDims[1][MICI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid mask channel count");
-		if (MISI >= 0 && _MyInputDims[1][MISI] != -1 && _Mask->get().Size(2) != _MyInputDims[1][MISI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid mask sample count");
-		_D_Dragonian_Lib_Rethrow_Block(Mask = _Mask->get().BroadCast2AndCpy(Audio.value()).Evaluate(););
-	}
-
-	if (AudioInputAxisCount == 3)
-	{
-		AudioShape[0] = Audio->Size(0);
-		AudioShape[1] = Audio->Size(1);
-		AudioShape[2] = Audio->Size(2);
-	}
-	else if (AudioInputAxisCount == 2)
-	{
-		AudioShape[0] = Audio->Size(1);
-		AudioShape[1] = Audio->Size(2);
-	}
-	else if (AudioInputAxisCount == 1)
-	{
-		AudioShape[0] = Audio->Size(2);
-	}
-
-	std::vector<Ort::Value> Inputs;
-
-	_D_Dragonian_Lib_Rethrow_Block(Inputs.emplace_back(
-		Ort::Value::CreateTensor<float>(
-			*_MyMemoryInfo,
-			Audio->Data(),
-			Audio->ElementCount(),
-			AudioShape,
-			AudioInputAxisCount
-		)
-	););
-
-	if (Mask.has_value())
-	{
-		const auto MaskInputAxisCount = static_cast<Int64>(_MyInputDims[1].Size());
-
-		if (MaskInputAxisCount == 3)
-		{
-			MaskShape[0] = Mask->Size(0);
-			MaskShape[1] = Mask->Size(1);
-			MaskShape[2] = Mask->Size(2);
-		}
-		else if (MaskInputAxisCount == 2)
-		{
-			MaskShape[0] = Mask->Size(1);
-			MaskShape[1] = Mask->Size(2);
-		}
-		else if (MaskInputAxisCount == 1)
-		{
-			MaskShape[0] = Mask->Size(2);
-		}
-
-		_D_Dragonian_Lib_Rethrow_Block(Inputs.emplace_back(
-			Ort::Value::CreateTensor<float>(
-				*_MyMemoryInfo,
-				Mask->Data(),
-				Mask->ElementCount(),
-				MaskShape,
-				MaskInputAxisCount
-			)
-		););
+		auto MaskCont = _Mask->get().Continuous().Evaluate();
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					MaskCont,
+					_MyInputTypes[1],
+					_MyInputDims[1],
+					{ L"Batch/Channel", L"Batch/Channel", L"SampleCount" },
+					"Mask",
+					GetLoggerPtr()
+				)
+			);
+		);
 	}
 
 	std::vector<Ort::Value> Outputs;
 
-	_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyModel->Run(
-		*_MyRunOptions,
-		_MyInputNames.Data(),
-		Inputs.data(),
-		_MyInputCount,
-		_MyOutputNames.Data(),
-		_MyOutputCount
-	););
+	_D_Dragonian_Lib_Rethrow_Block(Outputs = RunModel(Inputs); );
 
 	const auto OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-	Dimensions<4> UnitShape{ 1, 1, 1, 1 };
-	if (OutputShape.size() == 4)
-	{
-		UnitShape[0] = OutputShape[0];
-		UnitShape[1] = OutputShape[1];
-		UnitShape[2] = OutputShape[2];
-		UnitShape[3] = OutputShape[3];
-	}
-	else if (OutputShape.size() == 3)
-	{
-		UnitShape[1] = OutputShape[0];
-		UnitShape[2] = OutputShape[1];
-		UnitShape[3] = OutputShape[2];
-	}
-	else if (OutputShape.size() == 2)
-	{
-		UnitShape[2] = OutputShape[0];
-		UnitShape[3] = OutputShape[1];
-	}
+	const auto OutputRank = OutputShape.size();
+	Dimensions<4> UnitShape;
+	if (OutputRank == 4)
+		UnitShape = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+	else if (OutputRank == 3)
+		UnitShape = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputRank == 2)
+		UnitShape = { 1, 1, OutputShape[0], OutputShape[1] };
 	else
 		_D_Dragonian_Lib_Throw_Exception("Invalid output dims");
-
-	Tensor<Float32, 4, Device::CPU> UnitsOutput;
-
-	_D_Dragonian_Lib_Rethrow_Block(UnitsOutput = CreateTensorViewFromOrtValue<float>(
-		std::move(Outputs[0]),
-		UnitShape
-	););
 
 #ifdef _DEBUG
 	LogInfo(
 		L"Units Encoder Forward Inference With Audio Shape: [" +
-		std::to_wstring(AudioShape[0]) + L", " +
-		std::to_wstring(AudioShape[1]) + L", " +
-		std::to_wstring(AudioShape[2]) + L"], Cost Time: " +
+		std::to_wstring(AudioCont.Shape(0)) + L", " +
+		std::to_wstring(AudioCont.Shape(1)) + L", " +
+		std::to_wstring(AudioCont.Shape(2)) + L"], Cost Time: " +
 		std::to_wstring(
 			std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::high_resolution_clock::now() - TimeBegin
@@ -235,9 +174,10 @@ Tensor<Float32, 4, Device::CPU> HubertBase::InferenceModel(
 	);
 #endif
 
-	if (_MyUnitsAxis == 2)
-		return UnitsOutput.Permute({ 0, 1, 3, 2 }).Continuous().Evaluate();
-	return std::move(UnitsOutput.Evaluate());
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<float>(
+		std::move(Outputs[0]),
+		UnitShape
+	););
 }
 
 Tensor<Float32, 4, Device::CPU> HubertBase::Forward(

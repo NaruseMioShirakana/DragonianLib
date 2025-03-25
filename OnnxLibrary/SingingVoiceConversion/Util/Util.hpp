@@ -259,6 +259,11 @@ struct HParams
 	Float32 F0Min = 50.0;
 
 	/**
+	 * @brief Mel bins, it is the bin count of the mel spectrogram, the mel bins must be greater than (0)
+	 */
+	Int64 MelBins = 128;
+
+	/**
 	 * @brief Progress callback, it is the callback function for progress updates, if you need to get the progress of the inference, you must set this callback function, arguments of the callback function are (arg1, arg2), if arg1 is true, arg2 is the total steps of the inference, if arg1 is false, arg2 is the current step of the inference
 	 */
 	std::optional<ProgressCallback> ProgressCallback = std::nullopt;
@@ -347,24 +352,9 @@ struct SliceDatas
 	Int64 GTSampleRate = 0;
 
 	/**
-	 * @brief Ort values, it is the ort values, could not modify of set by user, it must be automatically generated.
+	 * @brief Stft noise, it is the stft noise tensor, the stft noise tensor must be a 4D tensor with the shape of [batch size, channels, stft dims, audio frames], it could not be set by user, it is used to generate noise for SoVitsSvc4.0-Beta
 	 */
-	OrtTuple OrtValues;
-
-	/**
-	 * @brief Dlib tuple, it is the dlib tuple, could not modify of set by user, it must be automatically generated, it is used to store the dlib tensors with thr type of [BFloat16/Float16/Float8/Int32]
-	 */
-	DlibTuple DlibTuple;
-
-	/**
-	 * @brief could not call this function by user
-	 */
-	void Clear() noexcept;
-
-	/**
-	 * @brief could not call this function by user
-	 */
-	void Emplace(std::pair<Ort::Value, std::shared_ptr<DlibValue>>&& _InputTensor);
+	std::optional<Tensor<Float32, 4, Device::CPU>> StftNoise = std::nullopt;
 };
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

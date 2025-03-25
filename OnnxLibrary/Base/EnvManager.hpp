@@ -47,6 +47,8 @@ _D_Dragonian_Lib_Onnx_Runtime_Header
 
 DLogger& GetDefaultLogger() noexcept;
 
+Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator();
+
 class OnnxRuntimeEnvironmentBase;
 using OnnxRuntimeEnvironment = std::shared_ptr<OnnxRuntimeEnvironmentBase>;
 using OnnxRuntimeModel = std::shared_ptr<Ort::Session>;
@@ -91,10 +93,10 @@ protected:
         {"gpu_mem_limit", "2147483648"},
         {"arena_extend_strategy", "kNextPowerOfTwo"},
         {"cudnn_conv_algo_search", "EXHAUSTIVE"},
-        {"do_copy_in_default_stream", "1"},
+        {"do_copy_in_default_stream", "0"},
         {"cudnn_conv_use_max_workspace", "1"},
         {"cudnn_conv1d_pad_to_nc1d", "1"},
-        {"enable_cuda_graph", "1"}
+        {"enable_cuda_graph", "0"},
     };
 };
 
@@ -178,13 +180,7 @@ public:
 	 * @param Options ONNX Runtime environment options.
      * @return Shared pointer to the ONNX Runtime environment.
      */
-    static OnnxRuntimeEnvironment& CreateEnv(const OnnxEnvironmentOptions& Options);
-
-    /**
-     * @brief Destroys an ONNX Runtime environment.
-	 * @param Options ONNX Runtime environment options.
-     */
-    static void DestroyEnv(const OnnxEnvironmentOptions& Options);
+    static OnnxRuntimeEnvironment CreateEnv(const OnnxEnvironmentOptions& Options);
 
 protected:
     /**
@@ -222,10 +218,10 @@ private:
         {"gpu_mem_limit", "2147483648"},
         {"arena_extend_strategy", "kNextPowerOfTwo"},
         {"cudnn_conv_algo_search", "EXHAUSTIVE"},
-        {"do_copy_in_default_stream", "1"},
+        {"do_copy_in_default_stream", "0"},
         {"cudnn_conv_use_max_workspace", "1"},
         {"cudnn_conv1d_pad_to_nc1d", "1"},
-        {"enable_cuda_graph", "1"}
+        {"enable_cuda_graph", "0"}
     };
 };
 
@@ -259,7 +255,7 @@ inline void UnrefAllOnnxRuntimeModel(const OnnxRuntimeEnvironment& _Environment)
     _Environment->ClearOnnxRuntimeModel();
 }
 
-inline OnnxRuntimeEnvironment& CreateOnnxRuntimeEnvironment(const OnnxEnvironmentOptions& _Options)
+inline OnnxRuntimeEnvironment CreateOnnxRuntimeEnvironment(const OnnxEnvironmentOptions& _Options)
 {
     return OnnxRuntimeEnvironmentBase::CreateEnv(_Options);
 }

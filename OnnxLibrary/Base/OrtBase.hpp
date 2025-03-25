@@ -65,21 +65,23 @@ OnnxRuntimeEnvironment CreateEnvironment(
 	const OnnxEnvironmentOptions& Options
 );
 
-Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator();
-
-template <typename _Type>
-constexpr auto TypeToOnnxTensorType = Ort::TypeToTensorType<_Type>::type;
-
 /**
  * @class OnnxModelBase
  * @brief Base class for Onnx models in MoeVoiceStudioCore
+ *
+ * Comments:
+ * - Extended parameters ["Key", ... ] means that you could add more parameters to HParams::ExtendedParameters with {"Key", "Value"}  
+ * - Model path ["Key", ... ] means that you must add more model paths to HParams::ModelPaths with {"Key", "Value"}
+ * - AUTOGEN means that if the parameter is not set, the model will automatically generate this parameter
+ * - OPTIONAL means that the parameter is optional if your model does not have this layer
+ * - REQUIRED means that the parameter is always required
  */
 template <typename Child>
 class OnnxModelBase
 {
 public:
 	using _TMyChild = Child;
-    
+
     OnnxModelBase(
         const OnnxRuntimeEnvironment& _Environment,
         const std::wstring& _ModelPath,
@@ -209,195 +211,32 @@ protected:
 		_MyLogger->Log(_Message, Logger::LogLevel::Error);
 	}
 
-	template <typename _MyValueType, size_t _NRank>
-	static auto CreateTensorViewFromOrtValue(Ort::Value&& _Value, const Dimensions<_NRank>& _Shape)
+	OrtTuple RunModel(const Ort::Value* Inputs) const
 	{
-		const auto BufferSize = _Shape.Multiply();
-		if (_Value.GetTensorTypeAndShapeInfo().GetElementCount() != BufferSize)
-			_D_Dragonian_Lib_Throw_Exception("Size mismatch");
-		try
-		{
-			if (_Value.GetTensorTypeAndShapeInfo().GetElementType() == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
-			{
-				auto Data = _Value.GetTensorMutableData<Ort::Float16_t>();
-				return Functional::FromShared<Float16, _NRank, Device::CPU>(
-					_Shape,
-					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
-					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
-			}
-			if (_Value.GetTensorTypeAndShapeInfo().GetElementType() == ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16)
-			{
-				auto Data = _Value.GetTensorMutableData<Ort::BFloat16_t>();
-				return Functional::FromShared<BFloat16, _NRank, Device::CPU>(
-					_Shape,
-					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
-					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
-			}
-			if (_Value.GetTensorTypeAndShapeInfo().GetElementType() == TypeToOnnxTensorType<_MyValueType>)
-			{
-				auto Data = _Value.GetTensorMutableData<_MyValueType>();
-				return Functional::FromShared<_MyValueType, _NRank, Device::CPU>(
-					_Shape,
-					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
-					BufferSize
-				);
-			}
-		}
-		catch (std::exception& e)
-		{
-			_D_Dragonian_Lib_Throw_Exception(e.what());
-		}
-		_D_Dragonian_Lib_Throw_Exception("Type mismatch, expected: " + std::to_string(TypeToOnnxTensorType<_MyValueType>) + ", got: " + std::to_string(_Value.GetTensorTypeAndShapeInfo().GetElementType()));
+		_D_Dragonian_Lib_Rethrow_Block(
+			return _MyModel->Run(
+				*_MyRunOptions,
+				_MyInputNames.Data(),
+				Inputs,
+				_MyInputCount,
+				_MyOutputNames.Data(),
+				_MyOutputCount
+			);
+			);
 	}
 
-	template <typename _TensorType, size_t _NRank, Device _MyDevice>
-	static std::pair<Ort::Value, std::shared_ptr<DlibValue>> CreateValueFromTensor(
-		const OrtMemoryInfo* _MyMemoryInfo,
-		const Tensor<_TensorType, _NRank, _MyDevice>& _Tensor,
-		const auto _InputAxisCount,
-		size_t _AxisOffset
-	)
+	OrtTuple RunModel(const OrtTuple& Inputs) const
 	{
-		const auto TensorShape = _Tensor.Shape().Data();
-		auto TensorData = _Tensor.Data();
-		const auto ElementCount = _Tensor.ElementCount();
-		try
-		{
-			return {
-				Ort::Value::CreateTensor(
-					_MyMemoryInfo,
-					TensorData,
-					static_cast<size_t>(ElementCount),
-					TensorShape + _AxisOffset,
-					_InputAxisCount
-				),
-				_Tensor.CreateShared()
-			};
-		}
-		catch (std::exception& e)
-		{
-			_D_Dragonian_Lib_Throw_Exception(e.what());
-		}
-	}
-
-	template <typename _TensorType, size_t _NRank, Device _MyDevice>
-	static auto CheckAndTryCreateValueFromTensor(
-		const OrtMemoryInfo* _MyMemoryInfo,
-		const Tensor<_TensorType, _NRank, _MyDevice>& _Tensor,
-		ONNXTensorElementDataType _DataType,
-		const TemplateLibrary::Vector<Int64>& _InputShapes,
-		const TemplateLibrary::Array<const wchar_t*, _NRank>& _AxisNames,
-		const char* _TensorName,
-		const DLogger& _Logger = nullptr
-	)
-	{
-		const auto& TensorShape = _Tensor.Shape();
-		const auto TensorAxisCount = TensorShape.Size();
-		const auto InputAxisCount = _InputShapes.Size();
-
-		if (TensorAxisCount < InputAxisCount)
-			_D_Dragonian_Lib_Throw_Exception(
-				"Invalid tensor axis, expected: " +
-				std::to_string(InputAxisCount) +
-				", got: " +
-				std::to_string(TensorAxisCount) +
-				", input name of the tensor is: \"" +
-				_TensorName +
-				"\""
+		_D_Dragonian_Lib_Rethrow_Block(
+			return _MyModel->Run(
+				*_MyRunOptions,
+				_MyInputNames.Data(),
+				Inputs.data(),
+				_MyInputCount,
+				_MyOutputNames.Data(),
+				_MyOutputCount
 			);
-
-		const auto AxisOffset = TensorAxisCount - InputAxisCount;
-
-		for (UInt64 i = 0; i < InputAxisCount; ++i)
-		{
-			if (_InputShapes[i] != -1 && _InputShapes[i] != TensorShape[i + AxisOffset])
-				_D_Dragonian_Lib_Throw_Exception(
-					"Invalid tensor shape at axis \"" +
-					WideStringToUTF8(_AxisNames[i + AxisOffset]) +
-					"\", expected: " +
-					std::to_string(_InputShapes[i]) +
-					", got: " +
-					std::to_string(TensorShape[i + AxisOffset]) +
-					", input name of the tensor is: \"" +
-					_TensorName +
-					"\""
-				);
-		}
-
-		if (_DataType != TypeToOnnxTensorType<_TensorType>)
-		{
-			if constexpr (TypeTraits::IsFloatingPointValue<_TensorType>)
-			{
-				if ((_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16 ||
-					_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) && _Logger)
-					_Logger->LogWarn(
-						L"Input tensor: \"" +
-						UTF8ToWideString(_TensorName) +
-						L"\" of this model is half precision, but the input tensor is single precision," +
-						L"input will automatically converting to half precision"
-					);
-				if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16)
-					return CreateValueFromTensor<BFloat16, _NRank, _MyDevice>(
-						_MyMemoryInfo,
-						_Tensor.template Cast<BFloat16>().Evaluate(),
-						InputAxisCount,
-						AxisOffset
-					);
-				if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
-					return CreateValueFromTensor<Float16, _NRank, _MyDevice>(
-						_MyMemoryInfo,
-						_Tensor.template Cast<Float16>().Evaluate(),
-						InputAxisCount,
-						AxisOffset
-					);
-			}
-			else if constexpr (TypeTraits::IsIntegerValue<_TensorType>)
-			{
-				if ((_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8 ||
-					_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16 ||
-					_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32) && _Logger)
-					_Logger->LogWarn(
-						L"Input tensor: \"" +
-						UTF8ToWideString(_TensorName) +
-						L"\" of this model is lower bit depth, but the input tensor is higher bit depth," +
-						L"input will automatically converting to lower bit depth"
-					);
-				if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
-					return CreateValueFromTensor<Int8, _NRank, _MyDevice>(
-						_MyMemoryInfo,
-						_Tensor.template Cast<Int8>().Evaluate(),
-						InputAxisCount,
-						AxisOffset
-					);
-				if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
-					return CreateValueFromTensor<Int16, _NRank, _MyDevice>(
-						_MyMemoryInfo,
-						_Tensor.template Cast<Int16>().Evaluate(),
-						InputAxisCount,
-						AxisOffset
-					);
-				if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
-					return CreateValueFromTensor<Int32, _NRank, _MyDevice>(
-						_MyMemoryInfo,
-						_Tensor.template Cast<Int32>().Evaluate(),
-						InputAxisCount,
-						AxisOffset
-					);
-			}
-
-			_D_Dragonian_Lib_Throw_Exception(
-				"Invalid tensor type, expected: " +
-				std::to_string(_DataType) +
-				", got: " +
-				std::to_string(TypeToOnnxTensorType<_TensorType>) +
-				", input name of the tensor is: \"" +
-				_TensorName +
-				"\""
 			);
-		}
-		return CreateValueFromTensor(_MyMemoryInfo, _Tensor, InputAxisCount, AxisOffset);
 	}
 
 private:
@@ -476,51 +315,3 @@ protected:
 };
 
 _D_Dragonian_Lib_Onnx_Runtime_End
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Float16>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::BFloat16>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Complex32>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX64;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Complex64>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_COMPLEX128;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Float8E4M3FN>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT8E4M3FN;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Float8E4M3FNUZ>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT8E4M3FNUZ;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Float8E5M2>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT8E5M2;
-};
-
-template <>
-struct Ort::TypeToTensorType<DragonianLib::Float8E5M2FNUZ>
-{
-	static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT8E5M2FNUZ;
-};

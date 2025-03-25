@@ -329,11 +329,12 @@ class SynthesizerTrn(nn.Module):
         mel2ph_ = mel2ph.unsqueeze(2).repeat([1, 1, c.shape[-1]])
         c = torch.gather(decoder_inp, 1, mel2ph_).transpose(1, 2)  # [B, T, H]
         
-        if self.export_mix:   # [N, S]  *  [S, B, 1, H]
-            g = g.reshape((g.shape[0], g.shape[1], 1, 1, 1))  # [N, S, B, 1, 1]
-            g = g * self.speaker_map  # [N, S, B, 1, H]
-            g = torch.sum(g, dim=1) # [N, 1, B, 1, H]
-            g = g.transpose(0, -1).transpose(0, -2).squeeze(0) # [B, H, N]
+        if self.export_mix:   # [B, N, S]  *  [1, S, 1, 1, H]
+            g = g.permute(2, 0, 1)  # [S, B, N]
+            g = g.reshape((1, g.shape[0], g.shape[1], g.shape[2], 1))  # [1, S, B, N, 1]
+            g = g * self.speaker_map  # [1, S, B, N, H]
+            g = torch.sum(g, dim=1) # [1, B, N, H]
+            g = g.squeeze(0).transpose(1, 2) # [B, H, N]
         else:
             if g.dim() == 1:
                 g = g.unsqueeze(0)

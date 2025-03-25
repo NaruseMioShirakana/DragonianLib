@@ -48,7 +48,7 @@
 		</Expand>
 	</Type>
 
-	<Type Name="DragonianLib::ArrayImpl&lt;*&gt;">
+	<Type Name="DragonianLib::TemplateLibrary::Array&lt;*&gt;">
 		<DisplayString Condition="_MyRank == 1">
 			{{ Rank: {_MyRank}, Data: [ {_MyData[0]} ] }}
 		</DisplayString>
@@ -93,6 +93,13 @@
 			<Item Name="[Type]" ExcludeView="simple">_DType</Item>
 			<Item Name="[Device]" ExcludeView="simple">_Device</Item>
 			<Item Name="[Capacity]" ExcludeView="simple">_MyLast - _MyFirst._Ptr</Item>
+			<Synthetic Name="[ReferenceCount]" Condition="_MyFirst._Rep">
+				<DisplayString>{{ Strong: { _MyFirst._Rep[0]._Uses }, Weak: { _MyFirst._Rep[0]._Weaks } }}</DisplayString>
+				<Expand>
+					<Item Name="[StrongRef]" ExcludeView="simple">_MyFirst._Rep[0]._Uses</Item>
+					<Item Name="[WeakRef]" ExcludeView="simple">_MyFirst._Rep[0]._Weaks</Item>
+				</Expand>
+			</Synthetic>
 			<Synthetic Name="[ViewAttribute]">
 				<DisplayString Condition="_MyShape._MyRank == 1">
 					{{ Shape: [ {_MyShape._MyData[0]} ] }}
@@ -116,6 +123,7 @@
 					{{ Shape: [ {_MyShape._MyData[0]}, {_MyShape._MyData[1]}, {_MyShape._MyData[2]}, ..., {*(_MyShape._MyData + _MyShape._MyRank - 3)}, {*(_MyShape._MyData + _MyShape._MyRank - 2)}, {*(_MyShape._MyData + _MyShape._MyRank - 1)} ] }}
 				</DisplayString>
 				<Expand>
+					<Item Name="[Rank]" ExcludeView="simple">_MyShape._MyRank</Item>
 					<Item Name="[ViewShape]" ExcludeView="simple">_MyShape</Item>
 					<Item Name="[ViewStride]" ExcludeView="simple">_MyViewStride</Item>
 				</Expand>

@@ -18,7 +18,11 @@ DLogger& GetDefaultLogger() noexcept
 	return _MyLogger;
 }
 
-std::unordered_map<std::wstring, std::shared_ptr<OnnxRuntimeEnvironmentBase>> GlobalOrtEnvCache;
+Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator()
+{
+	static Ort::AllocatorWithDefaultOptions Allocator;
+	return Allocator;
+}
 
 void DragonianLibOrtLoggingFn(
 	void*, 
@@ -112,6 +116,14 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 	_MyLoggerId = Options.LoggerId;
 	_MyCUDAOptions = Options.CUDAOptions;
 
+	if (_MyProvider == Device::CPU)
+		_MyDeviceID = 0;
+	if (_MyProvider == Device::CUDA || _MyProvider == Device::DIRECTX)
+	{
+		_MyIntraOpNumThreads = 1;
+		_MyInterOpNumThreads = 1;
+	}
+
 	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
 	_MyStaticLogger->LogInfo(
 		L"Creating Envireoment With Provider:[" +
@@ -176,7 +188,9 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 		);
 		_MyOrtSessionOptions->EnableMemPattern();
 		_MyOrtSessionOptions->EnableCpuMemArena();
-		_MyOrtSessionOptions->SetExecutionMode(ORT_PARALLEL);
+		_MyOrtSessionOptions->SetExecutionMode(
+			ORT_SEQUENTIAL
+		);
 		_MyOrtMemoryInfo = std::make_shared<Ort::MemoryInfo>(
 			Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
 		);
@@ -223,13 +237,19 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			nullptr
 		);
 		_MyOrtSessionOptions->SetIntraOpNumThreads(
-			static_cast<int>(_MyIntraOpNumThreads)
+			1
 		);
 		_MyOrtSessionOptions->SetInterOpNumThreads(
-			static_cast<int>(_MyInterOpNumThreads)
+			1
 		);
 		_MyOrtSessionOptions->SetGraphOptimizationLevel(
 			ORT_ENABLE_ALL
+		);
+		_MyOrtSessionOptions->AppendExecutionProvider_CUDA_V2(
+			*_MyCudaOptionsV2
+		);
+		_MyOrtSessionOptions->SetExecutionMode(
+			ORT_SEQUENTIAL
 		);
 		_MyOrtMemoryInfo = std::make_shared<Ort::MemoryInfo>(
 			Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
@@ -253,8 +273,12 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 		);
 
 		Ort::ThreadingOptions ThreadingOptions;
-		ThreadingOptions.SetGlobalInterOpNumThreads(static_cast<int>(_MyInterOpNumThreads));
-		ThreadingOptions.SetGlobalIntraOpNumThreads(static_cast<int>(_MyIntraOpNumThreads));
+		ThreadingOptions.SetGlobalInterOpNumThreads(
+			1
+		);
+		ThreadingOptions.SetGlobalIntraOpNumThreads(
+			1
+		);
 
 		_MyOrtEnv = std::make_shared<Ort::Env>(
 			ThreadingOptions,
@@ -391,37 +415,11 @@ void OnnxRuntimeEnvironmentBase::ClearOnnxRuntimeModel()
 	GlobalOrtModelCache.clear();
 }
 
-OnnxRuntimeEnvironment& OnnxRuntimeEnvironmentBase::CreateEnv(const OnnxEnvironmentOptions& Options)
+OnnxRuntimeEnvironment OnnxRuntimeEnvironmentBase::CreateEnv(const OnnxEnvironmentOptions& Options)
 {
-	auto ID = L"EP:" + std::to_wstring(static_cast<int>(Options.Provider)) +
-		L" DEVICE:" + std::to_wstring(Options.DeviceID) +
-		L" INTER:" + std::to_wstring(Options.InterOpNumThreads) +
-		L" INTRA:" + std::to_wstring(Options.IntraOpNumThreads) +
-		L" LLEVEL:" + std::to_wstring(Options.LoggingLevel) +
-		L" LID:" + UTF8ToWideString(Options.LoggerId);
-	for (const auto& [Key, Value] : Options.CUDAOptions)
-		ID += L" " + UTF8ToWideString(Key) + L":" + UTF8ToWideString(Value);
-	auto Iter = GlobalOrtEnvCache.find(ID);
-	if (Iter != GlobalOrtEnvCache.end())
-		return Iter->second;
-	return GlobalOrtEnvCache[ID] = OnnxRuntimeEnvironment(
+	return OnnxRuntimeEnvironment(
 		new OnnxRuntimeEnvironmentBase(Options)
 	);
-}
-
-void OnnxRuntimeEnvironmentBase::DestroyEnv(const OnnxEnvironmentOptions& Options)
-{
-	auto ID = L"EP:" + std::to_wstring(static_cast<int>(Options.Provider)) +
-		L" DEVICE:" + std::to_wstring(Options.DeviceID) +
-		L" INTER:" + std::to_wstring(Options.InterOpNumThreads) +
-		L" INTRA:" + std::to_wstring(Options.IntraOpNumThreads) +
-		L" LLEVEL:" + std::to_wstring(Options.LoggingLevel) +
-		L" LID:" + UTF8ToWideString(Options.LoggerId);
-	for (const auto& [Key, Value] : Options.CUDAOptions)
-		ID += L" " + UTF8ToWideString(Key) + L":" + UTF8ToWideString(Value);
-	auto Iter = GlobalOrtEnvCache.find(ID);
-	if (Iter != GlobalOrtEnvCache.end())
-		GlobalOrtEnvCache.erase(Iter);
 }
 
 _D_Dragonian_Lib_Onnx_Runtime_End

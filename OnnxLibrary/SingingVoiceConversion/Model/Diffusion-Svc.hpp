@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file Diffusion-Svc.hpp
  * @author NaruseMioShirakana
  * @email shirakanamio@foxmail.com
@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Base.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 

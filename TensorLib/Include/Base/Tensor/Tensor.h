@@ -131,6 +131,8 @@ struct Range
 	}
 
 	Range operator-() const { return { End, -Step, Begin }; }
+
+	static Range Idx(SizeType Idx) { return { Idx, Idx, Idx }; }
 };
 
 namespace TypeTraits

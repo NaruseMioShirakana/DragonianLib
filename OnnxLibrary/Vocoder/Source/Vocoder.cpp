@@ -1,4 +1,5 @@
 ﻿#include "../Vocoder.hpp"
+#include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 
@@ -26,7 +27,8 @@ VocoderBase::VocoderBase(
 		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected 1 or 2, got " + std::to_string(_MyInputCount));
 	if (InvalidOutputCount)
 		_D_Dragonian_Lib_Throw_Exception("Invalid output count, expected 1, got " + std::to_string(_MyOutputCount));
-	const bool InvalidInputShape = _MyInputDims[0].Size() < 2 || _MyInputDims[0].Size() > 4 || _MyInputDims[1].Size() < 1 || _MyInputDims[1].Size() > 3;
+	const bool InvalidInputShape = _MyInputDims[0].Size() < 2 || _MyInputDims[0].Size() > 4 ||
+		(_MyInputCount == 2 && (_MyInputDims[1].Size() > 3 || _MyInputDims[1].Empty()));
 	const bool InvalidOutputShape = _MyOutputDims[0].Size() < 1 || _MyOutputDims[0].Size() > 3;
 	if (InvalidInputShape)
 		_D_Dragonian_Lib_Throw_Exception("Invalid input shape, expected 2 to 4 and 1 to 3, got " + std::to_string(_MyInputDims[0].Size()) + " and " + std::to_string(_MyInputDims[1].Size()));
@@ -44,18 +46,15 @@ VocoderBase::VocoderBase(
 	{
 		if (_MyInputDims[0].Back() == -1)
 		{
-			LogWarn(L"Could not found the units axis in the output dims, use the last axis as the units axis!");
+			LogWarn(L"Could not found the mel bins axis in the input dims, use the last axis as the mel bins axis!");
 			_MyInputDims[0].Back() = _MyMelBins;
 			_MyBinAxis = 3;
 		}
 		else
-			_D_Dragonian_Lib_Throw_Exception("Invalid output dims, could not found the units axis");
+			_D_Dragonian_Lib_Throw_Exception("Invalid input dims, could not found the mel bins axis");
 	}
 	if (_MyBinAxis < 2)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units axis, expected 2 or greater, got " + std::to_string(_MyBinAxis));
-
-	if (_MyBinAxis != 2)
-		LogWarn(L"Units axis is not the last axis, operations may be slow!");
+		_D_Dragonian_Lib_Throw_Exception("Invalid mel bins axis, expected 2 or greater, got " + std::to_string(_MyBinAxis));
 }
 
 Tensor<Float32, 3, Device::CPU> VocoderBase::Forward(
@@ -75,147 +74,91 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	const auto TimeBegin = std::chrono::high_resolution_clock::now();
 #endif
 
-	bool M2A = _MyBinAxis == 2;
-	Int64 _MelShape[4] = { 1, 1, 1, 1 };
-	Int64 _F0Shape[3] = { 1, 1, 1 };
-	const auto MelInputAxisCount = static_cast<Int64>(_MyInputDims[0].Size());	// 4,  3,  2,  1
-	const auto MIBI = MelInputAxisCount - 4;							// 0, -1, -2, -3
-	const auto MICI = MelInputAxisCount - 3;							// 1,  0, -1, -2
-	const auto MIMI = MelInputAxisCount - (M2A ? 2 : 1);				// 2,  1,  0, -1
-	const auto MIFI = MelInputAxisCount - (M2A ? 1 : 2);				// 3,  2,  1,  0
-
-	const auto MelCont = _Mel.Continuous().Evaluate();
-	if (MIBI >= 0 && _MyInputDims[0][MIBI] != -1 && MelCont.Size(0) != _MyInputDims[0][MIBI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input batch size");
-	if (MICI >= 0 && _MyInputDims[0][MICI] != -1 && MelCont.Size(1) != _MyInputDims[0][MICI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input channel count");
-	if (MIMI >= 0 && _MyInputDims[0][MIMI] != -1 && MelCont.Size(2) != _MyInputDims[0][MIMI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input mel bins");
-	if (MIFI >= 0 && _MyInputDims[0][MIFI] != -1 && MelCont.Size(3) != _MyInputDims[0][MIFI])
-		_D_Dragonian_Lib_Throw_Exception("Invalid input frames");
-
-	std::optional<Tensor<Float32, 3, Device::CPU>> F0Cont = std::nullopt;
 	if (_MyInputCount == 2)
 	{
-		if (!_F0.has_value())
+		const auto FrameAxis = _MyBinAxis == 2 ? 3 : 2;
+		if (!_F0.has_value() || _F0.value().get().Null())
 			_D_Dragonian_Lib_Throw_Exception("F0 is required");
 
-		const auto F0InputAxisCount = static_cast<Int64>(_MyInputDims[1].Size());
-		const auto FIBI = F0InputAxisCount - 3;
-		const auto FICI = F0InputAxisCount - 2;
-		const auto FISI = F0InputAxisCount - 1;
-
-		if (FIBI >= 0 && _MyInputDims[1][FIBI] != -1 && _F0->get().Size(0) != _MyInputDims[1][FIBI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid f0 batch size");
-		if (FICI >= 0 && _MyInputDims[1][FICI] != -1 && _F0->get().Size(1) != _MyInputDims[1][FICI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid f0 channel count");
-		if (FISI >= 0 && _MyInputDims[1][FISI] != -1 && _F0->get().Size(2) != _MyInputDims[1][FISI])
-			_D_Dragonian_Lib_Throw_Exception("Invalid f0 frame count");
-		_D_Dragonian_Lib_Rethrow_Block(F0Cont = _F0->get().Continuous().Evaluate(););
+		if (_F0->get().Size(0) != _Mel.Size(0))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Batch/Channel of F0 and Mel is mismatched, excepted f0: " +
+				std::to_string(_Mel.Size(0)) +
+				", got: " +
+				std::to_string(_F0->get().Size(0))
+			);
+		if (_F0->get().Size(1) != _Mel.Size(1))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Channel/Batch of F0 and Mel is mismatched, excepted f0: " +
+				std::to_string(_Mel.Size(1)) +
+				", got: " +
+				std::to_string(_F0->get().Size(1))
+			);
+		if (_F0->get().Size(2) != _Mel.Size(FrameAxis))
+			_D_Dragonian_Lib_Throw_Exception(
+				"Frames of F0 and Mel is mismatched, excepted f0: " +
+				std::to_string(_Mel.Size(FrameAxis)) +
+				", got: " +
+				std::to_string(_F0->get().Size(2))
+			);
 	}
 
-	if (MelInputAxisCount == 4)
-	{
-		_MelShape[0] = MelCont.Size(0);
-		_MelShape[1] = MelCont.Size(1);
-		_MelShape[2] = MelCont.Size(2);
-		_MelShape[3] = MelCont.Size(3);
-	}
-	else if (MelInputAxisCount == 3)
-	{
-		_MelShape[0] = MelCont.Size(1);
-		_MelShape[1] = MelCont.Size(2);
-		_MelShape[2] = MelCont.Size(3);
-	}
-	else if (MelInputAxisCount == 2)
-	{
-		_MelShape[0] = MelCont.Size(2);
-		_MelShape[1] = MelCont.Size(3);
-	}
-	else if (MelInputAxisCount == 1)
-	{
-		_MelShape[0] = MelCont.Size(3);
-	}
+	InputTensorsType Inputs;
 
-	std::vector<Ort::Value> Inputs;
-
-	_D_Dragonian_Lib_Rethrow_Block(Inputs.emplace_back(
-		Ort::Value::CreateTensor<float>(
-			*_MyMemoryInfo,
-			MelCont.Data(),
-			MelCont.ElementCount(),
-			_MelShape,
-			MelInputAxisCount
-		)
-	););
-
-	if (F0Cont.has_value())
-	{
-		const auto F0InputAxisCount = static_cast<Int64>(_MyInputDims[1].Size());
-		if (F0InputAxisCount == 3)
-		{
-			_F0Shape[0] = F0Cont->Size(0);
-			_F0Shape[1] = F0Cont->Size(1);
-			_F0Shape[2] = F0Cont->Size(2);
-		}
-		else if (F0InputAxisCount == 2)
-		{
-			_F0Shape[0] = F0Cont->Size(1);
-			_F0Shape[1] = F0Cont->Size(2);
-		}
-		else if (F0InputAxisCount == 1)
-		{
-			_F0Shape[0] = F0Cont->Size(2);
-		}
-		_D_Dragonian_Lib_Rethrow_Block(Inputs.emplace_back(
-			Ort::Value::CreateTensor<float>(
+	auto MelCont = _Mel.Continuous().Evaluate();
+	_D_Dragonian_Lib_Rethrow_Block(
+		Inputs.Emplace(
+			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				F0Cont->Data(),
-				F0Cont->ElementCount(),
-				_F0Shape,
-				F0InputAxisCount
+				MelCont,
+				_MyInputTypes[0],
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"MelBins", L"MelFrames" },
+				"Mel",
+				GetLoggerPtr()
 			)
-		););
+		);
+	);
+
+	if (_MyInputCount == 2)
+	{
+		auto F0Cont = _F0->get().Continuous().Evaluate();
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					F0Cont,
+					_MyInputTypes[1],
+					_MyInputDims[1],
+					{ L"Batch/Channel", L"Batch/Channel", L"MelFrames" },
+					"F0",
+					GetLoggerPtr()
+				)
+			);
+		);
 	}
 
 	std::vector<Ort::Value> Outputs;
 
-	_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyModel->Run(
-		*_MyRunOptions,
-		_MyInputNames.Data(),
-		Inputs.data(),
-		_MyInputCount,
-		_MyOutputNames.Data(),
-		_MyOutputCount
-	););
+	_D_Dragonian_Lib_Rethrow_Block(Outputs = RunModel(Inputs););
 
-	const auto OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-	Dimensions<3> AudioShape{ 1, 1, 1 };
-	if (OutputShape.size() == 3)
-	{
-		AudioShape[0] = OutputShape[0];
-		AudioShape[1] = OutputShape[1];
-		AudioShape[2] = OutputShape[2];
-	}
-	else if (OutputShape.size() == 2)
-	{
-		AudioShape[1] = OutputShape[0];
-		AudioShape[2] = OutputShape[1];
-	}
-	else if (OutputShape.size() == 1)
-	{
-		AudioShape[2] = OutputShape[0];
-	}
-	else
-		_D_Dragonian_Lib_Throw_Exception("Invalid output dims");
+	const auto& OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputRank = OutputShape.size();
+	Dimensions<3> AudioShape;
+	if (OutputRank == 3)
+		AudioShape = { OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputRank == 2)
+		AudioShape = { 1, OutputShape[0], OutputShape[1] };
+	else if (OutputRank == 1)
+		AudioShape = { 1, 1, OutputShape[0] };
 
 #ifdef _DEBUG
 	LogInfo(
 		L"Vocoder Forward Inference With Mel Shape: [" +
-		std::to_wstring(_MelShape[0]) + L", " +
-		std::to_wstring(_MelShape[1]) + L", " +
-		std::to_wstring(_MelShape[2]) + L", " +
-		std::to_wstring(_MelShape[3]) + L"], Cost Time: " +
+		std::to_wstring(MelCont.Shape(0)) + L", " +
+		std::to_wstring(MelCont.Shape(1)) + L", " +
+		std::to_wstring(MelCont.Shape(2)) + L", " +
+		std::to_wstring(MelCont.Shape(3)) + L"], Cost Time: " +
 		std::to_wstring(
 			std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::high_resolution_clock::now() - TimeBegin
@@ -225,11 +168,12 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	);
 #endif
 
-	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<float>(
-		std::move(Outputs[0]),
-		AudioShape
-	).Evaluate(););
+	_D_Dragonian_Lib_Rethrow_Block(
+		return CreateTensorViewFromOrtValue<Float32>(
+			std::move(Outputs[0]),
+			AudioShape
+		).Evaluate();
+	);
 }
-
 
 _D_Dragonian_Lib_Onnx_Vocoder_End

@@ -27,6 +27,24 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
+constexpr Int64 DefaultNoiseDim = 192;
+constexpr Int64 DefaultWindowSize = 2048;
+
+/**
+ * @class SingingVoiceConversionModule
+ * @brief Base class of SingingVoiceConversion, provides common functions and parameters, such as inference, preprocess, etc.
+ *
+ * Classes that inherit from this class must implement the following functions:
+ * - Forward (virtual): Forward inference
+ * - VPreprocess (virtual): Preprocess input datas for inference
+ *
+ * Comments:
+ * - Extended parameters ["Key", ... ] means that you could add more parameters to HParams::ExtendedParameters with {"Key", "Value"}  
+ * - Model path ["Key", ... ] means that you must add more model paths to HParams::ModelPaths with {"Key", "Value"}
+ * - AUTOGEN means that if the parameter is not set, the model will automatically generate this parameter
+ * - OPTIONAL means that the parameter is optional if your model does not have this layer
+ * - REQUIRED means that the parameter is always required
+ */
 class SingingVoiceConversionModule
 {
 public:
@@ -43,14 +61,14 @@ public:
 	/**
 	 * @brief Inference
 	 * @param Params Inference parameters, see SingingVoiceConversion::Parameters
-	 * @param Audio Input audio, shape must be {BatchSize, Channels, Length}
+	 * @param Audio Input audio, shape must be {BatchSize, Channels, SampleCount}
 	 * @param SourceSampleRate Source sample rate
 	 * @param UnitsEncoder Units encoder
 	 * @param F0Extractor F0 extractor
 	 * @param F0Params F0 parameters
 	 * @param UnitsCluster Units cluster
 	 * @param AudioMask Audio mask
-	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio
+	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio, if output is audio, shape must be {BatchSize, Channels, SampleCount}, if output is mel spectrogram, shape must be {BatchSize, Channels, MelBins, AudioFrames}
 	 */
 	Tensor<Float32, 4, Device::CPU> Inference(
 		const Parameters& Params,
@@ -95,6 +113,19 @@ public:
 		const Parameters& Params,
 		SliceDatas&& InputDatas
 	) const = 0;
+
+	/**
+	 * @brief Calculate frame count with input sample count and sampling rate， The following equation is calculated: FrameCount = (InputSampleCount * OutputSamplingRate) / (InputSamplingRate * HopSize) + Offset
+	 * @param InputSampleCount Input sample count
+	 * @param InputSamplingRate Input sampling rate
+	 * @param Offset Offset
+	 * @return Int64 Frame count
+	 */
+	Int64 CalculateFrameCount(
+		Int64 InputSampleCount,
+		Int64 InputSamplingRate,
+		Int64 Offset = 0
+	) const noexcept;
 
 protected:
 	Int64 _MyOutputSamplingRate = 32000;
@@ -146,7 +177,7 @@ public:
 	static Tensor<Float32, 3, Device::CPU> InterpolateUnVoicedF0(
 		const Tensor<Float32, 3, Device::CPU>& F0
 	);
-	
+
 protected:
 	std::optional<ProgressCallback> _MyProgressCallback;
 
@@ -220,6 +251,76 @@ public:
 	{
 		return _HasSpeakerMixLayer;
 	}
+
+protected:
+	static void CheckParams(const SliceDatas& MyData);
+	SliceDatas& PreprocessUnits(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		const DLogger& Logger = nullptr
+	) const;
+	static SliceDatas& PreprocessUnitsLength(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		const DLogger& Logger = nullptr
+	);
+	static SliceDatas& PreprocessMel2Units(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		const DLogger& Logger = nullptr
+	);
+	static SliceDatas& PreprocessUnVoice(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		const DLogger& Logger = nullptr
+	);
+	static SliceDatas& PreprocessF0(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Float32 F0Offset,
+		const DLogger& Logger = nullptr
+	);
+	SliceDatas& PreprocessVolume(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		const DLogger& Logger = nullptr
+	) const;
+	SliceDatas& PreprocessF0Embed(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Float32 F0Offset,
+		const DLogger& Logger = nullptr
+	) const;
+	SliceDatas& PreprocessSpeakerMix(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Int64 SpeakerId,
+		const DLogger& Logger = nullptr
+	) const;
+	SliceDatas& PreprocessSpeakerId(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Int64 SpeakerId,
+		const DLogger& Logger = nullptr
+	) const;
 };
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

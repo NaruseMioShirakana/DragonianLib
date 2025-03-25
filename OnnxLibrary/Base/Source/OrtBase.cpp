@@ -11,10 +11,4 @@ OnnxRuntimeEnvironment CreateEnvironment(
 	););
 }
 
-Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator()
-{
-	static Ort::AllocatorWithDefaultOptions Allocator;
-	return Allocator;
-}
-
 _D_Dragonian_Lib_Onnx_Runtime_End

@@ -277,12 +277,12 @@ namespace BinaryOperators
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Pow(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (requires(_Type & _A, _Type & _B) { { std::pow(_A, _B) }; })
-			return std::pow(_Left, _Right);
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Pow(_B) }; })
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A.Pow(_B) }; })
 			return _Left.Pow(_Right);
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.pow(_B) }; })
 			return _Left.pow(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { std::pow(_A, _B) }; })
+			return std::pow(_Left, _Right);
 		else
 			return std::nullopt;
 	}
@@ -291,12 +291,12 @@ namespace BinaryOperators
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Max(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (requires(_Type & _A, _Type & _B) { { std::max(_A, _B) }; })
-			return std::max(_Left, _Right);
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Max(_B) }; })
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A.Max(_B) }; })
 			return _Left.Max(_Right);
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.max(_B) }; })
 			return _Left.max(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { std::max(_A, _B) }; })
+			return std::max(_Left, _Right);
 		else
 			return std::nullopt;
 	}
@@ -305,12 +305,12 @@ namespace BinaryOperators
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Min(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (requires(_Type & _A, _Type & _B) { { std::min(_A, _B) }; })
-			return std::min(_Left, _Right);
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Min(_B) }; })
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A.Min(_B) }; })
 			return _Left.Min(_Right);
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.min(_B) }; })
 			return _Left.min(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { std::min(_A, _B) }; })
+			return std::min(_Left, _Right);
 		else
 			return std::nullopt;
 	}

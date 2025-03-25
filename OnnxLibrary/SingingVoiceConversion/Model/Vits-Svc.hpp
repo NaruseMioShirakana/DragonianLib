@@ -28,14 +28,17 @@
  */
 
 #pragma once
-#include "Base.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
 /**
-* @class VitsSvc
-* @brief Vits based Singing Voice Conversion, extended parameters is ["NoiseDims"], model path is ["Model"]
-*/
+ * @class VitsSvc
+ * @brief Vits based Singing Voice Conversion
+ *
+ * Following model path is required:
+ * - "Model" : Vits based svc model path
+ */
 class VitsSvc : public SingingVoiceConversionModule, public OnnxModelBase<VitsSvc>
 {
 public:
@@ -52,7 +55,7 @@ public:
 	Tensor<Float32, 4, Device::CPU> Forward(
 		const Parameters& Params,
 		const SliceDatas& InputDatas
-	) const override;
+	) const override = 0;
 
 	SliceDatas VPreprocess(
 		const Parameters& Params,
@@ -61,19 +64,49 @@ public:
 
 protected:
 	Int64 _MyNoiseDims = 192;
+	Int64 _MyWindowSize = 2048;
 
 public:
 	VitsSvc(const VitsSvc&) = default;
 	VitsSvc(VitsSvc&&) noexcept = default;
 	VitsSvc& operator=(const VitsSvc&) = default;
 	VitsSvc& operator=(VitsSvc&&) noexcept = default;
+
+protected:
+	SliceDatas& PreprocessNoise(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Float32 Scale,
+		Int64 Seed
+	) const;
+	SliceDatas& PreprocessStftNoise(
+		SliceDatas& MyData,
+		Int64 BatchSize,
+		Int64 Channels,
+		Int64 TargetNumFrames,
+		Float32 Scale
+	) const;
 };
 
 /**
  * @class SoftVitsSvcV2
- * @brief Soft Vits Svc V2, extended parameters is ["NoiseDims"], model path is ["Model"], in common, the input count is 3 or 4, the output count is 1, the input tensor is [Hubert, AudioFrame, F0/F0Embed, [OPTIONAL:SpeakerId]], the output tensor is [Audio].
+ * @brief Soft Vits Svc V2 (SoVitsSvc)
  *
- * In default [SamplingRate] equals to (50 * [HopSize]), as usual, the sampling rate is 32000 and the hop size is 640.
+ * Following model path is required:
+ * - "Model" : Soft Vits Svc V2 model path
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - UnitsLength[REQUIRED|AUTOGEN]: UnitsLength, shape must be {BatchSize, Channels, 1}
+ * - F0Embed[REQUIRED|AUTOGEN]: F0Embed, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "F0" is set
+ * - F0[OPTIONAL]: F0, shape must be {BatchSize, Channels, FrameCount}, REQUIRED if "F0Embed" is not set
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ *
+ * Hyper parameters example:
+ * - SamplingRate/HopSize: In default [SamplingRate] equals to (50 * [HopSize]), as usual, the sampling rate is 32000 and the hop size is 640.
  */
 class SoftVitsSvcV2 : public VitsSvc
 {
@@ -95,13 +128,29 @@ public:
 		const Parameters& Params,
 		SliceDatas&& InputDatas
 	) const override;
+
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 };
 
 /**
- * @class SoftVitsSvcV2
- * @brief Soft Vits Svc V2, extended parameters is ["NoiseDims"], model path is ["Model"], in common, the input count is 3 or 4, the output count is 1, the input tensor is [Hubert, AudioFrame, F0, [OPTIONAL:SpeakerId]], the output tensor is [Audio].
+ * @class SoftVitsSvcV3
+ * @brief Soft Vits Svc V3 (SoVitsSvc3.0)
  *
- * In default [SamplingRate] equals to (100 * [HopSize]) or (150 * [HopSize]), as usual, the sampling rate is 32000/48000 and the hop size is 320
+ * Following model path is required:
+ * - "Model" : Soft Vits Svc V3 model path
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - UnitsLength[REQUIRED|AUTOGEN]: UnitsLength, shape must be {BatchSize, Channels, 1}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ *
+ * Hyper parameters example:
+ * - SamplingRate/HopSize: In default [SamplingRate] equals to (100 * [HopSize]) or (150 * [HopSize]), as usual, the sampling rate is [32000/48000] and the hop size is [320].
  */
 class SoftVitsSvcV3 : public SoftVitsSvcV2
 {
@@ -123,8 +172,34 @@ public:
 		const Parameters& Params,
 		SliceDatas&& InputDatas
 	) const override;
+
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 };
 
+/**
+ * @class SoftVitsSvcV4Beta
+ * @brief Soft Vits Svc V4Beta (SoVitsSvc4.0-V2)
+ *
+ * Following model path is required:
+ * - "Model" : Soft Vits Svc V4Beta model path
+ *
+ * Extended parameters:
+ * - "NoiseDims" - The noise dims, default is 192
+ * - "WindowSize" - The window size, default is 2048
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Mel2Units[REQUIRED|AUTOGEN]: Mel2Units, used to gather units(like neaerest interpolation), shape must be {BatchSize, Channels, FrameCount}
+ * - StftNoise[REQUIRED|AUTOGEN]: StftNoise, shape must be {BatchSize, Channels, WindowSize, FrameCount}
+ * - Noise[REQUIRED|AUTOGEN]: Noise, shape must be {BatchSize, Channels, NoiseDims, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * - Volume[OPTIONAL|AUTOGEN]: Volume, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "GTAudio" is set
+ */
 class SoftVitsSvcV4Beta : public VitsSvc
 {
 public:
@@ -146,10 +221,32 @@ public:
 		SliceDatas&& InputDatas
 	) const override;
 
-private:
-	Int64 _MyWindowSize = 2048;
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 };
 
+/**
+ * @class SoftVitsSvcV4
+ * @brief Soft Vits Svc V4 (SoVitsSvc4.0/SoVitsSvc4.1)
+ *
+ * Following model path is required:
+ * - "Model" : Soft Vits Svc V4 model path
+ *
+ * Extended parameters:
+ * - "NoiseDims" - The noise dims, default is 192
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Mel2Units[REQUIRED|AUTOGEN]: Mel2Units, used to gather units(like neaerest interpolation), shape must be {BatchSize, Channels, FrameCount}
+ * - UnVoice[REQUIRED|AUTOGEN]: UnVoice, 0 if unvoice else 1, shape must be {BatchSize, Channels, WindowSize, FrameCount}
+ * - Noise[REQUIRED|AUTOGEN]: Noise, shape must be {BatchSize, Channels, NoiseDims, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * - Volume[OPTIONAL|AUTOGEN]: Volume, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "GTAudio" is set
+ */
 class SoftVitsSvcV4 : public VitsSvc
 {
 public:
@@ -170,8 +267,33 @@ public:
 		const Parameters& Params,
 		SliceDatas&& InputDatas
 	) const override;
+
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 };
 
+/**
+ * @class RetrievalBasedVitsSvc
+ * @brief Retrieval Based Voice Conversion (RVC)
+ *
+ * Following model path is required:
+ * - "Model" : Soft Vits Svc V4 model path
+ *
+ * Extended parameters:
+ * - "NoiseDims" - The noise dims, default is 192
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - UnitsLength[REQUIRED|AUTOGEN]: UnitsLength, shape must be {BatchSize, Channels, 1}
+ * - F0Embed[REQUIRED|AUTOGEN]: F0Embed, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "F0" is set
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Noise[REQUIRED|AUTOGEN]: Noise, shape must be {BatchSize, Channels, NoiseDims, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * - Volume[OPTIONAL|AUTOGEN]: Volume, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "GTAudio" is set
+ */
 class RetrievalBasedVitsSvc : public VitsSvc
 {
 public:
@@ -191,6 +313,11 @@ public:
 	SliceDatas VPreprocess(
 		const Parameters& Params,
 		SliceDatas&& InputDatas
+	) const override;
+
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
 	) const override;
 };
 

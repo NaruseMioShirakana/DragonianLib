@@ -37,16 +37,11 @@ void WithTimer(const Fn& fn)
 	auto start = std::chrono::high_resolution_clock::now();
 	fn();
 	auto end = std::chrono::high_resolution_clock::now();
-	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n";
+	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 	
 int main()
 {
-	DragonianLib::SetWorkerCount(1);
-	DragonianLib::SetTaskPoolSize(4);
-	DragonianLib::SetMaxTaskCountPerOperator(1);
-	DragonianLib::SetRandomSeed(114514);
-
 	auto AudioStream = DragonianLib::AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
 	auto Tensor = AudioStream.DecodeAll(44100, 2);
 	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
@@ -56,41 +51,47 @@ int main()
 
 	auto Tensor1 = Tensor[{"900000:1341000"}].Transpose(-1, -2).Continuous().Evaluate();
 
+	std::cout << static_cast<float>(DragonianLib::Float16(44100.f));
+
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
 	hParams.UnitsDim = 768;
-	hParams.OutputSamplingRate = 40000;
-	hParams.HopSize = 400;
+	hParams.OutputSamplingRate = 44100;
+	hParams.HopSize = 512;
 	hParams.ModelPaths = {
-		{ L"Model", LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\NaruseMioShirakana\NaruseMioShirakana_RVC.onnx)" }
+		{ L"Model", LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\Model.onnx)" }
 	};
 	hParams.SpeakerCount = 1;
 	hParams.HasSpeakerMixLayer = false;
 	hParams.HasSpeakerEmbedding = true;
 	hParams.HasVolumeEmbedding = false;
 
+	DragonianLib::OnnxRuntime::OnnxEnvironmentOptions Options{
+		DragonianLib::Device::DIRECTX,
+		1,
+		8,
+		4,
+		ORT_LOGGING_LEVEL_WARNING
+	};
+
+	Options.SetCUDAOptions("gpu_mem_limit", std::to_string(1024ll * 1024 * 1024 * 6));
+
 	auto Env = DragonianLib::OnnxRuntime::CreateEnvironment(
-		{
-			DragonianLib::Device::CPU,
-			1,
-			8,
-			4,
-			ORT_LOGGING_LEVEL_WARNING
-		}
+		Options
 	);
 
-	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::RetrievalBasedVitsSvc(
+	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::SoftVitsSvcV4(
 			Env,
 			hParams
 		);
 	
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params;
-	Params.PitchOffset = 0;
+	Params.PitchOffset = 0.f;
 	Params.StftNoiseScale = 0.8f;
-	Params.NoiseScale = 0.8f;
+	Params.NoiseScale = 0.5f;
 
 	const auto UnitsEncoder = DragonianLib::OnnxRuntime::UnitsEncoder::New(
 		L"HubertBase",
-		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hubert\vec-768-layer-12.onnx)",
+		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\vec-768-layer-12-f16.onnx)",
 		Env,
 		16000,
 		768
@@ -148,15 +149,39 @@ int main()
 				F0Extractor,
 				F0Params
 			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			auto Audio = Model.Inference(
+				Params,
+				Tensor1[0].View(1, 1, -1),
+				44100,
+				UnitsEncoder,
+				F0Extractor,
+				F0Params
+			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			auto Audio = Model.Inference(
+				Params,
+				Tensor1[0].View(1, 1, -1),
+				44100,
+				UnitsEncoder,
+				F0Extractor,
+				F0Params
+			);
 			OutStream.EncodeAll(
 				DragonianLib::TemplateLibrary::CRanges(Audio.Data(), Audio.Data() + Audio.ElementCount()),
-				hParams.OutputSamplingRate,
+				static_cast<DragonianLib::UInt32>(hParams.OutputSamplingRate),
 				1
 			);
 		}
 	);
-
-	UnrefOnnxRuntimeModel(LR"(D:\VSGIT\MoeVS-SVC\Build\Release\Models\ShirohaSo\ShirohaSo_SoVits.onnx)", Env);
 
 	return 0;
 

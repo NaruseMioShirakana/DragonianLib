@@ -1,4 +1,5 @@
 ﻿#include "../Vits-Svc.hpp"
+#include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
@@ -14,49 +15,58 @@ _MyBase(_Environment, Params.ModelPaths.at(L"Model"), _Logger)
 		_D_Dragonian_Lib_Throw_Exception("Invalid output axis");
 }
 
-Tensor<Float32, 4, Device::CPU> VitsSvc::Forward(
-	const Parameters& Params,
-	const SliceDatas& InputDatas
+SliceDatas& VitsSvc::PreprocessNoise(
+	SliceDatas& MyData,
+	Int64 BatchSize,
+	Int64 Channels,
+	Int64 TargetNumFrames,
+	Float32 Scale,
+	Int64 Seed
 ) const
 {
-#ifdef _DEBUG
-	const auto StartTime = std::chrono::high_resolution_clock::now();
-#endif
+	if (MyData.Noise && !MyData.Noise->Null())
+	{
+		const auto [BatchNoise, ChannelNoise, NoiseDims, NumFramesNoise] = MyData.Noise->Shape().RawArray();
+		if (BatchSize != BatchNoise)
+			_D_Dragonian_Lib_Throw_Exception("Units and noise batch mismatch, expected: " + std::to_string(BatchSize) + ", got: " + std::to_string(BatchNoise));
+		if (Channels != ChannelNoise)
+			_D_Dragonian_Lib_Throw_Exception("Units and noise channels mismatch, expected: " + std::to_string(Channels) + ", got: " + std::to_string(ChannelNoise));
+		if (NoiseDims != _MyNoiseDims)
+			_D_Dragonian_Lib_Throw_Exception("Invalid noise dims, expected: " + std::to_string(_MyNoiseDims) + ", got: " + std::to_string(NoiseDims));
+		if (NumFramesNoise != TargetNumFrames)
+			_D_Dragonian_Lib_Rethrow_Block(MyData.Noise = MyData.Noise->Interpolate<Operators::InterpolateMode::Nearest>(
+				IDim(-1),
+				{ IDim(TargetNumFrames) }
+			).Evaluate(););
+	}
+	else
+	{
+		LogInfo(L"Noise not found, generating noise with param");
+		SetRandomSeed(Seed);
+		_D_Dragonian_Lib_Rethrow_Block(
+			MyData.Noise = (Functional::Randn(
+				IDim(BatchSize, Channels, _MyNoiseDims, TargetNumFrames)
+			) * Scale).Evaluate();
+		);
+	}
+	return MyData;
+}
 
-	if (static_cast<Int64>(InputDatas.OrtValues.size()) != _MyInputCount)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: " + std::to_string(_MyInputCount) + ", got: " + std::to_string(InputDatas.OrtValues.size()));
-
-	OrtTuple AudioTuple;
-
-	_D_Dragonian_Lib_Rethrow_Block(AudioTuple = _MyModel->Run(
-		*_MyRunOptions,
-		_MyInputNames.Data(),
-		InputDatas.OrtValues.data(),
-		_MyInputCount,
-		_MyOutputNames.Data(),
-		_MyOutputCount
-	););
-
-	auto Audio = std::move(AudioTuple[0]);
-	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
-	//const auto OutputElementCount = Audio.GetTensorTypeAndShapeInfo().GetElementCount();
-	const auto OutputAxis = OutputShape.size();
-	Dimensions<4> OutputDims;
-
-	if (OutputAxis == 1)
-		OutputDims = { 1, 1, 1, OutputShape[0] };
-	else if (OutputAxis == 2)
-		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
-	else if (OutputAxis == 3)
-		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
-	else if (OutputAxis == 4)
-		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
-
-#ifdef _DEBUG
-	LogInfo(L"VitsSvc::Forward finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
-#endif
-
-	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
+SliceDatas& VitsSvc::PreprocessStftNoise(
+	SliceDatas& MyData,
+	Int64 BatchSize,
+	Int64 Channels,
+	Int64 TargetNumFrames,
+	Float32 Scale
+) const
+{
+	_D_Dragonian_Lib_Rethrow_Block(
+		MyData.StftNoise = Functional::ConstantOf(
+			IDim(BatchSize, Channels, _MyWindowSize, TargetNumFrames),
+			Scale
+		).Evaluate();
+		);
+	return MyData;
 }
 
 SoftVitsSvcV2::SoftVitsSvcV2(
@@ -122,119 +132,60 @@ SliceDatas SoftVitsSvcV2::VPreprocess(
 ) const
 {
 	auto MyData = std::move(InputDatas);
+	CheckParams(MyData);
+	const auto TargetNumFrames = CalculateFrameCount(MyData.SourceSampleCount, MyData.SourceSampleRate);
+	const auto BatchSize = MyData.Units.Shape(0);
+	const auto Channels = MyData.Units.Shape(1);
 
-	if (MyData.Units.Null())
+	PreprocessUnits(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessUnitsLength(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessF0Embed(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+
+	return MyData;
+}
+
+Tensor<Float32, 4, Device::CPU> SoftVitsSvcV2::Forward(
+	const Parameters& Params,
+	const SliceDatas& InputDatas
+) const
+{
+#ifdef _DEBUG
+	const auto StartTime = std::chrono::high_resolution_clock::now();
+#endif
+
+	auto Unit = InputDatas.Units;
+	auto Length = InputDatas.UnitsLength;
+	auto F0Embed = InputDatas.F0Embed;
+	auto SpeakerId = InputDatas.SpeakerId;
+	auto SpeakerMix = InputDatas.Speaker;
+
+	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
-
-	if (MyData.F0.Null() && (!MyData.F0Embed || MyData.F0Embed->Empty()))
-		_D_Dragonian_Lib_Throw_Exception("F0 and F0Embed could not be null at the same time");
-
-	if (MyData.SourceSampleCount <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample count, expected: > 0, got: " + std::to_string(MyData.SourceSampleCount));
-
-	if (MyData.SourceSampleRate <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample rate, expected: > 0, got: " + std::to_string(MyData.SourceSampleRate));
-
-	const auto InputAudioDuration = static_cast<Float32>(MyData.SourceSampleCount) /
-		static_cast<Float32>(MyData.SourceSampleRate);
-	const auto TargetNumFramesPerSecond = static_cast<Float32>(_MyOutputSamplingRate) /
-		static_cast<Float32>(_MyHopSize);
-	const auto TargetNumFrames = static_cast<Int64>(std::ceil(InputAudioDuration * TargetNumFramesPerSecond));
-
-	if (TargetNumFrames != MyData.Units.Shape(-2))
-		_D_Dragonian_Lib_Rethrow_Block(MyData.Units = MyData.Units.Interpolate<Operators::InterpolateMode::Nearest>(
-			IDim(-2),
-			{ IDim(TargetNumFrames) }
-		).Evaluate(););
-
-	const auto [Batch, Channel, NumFrames, UnitDims] = MyData.Units.Shape().RawArray();
-
-	if (UnitDims != _MyUnitsDim)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units dims, expected: " + std::to_string(_MyUnitsDim) + ", got: " + std::to_string(UnitDims));
-
-	if (MyData.UnitsLength.has_value() && !MyData.UnitsLength->Null())
-	{
-		const auto [BatchLength, ChannelLength, Length] = MyData.UnitsLength->Shape().RawArray();
-		if (BatchLength != Batch)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchLength));
-		if (ChannelLength != Channel)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelLength));
-		if (Length != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid units length length");
+	if (!Length || Length->Null())
+		_D_Dragonian_Lib_Throw_Exception("Units length could not be null");
+	if (!F0Embed || F0Embed->Null())
+		_D_Dragonian_Lib_Throw_Exception("F0 embed could not be null");
+	if (HasSpeakerMixLayer()) {
+		if (!SpeakerMix || SpeakerMix->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker mix could not be null");
 	}
-	else
-	{
-		LogInfo(L"Units length not found, generating units length with units");
-		using UnitsSizeType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(MyData.UnitsLength = UnitsSizeType::ConstantOf({ Batch, Channel, 1 }, NumFrames).Evaluate(););
+	else if (HasSpeakerEmbedding()) {
+		if (!SpeakerId || SpeakerId->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker id could not be null");
 	}
 
-	if (HasSpeakerEmbedding() && MyData.SpeakerId.has_value() && !MyData.SpeakerId->Null())
-	{
-		const auto [BatchSpeakerId, ChannelSpeakerId, LengthSpeakerId] = MyData.SpeakerId->Shape().RawArray();
-		if (Batch != BatchSpeakerId)
-			_D_Dragonian_Lib_Throw_Exception("Units and speaker id batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeakerId));
-		if (Channel != ChannelSpeakerId)
-			_D_Dragonian_Lib_Throw_Exception("Units and speaker id channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeakerId));
-		if (LengthSpeakerId != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid speaker id length");
-	}
-	else
-	{
-		LogInfo(L"Speaker id not found, generating speaker id with param.speaker_id");
-		using SpkType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf({ Batch, Channel, 1 }, Params.SpeakerId).Evaluate(););
-	}
-
-	if (MyData.F0Embed.has_value() && !MyData.F0Embed->Null())
-	{
-		const auto [BatchF0Embed, ChannelF0Embed, NumFramesF0Embed] = MyData.F0Embed->Shape().RawArray();
-		if (Batch != BatchF0Embed)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 embed batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0Embed));
-		if (Channel != ChannelF0Embed)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 embed channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0Embed));
-		if (NumFrames != NumFramesF0Embed)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.F0Embed = MyData.F0Embed->Interpolate<Operators::InterpolateMode::Linear>(
-				IDim(-1),
-				{ IDim(NumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"F0 embedding not found, generating f0 embedding with f0 tensor");
-		if (MyData.F0.Null())
-			_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
-		const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-		if (Batch != BatchF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-		if (Channel != ChannelF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-		if (NumFramesF0 != NumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.F0 = MyData.F0.Interpolate<Operators::InterpolateMode::Linear>(
-				IDim(-1),
-				{ IDim(NumFrames) }
-			).Evaluate(););
-
-		(MyData.F0 *= std::pow(2.f, Params.PitchOffset / 12.f)).Evaluate();
-
-		_D_Dragonian_Lib_Rethrow_Block(MyData.F0Embed = GetF0Embed(MyData.F0, static_cast<Float32>(_MyF0Bin), _MyF0MelMax, _MyF0MelMin););
-	}
-
-	auto& HubertShape = _MyInputDims[0];
-	auto& LengthShape = _MyInputDims[1];
-	auto& F0Shape = _MyInputDims[2];
-
-	MyData.Clear();
+	InputTensorsType InputTensors;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Units,
+				Unit,
 				_MyInputTypes[0],
-				HubertShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"UnitsDims" },
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"UnitsDims" },
 				"Units",
 				GetLoggerPtr()
 			)
@@ -242,52 +193,86 @@ SliceDatas SoftVitsSvcV2::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.UnitsLength.value(),
+				*Length,
 				_MyInputTypes[1],
-				LengthShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"Length" },
-				"UnitsLength",
+				_MyInputDims[1],
+				{ L"Batch/Channel", L"Channel/Batch", L"Length" },
+				"Length",
 				GetLoggerPtr()
 			)
 		);
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0Embed.value(),
+				*F0Embed,
 				_MyInputTypes[2],
-				F0Shape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[2],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0Embed",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	if (HasSpeakerEmbedding())
-	{
-		auto& SpeakerIdShape = _MyInputDims[3];
+	if (HasSpeakerMixLayer())
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
+			InputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*_MyMemoryInfo,
-					MyData.SpeakerId.value(),
+					*SpeakerMix,
 					_MyInputTypes[3],
-					SpeakerIdShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"SpeakerId" },
+					_MyInputDims[3],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"SpeakerCount" },
+					"SpeakerMix",
+					GetLoggerPtr()
+				)
+			);
+		);
+	else if (HasSpeakerEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerId,
+					_MyInputTypes[3],
+					_MyInputDims[3],
+					{ L"Batch/Channel", L"Channel/Batch", L"SpeakerId" },
 					"SpeakerId",
 					GetLoggerPtr()
 				)
 			);
 		);
-	}
 
-	return MyData;
+	OrtTuple AudioTuple;
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		AudioTuple = RunModel(InputTensors);
+	);
+
+	auto& Audio = AudioTuple[0];
+	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputAxis = OutputShape.size();
+	Dimensions<4> OutputDims;
+	if (OutputAxis == 1)
+		OutputDims = { 1, 1, 1, OutputShape[0] };
+	else if (OutputAxis == 2)
+		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
+	else if (OutputAxis == 3)
+		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputAxis == 4)
+		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+
+#ifdef _DEBUG
+	LogInfo(L"SoftVitsSvcV2 Inference finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
+#endif
+
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
 }
 
 SoftVitsSvcV3::SoftVitsSvcV3(
@@ -305,102 +290,60 @@ SliceDatas SoftVitsSvcV3::VPreprocess(
 ) const
 {
 	auto MyData = std::move(InputDatas);
+	CheckParams(MyData);
+	const auto TargetNumFrames = CalculateFrameCount(MyData.SourceSampleCount, MyData.SourceSampleRate);
+	const auto BatchSize = MyData.Units.Shape(0);
+	const auto Channels = MyData.Units.Shape(1);
 
-	if (MyData.Units.Null())
+	PreprocessUnits(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessUnitsLength(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+
+	return MyData;
+}
+
+Tensor<Float32, 4, Device::CPU> SoftVitsSvcV3::Forward(
+	const Parameters& Params,
+	const SliceDatas& InputDatas
+) const
+{
+#ifdef _DEBUG
+	const auto StartTime = std::chrono::high_resolution_clock::now();
+#endif
+
+	auto Unit = InputDatas.Units;
+	auto Length = InputDatas.UnitsLength;
+	auto F0 = InputDatas.F0;
+	auto SpeakerId = InputDatas.SpeakerId;
+	auto SpeakerMix = InputDatas.Speaker;
+
+	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
-
-	if (MyData.F0.Null())
+	if (!Length || Length->Null())
+		_D_Dragonian_Lib_Throw_Exception("Units length could not be null");
+	if (F0.Null())
 		_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
-
-	if (MyData.SourceSampleCount <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample count, expected: > 0, got: " + std::to_string(MyData.SourceSampleCount));
-
-	if (MyData.SourceSampleRate <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample rate, expected: > 0, got: " + std::to_string(MyData.SourceSampleRate));
-
-	const auto InputAudioDuration = static_cast<Float32>(MyData.SourceSampleCount) /
-		static_cast<Float32>(MyData.SourceSampleRate);
-	const auto TargetNumFramesPerSecond = static_cast<Float32>(_MyOutputSamplingRate) /
-		static_cast<Float32>(_MyHopSize);
-	const auto TargetNumFrames = static_cast<Int64>(std::ceil(InputAudioDuration * TargetNumFramesPerSecond));
-
-	if (TargetNumFrames != MyData.Units.Shape(-2))
-		_D_Dragonian_Lib_Rethrow_Block(MyData.Units = MyData.Units.Interpolate<Operators::InterpolateMode::Nearest>(
-			IDim(-2),
-			{ IDim(TargetNumFrames) }
-		).Evaluate(););
-
-	const auto [Batch, Channel, NumFrames, UnitDims] = MyData.Units.Shape().RawArray();
-
-	if (UnitDims != _MyUnitsDim)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units dims, expected: " + std::to_string(_MyUnitsDim) + ", got: " + std::to_string(UnitDims));
-
-	if (MyData.UnitsLength.has_value() && !MyData.UnitsLength->Null())
-	{
-		const auto [BatchLength, ChannelLength, Length] = MyData.UnitsLength->Shape().RawArray();
-		if (BatchLength != Batch)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchLength));
-		if (ChannelLength != Channel)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelLength));
-		if (Length != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid units length length");
+	if (HasSpeakerMixLayer()) {
+		if (!SpeakerMix || SpeakerMix->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker mix could not be null");
 	}
-	else
-	{
-		LogInfo(L"Units length not found, generating units length with units");
-		using UnitsSizeType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(MyData.UnitsLength = UnitsSizeType::ConstantOf({ Batch, Channel, 1 }, NumFrames).Evaluate(););
+	else if (HasSpeakerEmbedding()) {
+		if (!SpeakerId || SpeakerId->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker id could not be null");
 	}
 
-	if (HasSpeakerEmbedding() && MyData.SpeakerId.has_value() && !MyData.SpeakerId->Null())
-	{
-		const auto [BatchSpeakerId, ChannelSpeakerId, LengthSpeakerId] = MyData.SpeakerId->Shape().RawArray();
-		if (Batch != BatchSpeakerId)
-			_D_Dragonian_Lib_Throw_Exception("Units and speaker id batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeakerId));
-		if (Channel != ChannelSpeakerId)
-			_D_Dragonian_Lib_Throw_Exception("Units and speaker id channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeakerId));
-		if (LengthSpeakerId != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid speaker id length");
-	}
-	else
-	{
-		LogInfo(L"Speaker id not found, generating speaker id with param.speaker_id");
-		using SpkType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf({ Batch, Channel, 1 }, Params.SpeakerId).Evaluate(););
-	}
-
-	const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-	if (Batch != BatchF0)
-		_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-	if (Channel != ChannelF0)
-		_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-	if (NumFramesF0 != NumFrames)
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.F0 = InterpolateUnVoicedF0(
-				MyData.F0
-			).Interpolate<Operators::InterpolateMode::Linear>(
-				IDim(-1),
-				{ IDim(NumFrames) }
-			).Evaluate();
-		);
-
-	(MyData.F0 *= std::pow(2.f, Params.PitchOffset / 12.f)).Evaluate();
-
-	auto& HubertShape = _MyInputDims[0];
-	auto& LengthShape = _MyInputDims[1];
-	auto& F0Shape = _MyInputDims[2];
-
-	MyData.Clear();
+	InputTensorsType InputTensors;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Units,
+				Unit,
 				_MyInputTypes[0],
-				HubertShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"UnitsDims" },
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"UnitsDims" },
 				"Units",
 				GetLoggerPtr()
 			)
@@ -408,52 +351,86 @@ SliceDatas SoftVitsSvcV3::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.UnitsLength.value(),
+				*Length,
 				_MyInputTypes[1],
-				LengthShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"Length" },
-				"UnitsLength",
+				_MyInputDims[1],
+				{ L"Batch/Channel", L"Channel/Batch", L"Length" },
+				"Length",
 				GetLoggerPtr()
 			)
 		);
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0,
+				F0,
 				_MyInputTypes[2],
-				F0Shape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[2],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	if (HasSpeakerEmbedding())
-	{
-		auto& SpeakerIdShape = _MyInputDims[3];
+	if (HasSpeakerMixLayer())
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
+			InputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*_MyMemoryInfo,
-					MyData.SpeakerId.value(),
+					*SpeakerMix,
 					_MyInputTypes[3],
-					SpeakerIdShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"SpeakerId" },
+					_MyInputDims[3],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"SpeakerCount" },
+					"SpeakerMix",
+					GetLoggerPtr()
+				)
+			);
+		);
+	else if (HasSpeakerEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerId,
+					_MyInputTypes[3],
+					_MyInputDims[3],
+					{ L"Batch/Channel", L"Channel/Batch", L"SpeakerId" },
 					"SpeakerId",
 					GetLoggerPtr()
 				)
 			);
 		);
-	}
 
-	return MyData;
+	OrtTuple AudioTuple;
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		AudioTuple = RunModel(InputTensors);
+	);
+
+	auto& Audio = AudioTuple[0];
+	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputAxis = OutputShape.size();
+	Dimensions<4> OutputDims;
+	if (OutputAxis == 1)
+		OutputDims = { 1, 1, 1, OutputShape[0] };
+	else if (OutputAxis == 2)
+		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
+	else if (OutputAxis == 3)
+		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputAxis == 4)
+		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+
+#ifdef _DEBUG
+	LogInfo(L"SoftVitsSvcV3 Inference finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
+#endif
+
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
 }
 
 SoftVitsSvcV4Beta::SoftVitsSvcV4Beta(
@@ -471,11 +448,6 @@ SoftVitsSvcV4Beta::SoftVitsSvcV4Beta(
 		_MyWindowSize = _wcstoi64(Params.ExtendedParameters.at(L"WindowSize").c_str(), nullptr, 10);
 	else
 		LogInfo(L"WindowSize not found, using default value: 2048");
-
-	if (Params.ExtendedParameters.contains(L"NoiseDims"))
-		_MyNoiseDims = _wcstoi64(Params.ExtendedParameters.at(L"NoiseDims").c_str(), nullptr, 10);
-	else
-		LogInfo(L"NoiseDims not found, using default value: 192");
 
 	if (_MyInputCount < 5 || _MyInputCount > 7)
 		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 4-6, got: " + std::to_string(_MyInputCount));
@@ -563,187 +535,72 @@ SliceDatas SoftVitsSvcV4Beta::VPreprocess(
 ) const
 {
 	auto MyData = std::move(InputDatas);
+	CheckParams(MyData);
+	const auto TargetNumFrames = CalculateFrameCount(MyData.SourceSampleCount, MyData.SourceSampleRate);
+	const auto BatchSize = MyData.Units.Shape(0);
+	const auto Channels = MyData.Units.Shape(1);
 
-	if (MyData.Units.Null())
+	PreprocessUnits(MyData, BatchSize, Channels, 0, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessMel2Units(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessStftNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.StftNoiseScale);
+	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
+	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessVolume(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+
+	return MyData;
+}
+
+Tensor<Float32, 4, Device::CPU> SoftVitsSvcV4Beta::Forward(
+	const Parameters& Params,
+	const SliceDatas& InputDatas
+) const
+{
+#ifdef _DEBUG
+	const auto StartTime = std::chrono::high_resolution_clock::now();
+#endif
+
+	auto Unit = InputDatas.Units;
+	auto F0 = InputDatas.F0;
+	auto Mel2Units = InputDatas.Mel2Units;
+	auto StftNoise = InputDatas.StftNoise;
+	auto Noise = InputDatas.Noise;
+	auto SpeakerId = InputDatas.SpeakerId;
+	auto SpeakerMix = InputDatas.Speaker;
+	auto Volume = InputDatas.Volume;
+
+	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
-
-	if (MyData.F0.Null())
+	if (F0.Null())
 		_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
-
-	if (HasVolumeEmbedding() && (!MyData.Volume || MyData.Volume->Null()))
+	if (!Mel2Units || Mel2Units->Null())
+		_D_Dragonian_Lib_Throw_Exception("Mel2Units could not be null");
+	if (!StftNoise || StftNoise->Null())
+		_D_Dragonian_Lib_Throw_Exception("StftNoise could not be null");
+	if (!Noise || Noise->Null())
+		_D_Dragonian_Lib_Throw_Exception("Noise could not be null");
+	if (HasSpeakerMixLayer()) {
+		if (!SpeakerMix || SpeakerMix->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker mix could not be null");
+	}
+	else if (HasSpeakerEmbedding()) {
+		if (!SpeakerId || SpeakerId->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker id could not be null");
+	}
+	if (HasVolumeEmbedding() && (!Volume || Volume->Null()))
 		_D_Dragonian_Lib_Throw_Exception("Volume could not be null");
 
-	if (MyData.SourceSampleCount <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample count, expected: > 0, got: " + std::to_string(MyData.SourceSampleCount));
-
-	if (MyData.SourceSampleRate <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample rate, expected: > 0, got: " + std::to_string(MyData.SourceSampleRate));
-
-	const auto InputAudioDuration = static_cast<Float32>(MyData.SourceSampleCount) /
-		static_cast<Float32>(MyData.SourceSampleRate);
-	const auto TargetNumFramesPerSecond = static_cast<Float32>(_MyOutputSamplingRate) /
-		static_cast<Float32>(_MyHopSize);
-	const auto TargetNumFrames = static_cast<Int64>(std::ceil(InputAudioDuration * TargetNumFramesPerSecond)) + 1;
-
-	const auto [Batch, Channel, UnitFrames, UnitDims] = MyData.Units.Shape().RawArray();
-
-	if (UnitDims != _MyUnitsDim)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units dims, expected: " + std::to_string(_MyUnitsDim) + ", got: " + std::to_string(UnitDims));
-
-	{
-		const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-		if (Batch != BatchF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-		if (Channel != ChannelF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-		if (NumFramesF0 != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.F0 = InterpolateUnVoicedF0(
-					MyData.F0
-				).Interpolate<Operators::InterpolateMode::Linear>(
-					IDim(-1),
-					{ IDim(TargetNumFrames) }
-				).Evaluate();
-			);
-
-		(MyData.F0 *= std::pow(2.f, Params.PitchOffset / 12.f)).Evaluate();
-	}
-
-	if (MyData.Mel2Units && !MyData.Mel2Units->Null())
-	{
-		const auto [BatchMel2Units, ChannelMel2Units, NumFramesMel2Units] = MyData.Mel2Units->Shape().RawArray();
-		if (Batch != BatchMel2Units)
-			_D_Dragonian_Lib_Throw_Exception("Units and mel2units batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchMel2Units));
-		if (Channel != ChannelMel2Units)
-			_D_Dragonian_Lib_Throw_Exception("Units and mel2units channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelMel2Units));
-		if (NumFramesMel2Units != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Mel2Units = MyData.Mel2Units->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"Mel2Units not found, generating mel2units with units");
-		auto MyMel2Unit = Functional::Linspace(0.f, static_cast<Float32>(UnitFrames), TargetNumFrames).Cast<Int64>().Evaluate();
-		if (MyMel2Unit[-1] > UnitFrames - 1)
-			MyMel2Unit[-1] = UnitFrames - 1;
-		const auto BatchChannels = Batch * Channel;
-		if (BatchChannels > 1)
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Mel2Units = MyMel2Unit.UnSqueeze(0).Repeat({ BatchChannels }).View(Batch, Channel, TargetNumFrames).Evaluate();
-			);
-		else
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Mel2Units = MyMel2Unit.View(Batch, Channel, TargetNumFrames).Evaluate();
-			);
-
-	}
-
-	if (MyData.Noise && !MyData.Noise->Null())
-	{
-		const auto [BatchNoise, ChannelNoise, NoiseDims, NumFramesNoise] = MyData.Noise->Shape().RawArray();
-		if (Batch != BatchNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchNoise));
-		if (Channel != ChannelNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelNoise));
-		if (NoiseDims != _MyNoiseDims)
-			_D_Dragonian_Lib_Throw_Exception("Invalid noise dims, expected: " + std::to_string(_MyNoiseDims) + ", got: " + std::to_string(NoiseDims));
-		if (NumFramesNoise != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Noise = MyData.Noise->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"Noise not found, generating noise with param");
-		SetRandomSeed(Params.Seed);
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Noise = Functional::Randn(IDim(Batch, Channel, _MyNoiseDims, TargetNumFrames)).Evaluate();
-		);
-	}
-
-	if (abs(Params.NoiseScale - 1.f) > 1e-4f)
-		(*MyData.Noise *= Params.NoiseScale).Evaluate();
-
-	if (HasSpeakerMixLayer())
-	{
-		if (MyData.Speaker.has_value() && !MyData.Speaker->Null())
-		{
-			const auto [BatchSpeaker, ChannelSpeaker, NumFramesSpeaker, NumSpeakers] = MyData.Speaker->Shape().RawArray();
-			if (Batch != BatchSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeaker));
-			if (Channel != ChannelSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeaker));
-			if (NumSpeakers != _MySpeakerCount)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker count, expected: " + std::to_string(_MySpeakerCount) + ", got: " + std::to_string(NumSpeakers));
-			if (NumFramesSpeaker != TargetNumFrames)
-				_D_Dragonian_Lib_Rethrow_Block(MyData.Speaker = MyData.Speaker->Interpolate<Operators::InterpolateMode::Nearest>(
-					IDim(-2),
-					{ IDim(TargetNumFrames) }
-				).Evaluate(););
-		}
-		else
-		{
-			LogInfo(L"Speaker not found, generating speaker with mel2units");
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Speaker = Functional::Zeros(IDim(Batch, Channel, TargetNumFrames, _MySpeakerCount)).Evaluate();
-			);
-			(MyData.Speaker.value()[{":", ":", ":", std::to_string(Params.SpeakerId)}] = 1.f).Evaluate();
-		}
-	}
-	else if (HasSpeakerEmbedding())
-	{
-		if (MyData.SpeakerId.has_value() && !MyData.SpeakerId->Null())
-		{
-			const auto [BatchSpeakerId, ChannelSpeakerId, LengthSpeakerId] = MyData.SpeakerId->Shape().RawArray();
-			if (Batch != BatchSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeakerId));
-			if (Channel != ChannelSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeakerId));
-			if (LengthSpeakerId != 1)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker id length");
-		}
-		else
-		{
-			LogInfo(L"Speaker id not found, generating speaker id with param.speaker_id");
-			using SpkType = Tensor<Int64, 3, Device::CPU>;
-			_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf({ Batch, Channel, 1 }, Params.SpeakerId).Evaluate(););
-		}
-	}
-
-	if (HasVolumeEmbedding())
-	{
-		const auto [BatchVolume, ChannelVolume, NumFramesVolume] = MyData.Volume->Shape().RawArray();
-		if (Batch != BatchVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchVolume));
-		if (Channel != ChannelVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelVolume));
-		if (NumFramesVolume != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Volume = MyData.Volume->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-
-	auto& HubertShape = _MyInputDims[0];
-	auto& F0Shape = _MyInputDims[1];
-	auto& Mel2UnitsShape = _MyInputDims[2];
-	auto& StftNoiseShape = _MyInputDims[3];
-	auto& NoiseShape = _MyInputDims[4];
-
-	MyData.Clear();
+	InputTensorsType InputTensors;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Units,
+				Unit,
 				_MyInputTypes[0],
-				HubertShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"UnitsDims" },
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"UnitsDims" },
 				"Units",
 				GetLoggerPtr()
 			)
@@ -751,13 +608,13 @@ SliceDatas SoftVitsSvcV4Beta::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0,
+				F0,
 				_MyInputTypes[1],
-				F0Shape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[1],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0",
 				GetLoggerPtr()
 			)
@@ -765,108 +622,117 @@ SliceDatas SoftVitsSvcV4Beta::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Mel2Units.value(),
+				*Mel2Units,
 				_MyInputTypes[2],
-				Mel2UnitsShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[2],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"Mel2Units",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-
-	{
-		Tensor<Float32, 4, Device::CPU> STFTNoise;
-		_D_Dragonian_Lib_Rethrow_Block(
-			STFTNoise = Functional::ConstantOf(IDim(Batch, Channel, _MyWindowSize, TargetNumFrames), Params.StftNoiseScale).Evaluate();
-		);
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
-				CheckAndTryCreateValueFromTensor(
-					*_MyMemoryInfo,
-					STFTNoise,
-					_MyInputTypes[3],
-					StftNoiseShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"WindowSize", L"AudioFrames" },
-					"STFTNoise",
-					GetLoggerPtr()
-				)
-			);
-		);
-	}
-
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Noise.value(),
+				*StftNoise,
+				_MyInputTypes[3],
+				_MyInputDims[3],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
+				"StftNoise",
+				GetLoggerPtr()
+			)
+		);
+	);
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		InputTensors.Emplace(
+			CheckAndTryCreateValueFromTensor(
+				*_MyMemoryInfo,
+				*Noise,
 				_MyInputTypes[4],
-				NoiseShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"NoiseDims", L"AudioFrames" },
+				_MyInputDims[4],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"NoiseDims" },
 				"Noise",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	if (HasSpeakerEmbedding() || HasSpeakerMixLayer())
-	{
-		auto& SpeakerShape = _MyInputDims[5];
-		if (HasSpeakerMixLayer())
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.Speaker.value(),
-						_MyInputTypes[5],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"SpeakerCount" },
-						"Speaker",
-						GetLoggerPtr()
-					)
-				);
-			);
-		else
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.SpeakerId.value(),
-						_MyInputTypes[5],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"SpeakerId" },
-						"SpeakerId",
-						GetLoggerPtr()
-					)
-				);
-			);
-	}
-
-	const auto VolumeIndex = (HasSpeakerEmbedding() || HasSpeakerMixLayer()) ? 6 : 5;
-
-	if (HasVolumeEmbedding())
-	{
-		auto& VolumeShape = _MyInputDims[VolumeIndex];
+	if (HasSpeakerMixLayer())
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
+			InputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*_MyMemoryInfo,
-					MyData.Volume.value(),
+					*SpeakerMix,
+					_MyInputTypes[5],
+					_MyInputDims[5],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"SpeakerCount" },
+					"SpeakerMix",
+					GetLoggerPtr()
+				)
+			);
+		);
+	else if (HasSpeakerEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerId,
+					_MyInputTypes[5],
+					_MyInputDims[5],
+					{ L"Batch/Channel", L"Channel/Batch", L"SpeakerId" },
+					"SpeakerId",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+	const auto VolumeIndex = (HasSpeakerMixLayer() || HasSpeakerEmbedding()) ? 6 : 5;
+
+	if (HasVolumeEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*Volume,
 					_MyInputTypes[VolumeIndex],
-					VolumeShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+					_MyInputDims[VolumeIndex],
+					{ L"Batch/Channel", L"Channel/Batch", L"Volume" },
 					"Volume",
 					GetLoggerPtr()
 				)
 			);
 		);
-	}
 
-	return MyData;
+	OrtTuple AudioTuple;
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		AudioTuple = RunModel(InputTensors);
+	);
+
+	auto& Audio = AudioTuple[0];
+	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputAxis = OutputShape.size();
+	Dimensions<4> OutputDims;
+	if (OutputAxis == 1)
+		OutputDims = { 1, 1, 1, OutputShape[0] };
+	else if (OutputAxis == 2)
+		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
+	else if (OutputAxis == 3)
+		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputAxis == 4)
+		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+
+#ifdef _DEBUG
+	LogInfo(L"SoftVitsSvcV4Beta Inference finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
+#endif
+
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
 }
 
 SoftVitsSvcV4::SoftVitsSvcV4(
@@ -966,213 +832,72 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 ) const
 {
 	auto MyData = std::move(InputDatas);
+	CheckParams(MyData);
+	const auto TargetNumFrames = CalculateFrameCount(MyData.SourceSampleCount, MyData.SourceSampleRate);
+	const auto BatchSize = MyData.Units.Shape(0);
+	const auto Channels = MyData.Units.Shape(1);
 
-	if (MyData.Units.Null())
+	PreprocessUnits(MyData, BatchSize, Channels, 0, GetLoggerPtr());
+	PreprocessUnVoice(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessMel2Units(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
+	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessVolume(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+
+	return MyData;
+}
+
+Tensor<Float32, 4, Device::CPU> SoftVitsSvcV4::Forward(
+	const Parameters& Params,
+	const SliceDatas& InputDatas
+) const
+{
+#ifdef _DEBUG
+	const auto StartTime = std::chrono::high_resolution_clock::now();
+#endif
+
+	auto Unit = InputDatas.Units;
+	auto F0 = InputDatas.F0;
+	auto Mel2Units = InputDatas.Mel2Units;
+	auto UnVoice = InputDatas.UnVoice;
+	auto Noise = InputDatas.Noise;
+	auto SpeakerId = InputDatas.SpeakerId;
+	auto SpeakerMix = InputDatas.Speaker;
+	auto Volume = InputDatas.Volume;
+
+	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
-
-	if (MyData.F0.Null())
+	if (F0.Null())
 		_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
-
-	if (HasVolumeEmbedding() && (!MyData.Volume || MyData.Volume->Null()))
+	if (!Mel2Units || Mel2Units->Null())
+		_D_Dragonian_Lib_Throw_Exception("Mel2Units could not be null");
+	if (!UnVoice || UnVoice->Null())
+		_D_Dragonian_Lib_Throw_Exception("UnVoice could not be null");
+	if (!Noise || Noise->Null())
+		_D_Dragonian_Lib_Throw_Exception("Noise could not be null");
+	if (HasSpeakerMixLayer()) {
+		if (!SpeakerMix || SpeakerMix->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker mix could not be null");
+	}
+	else if (HasSpeakerEmbedding()) {
+		if (!SpeakerId || SpeakerId->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker id could not be null");
+	}
+	if (HasVolumeEmbedding() && (!Volume || Volume->Null()))
 		_D_Dragonian_Lib_Throw_Exception("Volume could not be null");
 
-	if (MyData.SourceSampleCount <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample count, expected: > 0, got: " + std::to_string(MyData.SourceSampleCount));
-
-	if (MyData.SourceSampleRate <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample rate, expected: > 0, got: " + std::to_string(MyData.SourceSampleRate));
-
-	const auto InputAudioDuration = static_cast<Float32>(MyData.SourceSampleCount) /
-		static_cast<Float32>(MyData.SourceSampleRate);
-	const auto TargetNumFramesPerSecond = static_cast<Float32>(_MyOutputSamplingRate) /
-		static_cast<Float32>(_MyHopSize);
-	const auto TargetNumFrames = static_cast<Int64>(std::ceil(InputAudioDuration * TargetNumFramesPerSecond)) + 1;
-
-	const auto [Batch, Channel, UnitFrames, UnitDims] = MyData.Units.Shape().RawArray();
-
-	if (UnitDims != _MyUnitsDim)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units dims, expected: " + std::to_string(_MyUnitsDim) + ", got: " + std::to_string(UnitDims));
-
-	if (MyData.Mel2Units && !MyData.Mel2Units->Null())
-	{
-		const auto [BatchMel2Units, ChannelMel2Units, NumFramesMel2Units] = MyData.Mel2Units->Shape().RawArray();
-		if (Batch != BatchMel2Units)
-			_D_Dragonian_Lib_Throw_Exception("Units and mel2units batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchMel2Units));
-		if (Channel != ChannelMel2Units)
-			_D_Dragonian_Lib_Throw_Exception("Units and mel2units channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelMel2Units));
-		if (NumFramesMel2Units != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Mel2Units = MyData.Mel2Units->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"Mel2Units not found, generating mel2units with units");
-		auto MyMel2Unit = Functional::Linspace(0.f, static_cast<Float32>(UnitFrames), TargetNumFrames).Cast<Int64>().Evaluate();
-		if (MyMel2Unit[-1] > UnitFrames - 1)
-			MyMel2Unit[-1] = UnitFrames - 1;
-		const auto BatchChannels = Batch * Channel;
-		if (BatchChannels > 1)
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Mel2Units = MyMel2Unit.UnSqueeze(0).Repeat({ BatchChannels } ).View(Batch, Channel, TargetNumFrames).Evaluate();
-			);
-		else
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Mel2Units = MyMel2Unit.View(Batch, Channel, TargetNumFrames).Evaluate();
-			);
-		
-	}
-
-	if (MyData.UnVoice && !MyData.UnVoice->Null())
-	{
-		const auto [BatchUnVoice, ChannelUnVoice, NumFramesUnVoice] = MyData.UnVoice->Shape().RawArray();
-		if (Batch != BatchUnVoice)
-			_D_Dragonian_Lib_Throw_Exception("Units and unvoice batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchUnVoice));
-		if (Channel != ChannelUnVoice)
-			_D_Dragonian_Lib_Throw_Exception("Units and unvoice channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelUnVoice));
-		if (NumFramesUnVoice != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.UnVoice = MyData.UnVoice->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"UnVoice not found, generating unvoice with f0");
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.UnVoice = (MyData.F0 > 1e-4f).Cast<Float32>();
-		);
-		if (MyData.UnVoice->Shape(-1) != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.UnVoice = MyData.UnVoice->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-
-	{
-		const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-		if (Batch != BatchF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-		if (Channel != ChannelF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-		if (NumFramesF0 != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.F0 = InterpolateUnVoicedF0(
-					MyData.F0
-				).Interpolate<Operators::InterpolateMode::Linear>(
-					IDim(-1),
-					{ IDim(TargetNumFrames) }
-				).Evaluate();
-			);
-
-		(MyData.F0 *= std::pow(2.f, Params.PitchOffset / 12.f)).Evaluate();
-	}
-
-	if (MyData.Noise && !MyData.Noise->Null())
-	{
-		const auto [BatchNoise, ChannelNoise, NoiseDims, NumFramesNoise] = MyData.Noise->Shape().RawArray();
-		if (Batch != BatchNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchNoise));
-		if (Channel != ChannelNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelNoise));
-		if (NoiseDims != _MyNoiseDims)
-			_D_Dragonian_Lib_Throw_Exception("Invalid noise dims, expected: " + std::to_string(_MyNoiseDims) + ", got: " + std::to_string(NoiseDims));
-		if (NumFramesNoise != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Noise = MyData.Noise->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"Noise not found, generating noise with param");
-		SetRandomSeed(Params.Seed);
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Noise = Functional::Randn(IDim(Batch, Channel, _MyNoiseDims, TargetNumFrames)).Evaluate();
-		);
-	}
-
-	if (abs(Params.NoiseScale - 1.f) > 1e-4f)
-		(*MyData.Noise *= Params.NoiseScale).Evaluate();
-
-	if (HasSpeakerMixLayer())
-	{
-		if (MyData.Speaker.has_value() && !MyData.Speaker->Null())
-		{
-			const auto [BatchSpeaker, ChannelSpeaker, NumFramesSpeaker, NumSpeakers] = MyData.Speaker->Shape().RawArray();
-			if (Batch != BatchSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeaker));
-			if (Channel != ChannelSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeaker));
-			if (NumSpeakers != _MySpeakerCount)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker count, expected: " + std::to_string(_MySpeakerCount) + ", got: " + std::to_string(NumSpeakers));
-			if (NumFramesSpeaker != TargetNumFrames)
-				_D_Dragonian_Lib_Rethrow_Block(MyData.Speaker = MyData.Speaker->Interpolate<Operators::InterpolateMode::Nearest>(
-					IDim(-2),
-					{ IDim(TargetNumFrames) }
-				).Evaluate(););
-		}
-		else
-		{
-			LogInfo(L"Speaker not found, generating speaker with mel2units");
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Speaker = Functional::Zeros(IDim(Batch, Channel, TargetNumFrames, _MySpeakerCount)).Evaluate();
-			);
-			(MyData.Speaker.value()[{":", ":", ":", std::to_string(Params.SpeakerId)}] = 1.f).Evaluate();
-		}
-	}
-	else if (HasSpeakerEmbedding())
-	{
-		if (MyData.SpeakerId.has_value() && !MyData.SpeakerId->Null())
-		{
-			const auto [BatchSpeakerId, ChannelSpeakerId, LengthSpeakerId] = MyData.SpeakerId->Shape().RawArray();
-			if (Batch != BatchSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeakerId));
-			if (Channel != ChannelSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeakerId));
-			if (LengthSpeakerId != 1)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker id length");
-		}
-		else
-		{
-			LogInfo(L"Speaker id not found, generating speaker id with param.speaker_id");
-			using SpkType = Tensor<Int64, 3, Device::CPU>;
-			_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf({ Batch, Channel, 1 }, Params.SpeakerId).Evaluate(););
-		}
-	}
-
-	if (HasVolumeEmbedding())
-	{
-		const auto [BatchVolume, ChannelVolume, NumFramesVolume] = MyData.Volume->Shape().RawArray();
-		if (Batch != BatchVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchVolume));
-		if (Channel != ChannelVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelVolume));
-		if (NumFramesVolume != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Volume = MyData.Volume->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-
-	auto& HubertShape = _MyInputDims[0];
-	auto& F0Shape = _MyInputDims[1];
-	auto& Mel2UnitsShape = _MyInputDims[2];
-	auto& UnVoiceShape = _MyInputDims[3];
-	auto& NoiseShape = _MyInputDims[4];
-
-	MyData.Clear();
+	InputTensorsType InputTensors;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Units,
+				Unit,
 				_MyInputTypes[0],
-				HubertShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"UnitsDims" },
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"UnitsDims" },
 				"Units",
 				GetLoggerPtr()
 			)
@@ -1180,13 +905,13 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0,
+				F0,
 				_MyInputTypes[1],
-				F0Shape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[1],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0",
 				GetLoggerPtr()
 			)
@@ -1194,13 +919,13 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Mel2Units.value(),
+				*Mel2Units,
 				_MyInputTypes[2],
-				Mel2UnitsShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[2],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"Mel2Units",
 				GetLoggerPtr()
 			)
@@ -1208,13 +933,13 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.UnVoice.value(),
+				*UnVoice,
 				_MyInputTypes[3],
-				UnVoiceShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[3],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"UnVoice",
 				GetLoggerPtr()
 			)
@@ -1222,73 +947,89 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Noise.value(),
+				*Noise,
 				_MyInputTypes[4],
-				NoiseShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"NoiseDims", L"AudioFrames" },
+				_MyInputDims[4],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"NoiseDims" },
 				"Noise",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	if (HasSpeakerEmbedding() || HasSpeakerMixLayer())
-	{
-		auto& SpeakerShape = _MyInputDims[5];
-		if (HasSpeakerMixLayer())
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.Speaker.value(),
-						_MyInputTypes[5],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"SpeakerCount" },
-						"Speaker",
-						GetLoggerPtr()
-					)
-				);
-			);
-		else
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.SpeakerId.value(),
-						_MyInputTypes[5],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"SpeakerId" },
-						"SpeakerId",
-						GetLoggerPtr()
-					)
-				);
-			);
-	}
-
-	const auto VolumeIndex = (HasSpeakerEmbedding() || HasSpeakerMixLayer()) ? 6 : 5;
-
-	if (HasVolumeEmbedding())
-	{
-		auto& VolumeShape = _MyInputDims[VolumeIndex];
+	if (HasSpeakerMixLayer())
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
+			InputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*_MyMemoryInfo,
-					MyData.Volume.value(),
+					*SpeakerMix,
+					_MyInputTypes[5],
+					_MyInputDims[5],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"SpeakerCount" },
+					"SpeakerMix",
+					GetLoggerPtr()
+				)
+			);
+		);
+	else if (HasSpeakerEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerId,
+					_MyInputTypes[5],
+					_MyInputDims[5],
+					{ L"Batch/Channel", L"Channel/Batch", L"SpeakerId" },
+					"SpeakerId",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+	const auto VolumeIndex = (HasSpeakerMixLayer() || HasSpeakerEmbedding()) ? 6 : 5;
+
+	if (HasVolumeEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*Volume,
 					_MyInputTypes[VolumeIndex],
-					VolumeShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+					_MyInputDims[VolumeIndex],
+					{ L"Batch/Channel", L"Channel/Batch", L"Volume" },
 					"Volume",
 					GetLoggerPtr()
 				)
 			);
 		);
-	}
 
-	return MyData;
+	OrtTuple AudioTuple;
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		AudioTuple = RunModel(InputTensors);
+	);
+
+	auto& Audio = AudioTuple[0];
+	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputAxis = OutputShape.size();
+	Dimensions<4> OutputDims;
+	if (OutputAxis == 1)
+		OutputDims = { 1, 1, 1, OutputShape[0] };
+	else if (OutputAxis == 2)
+		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
+	else if (OutputAxis == 3)
+		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputAxis == 4)
+		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+
+#ifdef _DEBUG
+	LogInfo(L"SoftVitsSvcV4 Inference finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
+#endif
+
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
 }
 
 RetrievalBasedVitsSvc::RetrievalBasedVitsSvc(
@@ -1391,203 +1132,72 @@ SliceDatas RetrievalBasedVitsSvc::VPreprocess(
 ) const
 {
 	auto MyData = std::move(InputDatas);
+	CheckParams(MyData);
+	const auto TargetNumFrames = CalculateFrameCount(MyData.SourceSampleCount, MyData.SourceSampleRate);
+	const auto BatchSize = MyData.Units.Shape(0);
+	const auto Channels = MyData.Units.Shape(1);
 
-	if (MyData.Units.Null())
+	PreprocessUnits(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessUnitsLength(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0Embed(MyData, BatchSize, Channels, TargetNumFrames, 0.f, GetLoggerPtr());
+	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
+	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
+	PreprocessVolume(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
+
+	return MyData;
+}
+
+Tensor<Float32, 4, Device::CPU> RetrievalBasedVitsSvc::Forward(
+	const Parameters& Params,
+	const SliceDatas& InputDatas
+) const
+{
+#ifdef _DEBUG
+	const auto StartTime = std::chrono::high_resolution_clock::now();
+#endif
+
+	auto Unit = InputDatas.Units;
+	auto Length = InputDatas.UnitsLength;
+	auto F0Embed = InputDatas.F0Embed;
+	auto F0 = InputDatas.F0;
+	auto SpeakerId = InputDatas.SpeakerId;
+	auto SpeakerMix = InputDatas.Speaker;
+	auto Noise = InputDatas.Noise;
+	auto Volume = InputDatas.Volume;
+
+	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
-
-	if (MyData.F0.Null())
+	if (!Length || Length->Null())
+		_D_Dragonian_Lib_Throw_Exception("Units length could not be null");
+	if (!F0Embed || F0Embed->Null())
+		_D_Dragonian_Lib_Throw_Exception("F0 embedding could not be null");
+	if (F0.Null())
 		_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
-
-	if (HasVolumeEmbedding() && (!MyData.Volume || MyData.Volume->Null()))
+	if (HasSpeakerMixLayer()) {
+		if (!SpeakerMix || SpeakerMix->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker mix could not be null");
+	}
+	else if (HasSpeakerEmbedding()) {
+		if (!SpeakerId || SpeakerId->Null())
+			_D_Dragonian_Lib_Throw_Exception("Speaker id could not be null");
+	}
+	if (!Noise || Noise->Null())
+		_D_Dragonian_Lib_Throw_Exception("Noise could not be null");
+	if (HasVolumeEmbedding() && (!Volume || Volume->Null()))
 		_D_Dragonian_Lib_Throw_Exception("Volume could not be null");
 
-	if (MyData.SourceSampleCount <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample count, expected: > 0, got: " + std::to_string(MyData.SourceSampleCount));
-
-	if (MyData.SourceSampleRate <= 0)
-		_D_Dragonian_Lib_Throw_Exception("Invalid source sample rate, expected: > 0, got: " + std::to_string(MyData.SourceSampleRate));
-
-	const auto InputAudioDuration = static_cast<Float32>(MyData.SourceSampleCount) /
-		static_cast<Float32>(MyData.SourceSampleRate);
-	const auto TargetNumFramesPerSecond = static_cast<Float32>(_MyOutputSamplingRate) /
-		static_cast<Float32>(_MyHopSize);
-	const auto TargetNumFrames = static_cast<Int64>(std::ceil(InputAudioDuration * TargetNumFramesPerSecond));
-
-	if (TargetNumFrames != MyData.Units.Shape(-2))
-		_D_Dragonian_Lib_Rethrow_Block(MyData.Units = MyData.Units.Interpolate<Operators::InterpolateMode::Nearest>(
-			IDim(-2),
-			{ IDim(TargetNumFrames) }
-		).Evaluate(););
-
-	const auto [Batch, Channel, NumFrames, UnitDims] = MyData.Units.Shape().RawArray();
-
-	if (UnitDims != _MyUnitsDim)
-		_D_Dragonian_Lib_Throw_Exception("Invalid units dims, expected: " + std::to_string(_MyUnitsDim) + ", got: " + std::to_string(UnitDims));
-
-	if (MyData.UnitsLength.has_value() && !MyData.UnitsLength->Null())
-	{
-		const auto [BatchLength, ChannelLength, Length] = MyData.UnitsLength->Shape().RawArray();
-		if (BatchLength != Batch)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchLength));
-		if (ChannelLength != Channel)
-			_D_Dragonian_Lib_Throw_Exception("Units and units length channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelLength));
-		if (Length != 1)
-			_D_Dragonian_Lib_Throw_Exception("Invalid units length length");
-	}
-	else
-	{
-		LogInfo(L"Units length not found, generating units length with units");
-		using UnitsSizeType = Tensor<Int64, 3, Device::CPU>;
-		_D_Dragonian_Lib_Rethrow_Block(MyData.UnitsLength = UnitsSizeType::ConstantOf({ Batch, Channel, 1 }, NumFrames).Evaluate(););
-	}
-
-	{
-		const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-		if (Batch != BatchF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-		if (Channel != ChannelF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-		if (NumFramesF0 != NumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.F0 = InterpolateUnVoicedF0(
-					MyData.F0
-				).Interpolate<Operators::InterpolateMode::Linear>(
-					IDim(-1),
-					{ IDim(NumFrames) }
-				).Evaluate();
-			);
-
-		(MyData.F0 *= std::pow(2.f, Params.PitchOffset / 12.f)).Evaluate();
-	}
-
-	if (MyData.F0Embed.has_value() && !MyData.F0Embed->Null())
-	{
-		const auto [BatchF0Embed, ChannelF0Embed, NumFramesF0Embed] = MyData.F0Embed->Shape().RawArray();
-		if (Batch != BatchF0Embed)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 embed batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0Embed));
-		if (Channel != ChannelF0Embed)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 embed channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0Embed));
-		if (NumFrames != NumFramesF0Embed)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.F0Embed = MyData.F0Embed->Interpolate<Operators::InterpolateMode::Linear>(
-				IDim(-1),
-				{ IDim(NumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"F0 embedding not found, generating f0 embedding with f0 tensor");
-		const auto [BatchF0, ChannelF0, NumFramesF0] = MyData.F0.Shape().RawArray();
-		if (Batch != BatchF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchF0));
-		if (Channel != ChannelF0)
-			_D_Dragonian_Lib_Throw_Exception("Units and f0 channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelF0));
-
-		_D_Dragonian_Lib_Rethrow_Block(MyData.F0Embed = GetF0Embed(MyData.F0, static_cast<Float32>(_MyF0Bin), _MyF0MelMax, _MyF0MelMin););
-	}
-
-	if (HasSpeakerMixLayer())
-	{
-		if (MyData.Speaker.has_value() && !MyData.Speaker->Null())
-		{
-			const auto [BatchSpeaker, ChannelSpeaker, NumFramesSpeaker, NumSpeakers] = MyData.Speaker->Shape().RawArray();
-			if (Batch != BatchSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeaker));
-			if (Channel != ChannelSpeaker)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeaker));
-			if (NumSpeakers != _MySpeakerCount)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker count, expected: " + std::to_string(_MySpeakerCount) + ", got: " + std::to_string(NumSpeakers));
-			if (NumFramesSpeaker != TargetNumFrames)
-				_D_Dragonian_Lib_Rethrow_Block(MyData.Speaker = MyData.Speaker->Interpolate<Operators::InterpolateMode::Nearest>(
-					IDim(-2),
-					{ IDim(TargetNumFrames) }
-				).Evaluate(););
-		}
-		else
-		{
-			LogInfo(L"Speaker not found, generating speaker with mel2units");
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Speaker = Functional::Zeros(IDim(Batch, Channel, TargetNumFrames, _MySpeakerCount)).Evaluate();
-			);
-			(MyData.Speaker.value()[{":", ":", ":", std::to_string(Params.SpeakerId)}] = 1.f).Evaluate();
-		}
-	}
-	else if (HasSpeakerEmbedding())
-	{
-		if (MyData.SpeakerId.has_value() && !MyData.SpeakerId->Null())
-		{
-			const auto [BatchSpeakerId, ChannelSpeakerId, LengthSpeakerId] = MyData.SpeakerId->Shape().RawArray();
-			if (Batch != BatchSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchSpeakerId));
-			if (Channel != ChannelSpeakerId)
-				_D_Dragonian_Lib_Throw_Exception("Units and speaker id channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelSpeakerId));
-			if (LengthSpeakerId != 1)
-				_D_Dragonian_Lib_Throw_Exception("Invalid speaker id length");
-		}
-		else
-		{
-			LogInfo(L"Speaker id not found, generating speaker id with param.speaker_id");
-			using SpkType = Tensor<Int64, 3, Device::CPU>;
-			_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf({ Batch, Channel, 1 }, Params.SpeakerId).Evaluate(););
-		}
-	}
-
-	if (MyData.Noise && !MyData.Noise->Null())
-	{
-		const auto [BatchNoise, ChannelNoise, NoiseDims, NumFramesNoise] = MyData.Noise->Shape().RawArray();
-		if (Batch != BatchNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchNoise));
-		if (Channel != ChannelNoise)
-			_D_Dragonian_Lib_Throw_Exception("Units and noise channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelNoise));
-		if (NoiseDims != _MyNoiseDims)
-			_D_Dragonian_Lib_Throw_Exception("Invalid noise dims, expected: " + std::to_string(_MyNoiseDims) + ", got: " + std::to_string(NoiseDims));
-		if (NumFramesNoise != NumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Noise = MyData.Noise->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(NumFrames) }
-			).Evaluate(););
-	}
-	else
-	{
-		LogInfo(L"Noise not found, generating noise with param");
-		SetRandomSeed(Params.Seed);
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Noise = Functional::Randn(IDim(Batch, Channel, _MyNoiseDims, NumFrames)).Evaluate();
-		);
-	}
-
-	if (abs(Params.NoiseScale - 1.f) > 1e-4f)
-		(*MyData.Noise *= Params.NoiseScale).Evaluate();
-
-	if (HasVolumeEmbedding())
-	{
-		const auto [BatchVolume, ChannelVolume, NumFramesVolume] = MyData.Volume->Shape().RawArray();
-		if (Batch != BatchVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume batch mismatch, expected: " + std::to_string(Batch) + ", got: " + std::to_string(BatchVolume));
-		if (Channel != ChannelVolume)
-			_D_Dragonian_Lib_Throw_Exception("Units and volume channels mismatch, expected: " + std::to_string(Channel) + ", got: " + std::to_string(ChannelVolume));
-		if (NumFramesVolume != TargetNumFrames)
-			_D_Dragonian_Lib_Rethrow_Block(MyData.Volume = MyData.Volume->Interpolate<Operators::InterpolateMode::Nearest>(
-				IDim(-1),
-				{ IDim(TargetNumFrames) }
-			).Evaluate(););
-	}
-
-	auto& HubertShape = _MyInputDims[0];
-	auto& LengthShape = _MyInputDims[1];
-	auto& F0EmbedShape = _MyInputDims[2];
-	auto& F0Shape = _MyInputDims[3];
-
-	MyData.Clear();
+	InputTensorsType InputTensors;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Units,
+				Unit,
 				_MyInputTypes[0],
-				HubertShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"UnitsDims" },
+				_MyInputDims[0],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"UnitsDims" },
 				"Units",
 				GetLoggerPtr()
 			)
@@ -1595,27 +1205,27 @@ SliceDatas RetrievalBasedVitsSvc::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.UnitsLength.value(),
+				*Length,
 				_MyInputTypes[1],
-				LengthShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"Length" },
-				"UnitsLength",
+				_MyInputDims[1],
+				{ L"Batch/Channel", L"Channel/Batch", L"Length" },
+				"Length",
 				GetLoggerPtr()
 			)
 		);
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0Embed.value(),
+				*F0Embed,
 				_MyInputTypes[2],
-				F0EmbedShape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[2],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0Embed",
 				GetLoggerPtr()
 			)
@@ -1623,90 +1233,105 @@ SliceDatas RetrievalBasedVitsSvc::VPreprocess(
 	);
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.F0,
+				F0,
 				_MyInputTypes[3],
-				F0Shape,
-				{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+				_MyInputDims[3],
+				{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 				"F0",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	if (HasSpeakerEmbedding() || HasSpeakerMixLayer())
-	{
-		auto& SpeakerShape = _MyInputDims[4];
-		if (HasSpeakerMixLayer())
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.Speaker.value(),
-						_MyInputTypes[4],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames", L"SpeakerCount" },
-						"Speaker",
-						GetLoggerPtr()
-					)
-				);
+	if (HasSpeakerMixLayer())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerMix,
+					_MyInputTypes[4],
+					_MyInputDims[4],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames", L"SpeakerCount" },
+					"SpeakerMix",
+					GetLoggerPtr()
+				)
 			);
-		else
-			_D_Dragonian_Lib_Rethrow_Block(
-				MyData.Emplace(
-					CheckAndTryCreateValueFromTensor(
-						*_MyMemoryInfo,
-						MyData.SpeakerId.value(),
-						_MyInputTypes[4],
-						SpeakerShape,
-						{ L"Batch/Channel", L"Batch/Channel", L"SpeakerId" },
-						"SpeakerId",
-						GetLoggerPtr()
-					)
-				);
+		);
+	else if (HasSpeakerEmbedding())
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyMemoryInfo,
+					*SpeakerId,
+					_MyInputTypes[4],
+					_MyInputDims[4],
+					{ L"Batch/Channel", L"Channel/Batch", L"SpeakerId" },
+					"SpeakerId",
+					GetLoggerPtr()
+				)
 			);
-	}
+		);
 
-	const auto NoiseIndex = (HasSpeakerMixLayer() || HasSpeakerEmbedding()) ? 5 : 4;
+	const auto NoiseIdx = (HasSpeakerMixLayer() || HasSpeakerEmbedding()) ? 5 : 4;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		MyData.Emplace(
+		InputTensors.Emplace(
 			CheckAndTryCreateValueFromTensor(
 				*_MyMemoryInfo,
-				MyData.Noise.value(),
-				_MyInputTypes[NoiseIndex],
-				_MyInputDims[NoiseIndex],
-				{ L"Batch/Channel", L"Batch/Channel", L"NoiseDims", L"AudioFrames" },
+				*Noise,
+				_MyInputTypes[NoiseIdx],
+				_MyInputDims[NoiseIdx],
+				{ L"Batch/Channel", L"Channel/Batch", L"NoiseDims", L"AudioFrames" },
 				"Noise",
 				GetLoggerPtr()
 			)
 		);
 	);
 
-	const auto VolumeIndex = NoiseIndex + 1;
+	const auto VolumeIndex = NoiseIdx + 1;
 
 	if (HasVolumeEmbedding())
-	{
-		auto& VolumeShape = _MyInputDims[VolumeIndex];
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.Emplace(
+			InputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*_MyMemoryInfo,
-					MyData.Volume.value(),
+					*Volume,
 					_MyInputTypes[VolumeIndex],
-					VolumeShape,
-					{ L"Batch/Channel", L"Batch/Channel", L"AudioFrames" },
+					_MyInputDims[VolumeIndex],
+					{ L"Batch/Channel", L"Channel/Batch", L"AudioFrames" },
 					"Volume",
 					GetLoggerPtr()
 				)
 			);
 		);
-	}
 
-	return MyData;
+	OrtTuple AudioTuple;
+
+	_D_Dragonian_Lib_Rethrow_Block(
+		AudioTuple = RunModel(InputTensors);
+	);
+
+	auto& Audio = AudioTuple[0];
+	auto OutputShape = Audio.GetTensorTypeAndShapeInfo().GetShape();
+	const auto OutputAxis = OutputShape.size();
+	Dimensions<4> OutputDims;
+	if (OutputAxis == 1)
+		OutputDims = { 1, 1, 1, OutputShape[0] };
+	else if (OutputAxis == 2)
+		OutputDims = { 1, 1, OutputShape[0], OutputShape[1] };
+	else if (OutputAxis == 3)
+		OutputDims = { 1, OutputShape[0], OutputShape[1], OutputShape[2] };
+	else if (OutputAxis == 4)
+		OutputDims = { OutputShape[0], OutputShape[1], OutputShape[2], OutputShape[3] };
+
+#ifdef _DEBUG
+	LogInfo(L"RetrievalBasedVitsSvc Inference finished, time: " + std::to_wstring(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - StartTime).count()) + L"ms");
+#endif
+
+	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(Audio), OutputDims););
 }
-
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

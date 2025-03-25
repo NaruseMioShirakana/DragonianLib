@@ -27,6 +27,7 @@
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 
 using UnitsEncoder = std::shared_ptr<UnitsEncoderBase>;
+
 using Constructor = std::function< UnitsEncoder(
 	const std::wstring& _Path,
 	const OnnxRuntimeEnvironment& _Environment,
