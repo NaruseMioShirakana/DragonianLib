@@ -59,8 +59,8 @@ Vocoder New(
 	const std::wstring& Name,
 	const std::wstring& _Path,
 	const OnnxRuntimeEnvironment& _Environment,
-	Int64 _SamplingRate = 16000,
-	Int64 _MelBins = 168,
+	Int64 _SamplingRate = 44100,
+	Int64 _MelBins = 128,
 	const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Vocoder_Space GetDefaultLogger()
 );
 

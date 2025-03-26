@@ -59,12 +59,12 @@ struct DiffusionParameters
 	Int64 Stride = 1;
 
 	/**
-	 * @brief Begining of the diffusion loop, sample operation will start from (begin) step, begin must be greater than (0) and less than (end)
+	 * @brief Begining of the diffusion loop, sample operation will start from (begin) step, begin must be greater equal than (0) and less equal than (end)
 	 */
 	Int64 Begin = 0;
 
 	/**
-	 * @brief End of the diffusion loop, sample operation will end at (end) step, end must be greater than (begin) and less than (max step)
+	 * @brief End of the diffusion loop, sample operation will end at (end) step, end must be greater equal than (begin) and less equal than (max step)
 	 */
 	Int64 End = 1;
 
@@ -83,6 +83,11 @@ struct DiffusionParameters
 	 * @brief Mel factor, multiplied to the mel spectrogram, this argument is only used if the output audio has incorrect samples, this means that the mel spectrogram has incorrect unit, the mel factor is used to correct the mel spectrogram
 	 */
 	Float32 MelFactor = 1.f;
+
+	/**
+	 * @brief User parameters, this argument is used to pass user parameters to the diffusion model, the user parameters must be a pointer to the user parameters struct
+	 */
+	void* UserParameters = nullptr;
 };
 
 /**
@@ -97,14 +102,19 @@ struct ReflowParameters
 	Float32 Stride = 0.2f;
 
 	/**
-	 * @brief Begining of the reflow loop, sample operation will start from (begin) step, begin must be greater than (0) and less than (end)
+	 * @brief Begining of the reflow loop, sample operation will start from (begin) step, begin must be greater than (0) and less equal than (end)
 	 */
 	Float32 Begin = 0.f;
 
 	/**
-	 * @brief End of the reflow loop, sample operation will end at (end) step, end must be greater than (begin) and less than (max step)
+	 * @brief End of the reflow loop, sample operation will end at (end) step, end must be greater equal than (begin) and less equal than (max step)
 	 */
 	Float32 End = 1.f;
+
+	/**
+	 * @brief Scale of the reflow, it is the scale of the reflow loop, the scale must be greater than (0)
+	 */
+	Float32 Scale = 1000.f;
 
 	/**
 	 * @brief Sampler of the reflow, it is the sampling method of the reflow loop, the sampler must be one of the following:
@@ -119,6 +129,11 @@ struct ReflowParameters
 	 * @brief Mel factor, multiplied to the mel spectrogram, this argument is only used if the output audio has incorrect samples, this means that the mel spectrogram has incorrect unit, the mel factor is used to correct the mel spectrogram
 	 */
 	Float32 MelFactor = 1.f;
+
+	/**
+	 * @brief User parameters, this argument is used to pass user parameters to the reflow model, the user parameters must be a pointer to the user parameters struct
+	 */
+	void* UserParameters = nullptr;
 };
 
 /**
@@ -153,6 +168,11 @@ struct Parameters
 	Float32 ClusterRate = 0.5f;
 
 	/**
+	 * @brief Whether the f0 has unvoice, if this flag is (true), F0 could have zero values, otherwise, zero values in F0 will be interpolated, this value MUST be set by user
+	 */
+	bool F0HasUnVoice = false;
+
+	/**
 	 * @brief Diffusion parameters
 	 */
 	DiffusionParameters Diffusion;
@@ -178,22 +198,21 @@ struct HParams
 	 * @brief Model paths, key value pairs of model type and model path.
 	 *
 	 * if the model is a diffusion model, the model type must be following:
-	 * - "Model": if your diffusion model has only one onnx model, this is the only path you need to provide
-	 * - "Encoder": the encoder layer of the diffusion model.
+	 * - "Ctrl": if your diffusion model has only one onnx model, this is the only path you need to provide
+	 * - "Ctrl": the encoder layer of the diffusion model.
 	 * - "Denoiser": the denoiser layer of the diffusion model.
 	 * - "NoisePredictor": the noise predictor layer of the diffusion model.
 	 * - "AlphaCumprod": the alpha cumprod layer of the diffusion model. [optional]
-	 * - "Naive": the naive layer of the diffusion model. [optional]
 	 *
 	 * if the model is a vits based model, the model type must be following:
 	 * - "Model": the model path of the vits based model.
 	 *
 	 * if the model is a reflow model, the model type must be following:
-	 * - "Encoder": the encoder layer of the reflow model.
+	 * - "Ctrl": the encoder layer of the reflow model.
 	 * - "Velocity": the velocity layer of the reflow model.
 	 *
 	 * if the model is a ddsp model, the model type must be following:
-	 * - "Source": the source model of the ddsp model.
+	 * - "Ctrl": the source model of the ddsp model.
 	 * - "Velocity": the velocity model of the reflow model.
 	 */
 	std::unordered_map<std::wstring, std::wstring> ModelPaths;
@@ -287,6 +306,11 @@ struct SliceDatas
 	Int64 SourceSampleCount = 0;
 
 	/**
+	 * @brief Whether the f0 has unvoice, if this flag is (true), F0 could have zero values, otherwise, zero values in F0 will be interpolated, this value MUST be set by user
+	 */
+	bool F0HasUnVoice = false;
+
+	/**
 	 * @brief Units, it is the units tensor, the units tensor must be a 4D tensor with the shape of [batch size, channels, audio frames, units dims], this tensor MUST be set by user
 	 */
 	Tensor<Float32, 4, Device::CPU> Units;
@@ -342,7 +366,7 @@ struct SliceDatas
 	std::optional<Tensor<Float32, 4, Device::CPU>> GTSpec = std::nullopt;
 
 	/**
-	 * @brief GT audio, it is the ground truth audio tensor, the ground truth audio tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], if you need shallow diffusion inference, automatically generate units, f0, volume with the ground truth audio, this tensor must be set by user.
+	 * @brief GT audio, it is the ground truth audio tensor, the ground truth audio tensor must be a 3D tensor with the shape of [batch size, channels, audio frames], this tensor is automatically generated.
 	 */
 	std::optional<Tensor<Float32, 3, Device::CPU>> GTAudio = std::nullopt;
 

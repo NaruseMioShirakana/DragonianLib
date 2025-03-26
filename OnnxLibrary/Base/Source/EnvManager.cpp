@@ -1,7 +1,10 @@
 ﻿#ifdef DRAGONIANLIB_ONNXRT_LIB
 #include <thread>
 #include <ranges>
+
+#ifdef DRAGONIANLIB_ENABLEDML
 #include <providers/dml/dml_provider_factory.h>
+#endif
 
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
@@ -195,6 +198,7 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
 		);
 	}
+#ifdef DRAGONIANLIB_ENABLECUDA
 	else if (_MyProvider == Device::CUDA)
 	{
 		const auto AvailableProviders = Ort::GetAvailableProviders();
@@ -255,6 +259,8 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
 		);
 	}
+#endif
+#ifdef DRAGONIANLIB_ENABLEDML
 	else if (_MyProvider == Device::DIRECTX)
 	{
 		const auto AvailableProviders = Ort::GetAvailableProviders();
@@ -308,6 +314,7 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			)
 		);
 	}
+#endif
 	else
 	{
 		_D_Dragonian_Lib_Throw_Exception("Invalid Execution Provider");
@@ -342,20 +349,7 @@ OnnxRuntimeModel& OnnxRuntimeEnvironmentBase::RefOnnxRuntimeModel(const std::wst
 	}
 	auto Iter = GlobalOrtModelCache.find(ModelPath);
 	if (Iter != GlobalOrtModelCache.end())
-	{
-		std::wstring HexPtr;
-		{
-			std::wstringstream wss;
-			wss << std::hex << Iter->second.get();
-			wss >> HexPtr;
-		}
-		_MyStaticLogger->LogInfo(
-			L"Referencing Model: Instance[PTR:" + HexPtr +
-			L", PATH:\"" + ModelPath +
-			L"\"], Current Referece Count: " + std::to_wstring(Iter->second.use_count())
-		);
 		return Iter->second;
-	}
 	try
 	{
 		_MyStaticLogger->LogInfo(
@@ -390,20 +384,7 @@ void OnnxRuntimeEnvironmentBase::UnRefOnnxRuntimeModel(const std::wstring& Model
 	
 	auto Iter = GlobalOrtModelCache.find(ModelPath);
 	if (Iter != GlobalOrtModelCache.end())
-	{
-		std::wstring HexPtr;
-		{
-			std::wstringstream wss;
-			wss << std::hex << Iter->second.get();
-			wss >> HexPtr;
-		}
-		_MyStaticLogger->LogInfo(
-			L"UnReference Model: Instance[PTR:" + HexPtr +
-			L", PATH:\"" + ModelPath + L"\"], Current Referece Count: "
-			+ std::to_wstring(Iter->second.use_count() - 1)
-		);
 		GlobalOrtModelCache.erase(Iter);
-	}
 	else
 		_MyStaticLogger->LogWarn(
 			L"Failed to UnReference Model: PATH:\"" + ModelPath + L"\""

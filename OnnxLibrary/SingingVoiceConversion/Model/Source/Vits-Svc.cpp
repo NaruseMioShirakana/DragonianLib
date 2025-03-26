@@ -450,7 +450,7 @@ SoftVitsSvcV4Beta::SoftVitsSvcV4Beta(
 		LogInfo(L"WindowSize not found, using default value: 2048");
 
 	if (_MyInputCount < 5 || _MyInputCount > 7)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 4-6, got: " + std::to_string(_MyInputCount));
+		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 5-7, got: " + std::to_string(_MyInputCount));
 	if (_MyOutputCount != 1)
 		_D_Dragonian_Lib_Throw_Exception("Invalid output count, expected: 1, got: " + std::to_string(_MyOutputCount));
 
@@ -747,7 +747,7 @@ SoftVitsSvcV4::SoftVitsSvcV4(
 		LogInfo(L"NoiseDims not found, using default value: 192");
 
 	if (_MyInputCount < 5 || _MyInputCount > 7)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 4-6, got: " + std::to_string(_MyInputCount));
+		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 5-7, got: " + std::to_string(_MyInputCount));
 	if (_MyOutputCount != 1)
 		_D_Dragonian_Lib_Throw_Exception("Invalid output count, expected: 1, got: " + std::to_string(_MyOutputCount));
 	
@@ -1044,7 +1044,7 @@ RetrievalBasedVitsSvc::RetrievalBasedVitsSvc(
 		LogInfo(L"NoiseDims not found, using default value: 192");
 
 	if (_MyInputCount < 5 || _MyInputCount > 7)
-		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 4-6, got: " + std::to_string(_MyInputCount));
+		_D_Dragonian_Lib_Throw_Exception("Invalid input count, expected: 5-7, got: " + std::to_string(_MyInputCount));
 	if (_MyOutputCount != 1)
 		_D_Dragonian_Lib_Throw_Exception("Invalid output count, expected: 1, got: " + std::to_string(_MyOutputCount));
 

@@ -68,6 +68,7 @@ public:
 	 * @param F0Params F0 parameters
 	 * @param UnitsCluster Units cluster
 	 * @param AudioMask Audio mask
+	 * @param[Output] OutPointers If it is not null, the function will override the data in the OutPointers with preprocessed datas, It is useful when you need to get the preprocessed datas
 	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio, if output is audio, shape must be {BatchSize, Channels, SampleCount}, if output is mel spectrogram, shape must be {BatchSize, Channels, MelBins, AudioFrames}
 	 */
 	Tensor<Float32, 4, Device::CPU> Inference(
@@ -78,7 +79,8 @@ public:
 		const PitchExtractor& F0Extractor,
 		const PitchParameters& F0Params,
 		std::optional<std::reference_wrapper<const Cluster>> UnitsCluster = std::nullopt,
-		std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> AudioMask = std::nullopt
+		std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> AudioMask = std::nullopt,
+		SliceDatas* OutPointers = nullptr
 	) const;
 
 	/**
@@ -146,14 +148,14 @@ protected:
 public:
 	static Tensor<Float32, 4, Device::CPU> NormSpec(
 		const Tensor<Float32, 4, Device::CPU>& Spec,
-		float SpecMax = 2.f,
-		float SpecMin = -12.f
+		float SpecMax,
+		float SpecMin
 	);
 
 	static Tensor<Float32, 4, Device::CPU> DenormSpec(
 		const Tensor<Float32, 4, Device::CPU>& Spec,
-		float SpecMax = 2.f,
-		float SpecMin = -12.f
+		float SpecMax,
+		float SpecMin
 	);
 
 	Tensor<Float32, 4, Device::CPU> NormSpec(

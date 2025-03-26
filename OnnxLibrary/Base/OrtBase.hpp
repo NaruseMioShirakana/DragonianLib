@@ -85,32 +85,30 @@ public:
     OnnxModelBase(
         const OnnxRuntimeEnvironment& _Environment,
         const std::wstring& _ModelPath,
-        const std::shared_ptr<Logger>& _Logger = nullptr
+        const std::shared_ptr<Logger>& _Logger = nullptr,
+		bool _Required = true
     ) : _MyModelExecutionProvider(_Environment->GetProvider()), _MyEnvironment(_Environment),
         _MyOnnxEnvironment(_Environment->GetEnvironment()), _MySessionOptions(_Environment->GetSessionOptions()),
 		_MyMemoryInfo(_Environment->GetMemoryInfo()), _MyRunOptions(std::make_shared<Ort::RunOptions>()),
 		_MyModelPath(_ModelPath)
     {
-        _D_Dragonian_Lib_Rethrow_Block(
-            _MyModel = _D_Dragonian_Lib_Onnx_Runtime_Space RefOnnxRuntimeModel(_ModelPath, _Environment);
-            );
-        if (_Logger) _MyLogger = _Logger;
-        else _MyLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
-
-		_D_Dragonian_Lib_Rethrow_Block(GetIOInfo(););
-    }
-
-    ~OnnxModelBase() noexcept
-    {
-		static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
-		std::wstring HexPtr;
+		if (_Logger) _MyLogger = _Logger;
+		else _MyLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+		if (_ModelPath.empty())
 		{
-			std::wstringstream wss;
-			wss << std::hex << _MyModel.get();
-			wss >> HexPtr;
+			if (_Required)
+				_D_Dragonian_Lib_Throw_Exception("Model path could not be empty");
 		}
-		_MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L", PATH:\"" + _MyModelPath + L"\"], Current Referece Count: " + std::to_wstring(_MyModel.use_count() - 1));
+		else
+		{
+			_D_Dragonian_Lib_Rethrow_Block(
+				_MyModel = _D_Dragonian_Lib_Onnx_Runtime_Space RefOnnxRuntimeModel(_ModelPath, _Environment);
+				);
+			_D_Dragonian_Lib_Rethrow_Block(GetIOInfo(););
+		}
     }
+
+	~OnnxModelBase() noexcept = default;
 
     /**
      * @brief Get the DragonianLibOrtEnv
@@ -242,8 +240,8 @@ protected:
 private:
 	_D_Dragonian_Lib_Constexpr_Force_Inline void GetIOInfo()
 	{
-		_MyInputCount = _MyModel->GetInputCount();
-		_MyOutputCount = _MyModel->GetOutputCount();
+		_MyInputCount = static_cast<::DragonianLib::Int64>(_MyModel->GetInputCount());
+		_MyOutputCount = static_cast<::DragonianLib::Int64>(_MyModel->GetOutputCount());
 		for (Int64 i = 0; i < _MyInputCount; ++i)
 		{
 			_MyIONames.EmplaceBack(_MyModel->GetInputNameAllocated(i, GetDefaultOrtAllocator()).get());

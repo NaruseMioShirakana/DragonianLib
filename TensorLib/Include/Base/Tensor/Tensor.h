@@ -869,9 +869,10 @@ public:
 		if (_EndPoint)
 		{
 			const auto Step = (_End - _Begin) / ValueType(_Count - 1);
-			return Arange(_Begin, _End + Step, Step);
+			return Arange(_Begin, _End + (Step * 1.01), Step);
 		}
-		return Arange(_Begin, _End, (_End - _Begin) / ValueType(_Count));
+		const auto Step = (_End - _Begin) / ValueType(_Count);
+		return Arange(_Begin, _End + Step * 0.01, Step);
 	}
 
 	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)

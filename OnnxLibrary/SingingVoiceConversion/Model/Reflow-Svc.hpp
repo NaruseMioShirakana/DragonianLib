@@ -22,11 +22,57 @@
  */
 
 #pragma once
-#include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Ctrls.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
+/**
+ * @class ReflowSvc
+ * @brief Reflow based Singing Voice Conversion
+ *
+ * Following model path is required:
+ * - "Ctrl" : Encoder mode or ddsp path
+ * - "Velocity" : Velocity path
+ *
+ * Extended parameters:
+ * - None
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Mel2Units[REQUIRED|AUTOGEN]: Mel2Units, used to gather units(like neaerest interpolation), shape must be {BatchSize, Channels, FrameCount}
+ * - GTSpec[REQUIRED|AUTOGEN]: GTSpec, shape must be {BatchSize, Channels, MelBins, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * - Volume[OPTIONAL|AUTOGEN]: Volume, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "GTAudio" is set
+ *
+ * The output tensor is:
+ * - MelSpec: MelSpec, shape is {BatchSize, Channels, MelBins, FrameCount}
+ *
+ */
+class ReflowSvc : public Unit2Ctrl
+{
+public:
+	ReflowSvc() = delete;
+	ReflowSvc(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()
+	);
+	~ReflowSvc() override = default;
 
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 
+	ReflowSvc(const ReflowSvc&) = default;
+	ReflowSvc(ReflowSvc&&) noexcept = default;
+	ReflowSvc& operator=(const ReflowSvc&) = default;
+	ReflowSvc& operator=(ReflowSvc&&) noexcept = default;
+
+protected:
+	OnnxRuntimeModel _MyVelocity;
+};
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

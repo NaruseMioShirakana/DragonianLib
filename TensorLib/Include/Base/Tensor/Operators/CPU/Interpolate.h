@@ -39,12 +39,19 @@ namespace Interpolate
 	}
 
 	template <typename _Type>
-	decltype(auto) InterpolateLinear(
+	auto InterpolateLinear(
 		const _Type& _A,
 		const _Type& _B,
 		double _Weight
 	)
 	{
+		if constexpr (std::is_floating_point_v<_Type>)
+		{
+			if (isnan(_A) && !isnan(_B))
+				return _B;
+			if (isnan(_B) && !isnan(_A))
+				return _A;
+		}
 		return _Type(double(_A) + _Weight * double(_B - _A));
 	}
 

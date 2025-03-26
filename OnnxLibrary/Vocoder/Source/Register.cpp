@@ -80,6 +80,22 @@ public:
 				return std::make_shared<NsfHifigan>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 			}
 		);
+
+		RegisterVocoder(
+			L"HiFi-GAN",
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
+			{
+				return std::make_shared<Hifigan>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
+			}
+		);
+
+		RegisterVocoder(
+			L"Nsf-HiFi-GAN",
+			[](const std::wstring& _Path, const OnnxRuntimeEnvironment& _Environment, Int64 _SamplingRate, Int64 _MelBins, const std::shared_ptr<Logger>& _Logger)
+			{
+				return std::make_shared<NsfHifigan>(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
+			}
+		);
 	}
 };
 

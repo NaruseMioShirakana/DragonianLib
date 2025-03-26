@@ -22,11 +22,114 @@
  */
 
 #pragma once
+#include "Ctrls.hpp"
 #include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
+/**
+ * @class ProphesierDiffusion
+ * @brief ProphesierDiffusion (DiffusionSvcV1)
+ *
+ * Following model path is required:
+ * - "Ctrl" : Encoder mode path
+ * - "Denoiser" : Denoiser path
+ * - "NoisePredictor"[OPTIONAL] : Noise predictor path
+ * - "AlphaCumprod"[OPTIONAL] : Alpha cumprod path
+ *
+ * Extended parameters:
+ * - None
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Mel2Units[REQUIRED|AUTOGEN]: Mel2Units, used to gather units(like neaerest interpolation), shape must be {BatchSize, Channels, FrameCount}
+ * - GTSpec[REQUIRED|AUTOGEN]: GTSpec, shape must be {BatchSize, Channels, MelBins, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * 
+ * The output tensor is:
+ * - MelSpec: MelSpec, shape is {BatchSize, Channels, MelBins, FrameCount}
+ *
+ */
+class ProphesierDiffusion : public Unit2Ctrl
+{
+public:
+	ProphesierDiffusion() = delete;
+	ProphesierDiffusion(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()
+	);
+	~ProphesierDiffusion() override = default;
 
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
 
+	ProphesierDiffusion(const ProphesierDiffusion&) = default;
+	ProphesierDiffusion(ProphesierDiffusion&&) noexcept = default;
+	ProphesierDiffusion& operator=(const ProphesierDiffusion&) = default;
+	ProphesierDiffusion& operator=(ProphesierDiffusion&&) noexcept = default;
+
+protected:
+	OnnxRuntimeModel _MyDenoiser;
+	OnnxRuntimeModel _MyNoisePredictor;
+	OnnxRuntimeModel _MyAlphaCumprod;
+};
+
+/**
+ * @class DiffusionSvc
+ * @brief DiffusionSvc (DiffusionSvcV2 Later)
+ *
+ * Following model path is required:
+ * - "Ctrl" : Encoder mode path
+ * - "Denoiser" : Denoiser path
+ * - "NoisePredictor"[OPTIONAL] : Noise predictor path
+ * - "AlphaCumprod"[OPTIONAL] : Alpha cumprod path
+ *
+ * Extended parameters:
+ * - None
+ *
+ * The input tensor is:
+ * - Units[REQUIRED]: Units, shape must be {BatchSize, Channels, FrameCount, UnitsDim}
+ * - F0[REQUIRED]: F0, shape must be {BatchSize, Channels, FrameCount}
+ * - Mel2Units[REQUIRED|AUTOGEN]: Mel2Units, used to gather units(like neaerest interpolation), shape must be {BatchSize, Channels, FrameCount}
+ * - GTSpec[REQUIRED|AUTOGEN]: GTSpec, shape must be {BatchSize, Channels, MelBins, FrameCount}
+ * - SpeakerId[OPTIONAL|AUTOGEN]: SpeakerId, shape must be {BatchSize, Channels, 1}
+ * - Speaker[OPTIONAL|AUTOGEN]: Speaker, shape must be {BatchSize, Channels, FrameCount, SpeakerCount}
+ * - Volume[OPTIONAL|AUTOGEN]: Volume, shape must be {BatchSize, Channels, FrameCount}, AUTOGEN if "GTAudio" is set
+ *
+ * The output tensor is:
+ * - MelSpec: MelSpec, shape is {BatchSize, Channels, MelBins, FrameCount}
+ *
+ */
+class DiffusionSvc : public Unit2Ctrl
+{
+public:
+	DiffusionSvc() = delete;
+	DiffusionSvc(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()
+	);
+	~DiffusionSvc() override = default;
+
+	Tensor<Float32, 4, Device::CPU> Forward(
+		const Parameters& Params,
+		const SliceDatas& InputDatas
+	) const override;
+
+	DiffusionSvc(const DiffusionSvc&) = default;
+	DiffusionSvc(DiffusionSvc&&) noexcept = default;
+	DiffusionSvc& operator=(const DiffusionSvc&) = default;
+	DiffusionSvc& operator=(DiffusionSvc&&) noexcept = default;
+
+protected:
+	OnnxRuntimeModel _MyDenoiser;
+	OnnxRuntimeModel _MyNoisePredictor;
+	OnnxRuntimeModel _MyAlphaCumprod;
+};
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

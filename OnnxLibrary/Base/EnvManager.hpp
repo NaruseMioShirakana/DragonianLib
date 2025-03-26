@@ -51,7 +51,7 @@ Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator();
 
 class OnnxRuntimeEnvironmentBase;
 using OnnxRuntimeEnvironment = std::shared_ptr<OnnxRuntimeEnvironmentBase>;
-using OnnxRuntimeModel = std::shared_ptr<Ort::Session>;
+using OnnxRuntimeModelPointer = std::shared_ptr<Ort::Session>;
 
 struct OnnxEnvironmentOptions
 {
@@ -98,6 +98,75 @@ protected:
         {"cudnn_conv1d_pad_to_nc1d", "1"},
         {"enable_cuda_graph", "0"},
     };
+};
+
+class OnnxRuntimeModel
+{
+public:
+	OnnxRuntimeModel() = default;
+    OnnxRuntimeModel(
+        OnnxRuntimeModelPointer Model
+    ) : _MyModel(std::move(Model))
+    {
+        if (!_MyModel)
+            return;
+        static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+        std::wstring HexPtr;
+        {
+            std::wstringstream wss;
+            wss << std::hex << _MyModel.get();
+            wss >> HexPtr;
+        }
+        _MyStaticLogger->LogMessage(L"Reference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
+    }
+    ~OnnxRuntimeModel()
+    {
+        static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+        std::wstring HexPtr;
+        {
+            std::wstringstream wss;
+            wss << std::hex << _MyModel.get();
+            wss >> HexPtr;
+        }
+        _MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count() - 1));
+    }
+    OnnxRuntimeModel(const OnnxRuntimeModel&) = default;
+    OnnxRuntimeModel(OnnxRuntimeModel&&) noexcept = default;
+    OnnxRuntimeModel& operator=(const OnnxRuntimeModel&) = default;
+    OnnxRuntimeModel& operator=(OnnxRuntimeModel&&) noexcept = default;
+    OnnxRuntimeModel(nullptr_t) noexcept
+    {
+        _MyModel = nullptr;
+    }
+    OnnxRuntimeModel& operator=(nullptr_t) noexcept
+    {
+        _MyModel = nullptr;
+        return *this;
+    }
+
+    auto Get() const noexcept
+    {
+        return _MyModel.get();
+    }
+    decltype(auto) operator*() const noexcept
+    {
+        return *_MyModel;
+    }
+    decltype(auto) operator->() const noexcept
+    {
+        return _MyModel.operator->();
+    }
+	long UseCount() const noexcept
+	{
+		return _MyModel.use_count();
+	}
+	operator bool() const noexcept
+	{
+		return _MyModel.operator bool();
+	}
+
+private:
+    OnnxRuntimeModelPointer _MyModel = nullptr;
 };
 
 /**

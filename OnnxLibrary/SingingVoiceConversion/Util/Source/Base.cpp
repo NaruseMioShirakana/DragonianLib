@@ -36,7 +36,8 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 	const PitchExtractor& F0Extractor,
 	const PitchParameters& F0Params,
 	std::optional<std::reference_wrapper<const Cluster>> UnitsCluster,
-	std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> AudioMask
+	std::optional<std::reference_wrapper<const Tensor<Float32, 3, Device::CPU>>> AudioMask,
+	SliceDatas* OutPointers
 ) const
 {
 	if (Audio.Null())
@@ -54,6 +55,7 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 
 	SliceDatas InferenceDatas;
 
+	InferenceDatas.F0HasUnVoice = Params.F0HasUnVoice;
 	Audio.Evaluate();
 
 	InferenceDatas.SourceSampleRate = SourceSampleRate;
@@ -94,6 +96,11 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 	InferenceDatas.GTAudio = Audio.View();
 	InferenceDatas.GTSampleRate = SourceSampleRate;
 
+	if (OutPointers)
+	{
+		*OutPointers = VPreprocess(Params, std::move(InferenceDatas));
+		_D_Dragonian_Lib_Rethrow_Block(return Forward(Params, *OutPointers););
+	}
 	_D_Dragonian_Lib_Rethrow_Block(return Forward(Params, VPreprocess(Params, std::move(InferenceDatas))););
 }
 
@@ -105,6 +112,7 @@ SliceDatas SingingVoiceConversionModule::Preprocess(
 	SliceDatas Ret;
 	Ret.SourceSampleRate = InferenceDatas.SourceSampleRate;
 	Ret.SourceSampleCount = InferenceDatas.SourceSampleCount;
+	Ret.F0HasUnVoice = InferenceDatas.F0HasUnVoice;
 
 	if (!InferenceDatas.Units.Null())
 		Ret.Units = InferenceDatas.Units.Clone();
@@ -205,7 +213,7 @@ Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::ExtractVolume(
 		{ None,None, {HalfWindowSize, HalfWindowSize} },
 		PaddingType::Reflect
 	).Evaluate();
-	auto NewAudio2 = NewAudio.Pow(2);
+	auto NewAudio2 = NewAudio.Pow(2).Evaluate();
 	const auto NewLength = NewAudio.Shape(2);
 
 	auto VolumeShape = Dimensions<3>{ BatchSize, Channels, NumFrames };
@@ -601,19 +609,17 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0(
 			", got: " +
 			std::to_string(ChannelF0)
 		);
+
+	if (!MyData.F0HasUnVoice)
+		MyData.F0 = InterpolateUnVoicedF0(
+			MyData.F0
+		).Evaluate();
+
 	if (NumFramesF0 != TargetNumFrames)
 		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.F0 = InterpolateUnVoicedF0(
-				MyData.F0
-			).Interpolate<Operators::InterpolateMode::Linear>(
+			MyData.F0 = MyData.F0.Interpolate<Operators::InterpolateMode::Linear>(
 				IDim(-1),
 				{ IDim(TargetNumFrames) }
-			).Evaluate();
-		);
-	else
-		_D_Dragonian_Lib_Rethrow_Block(
-			MyData.F0 = InterpolateUnVoicedF0(
-				MyData.F0
 			).Evaluate();
 		);
 

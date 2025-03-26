@@ -69,6 +69,19 @@ public:
 		DlibTensors.emplace_back(std::move(Ten.second));
 		return *this;
 	}
+	InputTensorsType& Emplace(Ort::Value&& _OrtTensor, std::shared_ptr<DlibValue>&& _DlibTensor)
+	{
+		OrtTensors.emplace_back(std::move(_OrtTensor));
+		DlibTensors.emplace_back(std::move(_DlibTensor));
+		return *this;
+	}
+	InputTensorsType& Emplace(Ort::Value&& _OrtTensor)
+	{
+		OrtTensors.emplace_back(std::move(_OrtTensor));
+		DlibTensors.emplace_back(nullptr);
+		return *this;
+	}
+
 	operator OrtTuple& () noexcept
 	{
 		return OrtTensors;
@@ -167,7 +180,7 @@ template <typename _TensorType, size_t _NRank, Device _MyDevice>
 std::pair<Ort::Value, std::shared_ptr<DlibValue>> CreateValueFromTensor(
 	const OrtMemoryInfo* _MyMemoryInfo,
 	const Tensor<_TensorType, _NRank, _MyDevice>& _Tensor,
-	const auto _InputAxisCount,
+	const UInt64 _InputAxisCount,
 	size_t _AxisOffset
 )
 {

@@ -12,8 +12,8 @@ add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 add_definitions(-DNOMINMAX)
 
 #DragonianLib Build Options
-option(DRAGONIANLIB_DML									"dml backend"									OFF)
-option(DRAGONIANLIB_CUDA								"cuda backend"									OFF)
+option(DRAGONIANLIB_DML									"dml backend"									ON)
+option(DRAGONIANLIB_CUDA								"cuda backend"									ON)
 option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
 option(DRAGONIANLIB_VULKAN								"vk backend"									OFF)
 

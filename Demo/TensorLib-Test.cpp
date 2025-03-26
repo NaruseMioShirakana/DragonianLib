@@ -1,6 +1,9 @@
 ﻿#include <iostream>
 #include "Libraries/AvCodec/AvCodec.h"
 #include "OnnxLibrary/SingingVoiceConversion/Model/Vits-Svc.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Diffusion-Svc.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/DDSP-Svc.hpp"
+#include "OnnxLibrary/Vocoder/Register.hpp"
 
 auto MyLastTime = std::chrono::high_resolution_clock::now();
 size_t TotalStep = 0;
@@ -53,21 +56,9 @@ int main()
 
 	std::cout << static_cast<float>(DragonianLib::Float16(44100.f));
 
-	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
-	hParams.UnitsDim = 768;
-	hParams.OutputSamplingRate = 44100;
-	hParams.HopSize = 512;
-	hParams.ModelPaths = {
-		{ L"Model", LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\Model.onnx)" }
-	};
-	hParams.SpeakerCount = 1;
-	hParams.HasSpeakerMixLayer = false;
-	hParams.HasSpeakerEmbedding = true;
-	hParams.HasVolumeEmbedding = false;
-
 	DragonianLib::OnnxRuntime::OnnxEnvironmentOptions Options{
-		DragonianLib::Device::DIRECTX,
-		1,
+		DragonianLib::Device::CUDA,
+		0,
 		8,
 		4,
 		ORT_LOGGING_LEVEL_WARNING
@@ -79,18 +70,49 @@ int main()
 		Options
 	);
 
-	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::SoftVitsSvcV4(
+	/*auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::SoftVitsSvcV4(
 			Env,
 			hParams
-		);
+		);*/
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
+	hParams.F0Max = 800;
+	hParams.F0Min = 65;
+	hParams.HopSize = 512;
+	hParams.MelBins = 128;
+	hParams.UnitsDim = 768;
+	hParams.OutputSamplingRate = 44100;
+	hParams.SpeakerCount = 92;
+	hParams.HasSpeakerEmbedding = true;
+	hParams.HasVolumeEmbedding = true;
+	hParams.HasSpeakerMixLayer = true;
+	hParams.ModelPaths[L"Ctrl"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\encoder.onnx)";
+	hParams.ModelPaths[L"Velocity"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\velocity.onnx)";
+
+	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::ReflowSvc(
+		Env,
+		hParams
+	);
+
+	auto Vocoder = DragonianLib::OnnxRuntime::Vocoder::New(
+		L"Nsf-HiFi-GAN",
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)",
+		Env
+	);
 	
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params;
+	Params.SpeakerId = 1;
 	Params.PitchOffset = 0.f;
-	Params.StftNoiseScale = 0.8f;
-	Params.NoiseScale = 0.5f;
+	Params.StftNoiseScale = 1.f;
+	Params.NoiseScale = 0.f;
+	Params.Reflow.Begin = 1.f;
+	Params.Reflow.End = 1.f;
+	Params.Reflow.Stride = 0.1f;
+	Params.F0HasUnVoice = true;
+	Params.Reflow.Sampler = L"Eular";
 
+	//vec-768-layer-12-f16
 	const auto UnitsEncoder = DragonianLib::OnnxRuntime::UnitsEncoder::New(
-		L"HubertBase",
+		L"ContentVec-768-l12-tta2x",
 		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\vec-768-layer-12-f16.onnx)",
 		Env,
 		16000,
@@ -112,69 +134,87 @@ int main()
 		nullptr
 	};
 
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::SliceDatas MyData;
+	try
+	{
+		auto _ = Model.Inference(
+		   Params,
+		   Tensor1[0].View(1, 1, -1),
+		   44100,
+		   UnitsEncoder,
+		   F0Extractor,
+		   F0Params,
+		   std::nullopt,
+		   std::nullopt,
+		   &MyData
+	   );
+	}
+	catch (const std::exception& e)
+	{
+		std::wcout << e.what() << '\n';
+		return 0;
+	}
+
 	WithTimer(
 		[&]
 		{
-			auto Audio = Model.Inference(
+			auto Audio = Model(
 				Params,
-				Tensor1[0].View(1, 1, -1),
-				44100,
-				UnitsEncoder,
-				F0Extractor,
-				F0Params
+				MyData
+			);
+		}
+	);
+
+	WithTimer(
+		[&]
+		{
+			auto Audio = Model(
+				Params,
+				MyData
 			);
 		}
 	);
 	WithTimer(
 		[&]
 		{
-			auto Audio = Model.Inference(
+			auto Audio = Model(
 				Params,
-				Tensor1[0].View(1, 1, -1),
-				44100,
-				UnitsEncoder,
-				F0Extractor,
-				F0Params
+				MyData
 			);
 		}
 	);
 	WithTimer(
 		[&]
 		{
-			auto Audio = Model.Inference(
+			auto Audio = Model(
 				Params,
-				Tensor1[0].View(1, 1, -1),
-				44100,
-				UnitsEncoder,
-				F0Extractor,
-				F0Params
+				MyData
 			);
 		}
 	);
 	WithTimer(
 		[&]
 		{
-			auto Audio = Model.Inference(
+			auto Audio = Model(
 				Params,
-				Tensor1[0].View(1, 1, -1),
-				44100,
-				UnitsEncoder,
-				F0Extractor,
-				F0Params
+				MyData
 			);
 		}
 	);
+
 	WithTimer(
 		[&]
 		{
-			auto Audio = Model.Inference(
+			auto Mel = Model(
 				Params,
-				Tensor1[0].View(1, 1, -1),
-				44100,
-				UnitsEncoder,
-				F0Extractor,
-				F0Params
+				MyData
 			);
+
+			auto Audio = Vocoder->Forward(
+				Model.DenormSpec(Mel),
+				MyData.F0
+			);
+
 			OutStream.EncodeAll(
 				DragonianLib::TemplateLibrary::CRanges(Audio.Data(), Audio.Data() + Audio.ElementCount()),
 				static_cast<DragonianLib::UInt32>(hParams.OutputSamplingRate),

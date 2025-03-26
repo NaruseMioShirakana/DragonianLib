@@ -22,11 +22,13 @@
  */
 
 #pragma once
-#include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-
-
+/**
+ * @brief DDSP based Singing Voice Conversion, See ReflowSvc for more details
+ */
+using DDSPSvc = ReflowSvc;
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

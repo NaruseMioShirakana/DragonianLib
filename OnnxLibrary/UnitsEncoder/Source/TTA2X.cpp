@@ -10,6 +10,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 ) const
 {
 	Tensor<Float32, 4, Device::CPU> Feats, Feats2, FeatsTTA;
+	const auto MPaddingCount = _SamplingRate / 100;
 
 	_D_Dragonian_Lib_Rethrow_Block(Feats = InferenceModel(
 		_PCMData, _SamplingRate, _Mask
@@ -23,7 +24,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 			{
 				None,
 				None,
-				{160, 0}
+				{MPaddingCount, 0}
 			},
 			PaddingType::Zero
 		).Evaluate(););
@@ -35,7 +36,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 				{
 					None,
 					None,
-					{160, 0}
+					{MPaddingCount, 0}
 				},
 				PaddingType::Zero
 			).Evaluate(),
@@ -48,7 +49,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 				{
 					None,
 					None,
-					{160, 0}
+					{MPaddingCount, 0}
 				},
 				PaddingType::Zero
 			).Evaluate(),
@@ -65,7 +66,7 @@ Tensor<Float32, 4, Device::CPU> TTA2X::Forward(
 			{
 				None,
 				None,
-				{0, PaddingCount},
+				{0, 1},
 				None
 			},
 			PaddingType::Zero
