@@ -442,7 +442,7 @@ Ort::Value ReflowEularSampler(
 	Float32 T = _Params.Begin;
 	const Float32 DT = _Params.Stride;
 	const Float32 Scale = _Params.Scale;
-	for (auto Step : TemplateLibrary::Ranges(TotalSteps))
+	for (auto Step : TemplateLibrary::Ranges(TotalSteps + 1))
 	{
 		*VelocityIn.T.GetTensorMutableData<int64_t>() = int64_t(T * Scale);
 		Ort::Value VelocityOut{ nullptr };

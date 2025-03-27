@@ -137,7 +137,7 @@ SliceDatas Unit2Ctrl::VPreprocess(
 
 	PreprocessUnits(MyData, BatchSize, Channels, 0, GetLoggerPtr());
 	PreprocessMel2Units(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
-	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, !Params.F0HasUnVoice, Params.F0Preprocess, Params.UserParameters, GetLoggerPtr());
 	PreprocessVolume(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
 	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
 	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());

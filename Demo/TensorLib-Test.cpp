@@ -87,6 +87,8 @@ int main()
 	hParams.HasSpeakerMixLayer = true;
 	hParams.ModelPaths[L"Ctrl"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\encoder.onnx)";
 	hParams.ModelPaths[L"Velocity"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\velocity.onnx)";
+	//hParams.ModelPaths[L"Ctrl"] = LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_encoder.onnx)";
+	//hParams.ModelPaths[L"Velocity"] = LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_velocity.onnx)";
 
 	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::ReflowSvc(
 		Env,
@@ -100,19 +102,19 @@ int main()
 	);
 	
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params;
-	Params.SpeakerId = 1;
-	Params.PitchOffset = 0.f;
+	Params.SpeakerId = 0;
+	Params.PitchOffset = -18;
 	Params.StftNoiseScale = 1.f;
-	Params.NoiseScale = 0.f;
-	Params.Reflow.Begin = 1.f;
+	Params.NoiseScale = 0.8f;
+	Params.Reflow.Begin = 0.f;
 	Params.Reflow.End = 1.f;
-	Params.Reflow.Stride = 0.1f;
-	Params.F0HasUnVoice = true;
+	Params.Reflow.Stride = 0.05f;
+	Params.F0HasUnVoice = false;
 	Params.Reflow.Sampler = L"Eular";
 
 	//vec-768-layer-12-f16
 	const auto UnitsEncoder = DragonianLib::OnnxRuntime::UnitsEncoder::New(
-		L"ContentVec-768-l12-tta2x",
+		L"ContentVec-768-l12",
 		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\vec-768-layer-12-f16.onnx)",
 		Env,
 		16000,
@@ -129,31 +131,23 @@ int main()
 		320,
 		256,
 		2048,
-		1100.0,
-		50.0,
+		800,
+		65,
 		nullptr
 	};
 
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::SliceDatas MyData;
-	try
-	{
-		auto _ = Model.Inference(
-		   Params,
-		   Tensor1[0].View(1, 1, -1),
-		   44100,
-		   UnitsEncoder,
-		   F0Extractor,
-		   F0Params,
-		   std::nullopt,
-		   std::nullopt,
-		   &MyData
-	   );
-	}
-	catch (const std::exception& e)
-	{
-		std::wcout << e.what() << '\n';
-		return 0;
-	}
+	Model.Inference(
+		Params,
+		Tensor1[0].View(1, 1, -1),
+		44100,
+		UnitsEncoder,
+		F0Extractor,
+		F0Params,
+		std::nullopt,
+		std::nullopt,
+		&MyData
+	);
 
 	WithTimer(
 		[&]

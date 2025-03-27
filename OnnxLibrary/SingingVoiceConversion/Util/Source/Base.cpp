@@ -55,7 +55,6 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 
 	SliceDatas InferenceDatas;
 
-	InferenceDatas.F0HasUnVoice = Params.F0HasUnVoice;
 	Audio.Evaluate();
 
 	InferenceDatas.SourceSampleRate = SourceSampleRate;
@@ -112,43 +111,42 @@ SliceDatas SingingVoiceConversionModule::Preprocess(
 	SliceDatas Ret;
 	Ret.SourceSampleRate = InferenceDatas.SourceSampleRate;
 	Ret.SourceSampleCount = InferenceDatas.SourceSampleCount;
-	Ret.F0HasUnVoice = InferenceDatas.F0HasUnVoice;
 
 	if (!InferenceDatas.Units.Null())
-		Ret.Units = InferenceDatas.Units.Clone();
+		Ret.Units = InferenceDatas.Units.Clone().Evaluate();
 
 	if (!InferenceDatas.F0.Null())
-		Ret.F0 = InferenceDatas.F0.Clone();
+		Ret.F0 = InferenceDatas.F0.Clone().Evaluate();
 
 	if (InferenceDatas.Volume && !InferenceDatas.Volume->Null())
-		Ret.Volume = InferenceDatas.Volume->Clone();
+		Ret.Volume = InferenceDatas.Volume->Clone().Evaluate();
 
 	if (InferenceDatas.UnVoice && !InferenceDatas.UnVoice->Null())
-		Ret.UnVoice = InferenceDatas.UnVoice->Clone();
+		Ret.UnVoice = InferenceDatas.UnVoice->Clone().Evaluate();
 
 	if (InferenceDatas.F0Embed && !InferenceDatas.F0Embed->Null())
-		Ret.F0Embed = InferenceDatas.F0Embed->Clone();
+		Ret.F0Embed = InferenceDatas.F0Embed->Clone().Evaluate();
 
 	if (InferenceDatas.UnitsLength && !InferenceDatas.UnitsLength->Null())
-		Ret.UnitsLength = InferenceDatas.UnitsLength->Clone();
+		Ret.UnitsLength = InferenceDatas.UnitsLength->Clone().Evaluate();
 
 	if (InferenceDatas.SpeakerId && !InferenceDatas.SpeakerId->Null())
-		Ret.SpeakerId = InferenceDatas.SpeakerId->Clone();
+		Ret.SpeakerId = InferenceDatas.SpeakerId->Clone().Evaluate();
 
 	if (InferenceDatas.Speaker && !InferenceDatas.Speaker->Null())
-		Ret.Speaker = InferenceDatas.Speaker->Clone();
+		Ret.Speaker = InferenceDatas.Speaker->Clone().Evaluate();
 
 	if (InferenceDatas.Noise && !InferenceDatas.Noise->Null())
-		Ret.Noise = InferenceDatas.Noise->Clone();
+		Ret.Noise = InferenceDatas.Noise->Clone().Evaluate();
 
 	if (InferenceDatas.Mel2Units && !InferenceDatas.Mel2Units->Null())
-		Ret.Mel2Units = InferenceDatas.Mel2Units->Clone();
+		Ret.Mel2Units = InferenceDatas.Mel2Units->Clone().Evaluate();
 
 	if (InferenceDatas.GTSpec && !InferenceDatas.GTSpec->Null())
-		Ret.GTSpec = InferenceDatas.GTSpec->Clone();
+		Ret.GTSpec = InferenceDatas.GTSpec->Clone().Evaluate();
 
 	if (InferenceDatas.GTAudio && !InferenceDatas.GTAudio->Null())
-		Ret.GTAudio = InferenceDatas.GTAudio->Clone();
+		Ret.GTAudio = InferenceDatas.GTAudio->Clone().Evaluate();
 
 	Ret.GTSampleRate = InferenceDatas.GTSampleRate;
 
@@ -166,6 +164,15 @@ Int64 SingingVoiceConversionModule::CalculateFrameCount(
 	if (Den == 0)
 		return 0;
 	return std::max((Num / Den) + Offset, 0ll);
+}
+
+SliceDatas& SingingVoiceConversionModule::Preprocess_(
+	const Parameters& Params,
+	SliceDatas& MyData
+) const
+{
+	MyData = VPreprocess(Params, std::move(MyData));
+	return MyData;
 }
 
 Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::NormSpec(
@@ -588,6 +595,9 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0(
 	Int64 Channels,
 	Int64 TargetNumFrames,
 	Float32 F0Offset,
+	bool InterpolateUnVoiced,
+	Parameters::F0PreprocessMethod F0Method,
+	void* UserParameters,
 	const DLogger& /*Logger*/
 )
 {
@@ -610,7 +620,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0(
 			std::to_string(ChannelF0)
 		);
 
-	if (!MyData.F0HasUnVoice)
+	if (InterpolateUnVoiced)
 		MyData.F0 = InterpolateUnVoicedF0(
 			MyData.F0
 		).Evaluate();
@@ -623,8 +633,14 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0(
 			).Evaluate();
 		);
 
+	if (F0Method || abs(F0Offset) > 1e-4f)
+		MyData.SourceF0 = MyData.F0.Clone().Evaluate();
+
 	if (abs(F0Offset) > 1e-4f)
 		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 *= std::pow(2.f, F0Offset / 12.f)).Evaluate(););
+
+	if (F0Method)
+		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 = F0Method(MyData.F0, UserParameters).Evaluate()););
 	
 	return MyData;
 }

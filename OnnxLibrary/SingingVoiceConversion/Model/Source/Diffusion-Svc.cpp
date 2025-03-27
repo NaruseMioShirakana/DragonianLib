@@ -93,7 +93,6 @@ Tensor<Float32, 4, Device::CPU> ProphesierDiffusion::Forward(
 	auto SpeakerMix = InputDatas.Speaker;
 	auto F0 = InputDatas.F0;
 	auto Mel = InputDatas.GTSpec;
-	F0 = F0.Log2().Evaluate();
 
 	if (Unit.Null())
 		_D_Dragonian_Lib_Throw_Exception("Units could not be null");
@@ -237,7 +236,7 @@ Tensor<Float32, 4, Device::CPU> ProphesierDiffusion::Forward(
 		if ((Params.Diffusion.End - Params.Diffusion.Begin) / Params.Diffusion.Stride <= 0)
 		{
 			LogInfo(L"Diffusion step is zero or negative, skip diffusion");
-			return *std::move(Mel);
+			return std::move(*Mel);
 		}
 
 		auto Spec = Ort::Value::CreateTensor(
@@ -319,8 +318,9 @@ Tensor<Float32, 4, Device::CPU> DiffusionSvc::Forward(
 	auto Mel = InputDatas.GTSpec;
 
 	Ort::Value Spec{ nullptr };
+	//const bool OutputHasSpec = (Tuple[0].GetTensorTypeAndShapeInfo().GetElementCount() != 1) && _MyOutputCount == 3;
 
-	if (_MyOutputCount == 3 && abs(Params.NoiseScale) < 1e-4f)
+	if ((_MyOutputCount == 3) && abs(Params.NoiseScale) < 1e-4f)
 	{
 		Spec = std::move(Tuple[2]);
 		if ((Params.Diffusion.End - Params.Diffusion.Begin) / Params.Diffusion.Stride <= 0)

@@ -35,22 +35,22 @@ public:
 	static_assert(_MyRank > 0, "The rank of the array must be greater than 0.");
 	using ArrayType = _ValueType[_Rank];
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType* _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType* _Right, size_t _Begin = 0, size_t _End = _MyRank)
 	{
-		for (size_t i = 0; i < _Rank; ++i)
+		for (size_t i = _Begin; i < _End; ++i)
 			_MyData[i] = *_Right++;
 		return *this;
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline static Array ConstantOf(_ValueType _Value)
+	_D_Dragonian_Lib_Constexpr_Force_Inline static Array ConstantOf(const _ValueType& _Value)
 	{
 		Array _Tmp;
 		for (size_t i = 0; i < _Rank; ++i)
 			_Tmp._MyData[i] = _Value;
 		return _Tmp;
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline void AssignConstant(_ValueType _Value)
+	_D_Dragonian_Lib_Constexpr_Force_Inline void AssignConstant(const _ValueType& _Value, size_t _Begin = 0, size_t _End = _MyRank)
 	{
-		for (size_t i = 0; i < _Rank; ++i)
+		for (size_t i = _Begin; i < _End; ++i)
 			_MyData[i] = _Value;
 	}
 	template <typename _Type = _ValueType>

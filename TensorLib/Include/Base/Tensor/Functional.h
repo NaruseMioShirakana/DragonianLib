@@ -294,11 +294,12 @@ namespace Functional
 	Tensor<_MyValueType, _NRank, _MyDevice> NumpyLoad(const std::wstring& _Path)
 	{
 		auto [VecShape, VecData] = NumpyFileFormat::LoadNumpyFile(_Path);
-
-		Dimensions<_NRank> Shape;
-		if (VecShape.Size() != _NRank)
+		if (VecShape.Size() > _NRank)
 			_D_Dragonian_Lib_Throw_Exception("The rank of the tensor is not compatible with the numpy file.");
-		Shape.Assign(VecShape.Data());
+		const auto Offset = _NRank - VecShape.Size();
+		Dimensions<_NRank> Shape;
+		Shape.Assign(VecShape.Data(), Offset);
+		Shape.AssignConstant(1, 0, Offset);
 		auto Alloc = VecData.GetAllocator();
 		auto Ret = VecData.Release();
 		Ret.second /= sizeof(_MyValueType);

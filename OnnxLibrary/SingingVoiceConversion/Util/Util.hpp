@@ -137,11 +137,34 @@ struct ReflowParameters
 };
 
 /**
+ * @namespace PreDefinedF0PreprocessMethod
+ * @brief Pre-defined f0 preprocess methods
+ */
+namespace PreDefinedF0PreprocessMethod
+{
+	/**
+	 * @brief Log2 preprocess method
+	 * @param F0 Input f0 tensor
+	 * @param UserParameters Null
+	 * @return Preprocessed f0 tensor
+	 */
+	Tensor<Float32, 3, Device::CPU> Log2(
+		const Tensor<Float32, 3, Device::CPU>& F0,
+		void* UserParameters
+	);
+}
+
+/**
  * @struct Parameters
  * @brief Inference parameters for all models
  */
 struct Parameters
 {
+	using F0PreprocessMethod = Tensor<Float32, 3, Device::CPU>(*)(
+		const Tensor<Float32, 3, Device::CPU>& F0,
+		void* UserParameters
+		);
+
 	/**
 	 * @brief Noise scale factor, multiplied to the noise, this argument may be harmful to the output audio or helpful to the output audio. noise scale has no range, but it is recommended to be in the range of (0, 1)
 	 */
@@ -186,6 +209,16 @@ struct Parameters
 	 * @brief STFT noise scale for SoVitsSvc4.0-Beta, in general, this argument is not used
 	 */
 	Float32 StftNoiseScale = 0.8f;
+
+	/**
+	 * @brief F0 preprocess method, this argument is used to preprocess the f0 tensor, if the model not input the source f0(HZ), this argument must be set, otherwise, this argument must be (nullptr), here are some pre-defined f0 preprocess methods, see namespace PreDefinedF0PreprocessMethod
+	 */
+	F0PreprocessMethod F0Preprocess = nullptr;
+
+	/**
+	 * @brief User parameters of f0 preprocess method, this argument is used to pass user parameters to the model, the user parameters must be a pointer to the user parameters struct, if the model not input the source f0(HZ) and the f0 preprocess method has user parameters, this argument must be set, otherwise, this argument must be (nullptr)
+	 */
+	void* UserParameters = nullptr;
 };
 
 /**
@@ -306,11 +339,6 @@ struct SliceDatas
 	Int64 SourceSampleCount = 0;
 
 	/**
-	 * @brief Whether the f0 has unvoice, if this flag is (true), F0 could have zero values, otherwise, zero values in F0 will be interpolated, this value MUST be set by user
-	 */
-	bool F0HasUnVoice = false;
-
-	/**
 	 * @brief Units, it is the units tensor, the units tensor must be a 4D tensor with the shape of [batch size, channels, audio frames, units dims], this tensor MUST be set by user
 	 */
 	Tensor<Float32, 4, Device::CPU> Units;
@@ -379,6 +407,11 @@ struct SliceDatas
 	 * @brief Stft noise, it is the stft noise tensor, the stft noise tensor must be a 4D tensor with the shape of [batch size, channels, stft dims, audio frames], it could not be set by user, it is used to generate noise for SoVitsSvc4.0-Beta
 	 */
 	std::optional<Tensor<Float32, 4, Device::CPU>> StftNoise = std::nullopt;
+
+	/**
+	 * @brief Source f0, it is the source f0 tensor, if the preprocessing function modifies the f0 tensor, this tensor will be set to the original f0 tensor, it could not be set by user, it is used to return the original f0 tensor for vocoder or user.
+	 */
+	std::optional<Tensor<Float32, 3, Device::CPU>> SourceF0 = std::nullopt;
 };
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

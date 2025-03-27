@@ -12,4 +12,15 @@ DLogger& GetDefaultLogger() noexcept
 	return _MyLogger;
 }
 
+namespace PreDefinedF0PreprocessMethod
+{
+	Tensor<Float32, 3, Device::CPU> Log2(
+		const Tensor<Float32, 3, Device::CPU>& F0,
+		void*
+	)
+	{
+		return F0.Log2().Evaluate();
+	}
+}
+
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

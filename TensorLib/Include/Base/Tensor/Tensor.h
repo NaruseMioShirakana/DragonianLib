@@ -362,7 +362,6 @@ protected:
 	DependencyChainPointer _MyFuturesAsResult = nullptr;
 	DependencyChainPointer _MyFuturesAsArgument = nullptr;
 	Allocator _MyAllocator;
-	bool _MyShapeIsBroadCasted = false;
 
 private:
 
@@ -423,7 +422,7 @@ private:
 		Ret._MyLast = _MyLast;
 		Ret._MyFuturesAsResult = _MyFuturesAsResult;
 		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyShapeIsBroadCasted = _MyShapeIsBroadCasted;
+		Ret._MyAllocator = _MyAllocator;
 		return Ret;
 	}
 
@@ -440,7 +439,7 @@ private:
 		Ret._MyLast = _MyLast;
 		Ret._MyFuturesAsResult = _MyFuturesAsResult;
 		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyShapeIsBroadCasted = _MyShapeIsBroadCasted;
+		Ret._MyAllocator = _MyAllocator;
 		return Ret;
 	}
 
@@ -468,10 +467,7 @@ private:
 		First._MyFuturesAsResult = _A._MyFuturesAsResult;		Second._MyFuturesAsResult = _B._MyFuturesAsResult;
 		First._MyFuturesAsArgument = _A._MyFuturesAsArgument;	Second._MyFuturesAsArgument = _B._MyFuturesAsArgument;
 		First._MyData = _A._MyData;								Second._MyData = _B._MyData;
-		if constexpr (CurrentRank != _Rank1)
-			First._MyShapeIsBroadCasted = true;
-		if constexpr (CurrentRank != _Rank2)
-			Second._MyShapeIsBroadCasted = true;
+		First._MyAllocator = _A._MyAllocator;					Second._MyAllocator = _B._MyAllocator;
 
 		for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
 		{
@@ -502,14 +498,11 @@ private:
 						"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
 						"] From " + std::to_string(XSize) + " To " + std::to_string(YSize) + "!"
 					);
-
 				First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
-				First._MyShapeIsBroadCasted = true;
 			}
 			else if (YSize == 1)
 			{
 				Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
-				Second._MyShapeIsBroadCasted = true;
 			}
 			else
 				_D_Dragonian_Lib_Throw_Exception(
@@ -869,10 +862,10 @@ public:
 		if (_EndPoint)
 		{
 			const auto Step = (_End - _Begin) / ValueType(_Count - 1);
-			return Arange(_Begin, _End + (Step * 1.01), Step);
+			return Arange(_Begin, _End + (Step * ValueType(1.01)), Step);
 		}
 		const auto Step = (_End - _Begin) / ValueType(_Count);
-		return Arange(_Begin, _End + Step * 0.01, Step);
+		return Arange(_Begin, _End + Step * ValueType(0.01), Step);
 	}
 
 	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)
@@ -902,6 +895,7 @@ private:
 				MyAlloc.deallocate(_Pointer);
 			}
 		);
+		_MyAllocator = MyAlloc;
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + Size;
 		return true;
@@ -921,9 +915,9 @@ private:
 		}
 	}
 
-	Tensor(const Dimensions<_NRank>& MyShape) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
+	Tensor(const Dimensions<_NRank>& MyShape, Allocator Alloc = Allocator()) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
 	{
-		if (AllocateMemory(MyShape, Allocator()))
+		if (AllocateMemory(MyShape, Alloc))
 		{
 			ConstructViewInfo(MyShape);
 			if constexpr (!std::is_trivially_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
@@ -966,6 +960,7 @@ private:
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + BufferSize;
+		_MyAllocator = Alloc;
 		ConstructViewInfo(MyShape);
 	}
 
@@ -984,6 +979,7 @@ private:
 		);
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + BufferSize;
+		_MyAllocator = Allocator();
 		ConstructViewInfo(MyShape);
 	}
 
@@ -999,6 +995,7 @@ private:
 		_MyFirst = Buffer;
 		_MyData = (RawPointer)_MyFirst.get();
 		_MyLast = _MyData + BufferSize;
+		_MyAllocator = Allocator();
 		ConstructViewInfo(MyShape);
 	}
 
@@ -1531,7 +1528,6 @@ public:
 		_MyFirst = nullptr;
 		_MyData = nullptr;
 		_MyLast = nullptr;
-		_MyShapeIsBroadCasted = false;
 		_MyFuturesAsResult = nullptr;
 		_MyFuturesAsArgument = nullptr;
 	}
@@ -1667,7 +1663,7 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted() const
 	{
-		return _MyShapeIsBroadCasted;
+		return IsBroadCasted_();
 	}
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
@@ -2024,7 +2020,7 @@ public:
 		Ret._MyLast = _MyLast;
 		Ret._MyFuturesAsResult = _MyFuturesAsResult;
 		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
+		Ret._MyAllocator = _MyAllocator;
 		return Ret;
 	}
 
@@ -2052,7 +2048,7 @@ public:
 			Ret._MyLast = _MyLast;
 			Ret._MyFuturesAsResult = _MyFuturesAsResult;
 			Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-			Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
+			Ret._MyAllocator = _MyAllocator;
 			return Ret;
 		}
 	}
@@ -2111,7 +2107,7 @@ public:
 		Ret._MyLast = _MyLast;
 		Ret._MyFuturesAsResult = _MyFuturesAsResult;
 		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyShapeIsBroadCasted = Ret.IsBroadCasted_();
+		Ret._MyAllocator = _MyAllocator;
 
 		return Ret;
 	}
@@ -2323,6 +2319,14 @@ public:
 				BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && _Buffer.IsContinuous()
 			);
 		return _Buffer;
+	}
+
+	template <typename _Type, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_Type>&& std::is_trivially_copy_assignable_v<ValueType>>>
+	decltype(auto) ViewAs() const
+	{
+		Tensor<_Type, _NRank, _MyDevice> Ret;
+		
+		return Ret;
 	}
 
 	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank <= _NRank && std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>

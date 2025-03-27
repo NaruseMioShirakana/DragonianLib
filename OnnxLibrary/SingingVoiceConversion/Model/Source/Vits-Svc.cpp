@@ -297,7 +297,7 @@ SliceDatas SoftVitsSvcV3::VPreprocess(
 
 	PreprocessUnits(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
 	PreprocessUnitsLength(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
-	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, !Params.F0HasUnVoice, Params.F0Preprocess, Params.UserParameters, GetLoggerPtr());
 	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
 	PreprocessSpeakerId(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
 
@@ -541,7 +541,7 @@ SliceDatas SoftVitsSvcV4Beta::VPreprocess(
 	const auto Channels = MyData.Units.Shape(1);
 
 	PreprocessUnits(MyData, BatchSize, Channels, 0, GetLoggerPtr());
-	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, !Params.F0HasUnVoice, Params.F0Preprocess, Params.UserParameters, GetLoggerPtr());
 	PreprocessMel2Units(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
 	PreprocessStftNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.StftNoiseScale);
 	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
@@ -839,7 +839,7 @@ SliceDatas SoftVitsSvcV4::VPreprocess(
 
 	PreprocessUnits(MyData, BatchSize, Channels, 0, GetLoggerPtr());
 	PreprocessUnVoice(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
-	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, !Params.F0HasUnVoice, Params.F0Preprocess, Params.UserParameters, GetLoggerPtr());
 	PreprocessMel2Units(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
 	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
 	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());
@@ -1139,7 +1139,7 @@ SliceDatas RetrievalBasedVitsSvc::VPreprocess(
 
 	PreprocessUnits(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
 	PreprocessUnitsLength(MyData, BatchSize, Channels, TargetNumFrames, GetLoggerPtr());
-	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, GetLoggerPtr());
+	PreprocessF0(MyData, BatchSize, Channels, TargetNumFrames, Params.PitchOffset, !Params.F0HasUnVoice, Params.F0Preprocess, Params.UserParameters, GetLoggerPtr());
 	PreprocessF0Embed(MyData, BatchSize, Channels, TargetNumFrames, 0.f, GetLoggerPtr());
 	PreprocessNoise(MyData, BatchSize, Channels, TargetNumFrames, Params.NoiseScale, Params.Seed);
 	PreprocessSpeakerMix(MyData, BatchSize, Channels, TargetNumFrames, Params.SpeakerId, GetLoggerPtr());

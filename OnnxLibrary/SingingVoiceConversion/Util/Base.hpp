@@ -129,6 +129,17 @@ public:
 		Int64 Offset = 0
 	) const noexcept;
 
+	/**
+	 * @brief Preprocess input datas for inference(override input datas)
+	 * @param Params Inference parameters
+	 * @param MyData Input datas
+	 * @return Preprocessed datas(reference to input datas)
+	 */
+	SliceDatas& Preprocess_(
+		const Parameters& Params,
+		SliceDatas& MyData
+	) const;
+
 protected:
 	Int64 _MyOutputSamplingRate = 32000;
 	Int64 _MyUnitsDim = 256;
@@ -255,7 +266,11 @@ public:
 	}
 
 protected:
-	static void CheckParams(const SliceDatas& MyData);
+	static void CheckParams(
+		const SliceDatas& MyData
+	);
+
+public:
 	SliceDatas& PreprocessUnits(
 		SliceDatas& MyData,
 		Int64 BatchSize,
@@ -290,6 +305,9 @@ protected:
 		Int64 Channels,
 		Int64 TargetNumFrames,
 		Float32 F0Offset,
+		bool InterpolateUnVoiced,
+		Parameters::F0PreprocessMethod F0Method,
+		void* UserParameters,
 		const DLogger& Logger = nullptr
 	);
 	SliceDatas& PreprocessVolume(

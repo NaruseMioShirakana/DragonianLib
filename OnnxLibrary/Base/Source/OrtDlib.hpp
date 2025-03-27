@@ -114,7 +114,7 @@ auto CreateTensorViewFromOrtValue(
 				_Shape,
 				{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 				BufferSize
-			);
+			).Clone().Evaluate();
 		}
 
 		if constexpr (TypeTraits::IsFloatingPointValue<_MyValueType>)
