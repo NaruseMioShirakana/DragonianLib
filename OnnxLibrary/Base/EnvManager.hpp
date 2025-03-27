@@ -57,7 +57,6 @@ struct OnnxEnvironmentOptions
 {
     friend class OnnxRuntimeEnvironmentBase;
 
-	OnnxEnvironmentOptions() = default;
 	OnnxEnvironmentOptions(const OnnxEnvironmentOptions&) = default;
 	OnnxEnvironmentOptions(OnnxEnvironmentOptions&&) noexcept = default;
 	OnnxEnvironmentOptions& operator=(const OnnxEnvironmentOptions&) = default;
@@ -69,7 +68,7 @@ struct OnnxEnvironmentOptions
         Int64 _DeviceID = 0,
         Int64 _IntraOpNumThreads = 4,
         Int64 _InterOpNumThreads = 2,
-        OrtLoggingLevel _LoggingLevel = ORT_LOGGING_LEVEL_VERBOSE,
+        OrtLoggingLevel _LoggingLevel = ORT_LOGGING_LEVEL_WARNING,
         std::string _LoggerId = "DragonianLib"
     ) : Provider(_Provider), DeviceID(_DeviceID), IntraOpNumThreads(_IntraOpNumThreads), InterOpNumThreads(_InterOpNumThreads), LoggingLevel(_LoggingLevel), LoggerId(std::move(_LoggerId))
     {
@@ -121,6 +120,8 @@ public:
     }
     ~OnnxRuntimeModel()
     {
+		if (!_MyModel)
+			return;
         static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
         std::wstring HexPtr;
         {

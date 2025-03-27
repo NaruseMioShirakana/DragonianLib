@@ -81,6 +81,13 @@ public:
 		DlibTensors.emplace_back(nullptr);
 		return *this;
 	}
+	InputTensorsType& Insert(ptrdiff_t _Index, std::pair<Ort::Value, std::shared_ptr<DlibValue>>&& _InputTensor)
+	{
+		auto Ten = std::move(_InputTensor);
+		OrtTensors.insert(OrtTensors.begin() + _Index, std::move(Ten.first));
+		DlibTensors.insert(DlibTensors.begin() + _Index, std::move(Ten.second));
+		return *this;
+	}
 
 	operator OrtTuple& () noexcept
 	{

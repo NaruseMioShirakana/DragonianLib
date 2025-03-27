@@ -223,18 +223,55 @@ protected:
 			);
 	}
 
-	OrtTuple RunModel(const OrtTuple& Inputs) const
+public:
+	Int64 GetInputCount() const noexcept
 	{
-		_D_Dragonian_Lib_Rethrow_Block(
-			return _MyModel->Run(
-				*_MyRunOptions,
-				_MyInputNames.Data(),
-				Inputs.data(),
-				_MyInputCount,
-				_MyOutputNames.Data(),
-				_MyOutputCount
-			);
-			);
+		return _MyInputCount;
+	}
+
+	Int64 GetOutputCount() const noexcept
+	{
+		return _MyOutputCount;
+	}
+
+	const TemplateLibrary::Vector<std::string>& GetIONames() const noexcept
+	{
+		return _MyIONames;
+	}
+
+	const TemplateLibrary::Vector<const char*>& GetInputNames() const noexcept
+	{
+		return _MyInputNames;
+	}
+
+	const TemplateLibrary::Vector<const char*>& GetOutputNames() const noexcept
+	{
+		return _MyOutputNames;
+	}
+
+	const TemplateLibrary::Vector<TemplateLibrary::Vector<Int64>>& GetInputDims() const noexcept
+	{
+		return _MyInputDims;
+	}
+
+	const TemplateLibrary::Vector<TemplateLibrary::Vector<Int64>>& GetOutputDims() const noexcept
+	{
+		return _MyOutputDims;
+	}
+
+	const TemplateLibrary::Vector<ONNXTensorElementDataType>& GetInputTypes() const noexcept
+	{
+		return _MyInputTypes;
+	}
+
+	const TemplateLibrary::Vector<ONNXTensorElementDataType>& GetOutputTypes() const noexcept
+	{
+		return _MyOutputTypes;
+	}
+
+	const std::wstring& GetModelPath() const noexcept
+	{
+		return _MyModelPath;
 	}
 
 private:
@@ -266,6 +303,20 @@ public:
 	OnnxModelBase(const OnnxModelBase&) = default;
 	OnnxModelBase(OnnxModelBase&&) = default;
 
+	OrtTuple RunModel(const OrtTuple& Inputs) const
+	{
+		_D_Dragonian_Lib_Rethrow_Block(
+			return _MyModel->Run(
+				*_MyRunOptions,
+				_MyInputNames.Data(),
+				Inputs.data(),
+				_MyInputCount,
+				_MyOutputNames.Data(),
+				_MyOutputCount
+			);
+			);
+	}
+
 	template <typename... _ArgumentTypes>
 	decltype(auto) operator()(_ArgumentTypes&&... _Arguments)
 	{
@@ -280,6 +331,11 @@ public:
 	void UnTerminate() const
 	{
 		_MyRunOptions->UnsetTerminate();
+	}
+
+	operator bool() const noexcept
+	{
+		return _MyModel;
 	}
 
 protected:

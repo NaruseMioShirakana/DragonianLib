@@ -640,25 +640,26 @@ public:
 
 	/**
 	 * @brief Create a new tensor with the specified shape.
-	 * @param MyShape The shape of the tensor.
+	 * @param _Shape The shape of the tensor.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> ||
 		std::is_default_constructible_v<_CurValueType>)>>
-	static constexpr decltype(auto) New(const Dimensions<_NRank>& MyShape)
+	static constexpr decltype(auto) New(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
 	{
-		return Tensor(MyShape);
+		return Tensor(_Shape, _Al);
 	}
 
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> ||
 		std::is_default_constructible_v<_CurValueType>)>>
-		static constexpr decltype(auto) NewVector(SizeType MySize)
+		static constexpr decltype(auto) NewVector(SizeType _Size, Allocator _Al = Allocator())
 	{
 		Dimensions<_NRank> MyShape;
 		for (size_t i = 0; i < _NRank; ++i)
 			MyShape[i] = 1;
-		MyShape.Back() = MySize;
-		return Tensor(MyShape);
+		MyShape.Back() = _Size;
+		return Tensor(MyShape, _Al);
 	}
 
 	template <typename _CurValueType = ValueType, typename _First, typename ..._Rest, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_constructible_v<_CurValueType, _First, _Rest...>>>
