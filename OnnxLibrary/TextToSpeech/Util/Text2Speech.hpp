@@ -52,6 +52,16 @@ private:
 	Int64 _MyEmotionDims = 1024;
 };
 
+Tensor<Int64, 1, Device::CPU> CleanedText2Indices(
+	const std::wstring& Text,
+	const std::unordered_map<std::wstring, Int64>& Symbols
+);
+
+Tensor<Int64, 1, Device::CPU> CleanedSeq2Indices(
+	const TemplateLibrary::Vector<std::wstring>& Seq,
+	const std::unordered_map<std::wstring, Int64>& Symbols
+);
+
 /*class TextToSpeech : public LibTTSModule
 {
 public:

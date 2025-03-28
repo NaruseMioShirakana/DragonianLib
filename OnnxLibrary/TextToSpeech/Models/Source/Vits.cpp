@@ -98,6 +98,11 @@ namespace Vits
 		return Result.Evaluate();
 	}
 
+	Tensor<Float, 1, Device::CPU> SpeakerEmbedding::operator[](Int64 Index) const
+	{
+		return _MyEmbedding[Index].Clone().Evaluate();
+	}
+
 	Encoder::Encoder(
 		const OnnxRuntimeEnvironment& _Environment,
 		const HParams& Params,
@@ -169,7 +174,7 @@ namespace Vits
 			if (Params.Parameters.contains(L"BertDims"))
 				_MyBertDims = std::stoll(Params.Parameters.at(L"BertDims"));
 			else
-				LogInfo(L"hParameter \"BertDims\" not found, use default value: 2048!");
+				LogInfo(L"hParameter \"BertDims\" not found, use default value: 1024!");
 
 			if (Params.Parameters.contains(L"BertCount"))
 				_MyBertCount = std::stoll(Params.Parameters.at(L"BertCount"));
@@ -287,12 +292,12 @@ namespace Vits
 
 	Encoder::Encoded Encoder::Forward(
 		const Tensor<Int64, 2, Device::CPU>& PhonemeIds,
-		const std::optional<const Tensor<Float, 2, Device::CPU>>& SpeakerEmbedding,
-		const std::optional<const Tensor<Float, 2, Device::CPU>>& Emotion,
-		const std::optional<const Tensor<Int64, 2, Device::CPU>>& ToneIds,
-		const std::optional<const Tensor<Int64, 2, Device::CPU>>& LanguageIds,
-		const std::optional<const Tensor<Float, 4, Device::CPU>>& Bert,
-		const std::optional<Tensor<Float, 2, Device::CPU>>& Clap,
+		std::optional<const Tensor<Float, 2, Device::CPU>> SpeakerEmbedding,
+		std::optional<const Tensor<Float, 2, Device::CPU>> Emotion,
+		std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds,
+		std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds,
+		std::optional<const Tensor<Float, 4, Device::CPU>> Bert,
+		std::optional<Tensor<Float, 2, Device::CPU>> Clap,
 		Int64 VQIndex,
 		Int64 SpeakerIndex
 	) const
@@ -685,10 +690,10 @@ namespace Vits
 			Dimensions<3> XShape;
 			XShape.AssignConstant(1, 0, 3 - OutputXAxis);
 			XShape.Assign(OutputXShape.data(), 3 - OutputXAxis);
-			Result.X = CreateTensorViewFromOrtValue<Float>(
+			_D_Dragonian_Lib_Rethrow_Block(Result.X = CreateTensorViewFromOrtValue<Float>(
 				std::move(OutputTensors[0]),
 				XShape
-			);
+			););
 		}
 
 		{
@@ -697,10 +702,10 @@ namespace Vits
 			Dimensions<3> M_pShape;
 			M_pShape.AssignConstant(1, 0, 3 - OutputM_pAxis);
 			M_pShape.Assign(OutputM_pShape.data(), 3 - OutputM_pAxis);
-			Result.M_p = CreateTensorViewFromOrtValue<Float>(
+			_D_Dragonian_Lib_Rethrow_Block(Result.M_p = CreateTensorViewFromOrtValue<Float>(
 				std::move(OutputTensors[1]),
 				M_pShape
-			);
+			););
 		}
 
 		{
@@ -709,10 +714,10 @@ namespace Vits
 			Dimensions<3> Logs_pShape;
 			Logs_pShape.AssignConstant(1, 0, 3 - OutputLogs_pAxis);
 			Logs_pShape.Assign(OutputLogs_pShape.data(), 3 - OutputLogs_pAxis);
-			Result.Logs_p = CreateTensorViewFromOrtValue<Float>(
+			_D_Dragonian_Lib_Rethrow_Block(Result.Logs_p = CreateTensorViewFromOrtValue<Float>(
 				std::move(OutputTensors[2]),
 				Logs_pShape
-			);
+			););
 		}
 
 		{
@@ -721,10 +726,10 @@ namespace Vits
 			Dimensions<3> X_maskShape;
 			X_maskShape.AssignConstant(1, 0, 3 - OutputX_maskAxis);
 			X_maskShape.Assign(OutputX_maskShape.data(), 3 - OutputX_maskAxis);
-			Result.X_mask = CreateTensorViewFromOrtValue<Float>(
+			_D_Dragonian_Lib_Rethrow_Block(Result.X_mask = CreateTensorViewFromOrtValue<Float>(
 				std::move(OutputTensors[3]),
 				X_maskShape
-			);
+			););
 		}
 
 		return Result;
@@ -811,9 +816,10 @@ namespace Vits
 	Tensor<Float32, 3, Device::CPU> DurationPredictor::Forward(
 		const Tensor<Float32, 3, Device::CPU>& X,
 		const Tensor<Float32, 3, Device::CPU>& X_Mask,
-		const std::optional<const Tensor<Float32, 2, Device::CPU>>& SpeakerEmbedding,
+		std::optional<const Tensor<Float32, 2, Device::CPU>> SpeakerEmbedding,
 		float DurationPredictorNoiseScale,
 		float SdpRatio,
+		float LengthScale,
 		Int64 Seed
 	) const
 	{
@@ -860,7 +866,7 @@ namespace Vits
 
 		if (_HasSpeaker)
 		{
-			auto Dims = GetInputDims(114);
+			const auto& Dims = GetInputDims(114);
 			if (Dims.Back() == 1)
 				_D_Dragonian_Lib_Rethrow_Block(
 					Inputs.Emplace(
@@ -904,10 +910,10 @@ namespace Vits
 			Dimensions<3> Shape;
 			Shape.AssignConstant(1, 0, 3 - OutputAxis);
 			Shape.Assign(OutputShape.data(), 3 - OutputAxis);
-			DpResult = CreateTensorViewFromOrtValue<Float32>(
+			_D_Dragonian_Lib_Rethrow_Block(DpResult = CreateTensorViewFromOrtValue<Float32>(
 				std::move(OutputTensors[0]),
 				Shape
-			);
+			););
 		}
 
 		if (_MySDP)
@@ -941,17 +947,308 @@ namespace Vits
 			Dimensions<3> Shape;
 			Shape.AssignConstant(1, 0, 3 - OutputAxis);
 			Shape.Assign(OutputShape.data(), 3 - OutputAxis);
-			SdpResult = CreateTensorViewFromOrtValue<Float32>(
+			_D_Dragonian_Lib_Rethrow_Block(SdpResult = CreateTensorViewFromOrtValue<Float32>(
 				std::move(OutputTensors[0]),
 				Shape
-			);
+			););
 		}
 
 		if (_MyDP && _MySDP)
-			return ((DpResult * (1.f - SdpRatio)) + (SdpResult * SdpRatio)).Evaluate();
+			return (((DpResult * (1.f - SdpRatio)) + (SdpResult * SdpRatio)).Exp() * X_Mask * LengthScale).Ceil().Evaluate();
 		if (_MyDP)
-			return DpResult;
-		return SdpResult;
+			return (DpResult.Exp() * X_Mask * LengthScale).Ceil().Evaluate();
+		return (SdpResult.Exp() * X_Mask * LengthScale).Ceil().Evaluate();
+	}
+
+	Flow::Flow(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger
+	) : OnnxModelBase(_Environment, Params.ModelPaths.at(L"Flow"), _Logger)
+	{
+		if (Params.Parameters.contains(L"HasSpeaker"))
+			_HasSpeaker = Params.Parameters.at(L"HasSpeaker") == L"true" || Params.Parameters.at(L"HasSpeaker") == L"True";
+		else
+			_Logger->LogInfo(L"hParameter \"HasSpeaker\" not found, use default value: false!");
+		if (_HasSpeaker)
+		{
+			if (Params.Parameters.contains(L"GinChannel"))
+				_MyGinChannel = std::stoll(Params.Parameters.at(L"GinChannel"));
+			else
+				_Logger->LogInfo(L"hParameter \"GinChannel\" not found, use default value: 256!");
+		}
+		if (GetOutputCount() != 1)
+			_D_Dragonian_Lib_Throw_Exception("Output count must be 1!");
+		if (_HasSpeaker)
+		{
+			const auto& GDims = GetInputDims().Back();
+			bool Found = false;
+			for (const auto& i : GDims)
+			{
+				if (i == _MyGinChannel)
+				{
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+				_D_Dragonian_Lib_Throw_Exception("Gin channel mismatch! expected: " + std::to_string(_MyGinChannel));
+		}
+	}
+
+	//[Batch, PhonemeSize, Durations]
+	std::pair<Tensor<Float32, 3, Device::CPU>, Tensor<Float32, 3, Device::CPU>> GeneratePath(
+		const Tensor<Float32, 3, Device::CPU>& W_Ceil,
+		Int64 XSize
+	)
+	{
+		auto Cum = W_Ceil.CumSum(-1);
+		auto Duration = Cum[{":", ":", "-1"}];
+		auto Total = Duration.ReduceMax(0);
+		if (Total[0].ElementCount() != 1)
+			_D_Dragonian_Lib_Throw_Exception("Total must be a scalar!");
+		Total.Evaluate();
+		const auto Size = *Total.Data();
+		const auto Batch = W_Ceil.Shape()[0];
+		auto Y_Mask = Functional::Ones(IDim(Batch, 1ll, static_cast<SizeType>(Size)));
+		auto O = Functional::Arange(0.f, Size);
+		auto Out = O.View(1, 1, -1).Repeat({ Batch, XSize, 1 });
+		auto Mask = (Out < Cum.Transpose()).Evaluate();
+		Mask[{":", "1:", ":"}] ^= Mask[{":", ":-1", ":"}];
+		return { Mask.Cast<Float32>().Evaluate(),Y_Mask };
+	}
+
+	Tensor<Float32, 3, Device::CPU> Flow::Forward(
+		const Tensor<Float32, 3, Device::CPU>& W_Ceil,
+		const Tensor<Float32, 3, Device::CPU>& M_P,
+		const Tensor<Float32, 3, Device::CPU>& Logs_P,
+		std::optional<const Tensor<Float32, 2, Device::CPU>> SpeakerEmbedding,
+		Float32 NoiseScale
+	) const
+	{
+		if (W_Ceil.Null())
+			_D_Dragonian_Lib_Throw_Exception("W_Ceil is required!");
+		if (M_P.Null())
+			_D_Dragonian_Lib_Throw_Exception("M_P is required!");
+		if (Logs_P.Null())
+			_D_Dragonian_Lib_Throw_Exception("Logs_P is required!");
+		if (_HasSpeaker && (!SpeakerEmbedding.has_value() || SpeakerEmbedding->Null()))
+			_D_Dragonian_Lib_Throw_Exception("Speaker embedding is required!");
+
+		//[Batch, PhonemeSize, Durations]
+		auto [Attn, Y_Mask] = GeneratePath(W_Ceil, W_Ceil.Shape(-1));
+		auto M_P_Attn = Functional::Matmul(M_P, Attn);
+		auto Logs_P_Attn = Functional::Matmul(Logs_P, Attn);
+		auto Z_P = M_P_Attn + Functional::RandnLike(M_P_Attn) * NoiseScale * Logs_P_Attn.Exp();
+		Z_P.Evaluate();
+
+		//Z_P, Y_Mask, SpeakerEmbedding
+		InputTensorsType Inputs;
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					Z_P,
+					_MyInputTypes[0],
+					_MyInputDims[0],
+					{ L"BatchSize", L"EncoderOutChannels", L"Durations" },
+					"Z_P",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					Y_Mask,
+					_MyInputTypes[1],
+					_MyInputDims[1],
+					{ L"BatchSize", L"1", L"Durations" },
+					"Y_Mask",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+		if (_HasSpeaker)
+		{
+			const auto& Dims = _MyInputDims[2];
+			if (Dims.Back() == 1)
+				_D_Dragonian_Lib_Rethrow_Block(
+					Inputs.Emplace(
+						CheckAndTryCreateValueFromTensor(
+							*GetMemoryInfo(),
+							SpeakerEmbedding->UnSqueeze(-1),
+							_MyInputTypes[2],
+							Dims,
+							{ L"BatchSize", L"GinChannel", L"1" },
+							"SpeakerEmbedding",
+							GetLoggerPtr()
+						)
+					);
+				);
+			else
+				_D_Dragonian_Lib_Rethrow_Block(
+					Inputs.Emplace(
+						CheckAndTryCreateValueFromTensor(
+							*GetMemoryInfo(),
+							*SpeakerEmbedding,
+							_MyInputTypes[2],
+							Dims,
+							{ L"BatchSize", L"GinChannel" },
+							"SpeakerEmbedding",
+							GetLoggerPtr()
+						)
+					);
+				);
+		}
+
+		OrtTuple OutputTensors;
+		_D_Dragonian_Lib_Rethrow_Block(
+			OutputTensors = RunModel(
+				Inputs
+			);
+		);
+		auto ZShape = OutputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
+		Dimensions<3> Shape;
+		if (ZShape.size() == 3)
+			Shape = { ZShape[0], ZShape[1], ZShape[2] };
+		else if (ZShape.size() == 2)
+			Shape = { 1, ZShape[0], ZShape[1] };
+		else if (ZShape.size() == 1)
+			Shape = { 1, 1, ZShape[0] };
+		else
+			_D_Dragonian_Lib_Throw_Exception("Z shape mismatch!");
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			return CreateTensorViewFromOrtValue<Float32>(
+				std::move(OutputTensors[0]),
+				Shape
+			);
+		);
+	}
+
+	Decoder::Decoder(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger
+	) : OnnxModelBase(_Environment, Params.ModelPaths.at(L"Decoder"), _Logger)
+	{
+		if (Params.Parameters.contains(L"HasSpeaker"))
+			_HasSpeaker = Params.Parameters.at(L"HasSpeaker") == L"true" || Params.Parameters.at(L"HasSpeaker") == L"True";
+		else
+			_Logger->LogInfo(L"hParameter \"HasSpeaker\" not found, use default value: false!");
+		if (_HasSpeaker)
+		{
+			if (Params.Parameters.contains(L"GinChannel"))
+				_MyGinChannel = std::stoll(Params.Parameters.at(L"GinChannel"));
+			else
+				_Logger->LogInfo(L"hParameter \"GinChannel\" not found, use default value: 256!");
+		}
+		if (GetOutputCount() != 1)
+			_D_Dragonian_Lib_Throw_Exception("Output count must be 1!");
+		if (_HasSpeaker)
+		{
+			const auto& GDims = GetInputDims().Back();
+			bool Found = false;
+			for (const auto& i : GDims)
+			{
+				if (i == _MyGinChannel)
+				{
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+				_D_Dragonian_Lib_Throw_Exception("Gin channel mismatch! expected: " + std::to_string(_MyGinChannel));
+		}
+	}
+
+	Tensor<Float32, 3, Device::CPU> Decoder::Forward(
+		const Tensor<Float32, 3, Device::CPU>& Z,
+		std::optional<const Tensor<Float32, 2, Device::CPU>> SpeakerEmbedding
+	) const
+	{
+		if (Z.Null())
+			_D_Dragonian_Lib_Throw_Exception("Z is required!");
+		if (_HasSpeaker && (!SpeakerEmbedding.has_value() || SpeakerEmbedding->Null()))
+			_D_Dragonian_Lib_Throw_Exception("Speaker embedding is required!");
+
+		InputTensorsType Inputs;
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					Z,
+					_MyInputTypes[0],
+					_MyInputDims[0],
+					{ L"BatchSize", L"EncoderOutChannels", L"Durations" },
+					"Z",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+		if (_HasSpeaker)
+		{
+			const auto& Dims = _MyInputDims[1];
+			if (Dims.Back() == 1)
+				_D_Dragonian_Lib_Rethrow_Block(
+					Inputs.Emplace(
+						CheckAndTryCreateValueFromTensor(
+							*GetMemoryInfo(),
+							SpeakerEmbedding->UnSqueeze(-1),
+							_MyInputTypes[1],
+							Dims,
+							{ L"BatchSize", L"GinChannel", L"1" },
+							"SpeakerEmbedding",
+							GetLoggerPtr()
+						)
+					);
+				);
+			else
+				_D_Dragonian_Lib_Rethrow_Block(
+					Inputs.Emplace(
+						CheckAndTryCreateValueFromTensor(
+							*GetMemoryInfo(),
+							*SpeakerEmbedding,
+							_MyInputTypes[1],
+							Dims,
+							{ L"BatchSize", L"GinChannel" },
+							"SpeakerEmbedding",
+							GetLoggerPtr()
+						)
+					);
+				);
+		}
+
+		OrtTuple OutputTensors;
+		_D_Dragonian_Lib_Rethrow_Block(
+			OutputTensors = RunModel(
+				Inputs
+			);
+		);
+
+		Dimensions<3> Shape;
+		auto OShape = OutputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
+		if (OShape.size() == 3)
+			Shape = { OShape[0], OShape[1], OShape[2] };
+		else if (OShape.size() == 2)
+			Shape = { 1, OShape[0], OShape[1] };
+		else if (OShape.size() == 1)
+			Shape = { 1, 1, OShape[0] };
+		else
+			_D_Dragonian_Lib_Throw_Exception("Output shape mismatch!");
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			return CreateTensorViewFromOrtValue<Float32>(
+				std::move(OutputTensors[0]),
+				Shape
+			);
+		);
 	}
 
 }

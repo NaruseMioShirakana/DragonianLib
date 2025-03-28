@@ -47,31 +47,32 @@ int main()
 {
 	using namespace DragonianLib;
 
-	auto Tensor = Functional::Arange(0, 10);
-	std::cout << Tensor.MaskedFill(Tensor < 5, 0).Evaluate();
-
-
 	OnnxRuntime::Text2Speech::HParams Hparams;
 	Hparams.ModelPaths = {
-		{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_enc_p.onnx)" },
-		{ L"Embedding", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" },
-		{ L"DP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_dp.onnx)" },
-		{ L"SDP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_sdp.onnx)" },
-		{ L"Flow", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_flow.onnx)" },
-		{ L"Decoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" }
+		//{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_enc_p.onnx)" },
+		//{ L"Embedding", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" },
+		//{ L"DP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_dp.onnx)" },
+		//{ L"SDP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_sdp.onnx)" },
+		//{ L"Flow", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_flow.onnx)" },
+		//{ L"Decoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" }
+		{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_enc_p.onnx)" },
+		{ L"Embedding", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_emb.onnx)" },
+		{ L"SDP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_sdp.onnx)" },
+		{ L"Flow", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_flow.onnx)" },
+		{ L"Decoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_dec.onnx)" }
 	};
 
 	Hparams.Parameters = {
-		{ L"HasLength", L"false" },
+		{ L"HasLength", L"true" },
 		{ L"HasEmotion", L"false" },
-		{ L"HasTone", L"true" },
-		{ L"HasLanguage", L"true" },
-		{ L"HasBert", L"true" },
-		{ L"HasClap", L"true" },
+		{ L"HasTone", L"false" },
+		{ L"HasLanguage", L"false" },
+		{ L"HasBert", L"false" },
+		{ L"HasClap", L"false" },
 		{ L"HasSpeaker", L"true" },
-		{ L"EncoderSpeaker", L"true" },
+		{ L"EncoderSpeaker", L"false" },
 		{ L"HasVQ", L"false" },
-		{ L"SpeakerCount", L"1" },
+		{ L"SpeakerCount", L"9" },
 		{ L"GinChannel", L"256" },
 		{ L"VQCodebookSize", L"10" },
 		{ L"EmotionDims", L"1024"},
@@ -90,23 +91,9 @@ int main()
 		Hparams
 	);
 
-	auto Emb = SpeakerEmbedding.Forward(
-		Functional::Ones(IDim(9, 1))
-	);
-
 	OnnxRuntime::Text2Speech::Vits::Encoder Encoder(
 		Env,
 		Hparams
-	);
-
-	auto Enc = Encoder.Forward(
-		Functional::Ones<Int64>(IDim(1, 20)),
-		Functional::Ones<Float32>(IDim(1, 256)),
-		Functional::Ones<Float32>(IDim(1, 1024)),
-		Functional::Ones<Int64>(IDim(1, 20)),
-		Functional::Ones<Int64>(IDim(1, 20)),
-		Functional::Ones<Float32>(IDim(1, 1, 20, 2048)),
-		Functional::Ones<Float32>(IDim(1, 512))
 	);
 
 	OnnxRuntime::Text2Speech::Vits::DurationPredictor DurationPredictor(
@@ -114,13 +101,67 @@ int main()
 		Hparams
 	);
 
+	OnnxRuntime::Text2Speech::Vits::Flow Flow(
+		Env,
+		Hparams
+	);
+
+	OnnxRuntime::Text2Speech::Vits::Decoder Decoder(
+		Env,
+		Hparams
+	);
+
+	std::wstring Symbols = LR"(_,.!?-~…AEINOQUabdefghijkmnoprstuvwyzʃʧʦ↓↑ )";
+	std::unordered_map<std::wstring, Int64> SymbolMap;
+	for (Int64 i = 0; i < Symbols.size(); ++i)
+		SymbolMap[std::wstring() + Symbols[i]] = i;
+	SymbolMap[L"UNK"] = 0;
+
+	std::wstring Text = LR"(_w_a_t_a_s_h_i_h_a_ _n_a_r_u_s_e_ _s_h_i_r_o_h_a_._)";
+	auto Indices = OnnxRuntime::Text2Speech::CleanedText2Indices(
+		Text,
+		SymbolMap
+	).UnSqueeze(0);
+	auto SpeakerMix = Functional::Ones(IDim(1, 9));
+
+	auto Emb = SpeakerEmbedding[0].UnSqueeze(0);
+
+	auto Enc = Encoder.Forward(
+		Indices,
+		Emb
+	);
+
 	auto Dur = DurationPredictor.Forward(
 		Enc.X,
 		Enc.X_mask,
-		Functional::Ones<Float32>(IDim(1, 256)),
+		Emb,
 		0.8f,
 		1.0f,
+		1.f,
 		114514
+	);
+
+	auto W = Flow.Forward(
+		Dur,
+		Enc.M_p,
+		Enc.Logs_p,
+		Emb,
+		0.8f
+	);
+
+	auto Audio = Decoder.Forward(
+		W,
+		Emb
+	);
+
+	auto Codec = AvCodec::OpenOutputStream(
+		44100,
+		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\test.wav)"
+		);
+
+	Codec.EncodeAll(
+		TemplateLibrary::CRanges(Audio.Data(), Audio.Data() + Audio.ElementCount()),
+		22050
 	);
 
 	return 0;
