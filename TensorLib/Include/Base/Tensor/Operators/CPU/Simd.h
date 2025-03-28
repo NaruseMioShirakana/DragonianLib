@@ -56,7 +56,7 @@ template<typename Type, typename = std::enable_if_t<TypeTraits::IsAvx256Supporte
 class Vectorized
 {
 public:
-
+	static constexpr size_t size() { return sizeof(__m256) / sizeof(Type); }
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline ~Vectorized() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(const Vectorized&) = default;

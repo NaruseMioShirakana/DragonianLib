@@ -429,7 +429,8 @@ constexpr decltype(auto) GetValue(Types&&... args) {
 	constexpr static auto Idx = _D_Dragonian_Lib_Type_Traits_Namespace CalculateIndexValue<Index, Size>;
 	return _D_Dragonian_Lib_Type_Traits_Namespace GetValueAt<Idx, Types...>::Get(std::forward<Types>(args)...);
 }
-
+template <typename _Type>
+constexpr auto IsStandardFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue <RemoveCVType<_Type>, Float32, Float64>;
 template <typename _Type>
 constexpr auto IsFloatingPointValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue <RemoveCVType<_Type>, Float32, Float64, long double, Float16, BFloat16, Float8E4M3FN, Float8E4M3FNUZ, Float8E5M2, Float8E5M2FNUZ>;
 template <typename _Type>

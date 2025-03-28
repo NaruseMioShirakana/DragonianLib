@@ -6,18 +6,18 @@ _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 
 namespace Vits
 {
-	/**
-	 * @class SpeakerEmbedding
-	 * @brief Speaker embedding
-	 *
-	 * Following model paths are required:
-	 * - "Embedding"
-	 *
-	 * Following parameters are required:
-	 * - "GinChannel" - Int64 (default: 256)
-	 * - "SpeakerCount" - Int64 (default: 1)
-	 */
-	class SpeakerEmbedding : public OnnxModelBase<SpeakerEmbedding>
+    /**
+     * @class SpeakerEmbedding
+     * @brief Speaker embedding
+     *
+     * Following model paths are required:
+     * - "Embedding"
+     *
+     * Following parameters are required:
+     * - "GinChannel" - Int64 (default: 256)
+     * - "SpeakerCount" - Int64 (default: 1)
+     */
+    class SpeakerEmbedding : public OnnxModelBase<SpeakerEmbedding>
     {
     public:
         SpeakerEmbedding() = delete;
@@ -38,35 +38,35 @@ namespace Vits
     private:
         Int64 _MyGinChannel = 256;
         Int64 _MyEmbeddingCount = 1;
-		Tensor<Float, 2, Device::CPU> _MyEmbedding;
+        Tensor<Float, 2, Device::CPU> _MyEmbedding;
     };
 
-	/**
-	 * @class Encoder
-	 * @brief Encoder
-	 *
-	 * Following model paths are required:
-	 * - "Encoder"
-	 *
-	 * Following parameters are required:
-	 * - "HasLength" - bool (default: true)
-	 * - "HasEmotion" - bool (default: false)
-	 * - "HasTone" - bool (default: false)
-	 * - "HasLanguage" - bool (default: false)
-	 * - "HasBert" - bool (default: false)
-	 * - "HasClap" - bool (default: false)
-	 * - "HasSpeaker" - bool (default: false)
-	 * - "EncoderSpeaker" - bool (default: false)
-	 * - "HasVQ" - bool (default: false)
-	 * - "EmotionDims" - Int64 (default: 1024)
-	 * - "BertDims" - Int64 (default: 2048)
-	 * - "ClapDims" - Int64 (default: 512)
-	 * - "GinChannel" - Int64 (default: 256)
-	 * - "BertCount" - Int64 (default: 3)
-	 * - "VQCodebookSize" - Int64 (default: 10)
-	 * - "SpeakerCount" - Int64 (default: 1)
+    /**
+     * @class Encoder
+     * @brief Encoder
      *
-	 */
+     * Following model paths are required:
+     * - "Encoder"
+     *
+     * Following parameters are required:
+     * - "HasLength" - bool (default: true)
+     * - "HasEmotion" - bool (default: false)
+     * - "HasTone" - bool (default: false)
+     * - "HasLanguage" - bool (default: false)
+     * - "HasBert" - bool (default: false)
+     * - "HasClap" - bool (default: false)
+     * - "HasSpeaker" - bool (default: false)
+     * - "EncoderSpeaker" - bool (default: false)
+     * - "HasVQ" - bool (default: false)
+     * - "EmotionDims" - Int64 (default: 1024)
+     * - "BertDims" - Int64 (default: 2048)
+     * - "ClapDims" - Int64 (default: 512)
+     * - "GinChannel" - Int64 (default: 256)
+     * - "BertCount" - Int64 (default: 3)
+     * - "VQCodebookSize" - Int64 (default: 10)
+     * - "SpeakerCount" - Int64 (default: 1)
+     *
+     */
     class Encoder : public OnnxModelBase<Encoder>
     {
     public:
@@ -104,13 +104,13 @@ namespace Vits
         ) const;
 
     private:
-		Int64 _MyEmotionDims = 1024;
+        Int64 _MyEmotionDims = 1024;
         Int64 _MyBertDims = 2048;
         Int64 _MyClapDims = 512;
         Int64 _MyGinChannel = 256;
         Int64 _MyBertCount = 3;
         Int64 _MyVQCodebookSize = 10;
-		Int64 _MySpeakerCount = 1;
+        Int64 _MySpeakerCount = 1;
         bool _HasLength = true;
         bool _HasEmotion = false;
         bool _HasTone = false;
@@ -118,9 +118,22 @@ namespace Vits
         bool _HasBert = false;
         bool _HasClap = false;
         bool _HasSpeaker = false;
-		bool _HasVQ = false;
+        bool _HasVQ = false;
     };
 
+    /**
+     * @class DurationPredictor
+     * @brief Duration predictor
+     *
+     * Following model paths are required: (all optional)
+     * - "DP"
+     * - "SDP"
+     *
+     * Following parameters are required:
+     * - "HasSpeaker" - bool (default: false)
+     * - "GinChannel" - Int64 (default: 256)
+     * - "ZinDims" - Int64 (default: 2)
+     */
     class DurationPredictor
     {
     public:
@@ -141,9 +154,9 @@ namespace Vits
             const Tensor<Float32, 3, Device::CPU>& X,
             const Tensor<Float32, 3, Device::CPU>& X_Mask,
             const std::optional<const Tensor<Float32, 2, Device::CPU>>& SpeakerEmbedding = std::nullopt,
-			float DurationPredictorNoiseScale = 0.8f,
-			float SdpRatio = 1.0f,
-			Int64 Seed = 114514
+            float DurationPredictorNoiseScale = 0.8f,
+            float SdpRatio = 1.0f,
+            Int64 Seed = 114514
         ) const;
 
     private:
@@ -151,48 +164,48 @@ namespace Vits
         OnnxModelBase<void> _MySDP;
         Int64 _MyGinChannel = 256;
         Int64 _MyZinDims = 2;
-		bool _HasSpeaker = false;
+        bool _HasSpeaker = false;
 
     public:
-		operator bool() const noexcept { return _MyDP || _MySDP; }
+        operator bool() const noexcept { return _MyDP || _MySDP; }
 
-		void SetTerminate() const
-		{
-			if (_MyDP)
-				_MyDP.SetTerminate();
-			if (_MySDP)
-				_MySDP.SetTerminate();
-		}
+        void SetTerminate() const
+        {
+            if (_MyDP)
+                _MyDP.SetTerminate();
+            if (_MySDP)
+                _MySDP.SetTerminate();
+        }
 
-		void UnTerminate() const
-		{
-			if (_MyDP)
-				_MyDP.UnTerminate();
-			if (_MySDP)
-				_MySDP.UnTerminate();
-		}
+        void UnTerminate() const
+        {
+            if (_MyDP)
+                _MyDP.UnTerminate();
+            if (_MySDP)
+                _MySDP.UnTerminate();
+        }
 
     protected:
-		ONNXTensorElementDataType GetInputType(size_t Index) const
-		{
-			if (Index == 114)
-				return _MyDP ? _MyDP.GetInputTypes().Back() : _MySDP.GetInputTypes().Back();
+        ONNXTensorElementDataType GetInputType(size_t Index) const
+        {
+            if (Index == 114)
+                return _MyDP ? _MyDP.GetInputTypes().Back() : _MySDP.GetInputTypes().Back();
             return _MyDP ? _MyDP.GetInputTypes()[Index] : _MySDP.GetInputTypes()[Index];
-		}
-		const TemplateLibrary::Vector<Int64>& GetInputDims(size_t Index) const
-		{
+        }
+        const TemplateLibrary::Vector<Int64>& GetInputDims(size_t Index) const
+        {
             if (Index == 114)
                 return _MyDP ? _MyDP.GetInputDims().Back() : _MySDP.GetInputDims().Back();
-			return _MyDP ? _MyDP.GetInputDims()[Index] : _MySDP.GetInputDims()[Index];
-		}
-		DLogger GetLogger() const
-		{
-			return _MyDP ? _MyDP.GetLoggerPtr() : _MySDP.GetLoggerPtr();
-		}
-		Ort::MemoryInfo* GetMemoryInfo() const
-		{
-			return _MyDP ? _MyDP.GetMemoryInfo() : _MySDP.GetMemoryInfo();
-		}
+            return _MyDP ? _MyDP.GetInputDims()[Index] : _MySDP.GetInputDims()[Index];
+        }
+        DLogger GetLogger() const
+        {
+            return _MyDP ? _MyDP.GetLoggerPtr() : _MySDP.GetLoggerPtr();
+        }
+        Ort::MemoryInfo* GetMemoryInfo() const
+        {
+            return _MyDP ? _MyDP.GetMemoryInfo() : _MySDP.GetMemoryInfo();
+        }
     };
 }
 

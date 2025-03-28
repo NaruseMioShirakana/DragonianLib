@@ -106,6 +106,24 @@ template <
 	}
 	else
 	{
+		auto ContRedeceFn = [=](_Type* _DestBegin, const _Type* _SrcBegin, SizeType BatchCount, const std::shared_ptr<int>&)
+			{
+				for (SizeType i = 0; i < BatchCount; ++i)
+				{
+					_Type Val = ReduceInitValue;
+					for (SizeType j = 0; j < _SrcShape; ++j)
+					{
+						auto ValueTemp = *_SrcBegin++;
+						if constexpr (IsCallableValue<decltype(ReducePreOperator)>)
+							ValueTemp = ReducePreOperator(ValueTemp);
+						Val = ReduceMidOperator(Val, ValueTemp);
+					}
+					if constexpr (IsCallableValue<decltype(ReducePostOperator)>)
+						Val = ReducePostOperator(Val);
+					*_DestBegin++ = Val;
+				}
+			};
+
 		ImplMultiThreadCaller<2, _NRank, 1, _Type>(
 			_Dest,
 			std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
@@ -116,7 +134,7 @@ template <
 			std::make_shared<int>(0),
 			Continuous,
 			LoopFn,
-			0
+			ContRedeceFn
 		);
 	}
 }

@@ -121,7 +121,7 @@ decltype(auto) _Function##Inplace() \
 template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>> \
 decltype(auto) _Function() const \
 { \
-	auto Ret = Tensor::New(_MyShape); \
+	auto Ret = Tensor::New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
 	Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \
@@ -159,7 +159,7 @@ struct _D_Dragonian_Lib_Unary##_Function##_Defined_Tag
 template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>> \
 decltype(auto) _Function(const ValueType& _Right) const \
 { \
-	auto Ret = New(_MyShape); \
+	auto Ret = New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
 	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
@@ -214,7 +214,7 @@ template <typename _CurValueType = ValueType, size_t _MyOpRank, typename = std::
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const \
 { \
 	auto BroadCasted = BroadCast(*this, _Right); \
-	auto Ret = Tensor<ValueType, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape()); \
+	auto Ret = Tensor<ValueType, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
 	_Right.WaitingAsArgument(); \
@@ -281,7 +281,7 @@ struct _D_Dragonian_Lib_Binary##_Function##_Defined_Tag
 template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>>> \
 decltype(auto) _Function(const ValueType& _Right) const \
 { \
-	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape); \
+	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
 	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
@@ -299,7 +299,7 @@ template <typename _CurValueType = ValueType, size_t _MyOpRank, typename = std::
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const \
 { \
 	auto BroadCasted = BroadCast(*this, _Right); \
-	auto Ret = Tensor<bool, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape()); \
+	auto Ret = Tensor<bool, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
 	_Right.WaitingAsArgument(); \
@@ -410,7 +410,7 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 		TensorTmp.WaitingAsArgument(); \
 		Dimensions<_NRank - 1> OutShape; \
 		OutShape.Assign(TensorTmp.Shape().Data()); \
-		auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape); \
+		auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape, _MyAllocator); \
 		Ret.WaitingAsResult(); \
 		auto RetView = Ret.UnSqueeze(-1); \
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduce##_Function##Unary<__VA_ARGS__> \
@@ -440,7 +440,7 @@ struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 			return View(); \
 		auto TensorTmp = AxisFromTo(_Axis, -1); \
 		TensorTmp.WaitingAsArgument(); \
-		auto Result = Tensor<_TensorType, _NRank, _MyDevice>::New(Shape()); \
+		auto Result = Tensor<_TensorType, _NRank, _MyDevice>::New(Shape(), _MyAllocator); \
 		auto ResultView = Result.AxisFromTo(_Axis, -1); \
 		ResultView.WaitingAsResult(); \
 		Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \

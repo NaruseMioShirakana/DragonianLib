@@ -46,6 +46,7 @@ using UInt32 = uint32_t; ///< 32-bit unsigned integer
 using UInt64 = uint64_t; ///< 64-bit unsigned integer
 using Complex32 = std::complex<float>; ///< 32-bit complex
 using Complex64 = std::complex<double>; ///< 64-bit complex
+using Int = int; ///< Int
 using Long = long; ///< Long
 using ULong = unsigned long; ///< Unsigned long
 using LongLong = long long; ///< Int64

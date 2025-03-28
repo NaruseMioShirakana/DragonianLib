@@ -113,7 +113,7 @@ struct InterpolateParam
 template<size_t _NRank>
 struct OperatorParameter
 {
-	using DependencyChainDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 3>;
+	using DependencyChainDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 5>;
 	using DependencyChainPair = std::pair<std::shared_future<void>, DependencyChainDataPointers>;
 	using DependencyChainType = std::deque<DependencyChainPair>;
 	using DependencyChainPointer = std::shared_ptr<DependencyChainType>;
@@ -243,6 +243,19 @@ public:
 		const OperatorParameter<_NRank>& _MaskInfo,
 		const _Type& _Value,
 		bool Continuous
+	)
+	{
+		_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+
+	template<size_t _NRank>
+	static void MatMul(
+		_Type* _OutFeature, const OperatorParameter<_NRank>& _OutFeatureInfo,
+		const _Type* _InFeature, const OperatorParameter<_NRank>& _InFeatureInfo,
+		const _Type* _Weight, const OperatorParameter<_NRank>& _WeightInfo,
+		const _Type* _Bias, std::shared_ptr<OperatorParameter<_NRank>> _BiasInfo,
+		_Type Alpha, _Type AlphaBias,
+		bool _Conj
 	)
 	{
 		_D_Dragonian_Lib_Not_Implemented_Error;

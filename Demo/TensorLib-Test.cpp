@@ -46,6 +46,11 @@ void WithTimer(const Fn& fn)
 int main()
 {
 	using namespace DragonianLib;
+
+	auto Tensor = Functional::Arange(0, 10);
+	std::cout << Tensor.MaskedFill(Tensor < 5, 0).Evaluate();
+
+
 	OnnxRuntime::Text2Speech::HParams Hparams;
 	Hparams.ModelPaths = {
 		{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_enc_p.onnx)" },

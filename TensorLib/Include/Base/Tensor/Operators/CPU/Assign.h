@@ -1020,7 +1020,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplMaskedAssignScalar(
 					_MyDest[i] = _Value;
 		};
 
-	ImplMultiThreadCaller<2, _NRank, 0>(
+	ImplMultiThreadCaller<2, _NRank, 0, _Type>(
 		_Dest,
 		std::make_shared<OperatorParameter<_NRank>>(_DestInfo),
 		_Mask,

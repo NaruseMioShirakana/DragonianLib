@@ -147,6 +147,16 @@ public:
 		bool Continuous
 	);
 
+	template<size_t _NRank>
+	static void MatMul(
+		_Type* _OutFeature, const OperatorParameter<_NRank>& _OutFeatureInfo,
+		const _Type* _InFeature, const OperatorParameter<_NRank>& _InFeatureInfo,
+		const _Type* _Weight, const OperatorParameter<_NRank>& _WeightInfo,
+		const _Type* _Bias, std::shared_ptr<OperatorParameter<_NRank>> _BiasInfo,
+		_Type Alpha, _Type AlphaBias,
+		bool _Conj
+	);
+
 	_D_Dragonian_Lib_Operator_Binary_Define(Add);
 	_D_Dragonian_Lib_Operator_Binary_Define(Sub);
 	_D_Dragonian_Lib_Operator_Binary_Define(Mul);
@@ -575,7 +585,9 @@ template<
 	}
 
 	const auto TotalDataSize = _DestInfoOld->GetSize();
-	TemplateLibrary::Array<std::shared_ptr<void>, 3> _DataPointer{ nullptr, nullptr, nullptr };
+	TemplateLibrary::Array<std::shared_ptr<void>, 5> _DataPointer{
+		nullptr, nullptr, nullptr, nullptr, nullptr
+	};
 	_DataPointer[0] = _DestInfoOld->Data;
 	_DataPointer[1] = _Src1InfoOld->Data;
 	if constexpr (_OType == TypeDef::BinaryOperatorType)
@@ -703,7 +715,9 @@ void ImplMultiThreadCaller(
 	const auto OperatorUnfoldCount = _DestInfoOld->GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
-	TemplateLibrary::Array<std::shared_ptr<void>, 3> _DataPointer{ nullptr, nullptr, nullptr };
+	TemplateLibrary::Array<std::shared_ptr<void>, 5> _DataPointer{
+		nullptr, nullptr, nullptr, nullptr, nullptr
+	};
 	_DataPointer[0] = _DestInfoOld->Data;
 	if constexpr (_ArgCount > 1)
 		_DataPointer[1] = _Src1InfoOld->Data;

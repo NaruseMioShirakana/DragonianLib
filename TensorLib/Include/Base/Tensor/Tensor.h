@@ -662,12 +662,6 @@ public:
 		return Tensor(MyShape, _Al);
 	}
 
-	template <typename _CurValueType = ValueType, typename _First, typename ..._Rest, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_constructible_v<_CurValueType, _First, _Rest...>>>
-	static constexpr decltype(auto) New(const Dimensions<_NRank>& MyShape, _First&& Arg0, _Rest&& ...Args)
-	{
-		return Tensor(MyShape, std::forward<_First>(Arg0), std::forward<_Rest>(Args)...);
-	}
-
 	/**
 	 * @brief Create an empty new tensor.
 	 * @return The new tensor.
@@ -686,12 +680,13 @@ public:
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with ones.
 	 * @param _Shape The shape of the tensor.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(1)>>>
-	static constexpr decltype(auto) Ones(const Dimensions<_NRank>& _Shape)
+	static constexpr decltype(auto) Ones(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
 	{
-		Tensor Ret(_Shape);
+		Tensor Ret(_Shape, _Al);
 		Ret.Assign(ValueType(1));
 		return Ret;
 	}
@@ -699,12 +694,13 @@ public:
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with zeros.
 	 * @param _Shape The shape of the tensor.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(0)>>>
-	static constexpr decltype(auto) Zeros(const Dimensions<_NRank>& _Shape)
+	static constexpr decltype(auto) Zeros(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
 	{
-		Tensor Ret(_Shape);
+		Tensor Ret(_Shape, _Al);
 		Ret.Assign(ValueType(0));
 		return Ret;
 	}
@@ -713,12 +709,13 @@ public:
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with a constant value.
 	 * @param _Shape The shape of the tensor.
 	 * @param _Val The constant value to fix the tensor.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>>>
-	static constexpr decltype(auto) ConstantOf(const Dimensions<_NRank>& _Shape, const ValueType& _Val)
+	static constexpr decltype(auto) ConstantOf(const Dimensions<_NRank>& _Shape, const ValueType& _Val, Allocator _Al = Allocator())
 	{
-		Tensor Ret(_Shape);
+		Tensor Ret(_Shape, _Al);
 		Ret.Assign(_Val);
 		return Ret;
 	}
@@ -728,12 +725,13 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @param Min The minimum value of the random values.
 	 * @param Max The maximum value of the random values.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>>>
-	static constexpr decltype(auto) Rand(const Dimensions<_NRank>& _Shape, const ValueType& Min, const ValueType& Max)
+	static constexpr decltype(auto) Rand(const Dimensions<_NRank>& _Shape, const ValueType& Min, const ValueType& Max, Allocator _Al = Allocator())
 	{
-		Tensor Ret(_Shape);
+		Tensor Ret(_Shape, _Al);
 		Ret.AssignRand(Min, Max);
 		return Ret;
 	}
@@ -743,12 +741,13 @@ public:
 	 * @param _Shape The shape of the tensor.
 	 * @param _Mean The mean value of the random values.
 	 * @param _Sigma The sigma value of the random values.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>>>
-	static constexpr decltype(auto) Randn(const Dimensions<_NRank>& _Shape, double _Mean = 0., double _Sigma = 1.)
+	static constexpr decltype(auto) Randn(const Dimensions<_NRank>& _Shape, double _Mean = 0., double _Sigma = 1., Allocator _Al = Allocator())
 	{
-		Tensor Ret(_Shape);
+		Tensor Ret(_Shape, _Al);
 		Ret.AssignRandn(_Mean, _Sigma);
 		return Ret;
 	}
@@ -761,7 +760,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(1)>>>
 	static constexpr decltype(auto) OnesLike(const Tensor& _ShapeReference)
 	{
-		return Ones(_ShapeReference.Shape());
+		return Ones(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -772,7 +771,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(0)>>>
 	static constexpr decltype(auto) ZerosLike(const Tensor& _ShapeReference)
 	{
-		return Zeros(_ShapeReference.Shape());
+		return Zeros(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -784,7 +783,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>>>
 	static constexpr decltype(auto) ConstantLike(const Tensor& _ShapeReference, const ValueType& _Val)
 	{
-		return ConstantOf(_ShapeReference.Shape(), _Val);
+		return ConstantOf(_ShapeReference.Shape(), _Val, _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -797,7 +796,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>>>
 	static constexpr decltype(auto) RandLike(const Tensor& _ShapeReference, const ValueType& Min, const ValueType& Max)
 	{
-		return Rand(_ShapeReference.Shape(), Min, Max);
+		return Rand(_ShapeReference.Shape(), Min, Max, _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -810,18 +809,19 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>>>
 	static constexpr decltype(auto) RandnLike(const Tensor& _ShapeReference, double _Mean = 0., double _Sigma = 1.)
 	{
-		return Randn(_ShapeReference.Shape(), _Mean, _Sigma);
+		return Randn(_ShapeReference.Shape(), _Mean, _Sigma, _ShapeReference.GetAllocator());
 	}
 
 	/**
 	 * @brief Create a new tensor with the same shape as the specified tensor.
 	 * @param _Shape The shape of the tensor.
+	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_trivially_copy_assignable_v<_CurValueType>>>
-	static constexpr decltype(auto) Empty(const Dimensions<_NRank>& _Shape)
+	static constexpr decltype(auto) Empty(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
 	{
-		return Tensor(_Shape);
+		return Tensor(_Shape, _Al);
 	}
 
 	/**
@@ -832,11 +832,11 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_trivially_copy_assignable_v<_CurValueType>>>
 	static constexpr decltype(auto) EmptyLike(const Tensor& _ShapeReference)
 	{
-		return Tensor(_ShapeReference._MyShape);
+		return Tensor(_ShapeReference._MyShape, _ShapeReference.GetAllocator());
 	}
 
 	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
-	static constexpr decltype(auto) Arange(ValueType _Begin, ValueType _End, ValueType _Step)
+	static constexpr decltype(auto) Arange(ValueType _Begin, ValueType _End, ValueType _Step, Allocator _Al = Allocator())
 	{
 		if (_Step == ValueType(0))
 			_D_Dragonian_Lib_Throw_Exception("Step Can't Be Zero!");
@@ -846,7 +846,7 @@ public:
 		if constexpr (TypeTraits::IsFloatingPointValue<ValueType>)
 			if (std::isnan(_Count))
 				_D_Dragonian_Lib_Throw_Exception("Invalid Range!");
-		Tensor Ret = New({ _Count });
+		Tensor Ret = New({ _Count }, _Al);
 		Ret.WaitingAsResult();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplArange(
 			Ret._MyData,
@@ -858,15 +858,15 @@ public:
 	}
 
 	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<ValueType>>>
-	static constexpr decltype(auto) Linspace(ValueType _Begin, ValueType _End, size_t _Count, bool _EndPoint = false)
+	static constexpr decltype(auto) Linspace(ValueType _Begin, ValueType _End, size_t _Count, bool _EndPoint = false, Allocator _Al = Allocator())
 	{
 		if (_EndPoint)
 		{
 			const auto Step = (_End - _Begin) / ValueType(_Count - 1);
-			return Arange(_Begin, _End + (Step * ValueType(1.01)), Step);
+			return Arange(_Begin, _End + (Step * ValueType(1.01)), Step, _Al);
 		}
 		const auto Step = (_End - _Begin) / ValueType(_Count);
-		return Arange(_Begin, _End + Step * ValueType(0.01), Step);
+		return Arange(_Begin, _End + Step * ValueType(0.01), Step, _Al);
 	}
 
 	static constexpr Tensor FromBuffer(const Dimensions<_NRank>& MyShape, ValueType* Buffer, size_t BufferSize, Allocator Alloc)
@@ -926,22 +926,6 @@ private:
 				auto IterData = _MyData;
 				while (IterData != _MyLast)
 					TemplateLibrary::_Impl_Dragonian_Lib_Construct_At(*IterData++);
-			}
-		}
-	}
-
-	template <typename _First, typename ..._Rest>
-	Tensor(const Dimensions<_NRank>& MyShape, _First&& Arg0, _Rest&& ...Args) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
-	{
-		if (AllocateMemory(MyShape, Allocator()))
-		{
-			ConstructViewInfo(MyShape);
-			if constexpr (std::is_constructible_v<ValueType, _First, _Rest...>)
-			{
-				auto NewObj = ValueType(std::forward<_First>(Arg0), std::forward<_Rest>(Args)...);
-				auto IterData = _MyData;
-				while (IterData != _MyLast)
-					TemplateLibrary::_Impl_Dragonian_Lib_Construct_At(*IterData++, NewObj);
 			}
 		}
 	}
@@ -1303,6 +1287,54 @@ public:
 	decltype(auto) RandnFix(double _Mean = 0., double _Sigma = 1.)
 	{
 		AssignRandn(_Mean, _Sigma);
+		return *this;
+	}
+
+	template <typename _MaskType, typename _CurValueType = ValueType, typename = std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_copy_assignable_v<_CurValueType>&&
+		TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>
+		>> decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const ValueType& _Value)
+	{
+		if (_Mask.Shape() != Shape())
+			_D_Dragonian_Lib_Throw_Exception("Mask Shape MisMatch!");
+		WaitingAsResult();
+		_Mask.WaitingAsArgument();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssignScalar(
+			_MyData,
+			GetDefaultOperatorParameter(),
+			_Mask.Data(),
+			_Mask.GetDefaultOperatorParameter(),
+			_Value,
+			!IsBroadCasted() && !_Mask.IsBroadCasted() && IsContinuous() && _Mask.IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _MaskType, size_t _TRank, typename _CurValueType = ValueType, typename = std::enable_if_t<
+		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
+		std::is_copy_assignable_v<_CurValueType>&&
+		TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>&&
+		(_NRank > _TRank)
+		>> decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const Tensor<ValueType, _TRank, _MyDevice>& _Value)
+	{
+		if (_Mask.Shape() != Shape())
+			_D_Dragonian_Lib_Throw_Exception("Mask Shape MisMatch!");
+		auto BroadCasted = BroadCast(_Value);
+		WaitingAsResult();
+		_Mask.WaitingAsArgument();
+		BroadCasted.WaitingAsArgument();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssign(
+			_MyData,
+			GetDefaultOperatorParameter(),
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			_Mask.Data(),
+			_Mask.GetDefaultOperatorParameter(),
+			!IsBroadCasted() && !_Mask.IsBroadCasted() &&
+			!BroadCasted.IsBroadCasted() && IsContinuous() &&
+			_Mask.IsContinuous() && BroadCasted.IsContinuous()
+		);
 		return *this;
 	}
 
@@ -2147,7 +2179,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Clone() const
 	{
-		auto Ret = New(_MyShape);
+		auto Ret = New(_MyShape, _MyAllocator);
 		Ret.TensorAssign(*this);
 		return Ret;
 	}
@@ -2251,7 +2283,7 @@ public:
 		_Indices.WaitingAsArgument();
 		WaitingAsArgument();
 		constexpr auto _Dim = TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank));
-		auto Ret = New(_Indices.Shape());
+		auto Ret = New(_Indices.Shape(), _MyAllocator);
 		Ret.WaitingAsResult();
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplGather<_IndexType, _NRank, _Dim>
 			(
@@ -2292,7 +2324,7 @@ public:
 	decltype(auto) Cast() const
 	{
 		WaitingAsArgument();
-		Tensor<_Type, _NRank, _MyDevice> Ret = Tensor<_Type, _NRank, _MyDevice>::New(_MyShape);
+		Tensor<_Type, _NRank, _MyDevice> Ret = Tensor<_Type, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
 		Ret.WaitingAsResult();
 		Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
 			(
@@ -2322,11 +2354,28 @@ public:
 		return _Buffer;
 	}
 
-	template <typename _Type, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_Type>&& std::is_trivially_copy_assignable_v<ValueType>>>
+	template <typename _Type, typename = std::enable_if_t<
+		std::is_trivially_copy_assignable_v<_Type> &&
+		(sizeof(_Type) % sizeof(ValueType) || sizeof(ValueType) % sizeof(_Type))>>
 	decltype(auto) ViewAs() const
 	{
-		Tensor<_Type, _NRank, _MyDevice> Ret;
-		
+		const auto TailShape = _MyShape.Back();
+		const auto TailSize = size_t(TailShape) * sizeof(ValueType);
+		if (TailSize % sizeof(_Type))
+			_D_Dragonian_Lib_Throw_Exception("Could not view as this type!");
+		const auto NewTailShape = SizeType(TailSize / sizeof(_Type));
+
+		using RetType = Tensor<_Type, _NRank, _MyDevice>;
+		RetType Ret;
+		Ret._MyFirst = _MyFirst;
+		Ret._MyLast = RetType::RawPointer(_MyLast);
+		Ret._MyData = RetType::RawPointer(_MyData);
+		Ret._MyShape = _MyShape;
+		Ret._MyShape.Back() = NewTailShape;
+		Ret._MyFuturesAsResult = _MyFuturesAsResult;
+		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
+		Ret._MyAllocator = _MyAllocator;
+		Ret.ConstructViewInfo(Ret._MyShape);
 		return Ret;
 	}
 
@@ -2350,7 +2399,7 @@ public:
 			NewTensorSlice[i].End = _PaddingCount[i].Begin + _MyShape[i];
 		}
 		
-		auto Ret = New(Shape);
+		auto Ret = New(Shape, _MyAllocator);
 
 		Ret.WaitingAsResult();
 		Ret[NewTensorSlice].TensorAssign(*this);
@@ -2549,7 +2598,7 @@ public:
 			TensorTmp.WaitingAsArgument();
 			Dimensions<_NRank - 1> OutShape;
 			OutShape.Assign(TensorTmp.Shape().Data());
-			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape);
+			auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape, _MyAllocator);
 			Ret.WaitingAsResult();
 			auto RetView = Ret.UnSqueeze(-1);
 			Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduceLpScalar
@@ -2594,7 +2643,7 @@ public:
 			TensorTmp.WaitingAsArgument();
 			auto OutShape = Shape();
 			OutShape[_Axis] -= 1;
-			auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape);
+			auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape, _MyAllocator);
 			auto ResView = Ret.AxisFromTo(_Axis, -1);
 			ResView.WaitingAsResult();
 			Operators::OperatorsBase<ValueType, _MyDevice>::ImplDiffUnary
@@ -2655,7 +2704,7 @@ public:
 			}
 		}
 
-		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape);
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape, _MyAllocator);
 		auto RetView = Ret.View();
 		auto MyView = View();
 		for (size_t i = 0; i < _Dims.Size(); ++i)
@@ -2683,7 +2732,7 @@ public:
 		std::is_default_constructible_v<_CurValueType>>>
 		decltype(auto) ClampMin(ValueType _Min) const
 	{
-		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape);
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
 		Ret.WaitingAsResult();
 		WaitingAsArgument();
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplMaxScalar
@@ -2703,7 +2752,7 @@ public:
 		std::is_default_constructible_v<_CurValueType>>>
 		decltype(auto) ClampMax(ValueType _Max) const
 	{
-		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape);
+		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
 		Ret.WaitingAsResult();
 		WaitingAsArgument();
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplMinScalar

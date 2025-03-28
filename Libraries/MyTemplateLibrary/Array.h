@@ -242,6 +242,19 @@ public:
 		return _MyData;
 	}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator==(const Array& _Right) const
+	{
+		for (size_t i = 0; i < _Rank; ++i)
+			if (_MyData[i] != _Right._MyData[i])
+				return false;
+		return true;
+	}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator!=(const Array& _Right) const
+	{
+		return !(*this == _Right);
+	}
+
 	_ValueType _MyData[_Rank]; ///< Data of the dimensions
 };
 

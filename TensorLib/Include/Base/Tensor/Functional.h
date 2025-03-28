@@ -70,7 +70,9 @@ namespace Functional
 			_TensorA.WaitingAsArgument();
 			_TensorB.WaitingAsArgument();
 			auto BroadCasted = Tensor<_MyValueType, _NRankA, _MyDevice>::BroadCast(_TensorA, _TensorB);
-			auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(BroadCasted.first.Shape());
+			auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(
+				BroadCasted.first.Shape(), _TensorA.GetAllocator()
+			);
 			Ret.WaitingAsResult();
 			Operators::OperatorsBase<_MyValueType, _MyDevice>::ImplMaxTensor(
 				Ret.Data(),
@@ -91,7 +93,9 @@ namespace Functional
 			_TensorA.WaitingAsArgument();
 			_TensorB.WaitingAsArgument();
 			auto BroadCasted = Tensor<_MyValueType, _NRankA, _MyDevice>::BroadCast(_TensorA, _TensorB);
-			auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(BroadCasted.first.Shape());
+			auto Ret = Tensor<_MyValueType, MaxOf(_NRankA, _NRankB), _MyDevice>::New(
+				BroadCasted.first.Shape(), _TensorA.GetAllocator()
+			);
 			Ret.WaitingAsResult();
 			Operators::OperatorsBase<_MyValueType, _MyDevice>::ImplMinTensor(
 				Ret.Data(),
@@ -106,6 +110,152 @@ namespace Functional
 			return Ret;
 		}
 
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)&&
+			(_NRank >= 2)
+			>>
+			static decltype(auto) Matmul(
+				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+				const _MyValueType& Alpha = _MyValueType(1),
+				std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+				const _MyValueType& AlphaBias = _MyValueType(1),
+				bool _Conj = false
+			)
+		{
+			const auto Comm = InFeature.Size(-2);
+			const auto IDim = InFeature.Size(-1);
+			const auto ODim = Weight.Size(-1);
+			if (Weight.Size(-2) != IDim)
+				_D_Dragonian_Lib_Throw_Exception("InFeature and Weight shape mismatch!");
+
+			auto Shape = InFeature.Shape();
+			Shape[_NRank - 1] = ODim;
+			Shape[_NRank - 2] = Comm;
+			auto Ret = Tensor<_MyValueType, _NRank, _MyDevice>::New(Shape, InFeature.GetAllocator());
+
+			auto ICont = InFeature.Continuous();
+			auto WCont = Weight.Continuous();
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> BCont = std::nullopt;
+			std::shared_ptr<Operators::OperatorParameter<_NRank>> BParam = nullptr;
+			if (Bias.has_value())
+			{
+				BCont = Bias->Continuous().Evaluate();
+				BParam = std::make_shared<Operators::OperatorParameter<_NRank>>(BCont->GetDefaultOperatorParameter());
+			}
+			ICont.Evaluate();
+			WCont.Evaluate();
+			Operators::OperatorsBase<_MyValueType, _MyDevice>::MatMul(
+				Ret.Data(),
+				Ret.GetDefaultOperatorParameter(),
+				ICont.Data(),
+				ICont.GetDefaultOperatorParameter(),
+				WCont.Data(),
+				WCont.GetDefaultOperatorParameter(),
+				BCont.has_value() ? BCont->Data() : nullptr,
+				BParam,
+				Alpha, AlphaBias, _Conj
+			);
+			return Ret;
+		}
+
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
+			(_NRank >= 2)
+			>>
+			static decltype(auto) MatmulIT(
+				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+				const _MyValueType& Alpha = _MyValueType(1),
+				std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+				const _MyValueType& AlphaBias = _MyValueType(1),
+				bool _Conj = false
+			)
+		{
+			const auto Comm = InFeature.Size(-1);
+			const auto IDim = InFeature.Size(-2);
+			const auto ODim = Weight.Size(-1);
+			if (Weight.Size(-2) != IDim)
+				_D_Dragonian_Lib_Throw_Exception("InFeature and Weight shape mismatch!");
+
+			auto Shape = InFeature.Shape();
+			Shape[_NRank - 1] = ODim;
+			Shape[_NRank - 2] = Comm;
+			auto Ret = Tensor<_MyValueType, _NRank, _MyDevice>::New(Shape, InFeature.GetAllocator());
+
+			auto ICont = InFeature.Continuous();
+			auto WCont = Weight.Continuous();
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> BCont = std::nullopt;
+			std::shared_ptr<Operators::OperatorParameter<_NRank>> BParam = nullptr;
+			if (Bias.has_value())
+			{
+				BCont = Bias->Continuous().Evaluate();
+				BParam = std::make_shared<Operators::OperatorParameter<_NRank>>(BCont->GetDefaultOperatorParameter());
+			}
+			ICont.Evaluate();
+			WCont.Evaluate();
+			Operators::OperatorsBase<_MyValueType, _MyDevice>::MatMul(
+				Ret.Data(),
+				Ret.GetDefaultOperatorParameter(),
+				ICont.Data(),
+				ICont.GetDefaultOperatorParameter(),
+				WCont.Data(),
+				WCont.GetDefaultOperatorParameter(),
+				BCont.has_value() ? BCont->Data() : nullptr,
+				BParam,
+				Alpha, AlphaBias, _Conj
+			);
+			return Ret;
+		}
+
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
+			(_NRank >= 2)
+			>>
+			static decltype(auto) MatmulWT(
+				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+				const _MyValueType& Alpha = _MyValueType(1),
+				std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+				const _MyValueType& AlphaBias = _MyValueType(1),
+				bool _Conj = false
+			)
+		{
+			const auto Comm = InFeature.Size(-2);
+			const auto IDim = InFeature.Size(-1);
+			const auto ODim = Weight.Size(-2);
+			if (Weight.Size(-1) != IDim)
+				_D_Dragonian_Lib_Throw_Exception("InFeature and Weight shape mismatch!");
+
+			auto Shape = InFeature.Shape();
+			Shape[_NRank - 1] = ODim;
+			Shape[_NRank - 2] = Comm;
+			auto Ret = Tensor<_MyValueType, _NRank, _MyDevice>::New(Shape, InFeature.GetAllocator());
+
+			auto ICont = InFeature.Continuous();
+			auto WCont = Weight.Continuous();
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> BCont = std::nullopt;
+			std::shared_ptr<Operators::OperatorParameter<_NRank>> BParam = nullptr;
+			if (Bias.has_value())
+			{
+				BCont = Bias->Continuous().Evaluate();
+				BParam = std::make_shared<Operators::OperatorParameter<_NRank>>(BCont->GetDefaultOperatorParameter());
+			}
+			ICont.Evaluate();
+			WCont.Evaluate();
+			Operators::OperatorsBase<_MyValueType, _MyDevice>::MatMul(
+				Ret.Data(),
+				Ret.GetDefaultOperatorParameter(),
+				ICont.Data(),
+				ICont.GetDefaultOperatorParameter(),
+				WCont.Data(),
+				WCont.GetDefaultOperatorParameter(),
+				BCont.has_value() ? BCont->Data() : nullptr,
+				BParam,
+				Alpha, AlphaBias, _Conj
+			);
+			return Ret;
+		}
 	};
 
 	namespace FunctionalTraits
@@ -347,22 +497,6 @@ namespace Functional
 	}
 
 	/**
-	 * @brief Create a new tensor with the specified shape and initialize it with the specified args.
-	 * @param MyShape The shape of the tensor.
-	 * @param Arg0 The first value.
-	 * @param Args The rest values.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename _First, typename ...Rest, typename = std::enable_if_t<std::is_constructible_v<_MyValueType, _First, Rest...>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ConstructTensor(
-		const Dimensions<_NRank>& MyShape,
-		_First&& Arg0, Rest&& ...Args
-	)
-	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape, std::forward<_First>(Arg0), std::forward<Rest>(Args)...);
-	}
-
-	/**
 	 * @brief Create an empty new tensor.
 	 * @return The new tensor.
 	 */
@@ -464,7 +598,7 @@ namespace Functional
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Arange(
 		_MyValueType _Begin,
 		_MyValueType _End,
-		_MyValueType _Step
+		_MyValueType _Step = _MyValueType(1)
 	)
 	{
 		return Tensor<_MyValueType, 1, _MyDevice>::Arange(_Begin, _End, _Step);
@@ -809,6 +943,82 @@ namespace Functional
 	{
 		return FunctionalImpl::Min(_TensorA, _TensorB);
 	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
+		(_NRank >= 2)
+		>>
+		decltype(auto) Matmul(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+			const _MyValueType& Alpha = _MyValueType(1),
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+			const _MyValueType& AlphaBias = _MyValueType(1),
+			bool _Conj = false
+		)
+	{
+		return FunctionalImpl::Matmul(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
+		(_NRank >= 2)
+		>>
+		decltype(auto) MatmulIT(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+			const _MyValueType& Alpha = _MyValueType(1),
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+			const _MyValueType& AlphaBias = _MyValueType(1),
+			bool _Conj = false
+		)
+	{
+		return FunctionalImpl::MatmulIT(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
+		(_NRank >= 2)
+		>>
+		decltype(auto) MatmulWT(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
+			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
+			const _MyValueType& Alpha = _MyValueType(1),
+			std::optional<Tensor<_MyValueType, _NRank, _MyDevice>> Bias = std::nullopt,
+			const _MyValueType& AlphaBias = _MyValueType(1),
+			bool _Conj = false
+		)
+	{
+		return FunctionalImpl::MatmulWT(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)
+		>>
+		decltype(auto) Inner(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
+		)
+	{
+		auto A = _TensorA.UnSqueeze(-2);
+		auto B = _TensorB.UnSqueeze(-1);
+		return FunctionalImpl::Matmul(A, B).Squeeze(-1);
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
+		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)
+		>>
+		decltype(auto) Outer(
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
+		)
+	{
+		auto A = _TensorA.UnSqueeze(-1);
+		auto B = _TensorB.UnSqueeze(-2);
+		return FunctionalImpl::Matmul(A, B);
+	}
+
+
 }
 
 _D_Dragonian_Lib_Space_End
