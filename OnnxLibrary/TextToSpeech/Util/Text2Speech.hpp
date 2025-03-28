@@ -32,9 +32,8 @@ DLogger& GetDefaultLogger() noexcept;
 class EmotionEmbedding
 {
 public:
-	static constexpr long startPos = 128;
-	_D_Dragonian_Lib_Force_Inline EmotionEmbedding() = default;
-	_D_Dragonian_Lib_Force_Inline EmotionEmbedding(const std::wstring& EmotionFilePath, Int64 EmotionDims = 1024)
+	EmotionEmbedding() = default;
+	EmotionEmbedding(const std::wstring& EmotionFilePath, Int64 EmotionDims = 1024)
 	{
 		if (EmotionFilePath.empty())
 			return;
@@ -43,13 +42,40 @@ public:
 		if (_MyEmotionVectors.Shape(1) != _MyEmotionDims)
 			_D_Dragonian_Lib_Throw_Exception("Emotion Vector Dims Not Match!");
 	}
-	_D_Dragonian_Lib_Force_Inline Tensor<Float, 1, Device::CPU> operator[](Int64 Index) const
+	Tensor<Float, 1, Device::CPU> operator[](Int64 Index) const
 	{
 		return _MyEmotionVectors[Index].Clone().Evaluate();
 	}
 private:
 	Tensor<Float, 2, Device::CPU> _MyEmotionVectors;
 	Int64 _MyEmotionDims = 1024;
+};
+
+/**
+ * @class ContextModel
+ * @brief Bert and Clap Model
+ */
+class ContextModel : public OnnxModelBase<ContextModel>
+{
+public:
+	ContextModel() = delete;
+	ContextModel(
+		const OnnxRuntimeEnvironment& _Environment,
+		const std::wstring& _Path,
+		const std::shared_ptr<Logger>& _Logger = GetDefaultLogger()
+	);
+	~ContextModel() = default;
+	ContextModel(const ContextModel&) = default;
+	ContextModel& operator=(const ContextModel&) = default;
+	ContextModel(ContextModel&&) noexcept = default;
+	ContextModel& operator=(ContextModel&&) noexcept = default;
+
+	//See Dict::Tokenizer
+	Tensor<Float32, 3, Device::CPU> Forward(
+		const Tensor<Int64, 2, Device::CPU>& TokenIds,
+		const Tensor<Int64, 2, Device::CPU>& TokenTypeIds,
+		std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask = std::nullopt
+	) const;
 };
 
 Tensor<Int64, 1, Device::CPU> CleanedText2Indices(
@@ -61,110 +87,5 @@ Tensor<Int64, 1, Device::CPU> CleanedSeq2Indices(
 	const TemplateLibrary::Vector<std::wstring>& Seq,
 	const std::unordered_map<std::wstring, Int64>& Symbols
 );
-
-/*class TextToSpeech : public LibTTSModule
-{
-public:
-	using DurationCallback = std::function<void(float*, const float*)>;
-
-	TextToSpeech(
-		const ModelHParams& HParams,
-		const ExecutionProviders& ExecutionProvider_,
-		unsigned DeviceID_,
-		unsigned ThreadCount_ = 0
-	);
-
-	DragonianLibSTL::Vector<float> Inference(
-		TTSInputData& InputData,
-		TTSParams& Params,
-		bool Inference
-	) const;
-
-	virtual DragonianLibSTL::Vector<float> Inference(
-		TTSInputData& InputData,
-		const TTSParams& Params
-	) const;
-
-	[[nodiscard]] DragonianLibSTL::Vector<int64_t> CleanedSeq2Indices(
-		const DragonianLibSTL::Vector<std::wstring>& Seq
-	) const;
-
-	[[nodiscard]] DragonianLibSTL::Vector<int64_t> LanguageSymbol2Indices(
-		const DragonianLibSTL::Vector<std::wstring>& Seq,
-		int64_t LanguageID
-	) const;
-
-	[[nodiscard]] std::map<int64_t, float> SpeakerMixSymbol2Indices(
-		const DragonianLibSTL::Vector<std::pair<std::wstring, float>>& Seq,
-		int64_t SpeakerID
-	) const;
-
-	~TextToSpeech() override = default;
-
-protected:
-	std::unordered_map<std::wstring, int64_t> SpeakerName2ID;
-	std::unordered_map<int64_t, std::wstring> SpeakerID2Name;
-	std::unordered_map<std::wstring, int64_t> Symbols;
-	std::unordered_map<std::wstring, int64_t> Language2ID;
-
-public:
-	[[nodiscard]] static DragonianLibSTL::Vector<DragonianLibSTL::Vector<bool>> generatePath(
-		float* duration,
-		size_t durationSize,
-		size_t maskSize
-	);
-	[[nodiscard]] static DragonianLibSTL::Vector<int64_t> GetAligments(
-		size_t DstLen,
-		size_t SrcLen
-	);
-
-protected:
-	bool AddBlank = true;
-	int64_t SpeakerCount = 1;
-	int64_t UNKID = 0;
-	int64_t PADID = 0;
-	DurationCallback CustomDurationCallback;
-
-public:
-	TextToSpeech(const TextToSpeech&) = default;
-	TextToSpeech& operator=(const TextToSpeech&) = default;
-	TextToSpeech(TextToSpeech&&) noexcept = default;
-	TextToSpeech& operator=(TextToSpeech&&) noexcept = default;
-};
-
-class ContextModel : public LibTTSModule
-{
-public:
-	ContextModel(
-		const std::wstring& ModelPath,
-		const ExecutionProviders& ExecutionProvider_,
-		unsigned DeviceID_,
-		unsigned ThreadCount_ = 0
-	);
-
-	~ContextModel() override = default;
-
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Inference(
-		const std::wstring& InputData,
-		Dict::Tokenizer::TokenizerMethod _Method = Dict::Tokenizer::Maximum,
-		bool _SkipNonLatin = true,
-		size_t _MaximumMatching = 12
-	) const;
-
-	std::pair<DragonianLibSTL::Vector<float>, int64_t> Inference(
-		DragonianLibSTL::Vector<int64_t>& TokenIds
-	) const;
-
-	ContextModel(const ContextModel&) = default;
-	ContextModel& operator=(const ContextModel&) = default;
-	ContextModel(ContextModel&&) noexcept = default;
-	ContextModel& operator=(ContextModel&&) noexcept = default;
-
-private:
-	std::shared_ptr<Ort::Session> Session = nullptr;
-	Dict::Tokenizer Tokenizer;
-	static inline const std::vector<const char*> InputNames = { "input_ids", "attention_mask", "token_type_ids" };
-	static inline const std::vector<const char*> OutputNames = { "last_hidden_state" };
-};*/
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_End

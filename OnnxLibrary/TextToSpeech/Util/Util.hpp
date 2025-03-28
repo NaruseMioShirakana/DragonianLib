@@ -44,8 +44,6 @@ struct HParams
 
 	Int64 SamplingRate = 22050;
 
-	Int64 SpeakerCount = 1;
-
 	std::unordered_map<std::wstring, std::wstring> Parameters;
 };
 
@@ -62,11 +60,7 @@ struct Parameters
 
     int64_t Seed = 114514;
 
-    Float32 LengthScale = 1.0f;
-
-    Float32 DurationPredictorNoiseScale = 0.8f;
-
-	Float32 SdpRatio = 1.0f;
+	std::unordered_map<std::wstring, std::wstring> ExtraParameters;
 };
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_End

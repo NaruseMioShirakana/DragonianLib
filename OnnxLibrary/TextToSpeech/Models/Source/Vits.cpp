@@ -1014,7 +1014,7 @@ namespace Vits
 		auto O = Functional::Arange(0.f, Size);
 		auto Out = O.View(1, 1, -1).Repeat({ Batch, XSize, 1 });
 		auto Mask = (Out < Cum.Transpose()).Evaluate();
-		Mask[{":", "1:", ":"}] ^= Mask[{":", ":-1", ":"}];
+		Mask[{":", "1:", ":"}] ^= Mask[{":", ":-1", ":"}].Clone();
 		return { Mask.Cast<Float32>().Evaluate(),Y_Mask };
 	}
 
@@ -1168,7 +1168,7 @@ namespace Vits
 
 	Tensor<Float32, 3, Device::CPU> Decoder::Forward(
 		const Tensor<Float32, 3, Device::CPU>& Z,
-		std::optional<const Tensor<Float32, 2, Device::CPU>> SpeakerEmbedding
+		const std::optional<const Tensor<Float32, 2, Device::CPU>>& SpeakerEmbedding
 	) const
 	{
 		if (Z.Null())
@@ -1248,6 +1248,99 @@ namespace Vits
 				std::move(OutputTensors[0]),
 				Shape
 			);
+		);
+	}
+
+	SynthesizerTrn::SynthesizerTrn(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& Params,
+		const std::shared_ptr<Logger>& _Logger
+	) : _MyEncoder(_Environment, Params, _Logger), _MyDurationPredictor(_Environment, Params, _Logger),
+		_MyFlow(_Environment, Params, _Logger), _MyDecoder(_Environment, Params, _Logger),
+		_MySamplingRate(Params.SamplingRate)
+	{
+		bool HasSpeaker = false;
+		if (Params.Parameters.contains(L"HasSpeaker"))
+			HasSpeaker = Params.Parameters.at(L"HasSpeaker") == L"true" || Params.Parameters.at(L"HasSpeaker") == L"True";
+		if (HasSpeaker)
+			_MySpeakerEmbedding = std::make_shared<SpeakerEmbedding>(_Environment, Params, _Logger);
+	}
+
+
+	Tensor<Float32, 3, Device::CPU> SynthesizerTrn::Forward(
+		const Parameters& Params,
+		const Tensor<Int64, 2, Device::CPU>& PhonemeIds,
+		std::optional<const Tensor<Float32, 2, Device::CPU>> SpeakerRatio,
+		std::optional<const Tensor<Float32, 2, Device::CPU>> Emotion,
+		std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds,
+		std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds,
+		std::optional<const Tensor<Float32, 4, Device::CPU>> Bert,
+		std::optional<Tensor<Float32, 2, Device::CPU>> Clap,
+		std::optional<Tensor<Float32, 3, Device::CPU>> Duration
+	) const
+	{
+		Int64 VqIndex = 0;
+		float DurationPredictorNoiseScale = 0.8f;
+		float SdpRatio = 1.0f;
+		float LengthScale = 1.0f;
+
+		if (Params.ExtraParameters.contains(L"VqIndex"))
+			VqIndex = std::stoll(Params.ExtraParameters.at(L"VqIndex"));
+		if (Params.ExtraParameters.contains(L"DurationPredictorNoiseScale"))
+			DurationPredictorNoiseScale = std::stof(Params.ExtraParameters.at(L"DurationPredictorNoiseScale"));
+		if (Params.ExtraParameters.contains(L"SdpRatio"))
+			SdpRatio = std::stof(Params.ExtraParameters.at(L"SdpRatio"));
+		if (Params.ExtraParameters.contains(L"LengthScale"))
+			LengthScale = std::stof(Params.ExtraParameters.at(L"LengthScale"));
+
+		std::optional<Tensor<Float32, 2, Device::CPU>> SpeakerEmb = std::nullopt;
+		if (HasSpeaker())
+		{
+			if (!SpeakerRatio.has_value() || SpeakerRatio->Null())
+				SpeakerEmb = _MySpeakerEmbedding->operator[](Params.SpeakerId).UnSqueeze(0);
+			else
+				SpeakerEmb = _MySpeakerEmbedding->Forward(*SpeakerRatio);
+		}
+		auto [X, M_p, Logs_p, X_mask] = _MyEncoder.Forward(
+			PhonemeIds,
+			SpeakerEmb,
+			std::move(Emotion),
+			std::move(ToneIds),
+			std::move(LanguageIds),
+			std::move(Bert),
+			std::move(Clap),
+			VqIndex,
+			Params.SpeakerId
+		);
+
+		Tensor<Float32, 3, Device::CPU> W_Ceil;
+
+		if (Duration.has_value() && !Duration->Null())
+			W_Ceil = std::move(Duration.value());
+		else
+		{
+			W_Ceil = _MyDurationPredictor.Forward(
+				X,
+				X_mask,
+				SpeakerEmb,
+				DurationPredictorNoiseScale,
+				SdpRatio,
+				LengthScale,
+				Params.Seed
+			);
+		}
+
+		auto Z = _MyFlow.Forward(
+			W_Ceil,
+			M_p,
+			Logs_p,
+			SpeakerEmb,
+			Params.NoiseScale
+		);
+
+		return _MyDecoder.Forward(
+			Z,
+			SpeakerEmb
 		);
 	}
 
