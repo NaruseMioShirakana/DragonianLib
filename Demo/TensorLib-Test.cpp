@@ -40,12 +40,27 @@ void WithTimer(const Fn& fn)
 }
 
 #include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/G2P/CppPinYin.hpp"
 #include "OnnxLibrary/TextToSpeech/Models/Vits.hpp"
 #include "OnnxLibrary/Vocoder/Register.hpp"
 	
 int main()
 {
 	using namespace DragonianLib;
+
+	G2P::CppPinYinConfigs Configs{
+		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\pypinyin_dict.json)",
+		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\pypinyin_pinyin_dict.json)"
+	};
+	G2P::CppPinYin PinYin(
+		&Configs
+	);
+
+	auto [Phoneme, Tone] = PinYin.Convert(
+		L"你好，世界！",
+		"zh",
+		nullptr
+	);
 
 	return 0;
 

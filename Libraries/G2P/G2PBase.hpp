@@ -67,13 +67,12 @@ protected:
 	void Destory();
 	virtual void Initialize(const void* Parameter) = 0;
 	virtual void Release() = 0;
-	std::mutex _MyMutex;
 
-private:
-	G2PBase(const G2PBase&) = delete;
-	G2PBase(G2PBase&&) = delete;
-	G2PBase& operator=(G2PBase&&) noexcept = delete;
-	G2PBase& operator=(const G2PBase&) = delete;
+public:
+	G2PBase(const G2PBase&) = default;
+	G2PBase(G2PBase&&) = default;
+	G2PBase& operator=(G2PBase&&) noexcept = default;
+	G2PBase& operator=(const G2PBase&) = default;
 };
 
 _D_Dragonian_Lib_G2P_End

@@ -81,7 +81,7 @@ public:
 		Vector<std::wstring>& _OutputTokens,
 		TokenizerMethod _Method = Maximum,
 		bool _SkipNonLatin = true,
-		size_t _MaximumMatching = 32
+		Int64 _MaximumMatching = 32
 	) const;
 
 	/**
@@ -97,7 +97,7 @@ public:
 		Vector<std::wstring>& _OutputTokens,
 		TokenizerMethod _Method = Maximum,
 		bool _SkipNonLatin = true,
-		size_t _MaximumMatching = 32
+		Int64 _MaximumMatching = 32
 	) const;
 
 	/**
@@ -118,10 +118,21 @@ public:
 	 * @param _Token Token to be converted
 	 * @return Token id
 	 */
-	TokenizerType GetToken(const std::wstring& _Token) const;
+	TokenizerType GetToken(
+		const std::wstring& _Token
+	) const;
+
+	/**
+	 * @brief Load user vocabulary
+	 * @param _Vocab User vocabulary
+	 */
+	void LoadUserVocab(
+		const std::unordered_map<std::wstring, TokenizerType>& _Vocab
+	);
 
 private:
 	std::unordered_map<std::wstring, TokenizerType> _MyVocab;
+	Int64 MaximumLength = 0;
 	std::wstring _MySymbol = L"##";
 	TokenizerFix _MyFix = Prefix;
 	std::wstring _MyBeginText = L"[CLS]";
@@ -133,7 +144,7 @@ private:
 		std::wstring_view _InputText,
 		Vector<std::wstring>& _OutputTokens,
 		TokenizerMethod _Method = Maximum,
-		size_t _MaximumMatching = 32
+		Int64 _MaximumMatching = 32
 	) const;
 public:
 	/**
@@ -190,15 +201,148 @@ public:
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
 	 */
 	Dict(const std::wstring& _DictModulePath);
+	~Dict() = default;
+
+	/**
+	 * @brief Append tokens to the dictionary
+	 * @param _Tokens Tokens to be appended
+	 */
+	void AppendTokens(
+		const std::unordered_map<std::wstring, Vector<DictType>>& _Tokens
+	);
 
 	/**
 	 * @brief Search tokens in the dictionary and replace them with the corresponding token text
 	 * @param _Tokens Tokens to be searched
 	 * @return Tokens with replaced token text
 	 */
-	Vector<DictType> operator()(const Vector<std::wstring>& _Tokens) const;
+	Vector<DictType> operator()(
+		const Vector<std::wstring>& _Tokens
+		) const;
+
+	/**
+	 * @brief Search token in the dictionary and replace them with the corresponding token text
+	 * @param _Token Token to be searched
+	 * @param _Result Result buffer for token text
+	 * @return Tokens with replaced token text
+	 */
+	const Vector<DictType>& Search(
+		const std::wstring& _Token,
+		Vector<DictType>* _Result = nullptr
+	) const;
+
+	/**
+	 * @brief Tokenize the input text
+	 * @param _InputText Text to be tokenized
+	 * @param _OutputTokens Result buffer for tokenized tokens
+	 * @param _Method Tokenizer method
+	 * @param _MaximumMatching Maximum matching length
+	 */
+	void Tokenize(
+		std::wstring_view _InputText,
+		Vector<std::wstring>& _OutputTokens,
+		Tokenizer::TokenizerMethod _Method = Tokenizer::Maximum,
+		Int64 _MaximumMatching = 32,
+		const std::optional<std::wstring>& _UNKID = std::nullopt
+	) const;
 private:
-	std::unordered_map<std::wstring, std::vector<DictType>> _MyDict;
+	std::unordered_map<std::wstring, Vector<DictType>> _MyDict;
+	Int64 MaximumLength = 0;
+	static inline Vector<DictType> _MyUnk{ L"UNK" };
+
+public:
+	Dict(const Dict&) = default;
+	Dict(Dict&&) noexcept = default;
+	Dict& operator=(const Dict&) = default;
+	Dict& operator=(Dict&&) noexcept = default;
+};
+
+/**
+ * @class IdsDict
+ * @brief Dictionary for token ids
+ */
+class IdsDict
+{
+public:
+	using DictType = Int64;
+	IdsDict() = delete;
+	/**
+	 * @brief Construct a new Dict object
+	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
+	 */
+	IdsDict(const std::wstring& _DictModulePath);
+	~IdsDict() = default;
+
+	/**
+	 * @brief Append tokens to the dictionary
+	 * @param _Tokens Tokens to be appended
+	 */
+	void AppendTokens(
+		const std::unordered_map<std::wstring, DictType>& _Tokens
+	);
+
+	/**
+	 * @brief Search tokens in the dictionary and replace them with the corresponding token ids
+	 * @param _Tokens Tokens to be searched
+	 * @return Tokens with replaced token ids, -1 means UNK
+	 */
+	Vector<DictType> operator()(
+		const Vector<std::wstring>& _Tokens
+		) const;
+
+	/**
+	 * @brief Search token id in the dictionary and replace them with the corresponding token text
+	 * @param _TokenIds Token ids to be searched
+	 * @return Tokens with replaced token text
+	 */
+	Vector<std::wstring> operator[](
+		const Vector<DictType>& _TokenIds
+		) const;
+
+	/**
+	 * @brief Get token id of a token
+	 * @param _Token Token to be searched
+	 * @return Token id, -1 means UNK
+	 */
+	const DictType& operator[](
+		const std::wstring& _Token
+		) const;
+
+	/**
+	 * @brief Get token text of a token id
+	 * @param _TokenId Token id to be searched
+	 * @return Token text, UNK means unknown
+	 */
+	const std::wstring& operator[](
+		const DictType& _TokenId
+		) const;
+
+	/**
+	 * @brief Tokenize the input text
+	 * @param _InputText Text to be tokenized
+	 * @param _OutputTokens Result buffer for tokenized tokens
+	 * @param _Method Tokenizer method
+	 * @param _MaximumMatching Maximum matching length
+	 */
+	void Tokenize(
+		std::wstring_view _InputText,
+		Vector<std::wstring>& _OutputTokens,
+		Tokenizer::TokenizerMethod _Method = Tokenizer::Maximum,
+		Int64 _MaximumMatching = 32,
+		const std::optional<std::wstring>& _UNKID = std::nullopt
+	) const;
+private:
+	std::unordered_map<std::wstring, DictType> _MyDict;
+	std::unordered_map<DictType, std::wstring> _MyReverseDict;
+	Int64 MaximumLength = 0;
+	static inline std::wstring _MyUnk = L"UNK";
+	static inline DictType _MyUnkId = -1;
+
+public:
+	IdsDict(const IdsDict&) = default;
+	IdsDict(IdsDict&&) noexcept = default;
+	IdsDict& operator=(const IdsDict&) = default;
+	IdsDict& operator=(IdsDict&&) noexcept = default;
 };
 
 _D_Dragonian_Lib_Dict_End

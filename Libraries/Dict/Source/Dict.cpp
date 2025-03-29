@@ -70,9 +70,11 @@ void Tokenizer::Tokenize(
 	std::wstring_view _InputText,
 	Vector<std::wstring>& _OutputTokens,
 	TokenizerMethod _Method,
-	size_t _MaximumMatching
+	Int64 _MaximumMatching
 ) const
 {
+	if (_MaximumMatching == -1)
+		_MaximumMatching = MaximumLength;
 	const auto SymbolLength = _MySymbol.length();
 	const auto SrcLength = _InputText.length();
 	if (_Method == Maximum)
@@ -80,7 +82,7 @@ void Tokenizer::Tokenize(
 		while (!_InputText.empty())
 		{
 			const auto CurLength = _InputText.length();
-			const auto MaxMatch = std::min(_MaximumMatching, CurLength);
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
 			bool Found = false;
 			for (size_t i = MaxMatch; i > 0; --i)
 			{
@@ -132,7 +134,7 @@ void Tokenizer::Tokenize(
 		while (!_InputText.empty())
 		{
 			const auto CurLength = _InputText.length();
-			const auto MaxMatch = std::min(_MaximumMatching, CurLength);
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
 			bool Found = false;
 			for (size_t i = 1; i <= MaxMatch; ++i)
 			{
@@ -184,7 +186,7 @@ void Tokenizer::Tokenize(
 		while (!_InputText.empty())
 		{
 			const auto CurLength = _InputText.length();
-			const auto MaxMatch = std::min(_MaximumMatching, CurLength);
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
 			bool Found = false;
 			for (size_t i = 1; i <= MaxMatch; ++i)
 			{
@@ -235,7 +237,7 @@ void Tokenizer::Tokenize(
 		while (!_InputText.empty())
 		{
 			const auto CurLength = _InputText.length();
-			const auto MaxMatch = std::min(_MaximumMatching, CurLength);
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
 			bool Found = false;
 			for (size_t i = MaxMatch; i > 0; --i)
 			{
@@ -290,20 +292,20 @@ void Tokenizer::Tokenize(
 	Vector<std::wstring>& _OutputTokens,
 	TokenizerMethod _Method,
 	bool _SkipNonLatin,
-	size_t _MaximumMatching
+	Int64 _MaximumMatching
 ) const
 {
 	if (_InputText.empty())
 		return;
 	auto SeqVector = SplitWithSymbol(
 		_InputText,
-		PreDefinedRegex::_Valdef_Regex_All_Symbol_Group,
+		PreDefinedRegex::AllSymbolGroupRegex,
 		{ -1, 0 }
 	);
 	if(_SkipNonLatin)
 		SeqVector = SplitWithSymbol(
 			SeqVector,
-			PreDefinedRegex::_Valdef_Regex_Chinese_And_Japanese,
+			PreDefinedRegex::ChineseAndJapaneseRegex,
 			{ -1, 0 }
 		);
 
@@ -320,7 +322,7 @@ void Tokenizer::Tokenize(
 	Vector<std::wstring>& _OutputTokens,
 	TokenizerMethod _Method,
 	bool _SkipNonLatin,
-	size_t _MaximumMatching
+	Int64 _MaximumMatching
 ) const
 {
 	if (_InputSeq.Empty())
@@ -330,7 +332,7 @@ void Tokenizer::Tokenize(
 	{
 		auto SeqVector = SplitWithSymbol(
 			_InputSeq,
-			PreDefinedRegex::_Valdef_Regex_Chinese_And_Japanese,
+			PreDefinedRegex::ChineseAndJapaneseRegex,
 			{ -1, 0 }
 		);
 		for (const auto& Seq : SeqVector)
@@ -396,12 +398,26 @@ Tensor<Tokenizer::TokenizerType, 2, Device::CPU> Tokenizer::operator()(
 	return std::move(Result.Evaluate());
 }
 
-Tokenizer::TokenizerType Tokenizer::GetToken(const std::wstring& _Token) const
+Tokenizer::TokenizerType Tokenizer::GetToken(
+	const std::wstring& _Token
+) const
 {
 	auto Match = _MyVocab.find(_Token);
 	if (Match == _MyVocab.end())
 		return _MyVocab.at(_MyUNKText);
 	return Match->second;
+}
+
+void Tokenizer::LoadUserVocab(
+	const std::unordered_map<std::wstring, TokenizerType>& _Vocab
+)
+{
+	for (const auto& Token : _Vocab)
+	{
+		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
+			MaximumLength = static_cast<Int64>(Token.first.size());
+		_MyVocab[Token.first] = Token.second;
+	}
 }
 
 Tokenizer::Tokenizer(
@@ -413,50 +429,74 @@ Tokenizer::Tokenizer(
 ): _MyBeginText(std::move(_BeginText)), _MyEndText(std::move(_EndText)), _MyEOSText(std::move(_EOSText)), _MyUNKText(std::move(_UNKText))
 {
 	const MJson::MJsonDocument _VocabJson(_TokenizerModulePath.c_str());
-	if (!_VocabJson.HasMember("ContinuingSubwordPrefix") ||
-		!_VocabJson.HasMember("Type") ||
-		!_VocabJson.HasMember("Vocab") ||
-		_VocabJson["ContinuingSubwordPrefix"].Empty() ||
-		_VocabJson["Type"].Empty() ||
-		!_VocabJson["ContinuingSubwordPrefix"].IsString() ||
-		!_VocabJson["Type"].IsString())
-		_D_Dragonian_Lib_Throw_Exception("Tokenizer Model Prase Error");
-		const std::string Type = _VocabJson["Type"].GetString();
-	if (Type == "Suffix") _MyFix = Suffix;
 
-	_MySymbol = UTF8ToWideString(_VocabJson["ContinuingSubwordPrefix"].GetString());
-
-	if (_VocabJson["Vocab"].IsArray())
+	if (_VocabJson.HasMember("Type") && _VocabJson["Type"].IsString() && _VocabJson["Type"].GetStringLength())
 	{
-		const auto _VocabArray = _VocabJson["Vocab"].GetArray();
-		int64_t Index = 0;
-		for (const auto& Object : _VocabArray)
+		const std::string Type = _VocabJson["Type"].GetString();
+		if (Type == "Suffix") _MyFix = Suffix;
+	}
+	if (_VocabJson.HasMember("ContinuingSubwordPrefix") && _VocabJson["ContinuingSubwordPrefix"].IsString() && _VocabJson["ContinuingSubwordPrefix"].GetStringLength())
+		_MySymbol = UTF8ToWideString(_VocabJson["ContinuingSubwordPrefix"].GetString());
+
+	if (_VocabJson.HasMember("Vocab"))
+	{
+		if (_VocabJson["Vocab"].IsArray())
 		{
-			if (!(Object.IsString() || Object.IsArray()))
+			const auto _VocabArray = _VocabJson["Vocab"].GetArray();
+			int64_t Index = 0;
+			for (const auto& Object : _VocabArray)
 			{
-				auto Beg = Object.GetMemberArray();
-				if (Beg.Empty())
-					continue;
-				_MyVocab[UTF8ToWideString(Beg.Front().first)] = Beg.Front().second.GetInt64();
+				if (!(Object.IsString() || Object.IsArray()))
+				{
+					auto Beg = Object.GetMemberArray();
+					if (Beg.Empty())
+						continue;
+					auto Key = UTF8ToWideString(Beg.Front().first);
+					if (static_cast<Int64>(Key.size()) > MaximumLength)
+						MaximumLength = static_cast<Int64>(Key.size());
+					_MyVocab[Key] = Beg.Front().second.GetInt64();
+				}
+				else
+				{
+					auto Key = UTF8ToWideString(Object.IsString() ? Object.GetString() : Object.GetArray()[0].GetString());
+					if (static_cast<Int64>(Key.size()) > MaximumLength)
+						MaximumLength = static_cast<Int64>(Key.size());
+					_MyVocab[Key] = Index++;
+				}
 			}
-			else
-				_MyVocab[UTF8ToWideString(Object.IsString() ? Object.GetString() : Object.GetArray()[0].GetString())] = Index++;
+		}
+		else
+		{
+			const auto _VocabDict = _VocabJson["Vocab"].GetMemberArray();
+			for (const auto& Pair : _VocabDict)
+			{
+				if (Pair.second.IsInt64())
+				{
+					const auto& Key = UTF8ToWideString(Pair.first);
+					if (static_cast<Int64>(Key.size()) > MaximumLength)
+						MaximumLength = static_cast<Int64>(Key.size());
+					_MyVocab[UTF8ToWideString(Pair.first)] = TokenizerType(Pair.second.GetInt64());
+				}
+			}
 		}
 	}
 	else
 	{
-		const auto _VocabDict = _VocabJson["Vocab"].GetMemberArray();
+		const auto _VocabDict = _VocabJson.GetMemberArray();
 		for (const auto& Pair : _VocabDict)
-		{
-			if (Pair.second.IsInt())
-				_MyVocab[UTF8ToWideString(Pair.first)] = TokenizerType(Pair.second.GetInt());
-			else if (Pair.second.IsFloat())
-				_MyVocab[UTF8ToWideString(Pair.first)] = TokenizerType(Pair.second.GetFloat());
-		}
+			if (Pair.second.IsInt64())
+			{
+				const auto& Key = UTF8ToWideString(Pair.first);
+				if (static_cast<Int64>(Key.size()) > MaximumLength)
+					MaximumLength = static_cast<Int64>(Key.size());
+				_MyVocab[Key] = TokenizerType(Pair.second.GetInt64());
+			}
 	}
 }
 
-Dict::Dict(const std::wstring& _DictModulePath)
+Dict::Dict(
+	const std::wstring& _DictModulePath
+)
 {
 	if (_DictModulePath.empty())
 		return;
@@ -466,26 +506,415 @@ Dict::Dict(const std::wstring& _DictModulePath)
 	for (const auto& itr : PhoneJson.GetMemberArray())
 	{
 		std::wstring Key = UTF8ToWideString(itr.first);
+		if (static_cast<Int64>(Key.size()) > MaximumLength)
+			MaximumLength = static_cast<Int64>(Key.size());
+		if (!itr.second.IsArray())
+			_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
 		const auto Value = itr.second.GetArray();
-		_MyDict[Key] = std::vector<std::wstring>();
+		_MyDict[Key] = Vector<std::wstring>();
 		for (const auto& it : Value)
-			_MyDict[Key].push_back(UTF8ToWideString(it.GetString()));
+		{
+			std::wstring CValue;
+			if (it.IsArray())
+				CValue = UTF8ToWideString(it.GetArray()[0].GetString());
+			else if (!it.IsString())
+				_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
+			else
+				CValue = UTF8ToWideString(it.GetString());
+			_MyDict[Key].EmplaceBack(std::move(CValue));
+		}
 	}
 }
 
-Vector<Dict::DictType> Dict::operator()(const Vector<std::wstring>& _Tokens) const
+void Dict::AppendTokens(
+	const std::unordered_map<std::wstring, Vector<DictType>>& _Tokens
+)
+{
+	for (const auto& Token : _Tokens)
+	{
+		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
+			MaximumLength = static_cast<Int64>(Token.first.size());
+		_MyDict[Token.first] = Token.second;
+	}
+}
+
+Vector<Dict::DictType> Dict::operator()(
+	const Vector<std::wstring>& _Tokens
+	) const
 {
 	auto Result = DragonianLibSTL::Vector<DictType>();
 	for (const auto& Token : _Tokens)
 	{
 		auto Match = _MyDict.find(Token);
 		if (Match == _MyDict.end())
-			Result.EmplaceBack(L"[UNKNOWN]");
+			Result.EmplaceBack(L"UNK");
 		else
 			for (const auto& SubToken : Match->second)
 				Result.EmplaceBack(SubToken);
 	}
 	return Result;
+}
+
+const Vector<Dict::DictType>& Dict::Search(
+	const std::wstring& _Token,
+	Vector<DictType>* _Result
+) const
+{
+	auto Match = _MyDict.find(_Token);
+	if (Match == _MyDict.end())
+	{
+		if (_Result)
+			_Result->EmplaceBack(L"UNK");
+		return _MyUnk;
+	}
+	if (_Result)
+		for (const auto& SubToken : Match->second)
+			_Result->EmplaceBack(SubToken);
+	return Match->second;
+}
+
+void Dict::Tokenize(
+	std::wstring_view _InputText,
+	Vector<std::wstring>& _OutputTokens,
+	Tokenizer::TokenizerMethod _Method,
+	Int64 _MaximumMatching,
+	const std::optional<std::wstring>& _UNKID
+) const
+{
+	if (_MaximumMatching == -1)
+		_MaximumMatching = MaximumLength;
+
+	if (_Method == Tokenizer::Maximum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = MaxMatch; i > 0; --i)
+			{
+				auto SubSubView = _InputText.substr(0, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_prefix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk[0]);
+				_InputText.remove_prefix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::Minimum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = 1; i <= MaxMatch; ++i)
+			{
+				auto SubSubView = _InputText.substr(0, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_prefix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk[0]);
+				_InputText.remove_prefix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::ReversedMinimum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = 1; i <= MaxMatch; ++i)
+			{
+				auto SubSubView = _InputText.substr(CurLength - i, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_suffix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk[0]);
+				_InputText.remove_suffix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::ReversedMaximum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = MaxMatch; i > 0; --i)
+			{
+				auto SubSubView = _InputText.substr(CurLength - i, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_suffix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk[0]);
+				_InputText.remove_suffix(1);
+			}
+		}
+	}
+	else
+		_D_Dragonian_Lib_Fatal_Error;
+}
+
+IdsDict::IdsDict(
+	const std::wstring& _DictModulePath
+)
+{
+	if (_DictModulePath.empty())
+		return;
+	MJson::MJsonDocument PhoneJson(_DictModulePath.c_str());
+	for (const auto& itr : PhoneJson.GetMemberArray())
+	{
+		std::wstring Key = UTF8ToWideString(itr.first);
+		if (itr.second.IsInt64())
+		{
+			if (static_cast<Int64>(Key.size()) > MaximumLength)
+				MaximumLength = static_cast<Int64>(Key.size());
+			_MyDict[Key] = itr.second.GetInt64();
+			_MyReverseDict[itr.second.GetInt64()] = Key;
+			continue;
+		}
+
+		if (!itr.second.IsString() || !itr.second.GetStringLength())
+			_D_Dragonian_Lib_Throw_Exception("Value is not a string or empty");
+		auto Value = UTF8ToWideString(itr.second.GetString());
+		if (std::regex_match(Key, PreDefinedRegex::IntegerRegex))
+		{
+			if (static_cast<Int64>(Value.size()) > MaximumLength)
+				MaximumLength = static_cast<Int64>(Value.size());
+			_MyReverseDict[wcstoll(Key.c_str(), nullptr, 10)] = UTF8ToWideString(Value);
+			_MyDict[Value] = wcstoll(Key.c_str(), nullptr, 10);
+		}
+		else if (std::regex_match(Value, PreDefinedRegex::IntegerRegex))
+		{
+			if (static_cast<Int64>(Key.size()) > MaximumLength)
+				MaximumLength = static_cast<Int64>(Key.size());
+			_MyDict[Key] = wcstoll(Value.c_str(), nullptr, 10);
+			_MyReverseDict[wcstoll(Value.c_str(), nullptr, 10)] = Key;
+		}
+		else
+			_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
+	}
+}
+
+void IdsDict::AppendTokens(
+	const std::unordered_map<std::wstring, DictType>& _Tokens
+)
+{
+	for (const auto& Token : _Tokens)
+	{
+		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
+			MaximumLength = static_cast<Int64>(Token.first.size());
+		_MyDict[Token.first] = Token.second;
+		_MyReverseDict[Token.second] = Token.first;
+	}
+}
+
+Vector<IdsDict::DictType> IdsDict::operator()(
+	const Vector<std::wstring>& _Tokens
+	) const
+{
+	auto Result = DragonianLibSTL::Vector<DictType>();
+	for (const auto& Token : _Tokens)
+	{
+		auto Match = _MyDict.find(Token);
+		if (Match == _MyDict.end())
+			Result.EmplaceBack(_MyUnkId);
+		else
+			Result.EmplaceBack(Match->second);
+	}
+	return Result;
+}
+
+Vector<std::wstring> IdsDict::operator[](
+	const Vector<DictType>& _TokenIds
+	) const
+{
+	auto Result = DragonianLibSTL::Vector<std::wstring>();
+	for (const auto& TokenId : _TokenIds)
+	{
+		auto Match = _MyReverseDict.find(TokenId);
+		if (Match == _MyReverseDict.end())
+			Result.EmplaceBack(_MyUnk);
+		else
+			Result.EmplaceBack(Match->second);
+	}
+	return Result;
+}
+
+const IdsDict::DictType& IdsDict::operator[](
+	const std::wstring& _Token
+) const
+{
+	auto Match = _MyDict.find(_Token);
+	if (Match == _MyDict.end())
+		return _MyUnkId;
+	return Match->second;
+}
+
+const std::wstring& IdsDict::operator[](
+	const DictType& _TokenId
+	) const
+{
+	auto Match = _MyReverseDict.find(_TokenId);
+	if (Match == _MyReverseDict.end())
+		return _MyUnk;
+	return Match->second;
+}
+
+void IdsDict::Tokenize(
+	std::wstring_view _InputText,
+	Vector<std::wstring>& _OutputTokens,
+	Tokenizer::TokenizerMethod _Method,
+	Int64 _MaximumMatching,
+	const std::optional<std::wstring>& _UNKID
+) const
+{
+	if (_MaximumMatching == -1)
+		_MaximumMatching = MaximumLength;
+
+	if (_Method == Tokenizer::Maximum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = MaxMatch; i > 0; --i)
+			{
+				auto SubSubView = _InputText.substr(0, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_prefix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk);
+				_InputText.remove_prefix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::Minimum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = 1; i <= MaxMatch; ++i)
+			{
+				auto SubSubView = _InputText.substr(0, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_prefix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk);
+				_InputText.remove_prefix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::ReversedMinimum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = 1; i <= MaxMatch; ++i)
+			{
+				auto SubSubView = _InputText.substr(CurLength - i, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_suffix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk);
+				_InputText.remove_suffix(1);
+			}
+		}
+	}
+	else if (_Method == Tokenizer::ReversedMaximum)
+	{
+		while (!_InputText.empty())
+		{
+			const auto CurLength = _InputText.length();
+			const auto MaxMatch = std::min((size_t)_MaximumMatching, CurLength);
+			bool Found = false;
+			for (size_t i = MaxMatch; i > 0; --i)
+			{
+				auto SubSubView = _InputText.substr(CurLength - i, i);
+				std::wstring TokenStr = { SubSubView.begin(), SubSubView.end() };
+				if (_MyDict.contains(TokenStr))
+				{
+					_OutputTokens.EmplaceBack(std::move(TokenStr));
+					_InputText.remove_suffix(i);
+					Found = true;
+					break;
+				}
+			}
+			if (!Found)
+			{
+				_OutputTokens.EmplaceBack(_UNKID ? *_UNKID : _MyUnk);
+				_InputText.remove_suffix(1);
+			}
+		}
+	}
+	else
+		_D_Dragonian_Lib_Fatal_Error;
 }
 
 _D_Dragonian_Lib_Dict_End

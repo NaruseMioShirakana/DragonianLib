@@ -29,20 +29,64 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace PreDefinedRegex
 {
-	static inline auto _Valdef_Regex_Chinese_And_Japanese =
-		std::wregex(LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF])");
-	static inline auto _Valdef_Regex_Chinese_And_Japanese_String =
-		std::wregex(LR"([\u4E00-\u9FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]+)");
-	static inline auto _Valdef_Regex_All_Symbol =
-		std::wregex(L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]");
-	static inline auto _Valdef_Regex_All_Symbol_Group =
-		std::wregex(L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]+");
+	static inline const std::wstring Chinese =
+		LR"((?:[\u3007\ue815-\ue864\ufa18\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002A6DF\U0002A703-\U0002B73F\U0002B740-\U0002B81D\U0002B825-\U0002BF6E\U0002C029-\U0002CE93\U0002D016\U0002D11B-\U0002EBD9\U0002F80A-\U0002FA1F\U000300F7-\U00031288\U00030EDD\U00030EDE]))";
+	static inline const std::wstring Japanese =
+		LR"([\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF])";
+	static inline const std::wstring FullWidth =
+		LR"([\uFF00-\uFFEF])";
+	static inline const std::wstring Alphabet =
+		LR"([a-zA-Z])";
+	static inline const std::wstring ChineseAndJapanese =
+		LR"((?:[\u3007\ue815-\ue864\ufa18\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002A6DF\U0002A703-\U0002B73F\U0002B740-\U0002B81D\U0002B825-\U0002BF6E\U0002C029-\U0002CE93\U0002D016\U0002D11B-\U0002EBD9\U0002F80A-\U0002FA1F\U000300F7-\U00031288\U00030EDD\U00030EDE\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]))";
+	static inline const std::wstring Number =
+		LR"([0-9])";
+	static inline const std::wstring Real =
+		LR"([0-9]+(?:\.[0-9]+)?)";
+	static inline const std::wstring Integer =
+		LR"([0-9]+)";
+	static inline const std::wstring AllSymbol =
+		L"[ !@#$%^&*()_+\\-=`~,./;'\\[\\]<>?:\"{}|\\\\。？！，、；：“”‘’『』「」（）〔〕【】─…·—～《》〈〉]";
+	static inline const std::wstring NewLine =
+		L"[\\n\\r]";
+	static inline const std::wstring Space =
+		L"[\\s]";
+	static inline const std::wstring ChineseNumber[]{
+		L"零",L"一",L"二",L"三",L"四",L"五",L"六",L"七",L"八",L"九"
+	};
+	static inline const std::wstring ChineseNumberDigit[]{
+		L"",L"十",L"百",L"千",L"万",L"十万",L"百万",L"千万",L"亿", L"十亿", L"百亿", L"千亿", L"兆", L"十兆", L"百兆", L"千兆"
+	};
+
+	static inline const std::wregex ChineseRegex = std::wregex(Chinese);
+	static inline const std::wregex NumberRegex = std::wregex(Number);
+	static inline const std::wregex AlphabetRegex = std::wregex(Alphabet);
+	static inline const std::wregex JapaneseRegex = std::wregex(Japanese);
+	static inline const std::wregex AllSymbolRegex = std::wregex(AllSymbol);
+	static inline const std::wregex FullWidthRegex = std::wregex(FullWidth);
+	static inline const std::wregex ChineseAndJapaneseRegex = std::wregex(ChineseAndJapanese);
+	static inline const std::wregex ChineseStringRegex = std::wregex(Chinese + L"+");
+	static inline const std::wregex NumberStringRegex = std::wregex(Number + L"+");
+	static inline const std::wregex AlphabetStringRegex = std::wregex(Alphabet + L"+");
+	static inline const std::wregex JapaneseStringRegex = std::wregex(Japanese + L"+");
+	static inline const std::wregex AllSymbolGroupRegex = std::wregex(AllSymbol + L"+");
+	static inline const std::wregex FullWidthStringRegex = std::wregex(FullWidth + L"+");
+	static inline const std::wregex ChineseAndJapaneseStringRegex = std::wregex(ChineseAndJapanese + L"+");
+	static inline const std::wregex IntegerRegex = std::wregex(Integer);
+	static inline const std::wregex RealRegex = std::wregex(Real);
+	static inline const std::wregex NewLineRegex = std::wregex(NewLine);
+	static inline const std::wregex SpaceRegex = std::wregex(Space);
+	static inline const std::wregex PunctuationRegex = std::wregex(AllSymbol);
+	static inline const std::wregex PunctuationGroupRegex = std::wregex(AllSymbol + L"+");
 }
 
+const std::string& WideStringToUTF8(const std::string& input);
 std::string WideStringToUTF8(const std::wstring& input);
 
+const std::string& UnicodeToAnsi(const std::string& input);
 std::string UnicodeToAnsi(const std::wstring& input);
 
+const std::wstring& UTF8ToWideString(const std::wstring& input);
 std::wstring UTF8ToWideString(const std::string& input);
 
 std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::string>& vector);
@@ -127,5 +171,7 @@ _Type ToUpperString(const _Type& _String)
 	std::transform(UpperString.begin(), UpperString.end(), UpperString.begin(), ::toupper);
 	return UpperString;
 }
+
+std::wstring Number2Chinese(const std::wstring& _Number);
 
 _D_Dragonian_Lib_Space_End

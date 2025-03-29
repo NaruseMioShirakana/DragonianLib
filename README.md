@@ -65,6 +65,7 @@ DragonianLib 依赖以下第三方库：
 - ONNX Runtime（如果启用Onnx）
 - TensorRT（如果启用TensorRT）
 - KDTree
+- pypinyin
 
 这些库的路径和包含目录在 `CMakeLists.txt` 文件中进行了配置。
 

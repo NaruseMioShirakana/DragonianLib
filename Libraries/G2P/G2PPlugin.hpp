@@ -96,6 +96,7 @@ private:
 	Plugin::Plugin _MyPlugin = nullptr;
 	G2PApiType _MyConvert = nullptr;
 	G2PGetExtraInfoType _MyGetExtraInfo = nullptr;
+	std::mutex _MyMutex;
 
 protected:
 	void Initialize(const void* Parameter) override;

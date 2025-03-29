@@ -27,7 +27,7 @@
 
 _D_Dragonian_Lib_G2P_Header
 
-using G2PModule = std::shared_ptr<BasicG2P>;
+using G2PModule = std::shared_ptr<G2PBase>;
 using Constructor = std::function<G2PModule(const void*)>;
 
 /**
@@ -54,7 +54,7 @@ void RegisterG2PModules(
  * @param _PluginName Name of the G2PModule
  * @param _Constructor Constructor of the G2PModule
  */
-void RegisterG2PModele(
+void RegisterG2PModule(
 	const std::wstring& _PluginName,
 	const Constructor& _Constructor
 );

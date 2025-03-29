@@ -1,10 +1,5 @@
 ﻿#include "../G2PModule.hpp"
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <dirent.h>
-#include <sys/types.h>
-#endif
+#include "../CppPinYin.hpp"
 
 _D_Dragonian_Lib_G2P_Header
 
@@ -94,7 +89,7 @@ void RegisterG2PModules(
 	}
 }
 
-void RegisterG2PModele(
+void RegisterG2PModule(
 	const std::wstring& _PluginName,
 	const Constructor& _Constructor
 )
@@ -113,7 +108,24 @@ const std::vector<std::wstring>& GetG2PModuleList()
 	return _GlobalG2PModulesList;
 }
 
-struct Init { Init() { RegisterG2PModules(GetCurrentFolder() + L"/Plugins/G2P"); } };
+struct Init {
+	Init()
+	{
+		RegisterG2PModules(GetCurrentFolder() + L"/Plugins/G2P");
+		RegisterG2PModule(
+			L"CppPinYin",
+			[](const void* Parameter) -> G2PModule {
+				return std::make_shared<CppPinYin>(Parameter);
+			}
+		);
+		RegisterG2PModule(
+			L"pypinyin",
+			[](const void* Parameter) -> G2PModule {
+				return std::make_shared<CppPinYin>(Parameter);
+			}
+		);
+	}
+};
 Init _Init;
 
 _D_Dragonian_Lib_G2P_End

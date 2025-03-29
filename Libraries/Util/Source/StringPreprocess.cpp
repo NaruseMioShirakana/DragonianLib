@@ -14,6 +14,11 @@ static const std::wregex _Valdef_Dragonian_Lib_Return_Regex___(L"\\r");
 static const std::wregex _Valdef_Dragonian_Lib_Reference_Regex___(L"\"");
 static const std::wregex _Valdef_Dragonian_Lib_Slash_Regex___(L"\\\\");
 
+const std::string& WideStringToUTF8(const std::string& input)
+{
+	return input;
+}
+
 std::string WideStringToUTF8(const std::wstring& input)
 {
 #ifdef _WIN32
@@ -35,6 +40,11 @@ std::string WideStringToUTF8(const std::wstring& input)
 #endif
 }
 
+const std::string& UnicodeToAnsi(const std::string& input)
+{
+	return input;
+}
+
 std::string UnicodeToAnsi(const std::wstring& input)
 {
 #ifdef _WIN32
@@ -54,6 +64,11 @@ std::string UnicodeToAnsi(const std::wstring& input)
 	std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 	return converter.to_bytes(input);
 #endif
+}
+
+const std::wstring& UTF8ToWideString(const std::wstring& input)
+{
+	return input;
 }
 
 std::wstring UTF8ToWideString(const std::string& input)
@@ -106,6 +121,70 @@ std::wstring SerializeStringVector(DragonianLibSTL::Vector<std::wstring>& vector
 		vecstr = vecstr.substr(0, vecstr.length() - 2);
 	vecstr += L']';
 	return vecstr;
+}
+
+std::wstring Number2Chinese(const std::wstring& _Number)
+{
+	std::wstring StrRtn;
+	std::wstring InputStr = _Number;
+	const size_t PIndex = InputStr.find(L'.');
+	std::wstring IntegerStr, FractionStr;
+	if (PIndex != std::wstring::npos)
+	{
+		IntegerStr = InputStr.substr(0, PIndex);
+		FractionStr = InputStr.substr(PIndex + 1);
+		while (!FractionStr.empty() && FractionStr.back() == L'0')
+			FractionStr.pop_back();
+	}
+	else
+		IntegerStr = std::move(InputStr);
+
+	if (IntegerStr != L"0")
+	{
+		size_t MaxIntegerStrLength = IntegerStr.length();
+		for (; MaxIntegerStrLength > 0; --MaxIntegerStrLength)
+			if (IntegerStr[MaxIntegerStrLength - 1] != L'0')
+				break;
+		if (MaxIntegerStrLength < 1)
+			MaxIntegerStrLength = 1;
+
+		const auto DigitNum = IntegerStr.length();
+		for (size_t i = 0; i < MaxIntegerStrLength; i++)
+		{
+			const auto NumberIndex = IntegerStr[i] - L'0';
+			const auto DigitIndex = DigitNum - i - 1;
+			if (0 == NumberIndex)
+			{
+				if ((i > 0 && L'0' == IntegerStr[i - 1]) || i == IntegerStr.length() - 1)
+					continue;
+				if (DigitIndex >= 4 && 0 == DigitIndex % 4)
+					StrRtn += PreDefinedRegex::ChineseNumberDigit[DigitIndex];
+				else
+					StrRtn += PreDefinedRegex::ChineseNumber[NumberIndex];
+			}
+			else
+			{
+				StrRtn += PreDefinedRegex::ChineseNumber[NumberIndex];
+				if (IntegerStr.length() == 2 && IntegerStr[0] == '1' && i == 0)
+					StrRtn.erase(0);
+				if (0 == DigitIndex % 4)
+					StrRtn += PreDefinedRegex::ChineseNumberDigit[DigitIndex];
+				else
+					StrRtn += PreDefinedRegex::ChineseNumberDigit[DigitIndex % 4];
+			}
+		}
+	}
+	else
+		StrRtn += L"零";
+
+	if (!FractionStr.empty())
+		StrRtn += L"点";
+	for (const auto FractionI : FractionStr)
+	{
+		const auto NumberIndex = FractionI - L'0';
+		StrRtn += PreDefinedRegex::ChineseNumber[NumberIndex];
+	}
+	return StrRtn;
 }
 
 _D_Dragonian_Lib_Space_End
