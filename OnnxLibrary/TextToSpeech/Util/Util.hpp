@@ -35,7 +35,6 @@
 
 #define _D_Dragonian_Lib_Lib_Text_To_Speech_Space _D_Dragonian_Lib_Onnx_Runtime_Space Text2Speech::
 
-
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 
 struct HParams

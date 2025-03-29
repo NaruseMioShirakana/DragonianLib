@@ -59,7 +59,7 @@ public:
 	Vector<std::wstring> ConvertSegment(
 		const std::wstring& Seg,
 		const CppPinYinParameters& Parameters
-	) override;
+	) override = 0; //TODO: Implement this function
 
 	G2PWModel(const G2PWModel&) = default;
 	G2PWModel(G2PWModel&&) = default;
