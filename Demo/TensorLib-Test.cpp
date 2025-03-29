@@ -56,10 +56,15 @@ int main()
 		&Configs
 	);
 
+	G2P::CppPinYinParameters Parameters;
+	Parameters.Style = G2P::CppPinYinParameters::TONE2;
+	Parameters.NumberStyle = G2P::CppPinYinParameters::SPLITCHINESE;
+	Parameters.Heteronym = true;
+
 	auto [Phoneme, Tone] = PinYin.Convert(
-		L"你好，世界！",
+		L"我的名字是田所浩二，代号是野兽先辈，专属数字是114514和1919810！",
 		"zh",
-		nullptr
+		&Parameters
 	);
 
 	return 0;

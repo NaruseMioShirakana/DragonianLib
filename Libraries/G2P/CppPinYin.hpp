@@ -40,8 +40,10 @@ struct CppPinYinParameters
 		NORMAL = 0,
 		// 标准声调风格，拼音声调在韵母第一个字母上（默认风格）。如： 中国 -> ``zhōng guó``
 		TONE = 1,
-		// 普通风格，将 ü 输出为 v
-		UV = 2,
+		// 声调风格2，即拼音声调在各个韵母之后，用数字 [1-4] 进行表示。如： 中国 -> ``zho1ng guo2``
+		TONE2 = 2,
+		// 声调风格3，即拼音声调在各个拼音之后，用数字 [1-4] 进行表示。如： 中国 -> ``zhong1 guo2``
+		TONE3 = 3,
 	};
 	enum Number
 	{
@@ -49,12 +51,14 @@ struct CppPinYinParameters
 		DEFAULT = 0,
 		// 输出中文数字
 		CHINESE = 1,
+		// 切分单个数字后转为中文输出
+		SPLITCHINESE = 2,
 		// 将阿拉伯数字单独切分后输出
-		SPLIT = 2,
+		SPLIT = 3,
 		// 将阿拉伯数字在小数点处切分后输出
-		SPLITDOT = 3,
+		SPLITDOT = 4,
 		// 将阿拉伯数字直接删除
-		DEL = 4,
+		DEL = 5,
 	};
 	enum ErrorType {
 		// 不处理错误音节，保持原样
@@ -66,6 +70,16 @@ struct CppPinYinParameters
 		// 抛出异常或逐字母切分（中文外语言）
 		THROWORSPLIT = 3
 	};
+
+	/**
+	 * @brief 是否使用5标注轻声
+	 */
+	bool NeutralToneWithFive = false;
+
+	/**
+	 * @brief 是否 将 ü 替换为 v
+	 */
+	bool ReplaceASV = false;
 
 	/**
 	 * @brief 拼音风格
@@ -183,7 +197,8 @@ protected:
 		CppPinYinParameters::Type Style,
 		const std::wstring& PinYin,
 		Vector<std::wstring>& PinYinResult,
-		Vector<Int64>& ToneResult
+		Vector<Int64>& ToneResult,
+		bool NeutralToneWithFive
 	);
 
 public:
@@ -249,6 +264,10 @@ public:
 		Vector<Segment>&& InputText
 	);
 
+	virtual Vector<std::wstring> ConvertSegment(
+		const std::wstring& Seg,
+		const CppPinYinParameters& Parameters
+	);
 };
 
 

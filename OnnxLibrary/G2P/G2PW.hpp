@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file G2PW.hpp
  * @author NaruseMioShirakana
  * @email shirakanamio@foxmail.com
@@ -30,6 +30,7 @@ _D_Dragonian_Lib_G2P_Header
 
 struct G2PWModelHParams
 {
+	const void* Configs; // CppPinYinConfigs
 	const wchar_t* ModelPath; // Path to the G2PW Model (const wchar_t*)
 	const void* Enviroment; // Pointer to OnnxRuntime::OnnxRuntimeEnvironment (const OnnxRuntime::OnnxRuntimeEnvironment*)
 	const void* Logger; // Pointer to DragonianLib::DLogger (const DragonianLib::DLogger*)
@@ -47,13 +48,18 @@ public:
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
-	);
+	) override;
 
 	std::pair<Vector<std::wstring>, Vector<Int64>> Forward(
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
 	);
+
+	Vector<std::wstring> ConvertSegment(
+		const std::wstring& Seg,
+		const CppPinYinParameters& Parameters
+	) override;
 
 	G2PWModel(const G2PWModel&) = default;
 	G2PWModel(G2PWModel&&) = default;

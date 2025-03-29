@@ -23,16 +23,6 @@ const inline std::wstring ToneMap2[28]
 	L"u", L"u", L"u", L"u",
 	L"ü", L"ü", L"ü", L"ü"
 };
-const inline std::wstring ToneMapV2[28]
-{
-	L"a", L"a", L"a", L"a",
-	L"o", L"o", L"o", L"o",
-	L"e", L"e", L"e", L"e",
-	L"e", L"e", L"e", L"e",
-	L"i", L"i", L"i", L"i",
-	L"u", L"u", L"u", L"u",
-	L"v", L"v", L"v", L"v"
-};
 //[m̄, ḿ, m̀, ń, ň, ǹ, ẑ, ĉ, ŝ, ŋ]
 const inline std::pair<std::wstring, Int64> ToneMapSP[]
 {
@@ -67,14 +57,15 @@ void CppPinYin::InsertPhonemeAndTone(
 	CppPinYinParameters::Type Style,
 	const std::wstring& PinYin,
 	Vector<std::wstring>& PinYinResult,
-	Vector<Int64>& ToneResult
+	Vector<Int64>& ToneResult,
+	bool NeutralToneWithFive
 )
 {
 	if (Style == CppPinYinParameters::NORMAL)
 	{
 		for (size_t i = 0; i < 28; ++i)
 		{
-			if (auto Idx = PinYin.find(ToneMap[i]) ; Idx != std::wstring::npos)
+			if (auto Idx = PinYin.find(ToneMap[i]); Idx != std::wstring::npos)
 			{
 				ToneResult.EmplaceBack((i % 4) + 1);
 				PinYinResult.EmplaceBack(PinYin.substr(0, Idx) + ToneMap2[i] + PinYin.substr(Idx + ToneMap[i].size()));
@@ -91,7 +82,7 @@ void CppPinYin::InsertPhonemeAndTone(
 			}
 		}
 		PinYinResult.EmplaceBack(PinYin);
-		ToneResult.EmplaceBack(0);
+		ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
 	}
 	else if (Style == CppPinYinParameters::TONE)
 	{
@@ -112,16 +103,21 @@ void CppPinYin::InsertPhonemeAndTone(
 				return;
 			}
 		}
-		ToneResult.EmplaceBack(0);
+		ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
 	}
-	else if (Style == CppPinYinParameters::UV)
+	else if (Style == CppPinYinParameters::TONE2)
 	{
 		for (size_t i = 0; i < 28; ++i)
 		{
 			if (auto Idx = PinYin.find(ToneMap[i]); Idx != std::wstring::npos)
 			{
 				ToneResult.EmplaceBack((i % 4) + 1);
-				PinYinResult.EmplaceBack(PinYin.substr(0, Idx) + ToneMapV2[i] + PinYin.substr(Idx + ToneMap[i].size()));
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMap2[i] +
+					std::to_wstring((i % 4) + 1) +
+					PinYin.substr(Idx + ToneMap[i].size())
+				);
 				return;
 			}
 		}
@@ -130,12 +126,81 @@ void CppPinYin::InsertPhonemeAndTone(
 			if (auto Idx = PinYin.find(ToneMapSP[i].first); Idx != std::wstring::npos)
 			{
 				ToneResult.EmplaceBack(ToneMapSP[i].second);
-				PinYinResult.EmplaceBack(PinYin.substr(0, Idx) + ToneMapSP2[i] + PinYin.substr(Idx + ToneMapSP[i].first.size()));
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMapSP2[i] +
+					std::to_wstring(ToneMapSP[i].second) +
+					PinYin.substr(Idx + ToneMapSP[i].first.size())
+				);
+				return;
+			}
+		}
+		for (size_t i = 0; i < 28; ++i)
+		{
+			if (auto Idx = PinYin.find(ToneMap2[i]); Idx != std::wstring::npos)
+			{
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMap2[i] +
+					std::to_wstring(NeutralToneWithFive ? 5 : 0) +
+					PinYin.substr(Idx + ToneMap2[i].size())
+				);
+				ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
+				return;
+			}
+		}
+		for (size_t i = 0; i < 6; ++i)
+		{
+			if (auto Idx = PinYin.find(ToneMapSP2[i]); Idx != std::wstring::npos)
+			{
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMapSP2[i] +
+					std::to_wstring(NeutralToneWithFive ? 5 : 0) +
+					PinYin.substr(Idx + ToneMapSP2[i].size())
+				);
+				ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
 				return;
 			}
 		}
 		PinYinResult.EmplaceBack(PinYin);
-		ToneResult.EmplaceBack(0);
+		ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
+	}
+	else
+	{
+		for (size_t i = 0; i < 28; ++i)
+		{
+			if (auto Idx = PinYin.find(ToneMap[i]); Idx != std::wstring::npos)
+			{
+				ToneResult.EmplaceBack((i % 4) + 1);
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMap2[i] +
+					PinYin.substr(Idx + ToneMap[i].size()) +
+					std::to_wstring((i % 4) + 1)
+				);
+				return;
+			}
+		}
+		for (size_t i = 0; i < 6; ++i)
+		{
+			if (auto Idx = PinYin.find(ToneMapSP[i].first); Idx != std::wstring::npos)
+			{
+				ToneResult.EmplaceBack(ToneMapSP[i].second);
+				PinYinResult.EmplaceBack(
+					PinYin.substr(0, Idx) +
+					ToneMapSP2[i] +
+					PinYin.substr(Idx + ToneMapSP[i].first.size()) +
+					std::to_wstring(ToneMapSP[i].second)
+				);
+				return;
+			}
+		}
+		PinYinResult.EmplaceBack(
+			PinYin +
+			std::to_wstring(NeutralToneWithFive ? 5 : 0)
+		);
+		ToneResult.EmplaceBack(NeutralToneWithFive ? 5 : 0);
 	}
 }
 
@@ -191,6 +256,19 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 				Seg.Text = Number2Chinese(Seg.Text);
 				Seg.SegType = Segment::CHINESE;
 			}
+			else if (Parameters.NumberStyle == CppPinYinParameters::SPLITCHINESE)
+			{
+				std::wstring NewText;
+				for (const auto& Ch : Seg.Text)
+				{
+					if (Ch != L'.')
+						NewText += PreDefinedRegex::ChineseNumber[Ch - L'0'];
+					else
+						NewText += L"点";
+				}
+				Seg.Text = NewText;
+				Seg.SegType = Segment::CHINESE;
+			}
 			else if (Parameters.NumberStyle == CppPinYinParameters::SPLIT)
 			{
 				for (auto& Ch : Seg.Text)
@@ -217,13 +295,8 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 		if (Seg.SegType == Segment::CHINESE)
 		{
 			std::wstring_view SegText = Seg.Text;
-			Vector<std::wstring> Tokens;
-			_MyPhrasesDict.Tokenize(
-				Seg.Text,
-				Tokens,
-				Dict::Tokenizer::Maximum,
-				Parameters.MaximumMatch
-			);
+			Vector<std::wstring> Tokens = ConvertSegment(Seg.Text, Parameters);
+			
 			for (const auto& Token : Tokens)
 			{
 				if (Token == L"UNK")
@@ -242,7 +315,7 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 							auto Cur = TokenIter->str();
 							if (Cur.empty())
 								continue;
-							InsertPhonemeAndTone(Parameters.Style, Cur, PinYinResult, ToneResult);
+							InsertPhonemeAndTone(Parameters.Style, Cur, PinYinResult, ToneResult, Parameters.NeutralToneWithFive);
 							if (Parameters.Heteronym)
 								break;
 						}
@@ -265,7 +338,7 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 				SegText.remove_prefix(Token.size());
 				const auto& Searched = _MyPhrasesDict.Search(Token);
 				for (const auto& PinYin : Searched)
-					InsertPhonemeAndTone(Parameters.Style, PinYin, PinYinResult, ToneResult);
+					InsertPhonemeAndTone(Parameters.Style, PinYin, PinYinResult, ToneResult, Parameters.NeutralToneWithFive);
 			}
 		}
 		else if (Seg.SegType == Segment::ENGLISH)
@@ -486,6 +559,21 @@ Vector<CppPinYin::Segment> CppPinYin::PostSeg(
 )
 {
 	return std::move(InputText);
+}
+
+Vector<std::wstring> CppPinYin::ConvertSegment(
+	const std::wstring& Seg,
+	const CppPinYinParameters& Parameters
+)
+{
+	Vector<std::wstring> Tokens;
+	_MyPhrasesDict.Tokenize(
+		Seg,
+		Tokens,
+		Dict::Tokenizer::Maximum,
+		Parameters.MaximumMatch
+	);
+	return Tokens;
 }
 
 _D_Dragonian_Lib_G2P_End

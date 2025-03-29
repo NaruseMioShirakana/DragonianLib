@@ -1,14 +1,15 @@
-#include "../G2PW.hpp"
+﻿#include "../G2PW.hpp"
 
 _D_Dragonian_Lib_G2P_Header
 
 G2PWModel::G2PWModel(
 	const void* Parameter
-) : OnnxModelBase(*(const OnnxRuntime::OnnxRuntimeEnvironment*)((const G2PWModelHParams*)Parameter)->Enviroment,
+) : CppPinYin(((const G2PWModelHParams*)Parameter)->Configs), OnnxModelBase(
+	*(const OnnxRuntime::OnnxRuntimeEnvironment*)((const G2PWModelHParams*)Parameter)->Enviroment,
 	((const G2PWModelHParams*)Parameter)->ModelPath,
 	*(const DLogger*)(((const G2PWModelHParams*)Parameter)->Logger))
 {
-	
+
 }
 
 std::pair<Vector<std::wstring>, Vector<Int64>> G2PWModel::Convert(
@@ -26,7 +27,7 @@ std::pair<Vector<std::wstring>, Vector<Int64>> G2PWModel::Forward(
 	const void* UserParameter
 )
 {
-	return {};
+	return PinYin(InputText, LanguageID, UserParameter);
 }
 
 _D_Dragonian_Lib_G2P_End
