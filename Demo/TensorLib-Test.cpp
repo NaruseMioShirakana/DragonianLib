@@ -47,48 +47,6 @@ int main()
 {
 	using namespace DragonianLib;
 
-	OnnxRuntime::Text2Speech::HParams Hparams;
-	Hparams.ModelPaths = {
-		//{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_enc_p.onnx)" },
-		//{ L"Embedding", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" },
-		//{ L"DP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_dp.onnx)" },
-		//{ L"SDP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_sdp.onnx)" },
-		//{ L"Flow", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_flow.onnx)" },
-		//{ L"Decoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\BertVits2.4PT\BertVits2.4PT_emb.onnx)" }
-		{ L"Encoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_enc_p.onnx)" },
-		{ L"Embedding", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_emb.onnx)" },
-		{ L"SDP", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_sdp.onnx)" },
-		{ L"Flow", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_flow.onnx)" },
-		{ L"Decoder", LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\Models\SummerPockets\SummerPockets_dec.onnx)" }
-	};
-	Hparams.Parameters = {
-		{ L"HasLength", L"true" },{ L"HasEmotion", L"false" },{ L"HasTone", L"false" },{ L"HasLanguage", L"false" },
-		{ L"HasBert", L"false" },{ L"HasClap", L"false" },{ L"HasSpeaker", L"true" },{ L"EncoderSpeaker", L"false" },
-		{ L"HasVQ", L"false" },{ L"SpeakerCount", L"9" },{ L"GinChannel", L"256" },{ L"VQCodebookSize", L"10" },
-		{ L"EmotionDims", L"1024"},{ L"BertDims", L"2048"},{ L"ClapDims", L"512"},{ L"BertCount", L"1"},
-		{ L"ZinDims", L"2" }
-	};
-	auto Env = OnnxRuntime::CreateEnvironment({});
-	OnnxRuntime::Text2Speech::Vits::SynthesizerTrn SynthesizerTrn(Env,Hparams);
-	std::wstring Symbols = LR"(_,.!?-~…AEINOQUabdefghijkmnoprstuvwyzʃʧʦ↓↑ )";
-	std::unordered_map<std::wstring, Int64> SymbolMap;
-	for (Int64 i = 0; i < Symbols.size(); ++i)
-		SymbolMap[std::wstring() + Symbols[i]] = i;
-	SymbolMap[L"UNK"] = 0;
-	std::wstring Text = LR"(_w_a_t_a_s_h_i_h_a_ _n_a_r_u_s_e_ _s_h_i_r_o_h_a_._)";
-	auto Indices = OnnxRuntime::Text2Speech::CleanedText2Indices(Text,SymbolMap).UnSqueeze(0);
-	auto Audio = SynthesizerTrn({},Indices);
-
-	auto Codec = AvCodec::OpenOutputStream(
-		44100,
-		LR"(D:\VSGIT\MoeVoiceStudio - TTS\Build\Release\test.wav)"
-		);
-
-	Codec.EncodeAll(
-		TemplateLibrary::CRanges(Audio.Data(), Audio.Data() + Audio.ElementCount()),
-		22050
-	);
-
 	return 0;
 
 	/*DragonianLib::SingingVoiceConversion::ReflowSvc Model(
