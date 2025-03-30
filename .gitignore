@@ -377,3 +377,4 @@ FodyWeavers.xsd
 /PythonScript/fairseq
 /PythonScript/model/models
 /PythonScript/model
+/PythonScript/g2pW.onnx
