@@ -78,17 +78,17 @@ public:
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
-	) override;
+	) const override;
 
 	/**
 	 * @brief Get extra information
 	 * @return Pair of lock and extra information
 	 */
-	std::pair<std::unique_lock<std::mutex>, void*> GetExtraInfo() override
+	void* GetExtraInfo() const override
 	{
 		if (!_MyGetExtraInfo)
 			_D_Dragonian_Lib_Not_Implemented_Error;
-		return { std::unique_lock(_MyMutex) ,_MyGetExtraInfo(_MyInstance)};
+		return _MyGetExtraInfo(_MyInstance);
 	}
 
 private:
@@ -96,7 +96,6 @@ private:
 	Plugin::Plugin _MyPlugin = nullptr;
 	G2PApiType _MyConvert = nullptr;
 	G2PGetExtraInfoType _MyGetExtraInfo = nullptr;
-	std::mutex _MyMutex;
 
 protected:
 	void Initialize(const void* Parameter) override;

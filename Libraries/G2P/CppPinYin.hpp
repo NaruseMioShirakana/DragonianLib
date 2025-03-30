@@ -31,6 +31,8 @@ struct CppPinYinConfigs
 {
 	const wchar_t* DictPath;
 	const wchar_t* PinYinDictPath;
+	const wchar_t* Bopomofo2PinyinPath;
+	const wchar_t* RareDict;
 };
 
 struct CppPinYinParameters
@@ -119,12 +121,12 @@ struct CppPinYinParameters
 	/**
 	 * @brief 未知音节 UNK 的音调
 	 */
-	Int64 UNKTone = 0;
+	Int64 UNKTone = -1;
 
 	/**
-	 * @brief 只获取声母或只获取韵母相关拼音风格的返回结果，是否严格遵照《汉语拼音方案》来处理声母和韵母
+	 * @brief 多音字音调
 	 */
-	bool Strict = false;
+	Int64 HeteronymTone = -2;
 
 	/**
 	 * @brief 分词器最大匹配长度（若为-1则设置为词典中最大长度）
@@ -175,7 +177,7 @@ public:
 	CppPinYin& operator=(const CppPinYin&) = default;
 	CppPinYin& operator=(CppPinYin&&) = default;
 
-	std::pair<std::unique_lock<std::mutex>, void*> GetExtraInfo() override;
+	void* GetExtraInfo() const override;
 
 	/**
 	 * @brief 加载用户词典
@@ -189,6 +191,8 @@ public:
 private:
 	Dict::Dict _MyPhrasesDict;
 	Dict::IdsDict _MyPinYinDict;
+	Dict::Dict _MyBopomofo2PinyinDict;
+	Dict::Dict _MyRareDict;
 
 protected:
 	void Initialize(const void* Parameter) override;
@@ -200,6 +204,26 @@ protected:
 		Vector<Int64>& ToneResult,
 		bool NeutralToneWithFive
 	);
+	static std::pair<std::wstring, Int64> StyleCast(
+		CppPinYinParameters::Type Style,
+		const std::wstring& PinYin,
+		bool NeutralToneWithFive
+	);
+	void ConvertChinese(
+		const Vector<std::wstring>& Tokens,
+		Vector<std::wstring>& PinYinResult,
+		Vector<Int64>& ToneResult,
+		const std::wstring& Seg,
+		CppPinYinParameters Parameters
+	) const;
+
+private:
+	void Chinese2PinYin(
+		Vector<std::wstring>& PinYinResult,
+		Vector<Int64>& ToneResult,
+		const std::wstring& Seg,
+		const CppPinYinParameters& Parameters
+	) const;
 
 public:
 	/**
@@ -207,35 +231,68 @@ public:
 	 * @param InputText 输入文本
 	 * @param LanguageID 语言ID（该参数无效，置空即可）
 	 * @param UserParameter 用户参数（指向 CppPinYinParameters）
-	 * @return 转换结果 {拼音, 音调}
+	 * @return 拼音结果 {拼音, 音调}，UserParameter具有以下影响
+	 *  - NeutralToneWithFive 是否使用5标注轻声，如果为true，则轻声音调为5，否则为0
+	 *	- ReplaceASV 是否 将 ü 替换为 v，如果为true，则将 ü 替换为 v，否则保持原样
+	 *	- Style 拼音风格，详见 CppPinYinParameters::Type
+	 *	- NumberStyle 数字风格，详见 CppPinYinParameters::Number
+	 *	- Heteronym 是否启用多音字模式，如果为true，则启用多音字模式（多音字的拼音结果会有多个，以逗号分隔，音调为 HeteronymTone）
+	 *	- ChineseError 当发现词典中不存在的中文时如何处理，详见 CppPinYinParameters::ErrorType
+	 *	- English 如何处理英文，详见 CppPinYinParameters::ErrorType
+	 *	- Symbol 如何处理符号，详见 CppPinYinParameters::ErrorType
+	 *	- Unknown 未知音节处理方式，详见 CppPinYinParameters::ErrorType
+	 *	- UNKTone 非中文音节的音调
+	 *	- MaximumMatch 分词器最大匹配长度（若为-1则设置为词典中最大长度）
 	 */
 	std::pair<Vector<std::wstring>, Vector<Int64>> Convert(
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
-	) override;
+	) const override;
 
 	/**
 	 * @brief 转换文本到拼音和音调
 	 * @param InputText 输入文本
 	 * @param LanguageID 语言ID（该参数无效，置空即可）
 	 * @param UserParameter 用户参数（指向 CppPinYinParameters）
-	 * @return 拼音结果 {拼音, 音调}
+	 * @return 拼音结果 {拼音, 音调}，UserParameter具有以下影响
+	 *  - NeutralToneWithFive 是否使用5标注轻声，如果为true，则轻声音调为5，否则为0
+	 *	- ReplaceASV 是否 将 ü 替换为 v，如果为true，则将 ü 替换为 v，否则保持原样
+	 *	- Style 拼音风格，详见 CppPinYinParameters::Type
+	 *	- NumberStyle 数字风格，详见 CppPinYinParameters::Number
+	 *	- Heteronym 是否启用多音字模式，如果为true，则启用多音字模式（多音字的拼音结果会有多个，以逗号分隔，音调为 HeteronymTone）
+	 *	- ChineseError 当发现词典中不存在的中文时如何处理，详见 CppPinYinParameters::ErrorType
+	 *	- English 如何处理英文，详见 CppPinYinParameters::ErrorType
+	 *	- Symbol 如何处理符号，详见 CppPinYinParameters::ErrorType
+	 *	- Unknown 未知音节处理方式，详见 CppPinYinParameters::ErrorType
+	 *	- UNKTone 非中文音节的音调
+	 *	- MaximumMatch 分词器最大匹配长度（若为-1则设置为词典中最大长度）
 	 */
 	std::pair<Vector<std::wstring>, Vector<Int64>> PinYin(
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
-	);
+	) const;
 
 	/**
-	 * @brief 分词
+	 * @brief 按照文本类别分词
 	 * @param InputText 输入文本
 	 * @return 分词结果
 	 */
 	Vector<Segment> Seg(
 		const std::wstring& InputText
-	);
+	) const;
+
+	/**
+	 * @brief 使用词典分词
+	 * @param Seg 分词结果
+	 * @param Parameters 用户参数
+	 * @return 分词结果
+	 */
+	Vector<std::wstring> Tokenize(
+		const std::wstring& Seg,
+		const CppPinYinParameters& Parameters
+	) const;
 
 	/**
 	 * @brief 预分词 (默认为将输入文本按照换行符空格和数字进行分割）
@@ -244,7 +301,7 @@ public:
 	 */
 	virtual Vector<Segment> PreSeg(
 		const std::wstring& InputText
-	);
+	) const;
 
 	/**
 	 * @brief 分词 (默认为将输入文本按照语言和标点符号进行分割）
@@ -253,7 +310,7 @@ public:
 	 */
 	virtual Vector<Segment> MidSeg(
 		Vector<Segment>&& InputText
-	);
+	) const;
 
 	/**
 	 * @brief 后分词 (默认不进行任何处理）
@@ -262,12 +319,32 @@ public:
 	 */
 	virtual Vector<Segment> PostSeg(
 		Vector<Segment>&& InputText
-	);
+	) const;
 
-	virtual Vector<std::wstring> ConvertSegment(
+	virtual std::pair<Vector<std::wstring>, std::optional<Vector<Int64>>> ConvertSegment(
 		const std::wstring& Seg,
 		const CppPinYinParameters& Parameters
-	);
+	) const;
+
+	std::wstring SearchRare(
+		const std::wstring& Word
+	) const;
+
+	std::wstring Bopomofo2Pinyin(
+		const std::wstring& Bopomofo
+	) const;
+
+	std::wstring Bopomofo2Pinyin(
+		const Vector<std::wstring>& Bopomofo
+	) const;
+
+	const Vector<std::wstring>& SearchCommon(
+		const std::wstring& Word
+	) const;
+
+	std::wstring SearchChar(
+		const std::wstring& Char
+	) const;
 };
 
 

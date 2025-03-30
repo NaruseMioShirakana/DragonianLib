@@ -195,7 +195,7 @@ class Dict
 {
 public:
 	using DictType = std::wstring;
-	Dict() = delete;
+	Dict() = default;
 	/**
 	 * @brief Construct a new Dict object
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
@@ -265,7 +265,7 @@ class IdsDict
 {
 public:
 	using DictType = Int64;
-	IdsDict() = delete;
+	IdsDict() = default;
 	/**
 	 * @brief Construct a new Dict object
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text

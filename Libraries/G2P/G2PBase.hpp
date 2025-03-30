@@ -54,13 +54,13 @@ public:
 		const std::wstring& InputText,
 		const std::string& LanguageID,
 		const void* UserParameter = nullptr
-	) = 0;
+	) const = 0;
 
 	/**
 	 * @brief Get extra information
 	 * @return Pair of lock and extra information
 	 */
-	virtual std::pair<std::unique_lock<std::mutex>, void*> GetExtraInfo() = 0;
+	virtual void* GetExtraInfo() const = 0;
 
 protected:
 	void Construct(const void* Parameter);

@@ -506,12 +506,18 @@ Dict::Dict(
 	for (const auto& itr : PhoneJson.GetMemberArray())
 	{
 		std::wstring Key = UTF8ToWideString(itr.first);
+		_MyDict[Key] = Vector<std::wstring>();
 		if (static_cast<Int64>(Key.size()) > MaximumLength)
 			MaximumLength = static_cast<Int64>(Key.size());
+		if (itr.second.IsString())
+		{
+			_MyDict[Key].EmplaceBack(UTF8ToWideString(itr.second.GetString()));
+			continue;
+		}
 		if (!itr.second.IsArray())
 			_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
 		const auto Value = itr.second.GetArray();
-		_MyDict[Key] = Vector<std::wstring>();
+		
 		for (const auto& it : Value)
 		{
 			std::wstring CValue;

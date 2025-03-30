@@ -28,9 +28,8 @@ std::pair<Vector<std::wstring>, Vector<Int64>> BasicG2P::Convert(
 	const std::wstring& InputText,
 	const std::string& LanguageID,
 	const void* UserParameter
-)
+) const
 {
-	std::lock_guard Lock(_MyMutex);
 	Vector<std::wstring> Result1;
 	Vector<Int64> Result2;
 	auto PhonemeList = _MyConvert(

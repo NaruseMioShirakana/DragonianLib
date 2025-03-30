@@ -438,7 +438,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplReduceArgMaxUnary(
 			*(_Dest + _IndexA) = _ResultType(Arg);
 		};
 
-	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
+	auto LoopFn = [=](_ResultType*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
 		{
 			DoubleTensorLoop<_ReduceDim, 8>(
 				0, 0,
@@ -491,7 +491,7 @@ void OperatorsBase<_Type, Device::CPU>::ImplReduceArgMinUnary(
 			}
 			*(_Dest + _IndexA) = _ResultType(Arg);
 		};
-	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
+	auto LoopFn = [=](_ResultType*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
 		{
 			DoubleTensorLoop<_ReduceDim, 8>(
 				0, 0,

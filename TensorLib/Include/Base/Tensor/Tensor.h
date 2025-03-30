@@ -2574,10 +2574,10 @@ public:
 	decltype(auto) LogSumExp(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body(LogSumExp, LogSumExp);
 
 	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>>>
-	decltype(auto) ArgMax(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body(ArgMax, ArgMax, RetType);
+	decltype(auto) ArgMax(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body_T(ArgMax, ArgMax, RetType);
 
 	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>>>
-	decltype(auto) ArgMin(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body(ArgMin, ArgMin, RetType);
+	decltype(auto) ArgMin(SizeType _Axis) const _D_Dragonian_Lib_Operator_Reduce_Function_Body_T(ArgMin, ArgMin, RetType);
 
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>>>
 	decltype(auto) CumSum(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumSum);

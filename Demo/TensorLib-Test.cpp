@@ -39,21 +39,33 @@ void WithTimer(const Fn& fn)
 	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 
-#include "Libraries/AvCodec/AvCodec.h"
-#include "Libraries/G2P/CppPinYin.hpp"
-#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
-#include "OnnxLibrary/SingingVoiceConversion/Util/Base.hpp"
+//#include "Libraries/AvCodec/AvCodec.h"
+#include "OnnxLibrary/G2P/G2PW.hpp"
 	
 int main()
 {
+	std::wcout.imbue(std::locale("zh_CN"));
 	using namespace DragonianLib;
 
+	const auto Env = OnnxRuntime::CreateEnvironment({});
 	G2P::CppPinYinConfigs Configs{
-		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\pypinyin_dict.json)",
-		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\pypinyin_pinyin_dict.json)"
+		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_dict.json)",
+		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_pinyin_dict.json)",
+		LR"(C:\DataSpace\libsvc\PythonScript\bopomofo_to_pinyin_wo_tune_dict.json)",
+		LR"(C:\DataSpace\libsvc\PythonScript\char_bopomofo_dict.json)"
 	};
-	G2P::CppPinYin PinYin(
-		&Configs
+	G2P::G2PWModelHParams Params{
+		&Configs,
+		LR"(C:\DataSpace\libsvc\PythonScript\POLYPHONIC_CHARS.txt)",
+		LR"(C:\DataSpace\libsvc\PythonScript\tokens.txt)",
+		LR"(C:\DataSpace\libsvc\PythonScript\G2PW.onnx)",
+		&Env,
+		&_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger(),
+		512
+	};
+
+	G2P::G2PWModel PinYin(
+		&Params
 	);
 
 	G2P::CppPinYinParameters Parameters;
@@ -61,11 +73,16 @@ int main()
 	Parameters.NumberStyle = G2P::CppPinYinParameters::SPLITCHINESE;
 	Parameters.Heteronym = true;
 
+	auto Ph = PinYin.SearchRare(L"〇");
+
 	auto [Phoneme, Tone] = PinYin.Convert(
-		L"我的名字是田所浩二，代号是野兽先辈，专属数字是114514和1919810！",
+		L"〇我的名字是田所浩二，代号是野兽先辈，专属数字是114514和1919810！",
 		"zh",
 		&Parameters
 	);
+
+	for (size_t i = 0; i < Phoneme.Size(); ++i)
+		std::wcout << Phoneme[i] << "  <-  " << Tone[i] << '\n';
 
 	return 0;
 

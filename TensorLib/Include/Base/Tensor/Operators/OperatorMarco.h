@@ -399,7 +399,7 @@ template <typename _CurValueType = ValueType, size_t _TRank, typename = std::ena
 } \
 struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 
-#define _D_Dragonian_Lib_Operator_Reduce_Function_Body(_FunctionName, _Function, ...) \
+#define _D_Dragonian_Lib_Operator_Reduce_Function_Body(_FunctionName, _Function) \
 { \
 	if constexpr (_NRank == 1) \
 		return UnSqueeze(0).template _FunctionName##<false>(-1).Squeeze(0); \
@@ -413,7 +413,37 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 		auto Ret = Tensor<_TensorType, _NRank - 1, _MyDevice>::New(OutShape, _MyAllocator); \
 		Ret.WaitingAsResult(); \
 		auto RetView = Ret.UnSqueeze(-1); \
-		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplReduce##_Function##Unary<__VA_ARGS__> \
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplReduce##_Function##Unary \
+		( \
+			RetView.Data(), \
+			RetView.GetDefaultOperatorParameter(), \
+			TensorTmp.Data(), \
+			TensorTmp.GetDefaultOperatorParameter(), \
+			RetView.IsContinuous() && TensorTmp.IsContinuous() \
+		); \
+		if constexpr (KeepDim) \
+			return RetView; \
+		else \
+			return Ret; \
+	} \
+} \
+struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
+
+#define _D_Dragonian_Lib_Operator_Reduce_Function_Body_T(_FunctionName, _Function, _RetType) \
+{ \
+	if constexpr (_NRank == 1) \
+		return UnSqueeze(0).template _FunctionName##<false>(-1).Squeeze(0); \
+	else \
+	{ \
+		_Axis = CalcIndex(_Axis, Rank()); \
+		auto TensorTmp = AxisFromTo(_Axis, -1); \
+		TensorTmp.WaitingAsArgument(); \
+		Dimensions<_NRank - 1> OutShape; \
+		OutShape.Assign(TensorTmp.Shape().Data()); \
+		auto Ret = Tensor<_RetType, _NRank - 1, _MyDevice>::New(OutShape, _MyAllocator); \
+		Ret.WaitingAsResult(); \
+		auto RetView = Ret.UnSqueeze(-1); \
+		Operators::OperatorsBase<ValueType, _MyDevice>::ImplReduce##_Function##Unary \
 		( \
 			RetView.Data(), \
 			RetView.GetDefaultOperatorParameter(), \
