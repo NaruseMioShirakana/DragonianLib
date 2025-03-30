@@ -301,12 +301,20 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 			{
 				if (Token == L"UNK")
 				{
-					auto SingleToken = _MyPinYinDict[SegText[0]];
-					if (SingleToken != L"UNK")
+					std::match_results<std::wstring_view::const_iterator> Match;
+					std::regex_search(
+						SegText.begin(),
+						SegText.end(),
+						Match,
+						PreDefinedRegex::ChineseRegex
+					);
+					auto Word = Match.str();
+					auto CurToken = _MyPinYinDict[static_cast<Int64>(U16Word2Unicode(Word))];
+					if (CurToken != L"UNK")
 					{
 						std::regex_token_iterator TokenIter(
-							SingleToken.begin(),
-							SingleToken.end(),
+							CurToken.begin(),
+							CurToken.end(),
 							HeteronymRe,
 							-1
 						);

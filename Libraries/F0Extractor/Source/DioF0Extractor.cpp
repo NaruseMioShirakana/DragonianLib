@@ -57,7 +57,7 @@ Tensor<Float64, 2, Device::CPU> DioF0Extractor::Dio(
 Tensor<Float32, 2, Device::CPU> DioF0Extractor::ExtractF0(
 	const Tensor<Float64, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
-)
+) const
 {
 	return Dio(PCMData.Continuous().Evaluate(), Params).Cast<Float32>().Evaluate();
 }

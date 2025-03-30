@@ -35,12 +35,13 @@ _D_Dragonian_Lib_F0_Extractor_Header
  */
 struct F0ExtractorParams
 {
-	long SamplingRate = 16000; ///< Sampling rate
-	long HopSize = 320; ///< Hop size
-	long F0Bins = 256; ///< Number of bins for F0
-	long WindowSize = 2048; ///< Window size
-	double F0Max = 1100.0; ///< Maximum F0
-	double F0Min = 50.0; ///< Minimum F0
+	Long SamplingRate = 16000; ///< Sampling rate
+    Long HopSize = 320; ///< Hop size
+    Long F0Bins = 256; ///< Number of bins for F0
+    Long WindowSize = 2048; ///< Window size
+	Double F0Max = 1100.0; ///< Maximum F0
+    Double F0Min = 50.0; ///< Minimum F0
+	Float Threshold = 0.03f; ///< F0 threshold
 	void* UserParameter = nullptr; ///< User parameter
 };
 
@@ -69,7 +70,7 @@ public:
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float64, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-    );
+    ) const;
 
     /**
      * @brief Extract F0 from PCM data
@@ -80,7 +81,7 @@ public:
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float32, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-    );
+    ) const;
 
     /**
      * @brief Extract F0 from PCM data
@@ -91,22 +92,22 @@ public:
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Int16, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-    );
+    ) const;
 
     Tensor<Float32, 2, Device::CPU> operator()(
         const Tensor<Float64, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-        );
+        ) const;
 
 	Tensor<Float32, 2, Device::CPU> operator()(
 		const Tensor<Float32, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-		);
+		) const;
 
 	Tensor<Float32, 2, Device::CPU> operator()(
 		const Tensor<Int16, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-		);
+		) const;
 
 };
 

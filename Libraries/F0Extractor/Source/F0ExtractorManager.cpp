@@ -112,6 +112,10 @@ const std::vector<std::wstring>& GetF0ExtractorList()
 	return _GlobalF0ExtractorsList;
 }
 
+#ifdef DRAGONIANLIB_ONNXRT_LIB
+extern void InitNetPE();
+#endif
+
 struct Init
 {
 	Init()
@@ -132,6 +136,9 @@ struct Init
 			}
 		);
 		RegisterF0Extractors(GetCurrentFolder() + L"/Plugins/F0Extractor");
+#ifdef DRAGONIANLIB_ONNXRT_LIB
+		InitNetPE();
+#endif
 	}
 };
 Init _Valdef_Init;

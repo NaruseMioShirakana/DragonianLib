@@ -22,40 +22,10 @@
  */
 
 #pragma once
-#include "OnnxLibrary/Base/OrtBase.hpp"
-#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
+#include "OnnxLibrary/F0Extractor/FCPE.hpp"
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-class RMVPEF0Extractor : public BaseF0Extractor, OnnxRuntime::OnnxModelBase<RMVPEF0Extractor>
-{
-public:
-	RMVPEF0Extractor(
-        const OnnxRuntime::OnnxRuntimeEnvironment& _Environment,
-        const std::wstring& _ModelPath,
-        const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()
-    );
-	~RMVPEF0Extractor() override = default;
-
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
-        const Tensor<Float64, 2, Device::CPU>& PCMData,
-        const F0ExtractorParams& Params
-    );
-
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
-        const Tensor<Float32, 2, Device::CPU>& PCMData,
-        const F0ExtractorParams& Params
-    );
-
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
-        const Tensor<Int16, 2, Device::CPU>& PCMData,
-        const F0ExtractorParams& Params
-    );
-
-	RMVPEF0Extractor(const RMVPEF0Extractor&) = default;
-	RMVPEF0Extractor(RMVPEF0Extractor&&) = default;
-	RMVPEF0Extractor& operator=(const RMVPEF0Extractor&) = default;
-	RMVPEF0Extractor& operator=(RMVPEF0Extractor&&) = default;
-};
+using RMVPE = FCPE;
 
 _D_Dragonian_Lib_F0_Extractor_End

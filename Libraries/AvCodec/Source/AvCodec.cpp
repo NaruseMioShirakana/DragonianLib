@@ -1003,12 +1003,20 @@ namespace AvCodec
 		return Frame->data;
 	}
 
-	int AudioFrame::GetLinesize() const
+	int AudioFrame::GetLinesize(int i) const
 	{
 		auto Frame = (AVFrame*)_MyFrame.get();
 		if (!Frame || Frame->nb_samples == 0 || Frame->linesize[0] == 0)
 			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
-		return *Frame->linesize;
+		return Frame->linesize[i];
+	}
+
+	int AudioFrame::GetSampleCount() const
+	{
+		auto Frame = (AVFrame*)_MyFrame.get();
+		if (!Frame || Frame->nb_samples == 0)
+			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
+		return Frame->nb_samples;
 	}
 
 	AudioFrame& AudioFrame::SetDataPointer(uint8_t** _Data, ULong _BufferCount)

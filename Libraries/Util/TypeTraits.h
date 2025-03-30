@@ -771,6 +771,9 @@ template <typename _Type1, typename... _Type>
 concept NotAnyType = !_D_Dragonian_Lib_Type_Traits_Namespace IsAnyType<_Type1, _Type...>;
 
 template <typename _Type>
+concept IsInteger = _D_Dragonian_Lib_Type_Traits_Namespace IsIntegerValue<_Type>;
+
+template <typename _Type>
 concept CouldIndex = requires(_Type & _Val)
 {
 	{ _Val[0] };
@@ -795,6 +798,17 @@ template <typename _Type>
 concept HasBackDecrement = requires(_Type & _Val)
 {
 	{ _Val-- } -> IsType<_Type>;
+};
+
+template <typename _Type>
+concept HasIteratorAddition = requires(_Type & _Val)
+{
+	{ _Val + _Val } -> IsInteger;
+};
+template <typename _Type>
+concept HasIteratorSubtraction = requires(_Type & _Val)
+{
+	{ _Val - _Val } -> IsInteger;
 };
 
 template <typename _Type>
@@ -863,5 +877,9 @@ concept HasHRange = requires(_Type & _Val)
 };
 template <typename _Type>
 concept HasRange = HasLRange<_Type> || HasHRange<_Type>;
+
+template <typename _IterTypeA, typename _IterTypeB>
+concept IsSameIterator = (IsIterator<_IterTypeA> && IsIterator<_IterTypeB>) &&
+(IsType<_IterTypeA, _IterTypeB> || IsSameTypeValue<RemoveARPCVType<decltype(*InstanceOf<_IterTypeA>())>, RemoveARPCVType<decltype(*InstanceOf<_IterTypeB>())>>);
 
 _D_Dragonian_Lib_Type_Traits_Namespace_End

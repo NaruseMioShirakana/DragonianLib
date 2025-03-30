@@ -99,152 +99,124 @@ decltype(auto) End(_Type&& _Container)
 		return std::forward<_Type>(_Container).End();
 }
 
-template <typename _IteratorType, typename = std::enable_if_t<TypeTraits::IsIterator<_IteratorType>>>
-class IteratorRanges
+template <typename _IteratorTypeBeg, typename _IteratorTypeEnd, typename = std::enable_if_t<
+	TypeTraits::IsSameIterator<_IteratorTypeBeg, _IteratorTypeEnd>>>
+class RangesWrp
 {
 public:
-	using _ValueType = decltype(*TypeTraits::InstanceOf<_IteratorType>());
+	using MyIterTypeBeg = _IteratorTypeBeg;
+	using MyIterTypeEnd = _IteratorTypeEnd;
+	using MyRefType = decltype(*TypeTraits::InstanceOf<MyIterTypeBeg>());
+	using MyValueType = TypeTraits::RemoveReferenceType<MyRefType>;
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges() = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges(const _IteratorType& _Begin, const _IteratorType& _End) : _MyBegin(_Begin), _MyEnd(_End) {}
-	_D_Dragonian_Lib_Constexpr_Force_Inline ~IteratorRanges() = default;
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges(const IteratorRanges&) = default;
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges(IteratorRanges&&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp() = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline ~RangesWrp() = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp(const RangesWrp&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp(RangesWrp&&) = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp(const MyIterTypeBeg& _Begin, const MyIterTypeEnd& _End)
+		: _MyBegin(_Begin), _MyEnd(_End)
+	{
+		if constexpr (TypeTraits::HasLessOperator<MyIterTypeBeg> && TypeTraits::HasLessOperator<MyIterTypeEnd>)
+			if (_MyEnd < _MyBegin)
+				_D_Dragonian_Lib_Throw_Exception("End could not be less than Begin!");
+	}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const { return &*_MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const { return &*_MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const { return _MyEnd; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const noexcept
+	{
+		return _MyBegin;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const noexcept
+	{
+		return _MyBegin;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const noexcept
+	{
+		return _MyBegin;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const noexcept
+	{
+		return _MyEnd;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const noexcept
+	{
+		return _MyBegin;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const noexcept
+	{
+		return _MyEnd;
+	}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const { return _MyEnd - _MyBegin; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const noexcept
+	{
+		if constexpr (TypeTraits::HasIntegerSubtraction<MyIterTypeBeg>)
+			return static_cast<UInt64>(_MyEnd - _MyBegin);
+		else if constexpr (TypeTraits::HasFrontIncrement<MyIterTypeBeg>)
+		{
+			auto _Tmp = _MyBegin;
+			UInt64 _Size = 0;
+			while (_Tmp != _MyEnd)
+			{
+				++_Tmp;
+				++_Size;
+			}
+			return _Size;
+		}
+		else 			
+			_D_Dragonian_Lib_Throw_Exception("Could not get size!");
+	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const
 	{
-		if constexpr (TypeTraits::CouldIndex<_IteratorType>)
+		if constexpr (TypeTraits::CouldIndex<MyIterTypeBeg>)
 			return _MyBegin[_Index];
-		else
+		else if constexpr (TypeTraits::HasIntegerAddition<MyIterTypeBeg>)
 			return *(_MyBegin + _Index);
+		else if constexpr (TypeTraits::HasFrontIncrement<MyIterTypeBeg>)
+		{
+			auto _Tmp = _MyBegin;
+			for (size_t i = 0; i < _Index; ++i)
+				++_Tmp;
+			return *_Tmp;
+		}
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could not index!");
 	}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& operator=(IteratorRanges&& _Right) = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& operator=(const IteratorRanges& _Right) = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(RangesWrp&& _RRight) noexcept = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(const RangesWrp& _Right) = delete;
 
-	template <typename _IteratorType2, typename = std::enable_if_t<
-		TypeTraits::IsIterator<_IteratorType2>&& std::is_assignable_v<_ValueType, decltype(*TypeTraits::InstanceOf<_IteratorType2>())>>>
-		_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& Assign(const IteratorRanges<_IteratorType2>& _Right)
-	{
-		if (Size() != _Right.Size())
-			_D_Dragonian_Lib_Throw_Exception("Size not match!");
-		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right[i];
-		return *this;
-	}
-
-	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_ValueType, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline IteratorRanges& operator=(const _Type2& _Right)
-	{
-		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right;
-		return *this;
-	}
-
-protected:
-	_IteratorType _MyBegin;
-	_IteratorType _MyEnd;
-};
-
-template <typename _Type>
-class ConstantRanges
-{
-public:
-	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges() = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges(const _Type* _Begin, const _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const { return _MyEnd; }
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const { return _MyEnd - _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const { return _MyBegin[_Index]; }
-
-protected:
-	const _Type* _MyBegin = nullptr;
-	const _Type* _MyEnd = nullptr;
-};
-
-template <typename _Type>
-class MutableRanges
-{
-public:
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges() = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline ~MutableRanges() = default;
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges(const MutableRanges&) = default;
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges(MutableRanges&&) = default;
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges(_Type* _Begin, _Type* _End) : _MyBegin(_Begin), _MyEnd(_End) {}
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) data() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const { return _MyEnd; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const { return _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const { return _MyEnd; }
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const { return _MyEnd - _MyBegin; }
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const { return _MyBegin[_Index]; }
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(MutableRanges&& _Right) = delete;
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline operator ConstantRanges<_Type>() const { return ConstantRanges<_Type>(_MyBegin, _MyEnd); }
-	_D_Dragonian_Lib_Constexpr_Force_Inline ConstantRanges<_Type> C() const { return ConstantRanges<_Type>(_MyBegin, _MyEnd); }
-
-	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const MutableRanges<_Type2>& _Right)
-	{
-		if (Size() != _Right.Size())
-			_D_Dragonian_Lib_Throw_Exception("Size not match!");
-		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right[i];
-		return *this;
-	}
-
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const MutableRanges& _Right)
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& Assign(const RangesWrp& _Right)
 	{
 		if (this == &_Right)
 			return *this;
-
 		if (Size() != _Right.Size())
 			_D_Dragonian_Lib_Throw_Exception("Size not match!");
 		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right[i];
+			operator[](i) = _Right[i];
 		return *this;
 	}
 
-	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const ConstantRanges<_Type2>& _Right)
+	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<MyValueType, _Type2>>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(const _Type2& _Right)
 	{
-		if (Size() != _Right.Size())
-			_D_Dragonian_Lib_Throw_Exception("Size not match!");
 		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right[i];
+			operator[](i) = static_cast<MyValueType>(_Right);
 		return *this;
 	}
 
-	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _Type2>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline MutableRanges& operator=(const _Type2& _Right)
+	RangesWrp<const MyValueType*, const MyValueType*> RawConst() const
 	{
-		for (size_t i = 0; i < Size(); ++i)
-			_MyBegin[i] = _Right;
-		return *this;
+		return RangesWrp<const MyValueType*, const MyValueType*>(_MyBegin, _MyEnd);
 	}
 
 protected:
-	_Type* _MyBegin = nullptr;
-	_Type* _MyEnd = nullptr;
+	MyIterTypeBeg _MyBegin = nullptr;
+	MyIterTypeEnd _MyEnd = nullptr;
 };
+
+template <typename _ValueType>
+using ConstantRanges = RangesWrp<const _ValueType*, const _ValueType*>;
+template <typename _ValueType>
+using MutableRanges = RangesWrp<_ValueType*, _ValueType*>;
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
 class NumberRangesIterator
@@ -306,7 +278,7 @@ private:
 
 template <typename _Type, typename _IntegerType = Int64,
 	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<std::ranges::range<_Type>>>
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 class MutableEnumrate
 {
 public:
@@ -320,7 +292,7 @@ private:
 
 template <typename _Type, typename _IntegerType = Int64,
 	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<std::ranges::range<_Type>>>
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 class ConstEnumrate
 {
 public:
@@ -332,9 +304,23 @@ private:
 	const _Type* _MyValue;
 };
 
+template <typename _Type, typename _IntegerType = Int64,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+class ObjectiveEnumrate
+{
+public:
+	ObjectiveEnumrate() = delete;
+	ObjectiveEnumrate(_Type&& _Value) : _MyValue(std::move(_Value)) {}
+	decltype(auto) begin() const { return EnumratedRangesIterator(_MyValue->begin(), _IntegerType(0)); }
+	decltype(auto) end() const { return EnumratedRangesIterator(_MyValue->end(), _IntegerType(0)); }
+private:
+	_Type _MyValue;
+};
+
 template <typename _IntegerType = Int64, typename _Type,
 	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<std::ranges::range<_Type>>>
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 decltype(auto) Enumrate(_Type& _Value)
 {
 	return MutableEnumrate<_Type, _IntegerType>(_Value);
@@ -342,62 +328,30 @@ decltype(auto) Enumrate(_Type& _Value)
 
 template <typename _IntegerType = Int64, typename _Type,
 	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<std::ranges::range<_Type>>>
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 decltype(auto) Enumrate(const _Type& _Value)
 {
 	return ConstEnumrate<_Type, _IntegerType>(_Value);
 }
 
-template <typename _Type>
-decltype(auto) Ranges(const _Type* _Begin, const _Type* _End)
+template <typename _IntegerType = Int64, typename _Type,
+	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
+	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+decltype(auto) Enumrate(_Type&& _Value)
 {
-	return ConstantRanges<_Type>(_Begin, _End);
+	return ObjectiveEnumrate<_Type, _IntegerType>(std::forward<_Type>(_Value));
 }
 
-template <typename _Type>
-decltype(auto) CRanges(const _Type* _Begin, const _Type* _End)
+template <typename _IteratorTypeBeg, typename _IteratorTypeEnd>
+decltype(auto) Ranges(_IteratorTypeBeg _Begin, _IteratorTypeEnd _End)
 {
-	return ConstantRanges<_Type>(_Begin, _End);
-}
-
-template <typename _Type>
-decltype(auto) Ranges(_Type* _Begin, _Type* _End)
-{
-	return MutableRanges<_Type>(_Begin, _End);
+	return RangesWrp(_Begin, _End);
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) ORanges(_Type&& _Container)
+decltype(auto) Ranges(_Type&& _Rng)
 {
-	return IteratorRanges(Begin(std::forward<_Type>(_Container)), End(std::forward<_Type>(_Container)));
-}
-
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) Ranges(_Type&& _Container)
-{
-	return Ranges(&*Begin(std::forward<_Type>(_Container)), &*End(std::forward<_Type>(_Container)));
-}
-
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) CRanges(_Type&& _Container)
-{
-	return ConstantRanges(&*Begin(std::forward<_Type>(_Container)), &*End(std::forward<_Type>(_Container)));
-}
-
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
-decltype(auto) CBRanges(_Type&& _Container)
-{
-	return ConstantRanges((const Byte*)&*Begin(std::forward<_Type>(_Container)), (const Byte*)&*End(std::forward<_Type>(_Container)));
-}
-
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>&& TypeTraits::IsPointerLike<decltype(Begin(TypeTraits::InstanceOf<_Type>()))>>>
-decltype(auto) ByteRanges(const _Type& _Container)
-{
-	using ValueType = decltype(*Begin(_Container));
-	const auto _Begin = reinterpret_cast<const Byte*>(&*Begin(_Container));
-	const auto _Size = End(_Container) - Begin(_Container);
-	const auto _End = _Begin + sizeof(ValueType) * _Size;
-	return ConstantRanges<Byte>(_Begin, _End);
+	return RangesWrp(Begin(std::forward<_Type>(_Rng)), End(std::forward<_Type>(_Rng)));
 }
 
 template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>

@@ -174,4 +174,6 @@ _Type ToUpperString(const _Type& _String)
 
 std::wstring Number2Chinese(const std::wstring& _Number);
 
+UInt32 U16Word2Unicode(const std::wstring& input);
+
 _D_Dragonian_Lib_Space_End

@@ -5,7 +5,7 @@ _D_Dragonian_Lib_F0_Extractor_Header
 Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 	const Tensor<Float64, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
-)
+) const
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
 }
@@ -13,7 +13,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 	const Tensor<Float32, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
-)
+) const
 {
 	return ExtractF0(PCMData.Cast<Float64>(), Params);
 }
@@ -21,12 +21,12 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 	const Tensor<Int16, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
-)
+) const
 {
 	return ExtractF0(PCMData.Cast<Float64>() / 32768., Params);
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();
@@ -48,7 +48,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32
 #endif
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();
@@ -70,7 +70,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64
 #endif
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();

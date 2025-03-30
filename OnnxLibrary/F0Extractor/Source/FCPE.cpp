@@ -3,10 +3,20 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(
+FCPE::FCPE(
+	const void* _ModelHParams
+) : OnnxModelBase(*(const OnnxRuntime::OnnxRuntimeEnvironment*)((const PEModelHParams*)_ModelHParams)->Enviroment,
+	((const PEModelHParams*)_ModelHParams)->ModelPath,
+	*(const DragonianLib::DLogger*)((const PEModelHParams*)_ModelHParams)->Logger),
+	_MySamplingRate(((const PEModelHParams*)_ModelHParams)->SamplingRate)
+{
+
+}
+
+Tensor<Float32, 2, Device::CPU> FCPE::ExtractF0(
 	const Tensor<Float32, 2, Device::CPU>& PCMData,
 	const F0ExtractorParams& Params
-)
+) const
 {
 	if (PCMData.Null())
 		_D_Dragonian_Lib_Throw_Exception("PCMData is Null!");
@@ -14,10 +24,10 @@ Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(
 		_D_Dragonian_Lib_Throw_Exception("HopSize Too Low!");
 
 	auto AudioCont = PCMData.View();
-	if (Params.SamplingRate != 16000)
+	if (Params.SamplingRate != _MySamplingRate)
 		AudioCont.Interpolate<Operators::InterpolateMode::Linear>(
 			IDim(1),
-			IScale(16000. / double(Params.SamplingRate))
+			IScale(double(_MySamplingRate) / double(Params.SamplingRate))
 		).Evaluate();
 
 	OnnxRuntime::InputTensorsType Inputs;
@@ -35,6 +45,21 @@ Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(
 			)
 		);
 	);
+
+	constexpr Int64 TSShape = 1;
+	Float Threshold = Params.Threshold;
+	if (_MyInputCount == 2)
+	{
+		Inputs.Emplace(
+			Ort::Value::CreateTensor(
+				*_MyMemoryInfo,
+				&Threshold,
+				1,
+				&TSShape,
+				1
+			)
+		);
+	}
 
 	OnnxRuntime::OrtTuple Outputs;
 
@@ -59,23 +84,30 @@ Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(
 	);
 
 	auto InputCount = PCMData.Size(1);
-	auto TargetLength = (size_t)ceil(double(InputCount) / double(Params.HopSize));
+	auto TargetLength = (Int64)ceil(double(InputCount) / double(Params.HopSize));
 	if (Output.Size(1) != TargetLength)
-		Output = Output.Interpolate<Operators::InterpolateMode::Linear>(
-			IDim(1),
-			IScale(double(TargetLength) / double(Output.Size(1))
-			)
+		_D_Dragonian_Lib_Rethrow_Block(
+			Output = Output.Interpolate<Operators::InterpolateMode::Linear>(
+				IDim(1),
+				IScale(double(TargetLength) / double(Output.Size(1)))
+			).Evaluate();
 		);
 
 	return Output;
 }
 
-Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> FCPE::ExtractF0(
+	const Tensor<Float64, 2, Device::CPU>& PCMData,
+	const F0ExtractorParams& Params
+) const
 {
 	return ExtractF0(PCMData.Cast<Float32>(), Params);
 }
 
-Tensor<Float32, 2, Device::CPU> FCPEF0Extractor::ExtractF0(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> FCPE::ExtractF0(
+	const Tensor<Int16, 2, Device::CPU>& PCMData,
+	const F0ExtractorParams& Params
+) const
 {
 	return ExtractF0(PCMData.Cast<Float32>(), Params);
 }

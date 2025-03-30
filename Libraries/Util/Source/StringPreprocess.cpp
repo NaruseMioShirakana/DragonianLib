@@ -187,4 +187,33 @@ std::wstring Number2Chinese(const std::wstring& _Number)
 	return StrRtn;
 }
 
+UInt32 U16Word2Unicode(const std::wstring& input)
+{
+	if (input.empty())
+		_D_Dragonian_Lib_Throw_Exception("Invalid UTF-16 sequence: too short.");
+	if constexpr (sizeof(wchar_t) == 4)
+		return static_cast<UInt32>(input[0]);
+	else
+	{
+		if (input.length() > 2)
+			_D_Dragonian_Lib_Throw_Exception("Invalid UTF-16 sequence: too long.");
+		for (size_t i = 0; i < input.size(); ++i) {
+			wchar_t ch = input[i];
+			if (ch >= 0xD800 && ch <= 0xDBFF)
+			{
+				if (i + 1 < input.size()) 
+				{
+					wchar_t ch2 = input[i + 1];
+					if (ch2 >= 0xDC00 && ch <= 0xDFFF)
+						return ((ch - 0xD800) << 10) + (ch2 - 0xDC00) + 0x10000;
+					_D_Dragonian_Lib_Throw_Exception("Invalid UTF-16 sequence: missing low surrogate");
+				}
+				_D_Dragonian_Lib_Throw_Exception("Invalid UTF-16 sequence: missing low surrogate");
+			}
+			return static_cast<UInt32>(ch);
+		}
+		_D_Dragonian_Lib_Throw_Exception("Invalid UTF-16 sequence: too short.");
+	}
+}
+
 _D_Dragonian_Lib_Space_End

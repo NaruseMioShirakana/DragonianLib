@@ -258,7 +258,9 @@ namespace AvCodec
 
 		const uint8_t* const* GetDataPointerArray() const;
 
-		int GetLinesize() const;
+		int GetLinesize(int i) const;
+
+		int GetSampleCount() const;
 
 		AudioFrame& SetDataPointer(uint8_t** _Data, ULong _BufferCount);
 
@@ -567,7 +569,7 @@ namespace AvCodec
 								{
 									auto& Buf = MyBuf[i];
 									auto Data = (const _RetType* const)Frame.GetDataPointerArray()[i];
-									auto Size = Frame.GetLinesize() / sizeof(_RetType);
+									auto Size = Frame.GetSampleCount();
 									Buf.Insert(Buf.End(), Data, Data + Size);
 								}
 							}
@@ -575,24 +577,25 @@ namespace AvCodec
 					}
 				);
 			}
-
-
-			_D_Dragonian_Lib_Rethrow_Block(
-				{
-					auto & OutputBuffer = MyBuf[0];
-					AudioPacket Packet;
-					while (!(*this >> Packet).IsEnd())
+			else
+			{
+				_D_Dragonian_Lib_Rethrow_Block(
 					{
-						auto Frames = _MyCodec.Decode(Packet);
-						for (auto& Frame : Frames)
-						{
-							auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
-							auto Size = Frame.GetLinesize() / sizeof(_RetType);
-							OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
-						}
+						 auto & OutputBuffer = MyBuf[0];
+						 AudioPacket Packet;
+						 while (!(*this >> Packet).IsEnd())
+						 {
+							 auto Frames = _MyCodec.Decode(Packet);
+							 for (auto& Frame : Frames)
+							 {
+								 auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
+								 auto Size = Frame.GetSampleCount();
+								 OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
+							 }
+						 }
 					}
-				}
-			);
+				);
+			}
 
 			const auto MBufSize = static_cast<SizeType>(MyBuf[0].Size());
 

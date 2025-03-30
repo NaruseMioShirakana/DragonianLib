@@ -353,6 +353,18 @@ public:
 		return std::forward<_ThisType>(_Self);
 	}
 
+	template <typename _ThisType>
+	decltype(auto) GetRng(this _ThisType&& _Self)
+	{
+		if (std::forward<_ThisType>(_Self).IsContinuous())
+			return TemplateLibrary::RangesWrp(
+				std::forward<_ThisType>(_Self)._MyData,
+				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
+			);
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Continuous Tensor!");
+	}
+
 protected:
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr;
@@ -1646,7 +1658,6 @@ public:
 			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
-		
 	}
 
 	/**

@@ -57,7 +57,7 @@ Tensor<Float64, 2, Device::CPU> HarvestF0Extractor::Harvest(
 Tensor<Float32, 2, Device::CPU> HarvestF0Extractor::ExtractF0(
     const Tensor<Float64, 2, Device::CPU>& PCMData,
     const F0ExtractorParams& Params
-)
+) const
 {
     return Harvest(PCMData.Continuous().Evaluate(), Params).Cast<Float32>().Evaluate();
 }

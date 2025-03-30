@@ -32,10 +32,12 @@ _D_Dragonian_Lib_F0_Extractor_Header
 using F0Extractor = std::shared_ptr<BaseF0Extractor>;
 using Constructor = std::function<F0Extractor(const void*)>;
 
-struct NetF0ExtractorSetting
+struct PEModelHParams
 {
-	std::wstring ModelPath;
-	void* OrtEnv;
+    const wchar_t* ModelPath; // Path to the PE Model (const wchar_t*)
+    const void* Enviroment; // Pointer to OnnxRuntime::OnnxRuntimeEnvironment (const OnnxRuntime::OnnxRuntimeEnvironment*)
+    const void* Logger; // Pointer to DragonianLib::DLogger (const DragonianLib::DLogger*)
+    Int64 SamplingRate; // Sampling Rate of the Audio (Int64)
 };
 
 /**

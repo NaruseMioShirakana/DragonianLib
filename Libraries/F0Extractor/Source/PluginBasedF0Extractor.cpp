@@ -15,7 +15,7 @@ PluginF0Extractor::PluginF0Extractor(const Plugin::Plugin& Plugin, const void* U
 
 }
 
-Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 	if (!_MyExtractPS)
 		_D_Dragonian_Lib_Throw_Exception("ExtractF0PS is not available in the plugin");
@@ -39,7 +39,7 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float3
 	return std::move(Output.Evaluate());
 }
 
-Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 	if (!_MyExtractPD)
 		return ExtractF0(PCMData.Cast<Float32>(), Params);
@@ -63,7 +63,7 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float6
 	return std::move(Output.Evaluate());
 }
 
-Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params)
+Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 	if (!_MyExtractI16)
 		return ExtractF0(PCMData.Cast<Float32>() / 32768.f, Params);

@@ -71,7 +71,7 @@ public:
 	Tensor<Float32, 2, Device::CPU> ExtractF0(
 		const Tensor<Float64, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-	) override;
+	) const override;
 
 	/**
 	 * @brief Extract F0 from PCM data
@@ -82,7 +82,7 @@ public:
 	Tensor<Float32, 2, Device::CPU> ExtractF0(
 		const Tensor<Float32, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-	) override;
+	) const override;
 
 	/**
 	 * @brief Extract F0 from PCM data
@@ -93,7 +93,7 @@ public:
 	Tensor<Float32, 2, Device::CPU> ExtractF0(
 		const Tensor<Int16, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-	) override;
+	) const override;
 
 private:
 	std::shared_ptr<void> _MyInstance = nullptr;

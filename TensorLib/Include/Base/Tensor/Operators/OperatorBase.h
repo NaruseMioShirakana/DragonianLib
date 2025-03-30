@@ -108,6 +108,18 @@ struct InterpolateParam
 	{
 
 	}
+
+	InterpolateParam(DoubleArrayT&& _Scale, bool _AlignCorners = false)
+		: _MyScale(std::move(_Scale)), _MyAlignCorners(_AlignCorners), _MySize(std::nullopt)
+	{
+
+	}
+
+	InterpolateParam(SizeTypeArrayT&& _Size, bool _AlignCorners = false)
+		: _MyScale(std::nullopt), _MyAlignCorners(_AlignCorners), _MySize(std::move(_Size))
+	{
+
+	}
 };
 
 template<size_t _NRank>

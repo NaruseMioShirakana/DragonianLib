@@ -49,7 +49,7 @@ public:
 	Tensor<Float32, 2, Device::CPU> ExtractF0(
 		const Tensor<Float64, 2, Device::CPU>& PCMData,
 		const F0ExtractorParams& Params
-	) override;
+	) const override;
 private:
 	
 	static Tensor<Float64, 2, Device::CPU> Harvest(

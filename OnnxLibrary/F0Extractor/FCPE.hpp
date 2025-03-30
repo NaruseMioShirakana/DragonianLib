@@ -27,35 +27,36 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-class FCPEF0Extractor : public BaseF0Extractor, OnnxRuntime::OnnxModelBase<FCPEF0Extractor>
+class FCPE : public BaseF0Extractor, public OnnxRuntime::OnnxModelBase<FCPE>
 {
 public:
-    FCPEF0Extractor(
-        const OnnxRuntime::OnnxRuntimeEnvironment& _Environment,
-        const std::wstring& _ModelPath,
-        const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()
+    FCPE(
+		const void* _ModelHParams
     );
-    ~FCPEF0Extractor() override = default;
+    ~FCPE() override = default;
 
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
+	Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float64, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-    );
+    ) const override;
 
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
+	Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float32, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-    );
+    ) const override;
 
-    virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
+	Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Int16, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-    );
+    ) const override;
 
-    FCPEF0Extractor(const FCPEF0Extractor&) = default;
-    FCPEF0Extractor(FCPEF0Extractor&&) = default;
-    FCPEF0Extractor& operator=(const FCPEF0Extractor&) = default;
-    FCPEF0Extractor& operator=(FCPEF0Extractor&&) = default;
+    FCPE(const FCPE&) = default;
+    FCPE(FCPE&&) = default;
+    FCPE& operator=(const FCPE&) = default;
+    FCPE& operator=(FCPE&&) = default;
+
+private:
+    Int64 _MySamplingRate = 16000;
 };
 
 _D_Dragonian_Lib_F0_Extractor_End
