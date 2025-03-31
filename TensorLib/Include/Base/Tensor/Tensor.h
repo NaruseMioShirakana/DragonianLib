@@ -285,27 +285,76 @@ public:
 	//Check write permission.
 	void WaitingAsResult() const
 	{
-		WaitingForTheInplaceLock();
-		WaitingForTheOperationLock();
+		if (!_IgnoreDep)
+		{
+			WaitingForTheInplaceLock();
+			WaitingForTheOperationLock();
+		}
+		else
+			_IgnoreDep = false;
 	}
 	//Check read permission.
 	void WaitingAsArgument() const
 	{
-		WaitingForTheOperationLock();
+		if (!_IgnoreDep)
+			WaitingForTheOperationLock();
+		else
+			_IgnoreDep = false;
 	}
 	//Check read and write permission.
 	void WaitingForAllLocks() const
 	{
-		WaitingForTheInplaceLock();
-		WaitingForTheOperationLock();
+		if (!_IgnoreDep)
+		{
+			WaitingForTheInplaceLock();
+			WaitingForTheOperationLock();
+		}
+		else
+			_IgnoreDep = false;
 	}
 
+	/**
+	 * @brief Create a tensor that is a view of the current tensor, the tensor will detach from the dependency chain of the current tensor.
+	 * @return A view that is detached from the dependency chain of the current tensor.
+	 */
+	decltype(auto) Detach() const
+	{
+		auto Ret = View();
+		Ret._MyFuturesAsArgument = std::make_shared<std::deque<DependencyChainPair>>();
+		Ret._MyFuturesAsResult = std::make_shared<std::deque<DependencyChainPair>>();
+		return Ret;
+	}
+
+	/**
+	 * @brief Create a tensor that ignores the dependency chain of the current tensor one time. (The tensor will not wait for the tasks that depend on it before executing the next operator, but the tasks that depend on it will still wait for the current tensor, that means the current tensor will not be detached from the dependency chain. Evaluate will still wait for the tasks that depend on it.)
+	 * @return A view of the current tensor that ignores the dependency chain.
+	 */
+	decltype(auto) Ignore() const
+	{
+		auto Ret = View();
+		Ret._IgnoreDep = true;
+		return Ret;
+	}
+
+	/**
+	 * @brief Wait for all the tasks that depend on this tensor.
+	 * @return The current tensor.
+	 */
 	template <typename _ThisType>
 	decltype(auto) Evaluate(this _ThisType&& Self)
 	{
-		std::forward<_ThisType>(Self).WaitingForAllLocks();
+		std::forward<_ThisType>(Self).EvaluateTasks();
 		return std::forward<_ThisType>(Self);
 	}
+
+private:
+	void EvaluateTasks() const
+	{
+		WaitingForTheOperationLock();
+		WaitingForTheInplaceLock();
+	}
+
+public:
 
 	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
 	decltype(auto) CastToString(bool _Fold = true) const
@@ -365,6 +414,18 @@ public:
 			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Continuous Tensor!");
 	}
 
+	template <typename _ThisType>
+	decltype(auto) GetCRng(this _ThisType&& _Self)
+	{
+		if (std::forward<_ThisType>(_Self).IsContinuous())
+			return TemplateLibrary::ConstantRanges(
+				std::forward<_ThisType>(_Self)._MyData,
+				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
+			);
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Continuous Tensor!");
+	}
+
 protected:
 	Pointer _MyFirst = nullptr;
 	RawPointer _MyLast = nullptr;
@@ -374,9 +435,9 @@ protected:
 	DependencyChainPointer _MyFuturesAsResult = nullptr;
 	DependencyChainPointer _MyFuturesAsArgument = nullptr;
 	Allocator _MyAllocator;
+	mutable bool _IgnoreDep = false;
 
 private:
-
 	template <typename _ValType = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_ValType, _TensorType>>>
 	decltype(auto) CastToString(SizeType _MyTotalSize, bool _Fold = true) const
 	{
@@ -2105,7 +2166,9 @@ public:
 	 */
 	decltype(auto) View() const
 	{
-		return Tensor(*this);
+		auto Ret = Tensor(*this);
+		Ret._IgnoreDep = false;
+		return Ret;
 	}
 
 	/**
@@ -2437,12 +2500,12 @@ public:
 						if (_PaddingCount[i].Begin > 0)
 						{
 							RngFront[i] = { 0, _PaddingCount[i].Begin };
-							Ret[RngFront].Assign(_Val.value());
+							Ret[RngFront].Ignore().Assign(_Val.value());
 						}
 						if (_PaddingCount[i].End > 0)
 						{
 							RngBack[i] = { _MyShape[i] + _PaddingCount[i].Begin, RangeEndPos };
-							Ret[RngBack].Assign(_Val.value());
+							Ret[RngBack].Ignore().Assign(_Val.value());
 						}
 					}
 					else
@@ -2726,7 +2789,8 @@ public:
 			RetView = RetView.AxisFromTo(Axis, -1);
 			MyView = MyView.AxisFromTo(Axis, -1);
 		}
-		
+		MyView.WaitingAsArgument();
+
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplInterpolate<_Mode, _NRank>
 			(
 				RetView.Data(),

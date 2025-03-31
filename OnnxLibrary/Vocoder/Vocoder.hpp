@@ -98,6 +98,12 @@ public:
 	VocoderBase(VocoderBase&&) noexcept = default;
 	VocoderBase& operator=(const VocoderBase&) = default;
 	VocoderBase& operator=(VocoderBase&&) noexcept = default;
+
+	static Tensor<Float32, 4, Device::CPU> DenormSpec(
+		const Tensor<Float32, 4, Device::CPU>& Spec,
+		float SpecMax,
+		float SpecMin
+	);
 };
 
 _D_Dragonian_Lib_Onnx_Vocoder_End

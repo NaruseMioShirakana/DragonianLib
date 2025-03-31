@@ -39,7 +39,10 @@ namespace FunctionTransform
 	public:
 		StftKernel() = default; ///< Default constructor
 		~StftKernel(); ///< Destructor
-		StftKernel(int WindowSize, int HopSize, int FFTSize = 0); ///< Parameterized constructor
+		StftKernel(
+			int NumFFT, int HopSize = -1, int WindowSize = -1,
+			bool Center = true, PaddingType Padding = PaddingType::Reflect
+		); ///< Parameterized constructor
 		friend class MFCCKernel; ///< Friend class
 		inline static double PI = 3.14159265358979323846; ///< Constant value of PI
 
@@ -78,10 +81,22 @@ namespace FunctionTransform
 		 */
 		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const;
 
+		/**
+		 * @brief Inverse Short-Time Fourier Transform
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Signal, Shape [Batch, Channel, SampleCount]
+		 */
+		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const;
+
 	private:
+		int NUM_FFT = 2048; ///< FFT size
+		int FFT_BINS = 1025; ///< FFT bins
+		int HOP_SIZE = 512; ///< Hop size
 		int WINDOW_SIZE = 2048; ///< Window size
-		int HOP_SIZE = WINDOW_SIZE / 4; ///< Hop size
-		int FFT_SIZE = WINDOW_SIZE / 2 + 1; ///< FFT size
+		int PADDING = 0; ///< Padding size
+		bool CENTER = true;
+		int CENTER_PADDING_SIZE = 256;
+		PaddingType PADDING_TYPE = PaddingType::Reflect;
 	};
 
 	/**
@@ -94,8 +109,8 @@ namespace FunctionTransform
 		MFCCKernel() = delete; ///< Disable default constructor
 		~MFCCKernel() = default; ///< Default destructor
 		MFCCKernel(
-			int WindowSize, int HopSize, int SamplingRate, int MelBins = 0,
-			double FreqMin = 20., double FreqMax = 11025.,
+			int SamplingRate, int NumFFT, int HopSize = -1, int WindowSize = -1, int MelBins = 0,
+			double FreqMin = 20., double FreqMax = 11025., bool Center = true, PaddingType Padding = PaddingType::Reflect,
 			DLogger _Logger = nullptr
 		);
 

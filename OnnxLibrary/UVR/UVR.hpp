@@ -63,10 +63,12 @@ public:
 		Int64 Bins;
 		Int64 UnstableBins;
 		Int64 ReductionBins;
+		Int64 WindowSize;
 		std::vector<BandSetting> Bands;
 		Int64 SamplingRate;
 		Int64 PreFilterStart;
 		Int64 PreFilterStop;
+		Int64 Offset;
 	};
 	static HParams GetPreDefinedHParams(
 		const std::wstring& Name

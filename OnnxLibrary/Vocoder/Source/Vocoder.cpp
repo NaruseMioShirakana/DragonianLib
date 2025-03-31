@@ -176,4 +176,14 @@ Tensor<Float32, 3, Device::CPU> VocoderBase::Inference(
 	);
 }
 
+Tensor<Float32, 4, Device::CPU> VocoderBase::DenormSpec(
+	const Tensor<Float32, 4, Device::CPU>& Spec,
+	float SpecMax,
+	float SpecMin
+)
+{
+	return (Spec + 1) / 2 * (SpecMax - SpecMin) + SpecMin;
+}
+
+
 _D_Dragonian_Lib_Onnx_Vocoder_End

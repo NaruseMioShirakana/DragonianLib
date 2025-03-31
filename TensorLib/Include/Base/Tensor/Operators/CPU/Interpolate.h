@@ -38,6 +38,15 @@ namespace Interpolate
 		return _Weight < 0.5 ? _A : _B;
 	}
 
+	template <typename _CType, typename _SType>
+	std::complex<_CType> ComplexScalarMul(
+		const std::complex<_CType>& _A,
+		const _SType& _B
+	)
+	{
+		return { _A.real() * (_CType)_B, _A.imag() * (_CType)_B };
+	}
+
 	template <typename _Type>
 	auto InterpolateLinear(
 		const _Type& _A,
@@ -52,7 +61,10 @@ namespace Interpolate
 			if (isnan(_B) && !isnan(_A))
 				return _A;
 		}
-		return _Type(double(_A) + _Weight * double(_B - _A));
+		if constexpr (IsComplexValue<_Type>)
+			return _A + ComplexScalarMul(_B, _Weight) - _A;
+		else
+			return _Type(double(_A) + _Weight * double(_B - _A));
 	}
 
 	template <typename _Type, typename Fn>
@@ -270,7 +282,14 @@ namespace Interpolate
 				_Type Result = 0;
 				for (int i = 0; i < 4; ++i)
 					for (int j = 0; j < 4; ++j)
-						Result += _Type(DBL(Begin[IndexX[i] + IndexY[j]]) * WeightX[i] * WeightY[j]);
+					{
+						auto Weight = WeightX[i] * WeightY[j];
+						auto Value = Begin[IndexX[i] + IndexY[j]];
+						if constexpr (IsComplexValue<_Type>)
+							Result += ComplexScalarMul(Value, Weight);
+						else
+							Result += _Type(DBL(Value) * Weight);
+					}
 				return Result;
 			};
 

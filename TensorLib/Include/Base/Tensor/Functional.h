@@ -896,7 +896,7 @@ namespace Functional
 			for (SizeType i = 0; i < _MyTensorCount; ++i)
 			{
 				CurSlice = { i , i + 1 };
-				Ret[_MySliceOption].TensorAssign(_Inputs[i].UnSqueeze(_Dim));
+				Ret[_MySliceOption].Ignore().TensorAssign(_Inputs[i].UnSqueeze(_Dim));
 			}
 			return Ret;
 		}
@@ -948,7 +948,7 @@ namespace Functional
 			{
 				const auto& __Shape = _Inputs[i].Shape();
 				CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Dim] };
-				Ret[_MySliceOption].TensorAssign(_Inputs[i]);
+				Ret[_MySliceOption].Ignore().TensorAssign(_Inputs[i]);
 			}
 			return Ret;
 		}
@@ -988,7 +988,7 @@ namespace Functional
 		for (SizeType i = 0; i < Size; ++i)
 		{
 			CurSlice = { i , i + 1 };
-			Ret[_MySliceOption].TensorAssign((Begin + i)->UnSqueeze(_Axis));
+			Ret[_MySliceOption].Ignore().TensorAssign((Begin + i)->UnSqueeze(_Axis));
 		}
 		return Ret;
 	}
@@ -1032,7 +1032,7 @@ namespace Functional
 		{
 			const auto& __Shape = (Begin + i)->Shape();
 			CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Axis] };
-			Ret[_MySliceOption].TensorAssign(*(Begin + i));
+			Ret[_MySliceOption].Ignore().TensorAssign(*(Begin + i));
 		}
 		return Ret;
 	}

@@ -39,16 +39,54 @@ void WithTimer(const Fn& fn)
 	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 
-//#include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/AvCodec/AvCodec.h"
+#include "Libraries/F0Extractor/DioF0Extractor.hpp"
+#include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
 #include "OnnxLibrary/G2P/G2PW.hpp"
+#include "OnnxLibrary/UVR/UVR.hpp"
+
 	
 int main()
 {
 	std::wcout.imbue(std::locale("zh_CN"));
 
 	using namespace DragonianLib;
+	SetWorkerCount(8);
+	SetMaxTaskCountPerOperator(4);
+
+	auto Ten1 = Functional::Randn(IDim(114, 514)).Evaluate();
+	auto Ten2 = Functional::Randn(IDim(114, 514)).Evaluate();
+	std::cout << Ten1 << "\n\n";
+	std::cout << Ten2 << "\n\n";
+	std::cout << Functional::Stack(Ten1, Ten2).Evaluate() << "\n\n";
 
 	const auto Env = OnnxRuntime::CreateEnvironment({});
+	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
+		LR"(C:\DataSpace\libsvc\PythonScript\G2PW.onnx)",
+		Env
+	);
+	OnnxRuntime::Vocoder::NsfHifigan Vocoder(
+		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\nsf-hifigan-n.onnx)",
+		Env
+	);
+
+	auto AudioInStream = AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
+	auto AudioData = AudioInStream.DecodeAll(44100, 1).Squeeze(-1);
+	AudioData = AudioData[{"441000:882000"}];
+	
+	FunctionTransform::MFCCKernel Kernel(44100, 2048, 512, 2048, 128);
+	auto Mel = Kernel(AudioData.View(1, 1, -1));
+	auto F0 = F0Extractor::DioF0Extractor()(AudioData.View(1, -1), {44100}).UnSqueeze(0);
+	F0 = F0.Interpolate<Operators::InterpolateMode::Linear>(IDim(-1), IDim(Mel.Size(3))).Evaluate();
+	auto NewAudio = Vocoder(Mel, F0);
+
+	auto OutputStream = AvCodec::OpenOutputStream(
+		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-istft.wav)"
+	);
+	OutputStream.EncodeAll(NewAudio.GetCRng(), 44100);
+
+	auto PreProcessed = Net.Preprocess(AudioData.UnSqueeze(0), 44100);
+
 	G2P::CppPinYinConfigs Configs{
 		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_dict.json)",
 		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_pinyin_dict.json)",
