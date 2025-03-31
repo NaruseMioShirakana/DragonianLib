@@ -171,4 +171,10 @@ struct GetAllocatorType__<Device::DIRECTX>
 template <Device _Type>
 using GetAllocatorType = typename GetAllocatorType__<_Type>::Type;
 
+template <Device _Type>
+auto DefaultAllocator()
+{
+	return GetAllocatorType<_Type>();
+}
+
 _D_Dragonian_Lib_Template_Library_Space_End

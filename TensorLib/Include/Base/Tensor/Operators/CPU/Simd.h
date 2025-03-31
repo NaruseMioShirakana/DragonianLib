@@ -855,9 +855,23 @@ public:
 	{
 		if constexpr (std::is_unsigned_v<Type>)
 			return *this;
-		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
+		{
+			__m256 real = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
+			__m256 imag = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
+			auto magnitude = _mm256_sqrt_ps(_mm256_fmadd_ps(real, real, _mm256_mul_ps(imag, imag)));
+			return _mm256_blend_ps(magnitude, _mm256_setzero_ps(), 0b10101010);
+		}
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
+		{
+			__m256d real = _mm256_movedup_pd(*this);
+			__m256d imag = _mm256_permute_pd(*this, 0b0101);
+			auto magnitude = _mm256_sqrt_pd(_mm256_fmadd_pd(real, real, _mm256_mul_pd(imag, imag)));
+			return _mm256_blend_pd(magnitude, _mm256_setzero_pd(), 0b1010);
+		}
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float32>)
 			return _mm256_and_ps(*this, _mm256_castsi256_ps(_mm256_set1_epi32(INT32_MAX)));
-		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64>)
 			return _mm256_and_pd(*this, _mm256_castsi256_pd(_mm256_set1_epi64x(INT64_MAX)));
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			return _mm256_abs_epi8(*this);
@@ -1032,11 +1046,11 @@ public:
 			return _mm256_asin_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(asin);
@@ -1057,11 +1071,11 @@ public:
 			return _mm256_acos_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(acos);
@@ -1082,11 +1096,11 @@ public:
 			return _mm256_atan_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(atan);
@@ -1255,11 +1269,11 @@ public:
 			return _mm256_tanh_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(tanh);
@@ -1280,11 +1294,11 @@ public:
 			return _mm256_asinh_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(asinh);
@@ -1305,11 +1319,11 @@ public:
 			return _mm256_acosh_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(acosh);
@@ -1330,11 +1344,11 @@ public:
 			return _mm256_atanh_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(atanh);
@@ -1355,11 +1369,11 @@ public:
 			return _mm256_log_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(log);
@@ -1380,11 +1394,11 @@ public:
 			return _mm256_log2_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(log2);
@@ -1405,11 +1419,11 @@ public:
 			return _mm256_log10_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(log10);
@@ -1430,11 +1444,11 @@ public:
 			return _mm256_exp_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-			
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(exp);
@@ -1455,11 +1469,11 @@ public:
 			return _mm256_exp2_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(exp2);
@@ -1480,11 +1494,11 @@ public:
 			return _mm256_exp10_pd(*this);
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
 		{
-
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error; //TODO
 		}
 		else if constexpr (TypeTraits::IsAnyOfValue<Type, Int8, UInt8, Boolean>)
 			_D_Dragonian_Lib_Simd_Int8_Fp(exp10);
@@ -1588,6 +1602,27 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Clamp(const Vectorized& _Min, const Vectorized& _Max) const
 	{
 		return Max(_Min).Min(_Max);
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized Polar() const
+	{
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Complex32>)
+		{
+			auto magnitude = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(2, 2, 0, 0));
+			auto angle = _mm256_shuffle_ps(*this, *this, _MM_SHUFFLE(3, 3, 1, 1));
+			auto real = _mm256_mul_ps(magnitude, _mm256_cos_ps(angle));
+			auto imag = _mm256_mul_ps(magnitude, _mm256_sin_ps(angle));
+			return _mm256_blend_ps(real, imag, 0b10101010);
+		}
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Complex64>)
+		{
+			auto magnitude = _mm256_movedup_pd(*this);
+			auto angle = _mm256_permute_pd(*this, 0b0101);
+			auto real = _mm256_mul_pd(magnitude, _mm256_cos_pd(angle));
+			auto imag = _mm256_mul_pd(magnitude, _mm256_sin_pd(angle));
+			return _mm256_blend_pd(real, imag, 0b1010);
+		}
+		else
+			_D_Dragonian_Lib_Simd_Not_Implemented_Error;
 	}
 
 private:

@@ -63,6 +63,21 @@ namespace FunctionTransform
 		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
 		 */
 		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Short-Time Fourier Transform
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 */
+		Tensor<Complex32, 4, Device::CPU> Execute(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+
+		/**
+		 * @brief Inverse Short-Time Fourier Transform
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Signal, Shape [Batch, Channel, SampleCount]
+		 */
+		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const;
+
 	private:
 		int WINDOW_SIZE = 2048; ///< Window size
 		int HOP_SIZE = WINDOW_SIZE / 4; ///< Hop size

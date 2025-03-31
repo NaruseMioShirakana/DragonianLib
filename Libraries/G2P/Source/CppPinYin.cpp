@@ -292,36 +292,36 @@ std::pair<std::wstring, Int64> CppPinYin::StyleCast(
 		return { PinYin, NeutralToneWithFive ? 5 : 0 };
 	}
 
-		for (size_t i = 0; i < 28; ++i)
+	for (size_t i = 0; i < 28; ++i)
+	{
+		if (auto Idx = PinYin.find(ToneMap[i]); Idx != std::wstring::npos)
 		{
-			if (auto Idx = PinYin.find(ToneMap[i]); Idx != std::wstring::npos)
-			{
-				return {
-					PinYin.substr(0, Idx) +
-					ToneMap2[i] +
-					PinYin.substr(Idx + ToneMap[i].size()) +
-					std::to_wstring((i % 4) + 1),
-					(i % 4) + 1
-				};
-			}
+			return {
+				PinYin.substr(0, Idx) +
+				ToneMap2[i] +
+				PinYin.substr(Idx + ToneMap[i].size()) +
+				std::to_wstring((i % 4) + 1),
+				(i % 4) + 1
+			};
 		}
-		for (size_t i = 0; i < 6; ++i)
+	}
+	for (size_t i = 0; i < 6; ++i)
+	{
+		if (auto Idx = PinYin.find(ToneMapSP[i].first); Idx != std::wstring::npos)
 		{
-			if (auto Idx = PinYin.find(ToneMapSP[i].first); Idx != std::wstring::npos)
-			{
-				return {
-					PinYin.substr(0, Idx) +
-					ToneMapSP2[i] +
-					PinYin.substr(Idx + ToneMapSP[i].first.size()) +
-					std::to_wstring(ToneMapSP[i].second),
-					ToneMapSP[i].second
-				};
-			}
+			return {
+				PinYin.substr(0, Idx) +
+				ToneMapSP2[i] +
+				PinYin.substr(Idx + ToneMapSP[i].first.size()) +
+				std::to_wstring(ToneMapSP[i].second),
+				ToneMapSP[i].second
+			};
 		}
-		return {
-			PinYin + std::to_wstring(NeutralToneWithFive ? 5 : 0),
-			NeutralToneWithFive ? 5 : 0
-		};
+	}
+	return {
+		PinYin + std::to_wstring(NeutralToneWithFive ? 5 : 0),
+		NeutralToneWithFive ? 5 : 0
+	};
 }
 
 void CppPinYin::LoadUserDict(
@@ -488,6 +488,11 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 			}
 		}
 	}
+	if (Parameters.ReplaceASV)
+		for (auto& PinYin : PinYinResult)
+			for (size_t i = 0; i < PinYin.size(); ++i)
+				if (PinYin[i] == L'ü')
+					PinYin[i] = L'v';
 	return { std::move(PinYinResult), std::move(ToneResult) };
 }
 
@@ -702,6 +707,5 @@ std::wstring CppPinYin::SearchChar(
 {
 	return _MyPinYinDict[static_cast<Int64>(U16Word2Unicode(Char))];
 }
-
 
 _D_Dragonian_Lib_G2P_End

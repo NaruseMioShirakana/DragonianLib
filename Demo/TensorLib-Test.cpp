@@ -45,6 +45,7 @@ void WithTimer(const Fn& fn)
 int main()
 {
 	std::wcout.imbue(std::locale("zh_CN"));
+
 	using namespace DragonianLib;
 
 	const auto Env = OnnxRuntime::CreateEnvironment({});
@@ -73,14 +74,12 @@ int main()
 	Parameters.NumberStyle = G2P::CppPinYinParameters::SPLITCHINESE;
 	Parameters.Heteronym = true;
 
-	auto Ph = PinYin.SearchRare(L"〇");
-
 	auto [Phoneme, Tone] = PinYin.Convert(
 		L"〇我的名字是田所浩二，代号是野兽先辈，专属数字是114514和1919810！",
 		"zh",
 		&Parameters
 	);
-
+	
 	for (size_t i = 0; i < Phoneme.Size(); ++i)
 		std::wcout << Phoneme[i] << "  <-  " << Tone[i] << '\n';
 

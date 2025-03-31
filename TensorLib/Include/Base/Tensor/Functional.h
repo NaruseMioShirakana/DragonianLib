@@ -265,7 +265,18 @@ namespace Functional
 		template <typename _ValueType, size_t _NRank, Device _MyDevice>
 		struct IsTensorType<Tensor<_ValueType, _NRank, _MyDevice>> : std::true_type {};
 		template <typename _Type>
-		constexpr static bool IsTensorTypeValue = IsTensorType<TypeTraits::RemoveARPCVType<_Type>>::value;
+		concept IsTensorTypeValue = IsTensorType<TypeTraits::RemoveARPCVType<_Type>>::value;
+		template <typename _Type>
+		concept IsTensorIterator = TypeTraits::IsIterator<_Type> && requires(const _Type & Iter)
+		{
+			{ *Iter } -> IsTensorTypeValue;
+		};
+		template <typename _Type>
+		concept IsTensorContainer = TypeTraits::HasRange<_Type> && requires(const _Type & Cont)
+		{
+			{ TemplateLibrary::Begin(Cont) } -> IsTensorIterator;
+			{ TemplateLibrary::End(Cont) } -> IsTensorIterator;
+		};
 
 		template <typename _Header, typename ..._Rest>
 		struct IntegerArgumentCount
@@ -441,7 +452,9 @@ namespace Functional
 	}
 
 	template <typename _MyValueType = Float32, size_t _NRank, Device _MyDevice = Device::CPU>
-	Tensor<_MyValueType, _NRank, _MyDevice> NumpyLoad(const std::wstring& _Path)
+	Tensor<_MyValueType, _NRank, _MyDevice> NumpyLoad(
+		const std::wstring& _Path
+	)
 	{
 		auto [VecShape, VecData] = NumpyFileFormat::LoadNumpyFile(_Path);
 		if (VecShape.Size() > _NRank)
@@ -459,13 +472,19 @@ namespace Functional
 	}
 
 	template <typename _MyValueType = Float32, size_t _NRank, Device _MyDevice = Device::CPU>
-	Tensor<_MyValueType, _NRank, _MyDevice> FromShared(const Dimensions<_NRank>& MyShape, const std::shared_ptr<void>& Buffer, size_t BufferSize)
+	Tensor<_MyValueType, _NRank, _MyDevice> FromShared(
+		const Dimensions<_NRank>& MyShape,
+		const std::shared_ptr<void>& Buffer, 
+		size_t BufferSize
+	)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape, Buffer, BufferSize);
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
-	Tensor<_MyValueType, 1, _MyDevice> FromVector(TemplateLibrary::Vector<_MyValueType, _MyDevice>& Buffer)
+	Tensor<_MyValueType, 1, _MyDevice> FromVector(
+		TemplateLibrary::Vector<_MyValueType, _MyDevice>& Buffer
+	)
 	{
 		return Tensor<_MyValueType, 1, _MyDevice>::FromBuffer(
 			IDim(static_cast<SizeType>(Buffer.Size())),
@@ -475,7 +494,9 @@ namespace Functional
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
-	Tensor<_MyValueType, 1, _MyDevice> FromVector(TemplateLibrary::Vector<_MyValueType>&& Buffer)
+	Tensor<_MyValueType, 1, _MyDevice> FromVector(
+		TemplateLibrary::Vector<_MyValueType>&& Buffer
+	)
 	{
 		auto Allocator = Buffer.GetAllocator();
 		auto [Data, Size] = Buffer.Release();
@@ -486,14 +507,16 @@ namespace Functional
 	/**
 	 * @brief Create a new tensor with the specified shape.
 	 * @param MyShape The shape of the tensor.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_MyValueType> || std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Empty(
-		const Dimensions<_NRank>& MyShape
+		const Dimensions<_NRank>& MyShape,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape, Allocator);
 	}
 
 	/**
@@ -507,57 +530,50 @@ namespace Functional
 	}
 
 	/**
-	 * @brief Create a new scalar tensor with the specified value.
-	 * @param _Val The value of the tensor.
-	 * @return The new tensor.
-	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>>>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) NewScalar(
-		const _MyValueType& _Val
-	)
-	{
-		return Tensor<_MyValueType, 1, _MyDevice>::New({ 1 }, _Val);
-	}
-
-	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with ones.
 	 * @param _Shape The shape of the tensor.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(1)>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Ones(
-		const Dimensions<_NRank>& _Shape
+		const Dimensions<_NRank>& _Shape,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::Ones(_Shape);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::Ones(_Shape, Allocator);
 	}
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with zeros.
 	 * @param _Shape The shape of the tensor.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(0)>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Zeros(
-		const Dimensions<_NRank>& _Shape
+		const Dimensions<_NRank>& _Shape,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::Zeros(_Shape);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::Zeros(_Shape, Allocator);
 	}
 
 	/**
 	 * @brief Create a new tensor with the specified shape, and fix the tensor with a constant value.
 	 * @param _Shape The shape of the tensor.
 	 * @param _Val The constant value to fix the tensor.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ConstantOf(
 		const Dimensions<_NRank>& _Shape,
-		const _MyValueType& _Val
+		const _MyValueType& _Val,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::ConstantOf(_Shape, _Val);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::ConstantOf(_Shape, _Val, Allocator);
 	}
 
 	/**
@@ -565,16 +581,18 @@ namespace Functional
 	 * @param _Shape The shape of the tensor.
 	 * @param Min The minimum value of the random values.
 	 * @param Max The maximum value of the random values.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Rand(
 		const Dimensions<_NRank>& _Shape,
 		const _MyValueType& Min,
-		const _MyValueType& Max
+		const _MyValueType& Max,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::Rand(_Shape, Min, Max);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::Rand(_Shape, Min, Max, Allocator);
 	}
 
 	/**
@@ -582,26 +600,29 @@ namespace Functional
 	 * @param _Shape The shape of the tensor.
 	 * @param _Mean The mean value of the random values.
 	 * @param _Sigma The sigma value of the random values.
+	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Randn(
 		const Dimensions<_NRank>& _Shape,
 		double _Mean = 0.,
-		double _Sigma = 1.
+		double _Sigma = 1.,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, _NRank, _MyDevice>::Randn(_Shape, _Mean, _Sigma);
+		return Tensor<_MyValueType, _NRank, _MyDevice>::Randn(_Shape, _Mean, _Sigma, Allocator);
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, typename = std::enable_if_t<Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Arange(
 		_MyValueType _Begin,
 		_MyValueType _End,
-		_MyValueType _Step = _MyValueType(1)
+		_MyValueType _Step = _MyValueType(1),
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, 1, _MyDevice>::Arange(_Begin, _End, _Step);
+		return Tensor<_MyValueType, 1, _MyDevice>::Arange(_Begin, _End, _Step, Allocator);
 	}
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, typename = std::enable_if_t<Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
@@ -609,10 +630,11 @@ namespace Functional
 		_MyValueType _Begin,
 		_MyValueType _End,
 		size_t _Count,
-		bool _EndPoint = false
+		bool _EndPoint = false,
+		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
 	{
-		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count, _EndPoint);
+		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count, _EndPoint, Allocator);
 	}
 
 	/**
@@ -625,7 +647,7 @@ namespace Functional
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
 	{
-		return Empty<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+		return Empty<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -638,7 +660,7 @@ namespace Functional
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
 	{
-		return Ones<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+		return Ones<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -651,7 +673,7 @@ namespace Functional
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
 	{
-		return Zeros<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape());
+		return Zeros<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -666,7 +688,7 @@ namespace Functional
 		const _MyValueType& _Val
 	)
 	{
-		return ConstantOf<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Val);
+		return ConstantOf<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Val, _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -683,7 +705,7 @@ namespace Functional
 		const _MyValueType& Max
 	)
 	{
-		return Rand<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), Min, Max);
+		return Rand<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), Min, Max, _ShapeReference.GetAllocator());
 	}
 
 	/**
@@ -700,7 +722,7 @@ namespace Functional
 		double _Sigma = 1.
 	)
 	{
-		return Randn<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Mean, _Sigma);
+		return Randn<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Mean, _Sigma, _ShapeReference.GetAllocator());
 	}
 
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
@@ -867,7 +889,7 @@ namespace Functional
 			}
 
 			const auto Shape = _0Shape.Insert(_MyTensorCount, _Dim);
-			auto Ret = Empty<_MyValueType, _MyDevice, _MyRank + 1>(Shape);
+			auto Ret = Empty<_MyValueType, _MyDevice, _MyRank + 1>(Shape, _Inputs[0].GetAllocator());
 			Ret.WaitingAsResult();
 			SliceOptions<_MyRank + 1> _MySliceOption;
 			auto& CurSlice = _MySliceOption[_Dim];
@@ -916,7 +938,7 @@ namespace Functional
 				}
 			}
 
-			auto Ret = Empty<_MyValueType, _MyDevice, _MyRank>(Shape);
+			auto Ret = Empty<_MyValueType, _MyDevice, _MyRank>(Shape, _Inputs[0].GetAllocator());
 			Ret.WaitingAsResult();
 
 			SliceOptions<_MyRank> _MySliceOption;
@@ -930,6 +952,89 @@ namespace Functional
 			}
 			return Ret;
 		}
+	}
+
+	template <typename _Container, typename = std::enable_if_t<FunctionalTraits::IsTensorContainer<_Container>>>
+	decltype(auto) IStack(_Container&& _Cont, SizeType _Axis = 0)
+	{
+		auto Begin = TemplateLibrary::Begin(std::forward<_Container>(_Cont));
+		auto End = TemplateLibrary::End(std::forward<_Container>(_Cont));
+		const auto Size = std::distance(Begin, End);
+		if (Size == 0)
+			_D_Dragonian_Lib_Throw_Exception("The container is empty.");
+		if (Size == 1)
+			return Begin->Clone().UnSqueeze(_Axis);
+
+		using TensorType = TypeTraits::RemoveReferenceType<decltype(*Begin)>;
+		using MyValueType = typename TensorType::ValueType;
+		constexpr auto MyDevice = TensorType::_Device;
+		constexpr auto Rank = TensorType::Rank();
+		_Axis = TensorType::CalcIterator(_Axis, Rank);
+		
+		const auto& _0Shape = Begin->Shape();
+		for (SizeType i = 1; i < Size; ++i)
+		{
+			const auto& CurShape = (Begin + i)->Shape();
+			for (SizeType j = 0; j < Rank; ++j)
+				if (_0Shape[j] != CurShape[j])
+					_D_Dragonian_Lib_Throw_Exception("Shape MisMatch!");
+		}
+
+		const auto Shape = _0Shape.Insert(Size, _Axis);
+		auto Ret = Empty<MyValueType, MyDevice, Rank + 1>(Shape, Begin->GetAllocator());
+		Ret.WaitingAsResult();
+		SliceOptions<Rank + 1> _MySliceOption;
+		auto& CurSlice = _MySliceOption[_Axis];
+		for (SizeType i = 0; i < Size; ++i)
+		{
+			CurSlice = { i , i + 1 };
+			Ret[_MySliceOption].TensorAssign((Begin + i)->UnSqueeze(_Axis));
+		}
+		return Ret;
+	}
+
+	template <typename _Container, typename = std::enable_if_t<FunctionalTraits::IsTensorContainer<_Container>>>
+	decltype(auto) ICat(_Container&& _Cont, SizeType _Axis = 0)
+	{
+		auto Begin = TemplateLibrary::Begin(std::forward<_Container>(_Cont));
+		auto End = TemplateLibrary::End(std::forward<_Container>(_Cont));
+		const auto Size = std::distance(Begin, End);
+		if (Size == 0)
+			_D_Dragonian_Lib_Throw_Exception("The container is empty.");
+		if (Size == 1)
+			return Begin->Clone();
+
+		using TensorType = TypeTraits::RemoveReferenceType<decltype(*Begin)>;
+		constexpr auto Rank = TensorType::Rank();
+		_Axis = TensorType::CalcIterator(_Axis, Rank);
+
+		const auto& FShape = Begin->Shape();
+		auto Shape = FShape;
+		for (SizeType i = 1; i < Size; ++i)
+		{
+			const auto& CurShape = (Begin + i)->Shape();
+			for (SizeType j = 0; j < Rank; ++j)
+			{
+				if (j == _Axis)
+					Shape[j] += CurShape[j];
+				else if (FShape[j] != CurShape[j])
+					_D_Dragonian_Lib_Throw_Exception("Shape MisMatch!");
+			}
+		}
+
+		auto Ret = TensorType::Empty(Shape, Begin->GetAllocator());
+		Ret.WaitingAsResult();
+
+		SliceOptions<Rank> _MySliceOption;
+		auto& CurSlice = _MySliceOption[_Axis];
+		CurSlice = { 0, 0 };
+		for (SizeType i = 0; i < Size; ++i)
+		{
+			const auto& __Shape = (Begin + i)->Shape();
+			CurSlice = { CurSlice.End , CurSlice.End + __Shape[_Axis] };
+			Ret[_MySliceOption].TensorAssign(*(Begin + i));
+		}
+		return Ret;
 	}
 
 	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>

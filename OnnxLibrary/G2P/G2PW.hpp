@@ -37,6 +37,8 @@ struct G2PWModelHParams
 	const void* Enviroment; // Pointer to OnnxRuntime::OnnxRuntimeEnvironment (const OnnxRuntime::OnnxRuntimeEnvironment*)
 	const void* Logger; // Pointer to DragonianLib::DLogger (const DragonianLib::DLogger*)
 	Int64 MaxLength = 512; // Maximum length of the input text
+	bool UseMask = true; // Use mask or not
+	bool UseCharLabels = false; // Use char labels or not
 };
 
 class G2PWModel : public CppPinYin, public OnnxRuntime::OnnxModelBase<G2PWModel>

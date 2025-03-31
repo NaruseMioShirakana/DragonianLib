@@ -349,6 +349,8 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Define(Negative) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(BitwiseNot) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(Not) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(Polar) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Unary_Define(ATan2) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceSum) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_St_Define(ReduceProd) { _D_Dragonian_Lib_Not_Implemented_Error; }

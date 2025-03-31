@@ -108,6 +108,8 @@ const std::vector<std::wstring>& GetG2PModuleList()
 	return _GlobalG2PModulesList;
 }
 
+extern void RegG2PW();
+
 struct Init {
 	Init()
 	{
@@ -124,6 +126,7 @@ struct Init {
 				return std::make_shared<CppPinYin>(Parameter);
 			}
 		);
+		RegG2PW();
 	}
 };
 Init _Init;

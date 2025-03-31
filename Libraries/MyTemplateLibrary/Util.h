@@ -82,6 +82,23 @@ public:
 	}
 };
 
+template <typename _Type, typename = std::enable_if_t<TypeTraits::HasCRange<_Type>>>
+decltype(auto) CBegin(const _Type& _Container)
+{
+	if constexpr (TypeTraits::HasCLRange<_Type>)
+		return _Container.cbegin();
+	else if constexpr (TypeTraits::HasCHRange<_Type>)
+		return _Container.CBegin();
+}
+template <typename _Type, typename = std::enable_if_t<TypeTraits::HasCRange<_Type>>>
+decltype(auto) CEnd(const _Type& _Container)
+{
+	if constexpr (TypeTraits::HasCLRange<_Type>)
+		return _Container.cend();
+	else if constexpr (TypeTraits::HasCHRange<_Type>)
+		return _Container.CEnd();
+}
+
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 decltype(auto) Begin(_Type&& _Container)
 {
@@ -89,6 +106,8 @@ decltype(auto) Begin(_Type&& _Container)
 		return std::forward<_Type>(_Container).begin();
 	else if constexpr (TypeTraits::HasHRange<_Type>)
 		return std::forward<_Type>(_Container).Begin();
+	else
+		return CBegin(std::forward<_Type>(_Container));
 }
 template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
 decltype(auto) End(_Type&& _Container)
@@ -97,6 +116,8 @@ decltype(auto) End(_Type&& _Container)
 		return std::forward<_Type>(_Container).end();
 	else if constexpr (TypeTraits::HasHRange<_Type>)
 		return std::forward<_Type>(_Container).End();
+	else
+		return CEnd(std::forward<_Type>(_Container));
 }
 
 template <typename _IteratorTypeBeg, typename _IteratorTypeEnd, typename = std::enable_if_t<

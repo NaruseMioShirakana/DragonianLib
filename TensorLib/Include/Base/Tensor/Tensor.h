@@ -1423,6 +1423,8 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(Negative);
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(BitwiseNot);
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(Not);
+	_D_Dragonian_Lib_Operator_Unary_Function_Define(ATan2);
+	_D_Dragonian_Lib_Operator_Unary_Function_Define(Polar);
 
 	template <typename _CurValueType = ValueType,
 		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NegativeUnary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
@@ -1535,7 +1537,7 @@ public:
 	 */
 	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Rank()
 	{
-		return _NRank;
+		return static_cast<SizeType>(_NRank);
 	}
 
 	/**

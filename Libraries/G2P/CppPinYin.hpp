@@ -321,27 +321,58 @@ public:
 		Vector<Segment>&& InputText
 	) const;
 
+	/**
+	 * @brief 转换分词结果
+	 * @param Seg 分词结果
+	 * @param Parameters 用户参数
+	 * @return 分词结果
+	 */
 	virtual std::pair<Vector<std::wstring>, std::optional<Vector<Int64>>> ConvertSegment(
 		const std::wstring& Seg,
 		const CppPinYinParameters& Parameters
 	) const;
 
+	/**
+	 * @brief 搜索非常用字
+	 * @param Word 输入文本
+	 * @return 拼音结果
+	 */
 	std::wstring SearchRare(
 		const std::wstring& Word
 	) const;
 
+	/**
+	 * @brief 注音符号转拼音
+	 * @param Bopomofo 注音符号
+	 * @return 拼音
+	 */
 	std::wstring Bopomofo2Pinyin(
 		const std::wstring& Bopomofo
 	) const;
 
+	/**
+	 * @brief 注音符号转拼音
+	 * @param Bopomofo 注音符号
+	 * @return 拼音（用逗号分隔）
+	 */
 	std::wstring Bopomofo2Pinyin(
 		const Vector<std::wstring>& Bopomofo
 	) const;
 
+	/**
+	 * @brief 搜索常用字
+	 * @param Word 输入文本
+	 * @return 拼音结果
+	 */
 	const Vector<std::wstring>& SearchCommon(
 		const std::wstring& Word
 	) const;
 
+	/**
+	 * @brief 搜索单字
+	 * @param Char 单个汉字
+	 * @return 拼音结果
+	 */
 	std::wstring SearchChar(
 		const std::wstring& Char
 	) const;

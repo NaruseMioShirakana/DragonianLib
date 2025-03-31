@@ -862,6 +862,23 @@ template <typename _Type>
 concept IsRandomAccessIterator = IsPointerLike<_Type>;
 
 template <typename _Type>
+concept HasCLRange = requires(_Type & _Val)
+{
+	{ _Val.cbegin() } -> IsIterator;
+	{ _Val.cend() } -> IsIterator;
+	{ _Val.cend() } -> IsType<decltype(_Val.cbegin())>;
+};
+template <typename _Type>
+concept HasCHRange = requires(_Type & _Val)
+{
+	{ _Val.CBegin() } -> IsIterator;
+	{ _Val.CEnd() } -> IsIterator;
+	{ _Val.CEnd() } -> IsType<decltype(_Val.CBegin())>;
+};
+template <typename _Type>
+concept HasCRange = HasCLRange<_Type> || HasCHRange<_Type>;
+
+template <typename _Type>
 concept HasLRange = requires(_Type & _Val)
 {
 	{ _Val.begin() } -> IsIterator;
@@ -876,7 +893,7 @@ concept HasHRange = requires(_Type & _Val)
 	{ _Val.End() } -> IsType<decltype(_Val.Begin())>;
 };
 template <typename _Type>
-concept HasRange = HasLRange<_Type> || HasHRange<_Type>;
+concept HasRange = HasLRange<_Type> || HasHRange<_Type> || HasCRange<_Type>;
 
 template <typename _IterTypeA, typename _IterTypeB>
 concept IsSameIterator = (IsIterator<_IterTypeA> && IsIterator<_IterTypeB>) &&

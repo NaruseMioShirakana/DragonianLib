@@ -1,4 +1,5 @@
 ﻿#include "../G2PW.hpp"
+#include "Libraries/G2P/G2PModule.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_G2P_Header
@@ -12,6 +13,9 @@ G2PWModel::G2PWModel(
 {
 	if (!Parameter)
 		_D_Dragonian_Lib_Throw_Exception("Parameter is nullptr");
+
+	_UseCharLabels = ((const G2PWModelHParams*)Parameter)->UseCharLabels;
+	_UseMask = ((const G2PWModelHParams*)Parameter)->UseMask;
 
 	FileGuard PolyphonicFile(((const G2PWModelHParams*)Parameter)->PolyphonicPath, L"r");
 	char Buffer[128];
@@ -298,6 +302,18 @@ std::pair<Vector<std::wstring>, std::optional<Vector<Int64>>> G2PWModel::Convert
 		++QueryBegin;
 	}
 	return { std::move(PinYinResult), std::move(ToneResult) };
+}
+
+void RegG2PW()
+{
+	RegisterG2PModule(L"g2pw", [](const void* Parameter) -> G2PModule
+		{
+			return std::make_shared<G2PWModel>(Parameter);
+		});
+	RegisterG2PModule(L"G2PW", [](const void* Parameter) -> G2PModule
+		{
+			return std::make_shared<G2PWModel>(Parameter);
+		});
 }
 
 _D_Dragonian_Lib_G2P_End

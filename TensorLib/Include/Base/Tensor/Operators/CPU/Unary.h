@@ -133,15 +133,47 @@ namespace UnaryOperators
 	}
 
 	template <typename _Type>
+	decltype(auto) CAbs(const std::complex<_Type>& _Value)
+	{
+		return std::complex<_Type>{ std::abs(_Value) };
+	}
+
+	template <typename _Type>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Abs(const _Type& _Value)
 	{
-		if constexpr (requires(_Type & _Left) { _Left.Abs(); })
+		if constexpr (IsComplexValue<_Type>)
+			return CAbs(_Value);
+		else if constexpr (requires(_Type & _Left) { _Left.Abs(); })
 			return static_cast<_Type>(_Value.Abs());
 		else if constexpr (requires(_Type & _Left) { _Left.abs(); })
 			return static_cast<_Type>(_Value.abs());
 		else if constexpr (requires(_Type & _Left) { std::abs(_Left); })
 			return static_cast<_Type>(std::abs(_Value));
+		else
+			return std::nullopt;
+	}
+
+	template <typename _Type>
+	_D_Dragonian_Lib_Force_Inline decltype(auto)
+		Polar(const _Type& _Value)
+	{
+		if constexpr (IsComplexValue<_Type>)
+			return std::polar(_Value.real(), _Value.imag());
+		else if constexpr (IsAnyOfValue<_Type, Vectorized<Complex32>, Vectorized<Complex64>>)
+			return _Value.Polar();
+		else
+			return std::nullopt;
+	}
+
+	template <typename _Type>
+	_D_Dragonian_Lib_Force_Inline decltype(auto)
+		ATan2(const _Type& _Value)
+	{
+		if constexpr (IsComplexValue<_Type>)
+			return _Type{ std::abs(_Value), std::atan2(_Value.imag(), _Value.real()) };
+		else if constexpr (IsAnyOfValue<_Type, Vectorized<Complex32>, Vectorized<Complex64>>)
+			return _Value.ATan2();
 		else
 			return std::nullopt;
 	}
@@ -528,6 +560,8 @@ _D_Dragonian_Lib_Operator_Unary_Function_Def(Frac, 8, 2);
 _D_Dragonian_Lib_Operator_Unary_Function_Def(Negative, 8, 2);
 _D_Dragonian_Lib_Operator_Unary_Function_Def(BitwiseNot, 8, 2);
 _D_Dragonian_Lib_Operator_Unary_Function_Def(Not, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(Polar, 8, 2);
+_D_Dragonian_Lib_Operator_Unary_Function_Def(ATan2, 8, 2);
 
 _D_Dragonian_Lib_Operator_Space_End
 
