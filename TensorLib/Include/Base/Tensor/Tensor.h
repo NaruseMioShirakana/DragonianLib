@@ -58,6 +58,8 @@ struct Range
 	 */
 	Range(NoneType _NoneVal) { UNUSED(_NoneVal); }
 
+	Range(SizeType _Val) : Begin(_Val), Step(_Val), End(_Val) {}
+
 	/**
 	 * @brief Constructor for a range with begin, step, and end values.
 	 * @param _RangeArgs The range arguments.
@@ -158,11 +160,47 @@ enum class PaddingType
 };
 
 template <size_t _NRank>
-using SliceOptions = IDLArray<Range, _NRank>; ///< Alias for vector of ranges
+class SliceOptions : public IDLArray<Range, _NRank> {}; ///< Alias for vector of ranges
 template <size_t _NRank>
-using VRanges = IDLArray<Range, _NRank>; ///< Alias for vector of ranges
+class VRanges : public IDLArray<Range, _NRank> {}; ///< Alias for vector of ranges
 template <size_t _NRank>
-using Dimensions = IDLArray<SizeType, _NRank>;
+class PaddingCounts : public IDLArray<Range, _NRank> {}; ///< Alias for vector of ranges
+template <size_t _NRank>
+class Dimensions : public IDLArray<SizeType, _NRank>
+{
+public:
+	using IDLArray<SizeType, _NRank>::_MyData;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Dimensions<_NRank + 1> Insert(
+		const SizeType& _Value, size_t _Index
+	) const
+	{
+		Dimensions<_NRank + 1> _Tmp;
+		for (size_t i = 0; i < _Index; ++i)
+			_Tmp._MyData[i] = _MyData[i];
+		_Tmp._MyData[_Index] = _Value;
+		for (size_t i = _Index; i < _NRank; ++i)
+			_Tmp._MyData[i + 1] = _MyData[i];
+		return _Tmp;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Dimensions<_NRank - 1> Erase(size_t _Index) const
+	{
+		Dimensions<_NRank - 1> _Tmp;
+		for (size_t i = 0; i < _Index; ++i)
+			_Tmp._MyData[i] = _MyData[i];
+		for (size_t i = _Index + 1; i < _NRank; ++i)
+			_Tmp._MyData[i - 1] = _MyData[i];
+		return _Tmp;
+	}
+};
+
+template<typename... _Up>
+SliceOptions(_Up...) -> ::DragonianLib::SliceOptions<sizeof...(_Up)>;
+template<typename... _Up>
+VRanges(_Up...) -> ::DragonianLib::VRanges<sizeof...(_Up)>;
+template<typename... _Up>
+PaddingCounts(_Up...) -> ::DragonianLib::PaddingCounts<sizeof...(_Up)>;
+template<typename... _Up>
+Dimensions(_Up...) -> ::DragonianLib::Dimensions<sizeof...(_Up)>;
 
 /**
  * @brief Set the random seed.
@@ -352,6 +390,7 @@ private:
 	{
 		WaitingForTheOperationLock();
 		WaitingForTheInplaceLock();
+		_IgnoreDep = false;
 	}
 
 public:
@@ -443,7 +482,7 @@ private:
 	{
 		if constexpr (_NRank > 1)
 		{
-			if (_MyShape.Front() > 10 && _MyTotalSize > 1000 && _Fold)
+			if (_MyShape.Front() > 10 && _MyTotalSize > 200 && _Fold)
 				return "[" +
 				operator[](0).CastToString(_MyTotalSize) + ",\n" +
 				operator[](1).CastToString(_MyTotalSize) + ",\n" +
@@ -461,7 +500,7 @@ private:
 		}
 		else
 		{
-			if (_MyShape.Front() > 10 && _MyTotalSize > 1000 && _Fold)
+			if (_MyShape.Front() > 10 && _MyTotalSize > 200 && _Fold)
 				return "[" +
 				CvtToString(Get(0)) + ", " +
 				CvtToString(Get(1)) + ", " +
@@ -1388,7 +1427,7 @@ public:
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
 		std::is_copy_assignable_v<_CurValueType>&&
 		TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>&&
-		(_NRank > _TRank)
+		(_NRank >= _TRank)
 		>> decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const Tensor<ValueType, _TRank, _MyDevice>& _Value)
 	{
 		if (_Mask.Shape() != Shape())
@@ -1413,45 +1452,99 @@ public:
 
 	//*************************************************Binary Operator*************************************************//
 
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Add);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Add, +, (Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Sub);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Sub, -, (Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Mul);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mul, *, (Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Div);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Div, / , (Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Mod);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mod, %, (Operators::BinaryOperators::ModBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(And);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(And, &&, (Operators::BinaryOperators::AndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Or);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Or, || , (Operators::BinaryOperators::OrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Xor);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Xor, ^, (Operators::BinaryOperators::XorBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(LShift);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(LShift, << , (Operators::BinaryOperators::LShiftBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(RShift);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(RShift, >> , (Operators::BinaryOperators::RShiftBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(BinaryOr);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BinaryOr, | , (Operators::BinaryOperators::BinaryOrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(BinaryAnd);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BinaryAnd, &, (Operators::BinaryOperators::BinaryAndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
 
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Equal);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Equal, == , (Operators::ComparisonOperators::EqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(NotEqual);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(NotEqual, != , (Operators::ComparisonOperators::NotEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Greater);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Greater, > , (Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Less);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Less, < , (Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(GreaterEqual);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(GreaterEqual, >= , (Operators::ComparisonOperators::GreaterEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(LessEqual);
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(LessEqual, <= , (Operators::ComparisonOperators::LessEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
-	
+
+	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Pow);
+
+	//*****************************************************************************************************************//
+
+	template <typename _Type, typename = std::enable_if_t<!TypeTraits::IsComplexValue<_TensorType>>>
+	Tensor<std::complex<_Type>, _NRank, _MyDevice> operator*(const std::complex<_Type>& _Val) const
+	{
+		Tensor<std::complex<_Type>, _NRank, _MyDevice> Ret{ Shape(), GetAllocator() };
+		Ret.Real().Ignore().TensorAssign(Mul(_Val.real()));
+		Ret.Imag().Ignore().TensorAssign(Mul(_Val.imag()));
+		return Ret;
+	}
+	template <typename _Type, typename = std::enable_if_t<!TypeTraits::IsComplexValue<_TensorType>>>
+	Tensor<std::complex<_Type>, _NRank, _MyDevice> operator*(const Tensor<std::complex<_Type>, _NRank, _MyDevice>& _Val) const
+	{
+		Tensor<std::complex<_Type>, _NRank, _MyDevice> Ret{ Shape(), GetAllocator() };
+		Ret.Real().Ignore().TensorAssign(Mul(_Val.Real()));
+		Ret.Imag().Ignore().TensorAssign(Mul(_Val.Imag()));
+		return Ret;
+	}
 
 	//****************************************************Unary Operator****************************************************//
 
@@ -1718,7 +1811,7 @@ public:
 
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = 1; i < _NRank; ++i)
-			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
+			if (_MyViewStride[i - 1] % _MyShape[i] || _MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
 	}
@@ -2248,6 +2341,25 @@ public:
 		return Ret;
 	}
 
+	template <typename _Type = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_Type, _TensorType>&& TypeTraits::IsComplexValue<_Type>>>
+	decltype(auto) Real() const
+	{
+		using RealType = typename _Type::value_type;
+		SliceOptions<_NRank> SliceVector;
+		SliceVector[_NRank - 1].Step = 2;
+		return ViewAs<RealType>().Slice(SliceVector);
+	}
+
+	template <typename _Type = _TensorType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_Type, _TensorType>&& TypeTraits::IsComplexValue<_Type>>>
+	decltype(auto) Imag() const
+	{
+		using RealType = typename _Type::value_type;
+		SliceOptions<_NRank> SliceVector;
+		SliceVector[_NRank - 1].Begin = 1;
+		SliceVector[_NRank - 1].Step = 2;
+		return ViewAs<RealType>().Slice(SliceVector);
+	}
+
 	/**
 	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
 	 * @return New tensor.
@@ -2457,7 +2569,7 @@ public:
 
 	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank <= _NRank && std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Padding(
-		const IDLArray<Range, _TRank>& _PaddingCount,
+		const PaddingCounts<_TRank>& _PaddingCount,
 		PaddingType _Type,
 		std::optional<ValueType> _Val = std::nullopt
 	) const
@@ -2584,21 +2696,21 @@ public:
 
 	template <typename _CurValueType = ValueType, size_t _TRank = _NRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank <= _NRank && std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Pad(
-		const IDLArray<Range, _TRank>& _PaddingCount,
+		const PaddingCounts<_TRank>& _PaddingCount,
 		PaddingType _Type,
 		std::optional<ValueType> _Val = std::nullopt
 	) const
 	{
-		IDLArray<Range, _NRank> PaddingC;
+		PaddingCounts<_NRank> PaddingC;
 		for (size_t i = 0; i < _TRank; ++i)
 			PaddingC[_NRank - 1 - i] = _PaddingCount[i];
 		return Padding(PaddingC, _Type, std::move(_Val));
 	}
 
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
-	decltype(auto) Repeat(const IDLArray<SizeType, _NRank>& _Repeat) const
+	decltype(auto) Repeat(const Dimensions<_NRank>& _Repeat) const
 	{
-		IDLArray<Range, _NRank> _PaddingCount;
+		PaddingCounts<_NRank> _PaddingCount;
 		for (size_t i = 0; i < _NRank; ++i)
 		{
 			if (_Repeat[i] <= 1)
@@ -2611,7 +2723,7 @@ public:
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Repeat(SizeType _Axis, SizeType _Repeat) const
 	{
-		IDLArray<Range, _NRank> _PaddingCount;
+		PaddingCounts<_NRank> _PaddingCount;
 		_Axis = CalcIndex(_Axis, Rank());
 		_PaddingCount[_Axis].End = (_Repeat - 1) * _MyShape[_Axis];
 		return Padding(_PaddingCount, PaddingType::Cicular);

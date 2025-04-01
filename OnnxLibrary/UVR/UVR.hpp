@@ -87,14 +87,33 @@ public:
 	CascadedNet& operator=(const CascadedNet&) = default;
 	CascadedNet& operator=(CascadedNet&&) noexcept = default;
 
-	Tensor<Float32, 3, Device::CPU> Preprocess(
+	std::tuple<Tensor<Float32, 3, Device::CPU>,
+		Tensor<Complex32, 3, Device::CPU>,
+		Tensor<Complex32, 3, Device::CPU>,
+		Tensor<Complex32, 3, Device::CPU>,
+		Int64, Int64, Float32, Int64> Preprocess(
+			const Tensor<Float32, 2, Device::CPU>& Signal,
+			Int64 SamplingRate
+		) const;
+
+	Tensor<Float32, 3, Device::CPU> Spec2Audio(
+		const Tensor<Complex32, 3, Device::CPU>& Spec,
+		const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
+		Int64 InputHighEndH
+	) const;
+
+	Tensor<Float32, 3, Device::CPU> Forward(
 		const Tensor<Float32, 2, Device::CPU>& Signal,
+		Int64 SplitBin,
+		Float32 Value,
 		Int64 SamplingRate
 	) const;
 
 private:
 	HParams _MySetting;
 	std::vector<FunctionTransform::StftKernel> _MyStftKernels;
+	Int64 _MyPaddingLeft;
+	Int64 _MyRoiSize;
 };
 
 _D_Dragonian_Lib_Onnx_UVR_End

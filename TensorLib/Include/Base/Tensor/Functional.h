@@ -1006,7 +1006,7 @@ namespace Functional
 
 		using TensorType = TypeTraits::RemoveReferenceType<decltype(*Begin)>;
 		constexpr auto Rank = TensorType::Rank();
-		_Axis = TensorType::CalcIterator(_Axis, Rank);
+		_Axis = TensorType::CalcIndex(_Axis, Rank);
 
 		const auto& FShape = Begin->Shape();
 		auto Shape = FShape;
@@ -1097,17 +1097,30 @@ namespace Functional
 		return FunctionalImpl::MatmulWT(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
 	}
 
+	enum class InnerOuterType {
+		ADD, SUB, MUL, DIV
+	};
+
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
 		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)
 		>>
 		decltype(auto) Inner(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB,
+			InnerOuterType _Type = InnerOuterType::MUL
 		)
 	{
 		auto A = _TensorA.UnSqueeze(-2);
 		auto B = _TensorB.UnSqueeze(-1);
-		return FunctionalImpl::Matmul(A, B).Squeeze(-1);
+		if (_Type == InnerOuterType::ADD)
+			return A + B;
+		if (_Type == InnerOuterType::SUB)
+			return A - B;
+		if (_Type == InnerOuterType::MUL)
+			return A * B;
+		if (_Type == InnerOuterType::DIV)
+			return A / B;
+		_D_Dragonian_Lib_Throw_Exception("Invalid InnerOuterType.");
 	}
 
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
@@ -1115,12 +1128,21 @@ namespace Functional
 		>>
 		decltype(auto) Outer(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB,
+			InnerOuterType _Type = InnerOuterType::MUL
 		)
 	{
 		auto A = _TensorA.UnSqueeze(-1);
 		auto B = _TensorB.UnSqueeze(-2);
-		return FunctionalImpl::Matmul(A, B);
+		if (_Type == InnerOuterType::ADD)
+			return A + B;
+		if (_Type == InnerOuterType::SUB)
+			return A - B;
+		if (_Type == InnerOuterType::MUL)
+			return A * B;
+		if (_Type == InnerOuterType::DIV)
+			return A / B;
+		_D_Dragonian_Lib_Throw_Exception("Invalid InnerOuterType.");
 	}
 
 

@@ -155,6 +155,7 @@ decltype(auto) _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) con
 } \
 struct _D_Dragonian_Lib_Unary##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Binary_Function_Define(_Function) \
 template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>> \
 decltype(auto) _Function(const ValueType& _Right) const \
@@ -277,6 +278,7 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right,
 } \
 struct _D_Dragonian_Lib_Binary##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Compare_Function_Define(_Function) \
 template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>>> \
 decltype(auto) _Function(const ValueType& _Right) const \
@@ -359,6 +361,7 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right,
 } \
 struct _D_Dragonian_Lib_Compare##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Bond_Function_2_Operator(_Function, _Operator, _Condition) \
 template <typename _CurValueType = ValueType, typename = std::enable_if_t <(_Condition)&& std::is_default_constructible_v<_CurValueType>>> \
 decltype(auto) operator##_Operator##(const ValueType& _Right) const \
@@ -385,6 +388,7 @@ template <typename _CurValueType = ValueType, size_t _TRank, typename = std::ena
 } \
 struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(_Function, _Operator, _Condition) \
 template <typename _CurValueType = ValueType, typename = std::enable_if_t <(_Condition)>> \
 decltype(auto) operator##_Operator##(const ValueType& _Right) const \
@@ -399,6 +403,7 @@ template <typename _CurValueType = ValueType, size_t _TRank, typename = std::ena
 } \
 struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Reduce_Function_Body(_FunctionName, _Function) \
 { \
 	if constexpr (_NRank == 1) \
@@ -429,6 +434,7 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 } \
 struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Reduce_Function_Body_T(_FunctionName, _Function, _RetType) \
 { \
 	if constexpr (_NRank == 1) \
@@ -459,6 +465,7 @@ struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 } \
 struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 
+//********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Cumulate_Function_Body(_Function) \
 { \
 	if constexpr (_NRank == 1) \

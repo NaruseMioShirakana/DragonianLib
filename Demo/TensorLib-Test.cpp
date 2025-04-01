@@ -44,48 +44,40 @@ void WithTimer(const Fn& fn)
 #include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
 #include "OnnxLibrary/G2P/G2PW.hpp"
 #include "OnnxLibrary/UVR/UVR.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
 
 	
 int main()
 {
 	std::wcout.imbue(std::locale("zh_CN"));
-
+	
 	using namespace DragonianLib;
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
 
-	auto Ten1 = Functional::Randn(IDim(114, 514)).Evaluate();
-	auto Ten2 = Functional::Randn(IDim(114, 514)).Evaluate();
-	std::cout << Ten1 << "\n\n";
-	std::cout << Ten2 << "\n\n";
-	std::cout << Functional::Stack(Ten1, Ten2).Evaluate() << "\n\n";
+	std::cout<< std::exp(Complex32(0, 1.80465841));
 
-	const auto Env = OnnxRuntime::CreateEnvironment({});
-	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
-		LR"(C:\DataSpace\libsvc\PythonScript\G2PW.onnx)",
-		Env
-	);
+	const auto Env = OnnxRuntime::CreateEnvironment({
+	});
 	OnnxRuntime::Vocoder::NsfHifigan Vocoder(
 		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\nsf-hifigan-n.onnx)",
 		Env
 	);
-
-	auto AudioInStream = AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)");
-	auto AudioData = AudioInStream.DecodeAll(44100, 1).Squeeze(-1);
-	AudioData = AudioData[{"441000:882000"}];
+	auto AudioInStream = AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)");
+	auto AudioData = AudioInStream.DecodeAll(44100, 2, true);
+	AudioData = AudioData[{":", "441000:882000"}];
 	
-	FunctionTransform::MFCCKernel Kernel(44100, 2048, 512, 2048, 128);
-	auto Mel = Kernel(AudioData.View(1, 1, -1));
-	auto F0 = F0Extractor::DioF0Extractor()(AudioData.View(1, -1), {44100}).UnSqueeze(0);
-	F0 = F0.Interpolate<Operators::InterpolateMode::Linear>(IDim(-1), IDim(Mel.Size(3))).Evaluate();
-	auto NewAudio = Vocoder(Mel, F0);
+	FunctionTransform::MFCCKernel Kernel(44100, 2048, 512, 2048, 128, 20, 11025, true, PaddingType::Reflect, GetDefaultLogger());
+	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
+		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\tools\uvr5\uvr5_weights\onnx_dereverb_HP5_only_main_vocal.onnx)",
+		Env
+	);
 
+	auto Audio = Net.Forward(AudioData, 85, 0.5f, 44100);
 	auto OutputStream = AvCodec::OpenOutputStream(
 		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-istft.wav)"
 	);
-	OutputStream.EncodeAll(NewAudio.GetCRng(), 44100);
-
-	auto PreProcessed = Net.Preprocess(AudioData.UnSqueeze(0), 44100);
+	OutputStream.EncodeAll(Audio.GetCRng(), 44100, 2, true);
 
 	G2P::CppPinYinConfigs Configs{
 		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_dict.json)",
@@ -93,7 +85,7 @@ int main()
 		LR"(C:\DataSpace\libsvc\PythonScript\bopomofo_to_pinyin_wo_tune_dict.json)",
 		LR"(C:\DataSpace\libsvc\PythonScript\char_bopomofo_dict.json)"
 	};
-	G2P::G2PWModelHParams Params{
+	G2P::G2PWModelHParams gParams{
 		&Configs,
 		LR"(C:\DataSpace\libsvc\PythonScript\POLYPHONIC_CHARS.txt)",
 		LR"(C:\DataSpace\libsvc\PythonScript\tokens.txt)",
@@ -104,7 +96,7 @@ int main()
 	};
 
 	G2P::G2PWModel PinYin(
-		&Params
+		&gParams
 	);
 
 	G2P::CppPinYinParameters Parameters;

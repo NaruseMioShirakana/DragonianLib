@@ -1,10 +1,10 @@
 ﻿#include "../stft.hpp"
 #include "cblas.h"
 #include "fftw3.h"
+#include "TensorLib/Include/Base/Tensor/Functional.h"
 
 _D_Dragonian_Lib_Space_Begin
-
-namespace FunctionTransform
+	namespace FunctionTransform
 {
 	double HZ2Mel(const double frequency)
 	{
@@ -46,27 +46,8 @@ namespace FunctionTransform
 		}
 	}
 
-	void ConvertDoubleToFloat(const DragonianLibSTL::Vector<double>& input, float* output)
-	{
-		for (size_t i = 0; i < input.Size(); i++) {
-			output[i] = static_cast<float>(input[i]);
-		}
-	}
-
 	double CalculatePowerSpectrum(fftw_complex fc) {
-		return sqrt(fc[0] * fc[0] + fc[1] * fc[1]);
-	}
-
-	void CalculatePowerSpectrum(double* real, const double* imag, int size) {
-		for (int i = 0; i < size; i++) {
-			real[i] = real[i] * real[i] + imag[i] * imag[i];
-		}
-	}
-
-	void ConvertPowerSpectrumToDecibels(double* data, int size) {
-		for (int i = 0; i < size; i++) {
-			data[i] = 10 * log10(data[i]);
-		}
+		return sqrt(fc[0] * fc[0] + fc[1] * fc[1] + (1e-9));
 	}
 
 	struct _M_MCPX
@@ -342,76 +323,82 @@ namespace FunctionTransform
 		return std::move(Output.Evaluate());
 	}
 
+	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram, Int64 HopSize)
+	{
+		const auto [BatchSize, ChannelCount, FrameCount, FFTBin] =
+			Spectrogram.Shape().RawArray();
+		const auto FFTSize = (FFTBin - 1) * 2;
+		const auto SignalSize = FrameCount * HopSize;
+		return StftKernel(static_cast<int>(FFTSize), static_cast<int>(HopSize)).Inverse(Spectrogram)[{None, None, { None, SignalSize }}].Contiguous().Evaluate();
+	}
+
 	MFCCKernel::MFCCKernel(
 		int SamplingRate, int NumFFT, int HopSize, int WindowSize, int MelBins,
 		double FreqMin, double FreqMax, bool Center, PaddingType Padding, DLogger _Logger
-	) : _MyStftKernel(NumFFT, HopSize, WindowSize, Center, Padding), _MyLogger(std::move(_Logger))
+	) : STFT_KERNEL(NumFFT, HopSize, WindowSize, Center, Padding), _MyLogger(std::move(_Logger))
 	{
-		double mel_min = HZ2Mel(FreqMin);
-		double mel_max = HZ2Mel(FreqMax);
+		double MEL_MIN = HZ2Mel(FreqMin);
+		double MEL_MAX = HZ2Mel(FreqMax);
 
 		if (MelBins > 0)
-			_MyMelBins = MelBins;
-		_MyFFTSize = NumFFT / 2 + 1;
-		_MySamplingRate = SamplingRate;
+			MEL_BINS = MelBins;
+		FFT_SIZE = NumFFT;
+		FFT_BINS = NumFFT / 2 + 1;
+		SAMPLING_RATE = SamplingRate;
 
-		const int nfft = (_MyFFTSize - 1) * 2;
-		const double fftfreqval = 1. / (double(nfft) / double(SamplingRate));
-		auto fftfreqs = DragonianLibSTL::Arange<double>(0, _MyFFTSize + 2);
-		fftfreqs.Resize(_MyFFTSize, 0.f);
-		for (auto& i : fftfreqs)
-			i *= fftfreqval;
-
-		auto mel_f = DragonianLibSTL::Arange<double>(mel_min, mel_max + 1., (mel_max - mel_min) / (_MyMelBins + 1));
-		mel_f.Resize(_MyMelBins + 2, 0.f); //[_MyMelBins + 2]
-
-		std::vector<double> fdiff;
-		std::vector<std::vector<double>> ramps; //[_MyMelBins + 2, FFTSize]
-
-		ramps.reserve(_MyMelBins + 2);
-		for (auto& i : mel_f)
+		auto Weight = Tensor<Float32, 2, Device::CPU>::Empty(
+			Dimensions{ MEL_BINS, FFT_BINS }
+		);
+		const auto DSR = 1.f / float(SAMPLING_RATE);
+		const auto VAl = 1.f / (DSR * float(FFT_SIZE));
+		const auto N = float(FFT_BINS);
+		auto FFT_FREQS = Tensor<Float32, 1, Device::CPU>::Arange(
+			0.f, N, 1.f
+		);
+		auto MEL_F = Tensor<Float32, 1, Device::CPU>::Linspace(
+			float(MEL_MIN), float(MEL_MAX), MEL_BINS + 2, true
+		).Evaluate();
+		for (auto& POINT : MEL_F.GetRng())
+			POINT = (float)Mel2HZ((double)POINT);
+		FFT_FREQS *= VAl;
+		auto F_DIFF = MEL_F.Diff(0).Evaluate();
+		auto RAMPS = Functional::Outer(
+			MEL_F,
+			FFT_FREQS,
+			Functional::InnerOuterType::SUB
+		).Evaluate();
+		for (auto i : TemplateLibrary::Ranges(MEL_BINS))
 		{
-			i = Mel2HZ(i);
-			ramps.emplace_back(_MyFFTSize, i);
+			auto UPPER = RAMPS[i + 2].Ignore() / F_DIFF[i + 1];
+			auto LOWER = -RAMPS[i].Ignore() / F_DIFF[i];
+			Weight[i].Ignore().TensorAssign(Functional::Min(LOWER, UPPER).Max(0.f));
 		}
-		for (auto& i : ramps)
-			for (int j = 0; j < _MyFFTSize; ++j)
-				i[j] -= fftfreqs[j];
-
-		fdiff.reserve(_MyMelBins + 2); //[_MyMelBins + 1]
-		for (size_t i = 1; i < mel_f.Size(); ++i)
-			fdiff.emplace_back(mel_f[i] - mel_f[i - 1]);
-
-		_MyMelBasis = DragonianLibSTL::Vector(size_t(_MyFFTSize) * _MyMelBins, 0.f);
-
-		for (int i = 0; i < _MyMelBins; ++i)
-		{
-			const auto enorm = 2. / (mel_f[i + 2] - mel_f[i]);
-			for (int j = 0; j < _MyFFTSize; ++j)
-				_MyMelBasis[i * _MyFFTSize + j] = (float)(std::max(0., std::min(-ramps[i][j] / fdiff[i], ramps[i + 2][j] / fdiff[i + 1])) * enorm);
-		}
+		auto ENORM = MEL_F[{Range{ 2, None }}].Ignore() -
+			MEL_F[{Range{ None, MEL_BINS }}].Ignore();
+		(Weight *= 2) /= ENORM.UnSqueeze(-1);
+		WEIGHT = std::move(Weight.Evaluate());
 	}
 
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
 
 		auto BgnTime = clock();
-		const auto Spec = _MyStftKernel(Signal);
+		const auto Spec = STFT_KERNEL(Signal);
 		if (_MyLogger)
 			_MyLogger->Log((L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
 
 		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] = Spec.Shape().RawArray();
-		const auto MelShape = Dimensions<4>{ BatchSize, ChannelCount, _MyMelBins, FrameCount };
+		const auto MelShape = Dimensions<4>{ BatchSize, ChannelCount, MEL_BINS, FrameCount };
 		auto Result = Tensor<Float32, 4, Device::CPU>::New(MelShape);
 		for (SizeType b = 0; b < BatchSize; b++)
 		{
 			for (SizeType c = 0; c < ChannelCount; c++)
 			{
 				const auto SpecData = Spec.Data() + (b * ChannelCount + c) * FrameCount * FFTSize;
-				auto MelData = Result.Data() + (b * ChannelCount + c) * _MyMelBins * FrameCount;
+				auto MelData = Result.Data() + (b * ChannelCount + c) * MEL_BINS * FrameCount;
 				Result.AppendTask(
 					[this, SpecData, MelData, FrameCount]
 					{
@@ -423,19 +410,19 @@ namespace FunctionTransform
 							CblasRowMajor,
 							CblasNoTrans,
 							CblasTrans,
-							_MyMelBins,
+							MEL_BINS,
 							blasint(FrameCount),
-							_MyFFTSize,
+							FFT_BINS,
 							1.f,
-							_MyMelBasis.Data(),
-							_MyFFTSize,
+							WEIGHT.Data(),
+							FFT_BINS,
 							SpecData,
-							blasint(_MyFFTSize),
+							blasint(FFT_BINS),
 							0.f,
 							MelData,
 							blasint(FrameCount)
 						);
-						for (int i = 0; i < _MyMelBins * FrameCount; i++)
+						for (int i = 0; i < MEL_BINS * FrameCount; i++)
 							MelData[i] = log(std::max(1e-5f, MelData[i]));
 					}
 				);
@@ -452,7 +439,7 @@ namespace FunctionTransform
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
 		return operator()(Signal.Cast<Float64>());
 	}
@@ -460,7 +447,7 @@ namespace FunctionTransform
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
 	{
 		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < _MyStftKernel.WINDOW_SIZE)
+		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
 		return operator()(Signal.Cast<Float64>());
 	}

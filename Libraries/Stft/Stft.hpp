@@ -88,6 +88,8 @@ namespace FunctionTransform
 		 */
 		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const;
 
+		static Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram, Int64 HopSize);
+
 	private:
 		int NUM_FFT = 2048; ///< FFT size
 		int FFT_BINS = 1025; ///< FFT bins
@@ -135,11 +137,12 @@ namespace FunctionTransform
 		 */
 		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
 	private:
-		StftKernel _MyStftKernel; ///< STFT instance
-		int _MyMelBins = 128; ///< Mel spectrum size
-		int _MyFFTSize = 0; ///< FFT size
-		int _MySamplingRate = 22050; ///< Sampling rate
-		DragonianLibSTL::Vector<float> _MyMelBasis; ///< Mel basis [MelBins, FFTSize]
+		StftKernel STFT_KERNEL; ///< STFT instance
+		int MEL_BINS = 128; ///< Mel spectrum size
+		int FFT_SIZE = 0; ///< FFT size
+		int FFT_BINS = 0; ///< FFT bins
+		int SAMPLING_RATE = 22050; ///< Sampling rate
+		Tensor<Float32, 2, Device::CPU> WEIGHT; ///< Mel basis [MelBins, FFTSize]
 		DLogger _MyLogger = nullptr; ///< Logger
 	};
 
