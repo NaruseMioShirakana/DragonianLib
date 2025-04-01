@@ -111,11 +111,7 @@ void LowPass(
 	_Signal[{None, { BinStop, None }}].Ignore() = 0.f;
 }
 
-std::tuple<Tensor<Float32, 3, Device::CPU>,
-Tensor<Complex32, 3, Device::CPU>,
-Tensor<Complex32, 3, Device::CPU>,
-Tensor<Complex32, 3, Device::CPU>,
-Int64, Int64, Float32, Int64> CascadedNet::Preprocess(
+std::tuple<FltTensor, Cpx32Tensor, Cpx32Tensor, Cpx32Tensor, Int64, Int64, Float32, Int64> CascadedNet::Preprocess(
 	const Tensor<Float32, 2, Device::CPU>& Signal,
 	Int64 SamplingRate
 ) const
@@ -210,7 +206,7 @@ Int64, Int64, Float32, Int64> CascadedNet::Preprocess(
 	};
 }
 
-Tensor<Float32, 3, Device::CPU> CascadedNet::Spec2Audio(
+FltTensor CascadedNet::Spec2Audio(
 	const Tensor<Complex32, 3, Device::CPU>& Spec,
 	const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
 	Int64 InputHighEndH
@@ -307,7 +303,7 @@ Tensor<Float32, 3, Device::CPU> CascadedNet::Spec2Audio(
 	return Audio.Evaluate();
 }
 
-Tensor<Float32, 3, Device::CPU> CascadedNet::Forward(
+std::pair<FltTensor, FltTensor> CascadedNet::Forward(
 	const Tensor<Float32, 2, Device::CPU>& Signal,
 	Int64 SplitBin,
 	Float32 Value,
@@ -354,7 +350,7 @@ Tensor<Float32, 3, Device::CPU> CascadedNet::Forward(
 	auto YSpec = (Pred * Phase).Evaluate();
 	auto VSpec = (XSpecM - YSpec).Evaluate();
 
-	return Spec2Audio(VSpec, InputHighEnd, InputHighEndH);
+	return { Spec2Audio(VSpec, InputHighEnd, InputHighEndH), Spec2Audio(YSpec, InputHighEnd, InputHighEndH) };
 }
 
 _D_Dragonian_Lib_Onnx_UVR_End

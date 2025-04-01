@@ -50,69 +50,38 @@ void WithTimer(const Fn& fn)
 int main()
 {
 	std::wcout.imbue(std::locale("zh_CN"));
-	
+
 	using namespace DragonianLib;
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
+	//SetTaskPoolSize(4);
 
-	std::cout<< std::exp(Complex32(0, 1.80465841));
-
-	const auto Env = OnnxRuntime::CreateEnvironment({
-	});
-	OnnxRuntime::Vocoder::NsfHifigan Vocoder(
-		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\nsf-hifigan-n.onnx)",
-		Env
-	);
-	auto AudioInStream = AvCodec::OpenInputStream(LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)");
-	auto AudioData = AudioInStream.DecodeAll(44100, 2, true);
-	AudioData = AudioData[{":", "441000:882000"}];
-	
-	FunctionTransform::MFCCKernel Kernel(44100, 2048, 512, 2048, 128, 20, 11025, true, PaddingType::Reflect, GetDefaultLogger());
+	const auto Env = OnnxRuntime::CreateEnvironment({});
 	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
-		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\tools\uvr5\uvr5_weights\onnx_dereverb_HP5_only_main_vocal.onnx)",
-		Env
+		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\UVR\HP5_only_main_vocal.onnx)",
+		Env,
+		OnnxRuntime::UltimateVocalRemover::CascadedNet::GetPreDefinedHParams(L"4band_v2")
 	);
 
-	auto Audio = Net.Forward(AudioData, 85, 0.5f, 44100);
+	auto AudioInStream = AvCodec::OpenInputStream(
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)"
+	);
+	auto AudioData = AudioInStream.DecodeAll(
+		44100, 2, true
+	);
+	AudioData = AudioData[{":", "441000:882000"}];
+
+	auto [Vocal, Instrument] =
+		Net.Forward(AudioData, 85, 0.5f, 44100);
+
 	auto OutputStream = AvCodec::OpenOutputStream(
-		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-istft.wav)"
+		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Vocal.wav)"
 	);
-	OutputStream.EncodeAll(Audio.GetCRng(), 44100, 2, true);
-
-	G2P::CppPinYinConfigs Configs{
-		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_dict.json)",
-		LR"(C:\DataSpace\libsvc\PythonScript\pypinyin_pinyin_dict.json)",
-		LR"(C:\DataSpace\libsvc\PythonScript\bopomofo_to_pinyin_wo_tune_dict.json)",
-		LR"(C:\DataSpace\libsvc\PythonScript\char_bopomofo_dict.json)"
-	};
-	G2P::G2PWModelHParams gParams{
-		&Configs,
-		LR"(C:\DataSpace\libsvc\PythonScript\POLYPHONIC_CHARS.txt)",
-		LR"(C:\DataSpace\libsvc\PythonScript\tokens.txt)",
-		LR"(C:\DataSpace\libsvc\PythonScript\G2PW.onnx)",
-		&Env,
-		&_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger(),
-		512
-	};
-
-	G2P::G2PWModel PinYin(
-		&gParams
+	OutputStream.EncodeAll(Vocal.GetCRng(), 44100, 2, true);
+	OutputStream = AvCodec::OpenOutputStream(
+		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Instrument.wav)"
 	);
-
-	G2P::CppPinYinParameters Parameters;
-	Parameters.Style = G2P::CppPinYinParameters::TONE2;
-	Parameters.NumberStyle = G2P::CppPinYinParameters::SPLITCHINESE;
-	Parameters.Heteronym = true;
-
-	auto [Phoneme, Tone] = PinYin.Convert(
-		L"〇我的名字是田所浩二，代号是野兽先辈，专属数字是114514和1919810！",
-		"zh",
-		&Parameters
-	);
-	
-	for (size_t i = 0; i < Phoneme.Size(); ++i)
-		std::wcout << Phoneme[i] << "  <-  " << Tone[i] << '\n';
-
+	OutputStream.EncodeAll(Instrument.GetCRng(), 44100, 2, true);
 	return 0;
 
 	/*TextToSpeech::Llama LLAMAModel({ 666, 777, 888, 999 });

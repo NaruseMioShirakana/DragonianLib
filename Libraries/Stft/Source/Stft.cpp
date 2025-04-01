@@ -200,7 +200,7 @@ _D_Dragonian_Lib_Space_Begin
 					{
 						DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
 						const auto fftOut = std::shared_ptr<_M_MCPX>(
-							(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_BINS)),
+							(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_BINS * 2)),
 							fftw_free
 						);
 						const auto plan = std::shared_ptr<fftw_plan_s>(

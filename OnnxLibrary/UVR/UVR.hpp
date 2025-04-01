@@ -41,6 +41,9 @@
 
 _D_Dragonian_Lib_Onnx_UVR_Header
 
+using Cpx32Tensor = Tensor<Complex32, 3, Device::CPU>;
+using FltTensor = Tensor<Float32, 3, Device::CPU>;
+
 DLogger& GetDefaultLogger() noexcept;
 
 class CascadedNet : public OnnxModelBase<CascadedNet>
@@ -87,22 +90,7 @@ public:
 	CascadedNet& operator=(const CascadedNet&) = default;
 	CascadedNet& operator=(CascadedNet&&) noexcept = default;
 
-	std::tuple<Tensor<Float32, 3, Device::CPU>,
-		Tensor<Complex32, 3, Device::CPU>,
-		Tensor<Complex32, 3, Device::CPU>,
-		Tensor<Complex32, 3, Device::CPU>,
-		Int64, Int64, Float32, Int64> Preprocess(
-			const Tensor<Float32, 2, Device::CPU>& Signal,
-			Int64 SamplingRate
-		) const;
-
-	Tensor<Float32, 3, Device::CPU> Spec2Audio(
-		const Tensor<Complex32, 3, Device::CPU>& Spec,
-		const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
-		Int64 InputHighEndH
-	) const;
-
-	Tensor<Float32, 3, Device::CPU> Forward(
+	std::pair<FltTensor, FltTensor> Forward(
 		const Tensor<Float32, 2, Device::CPU>& Signal,
 		Int64 SplitBin,
 		Float32 Value,
@@ -110,6 +98,17 @@ public:
 	) const;
 
 private:
+	std::tuple<FltTensor, Cpx32Tensor, Cpx32Tensor, Cpx32Tensor, Int64, Int64, Float32, Int64> Preprocess(
+		const Tensor<Float32, 2, Device::CPU>& Signal,
+		Int64 SamplingRate
+	) const;
+
+	FltTensor Spec2Audio(
+		const Tensor<Complex32, 3, Device::CPU>& Spec,
+		const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
+		Int64 InputHighEndH
+	) const;
+
 	HParams _MySetting;
 	std::vector<FunctionTransform::StftKernel> _MyStftKernels;
 	Int64 _MyPaddingLeft;
