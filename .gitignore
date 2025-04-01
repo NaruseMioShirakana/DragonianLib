@@ -378,3 +378,4 @@ FodyWeavers.xsd
 /PythonScript/model/models
 /PythonScript/model
 /PythonScript/g2pW.onnx
+/PythonScript/SoVitsSvc4_0_SupportTensorRT/UVR/onnx_dereverb_HP2_all_vocals.onnx
