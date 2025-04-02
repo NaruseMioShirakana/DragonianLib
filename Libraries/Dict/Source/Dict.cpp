@@ -363,7 +363,6 @@ Tensor<Tokenizer::TokenizerType, 2, Device::CPU> Tokenizer::operator()(
 
 	const auto TokenCount = static_cast<SizeType>(_Tokens.Front().Size()) + (_AddBegin ? 1 : 0) + (_AddEnd ? 1 : 0);
 	const auto Shape = Dimensions<2>{ static_cast<SizeType>(_Tokens.Size()), TokenCount };
-	
 
 	auto Result = Tensor<Tokenizer::TokenizerType, 2, Device::CPU>::New(Shape);
 	auto GDataBuffer = Result.Data();
@@ -699,8 +698,9 @@ void Dict::Tokenize(
 }
 
 IdsDict::IdsDict(
-	const std::wstring& _DictModulePath
-)
+	const std::wstring& _DictModulePath,
+	std::wstring _Unk
+) : _MyUnk(std::move(_Unk))
 {
 	if (_DictModulePath.empty())
 		return;
@@ -737,6 +737,8 @@ IdsDict::IdsDict(
 		else
 			_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
 	}
+	if (_MyDict.contains(_MyUnk))
+		_MyUnkId = _MyDict.at(_MyUnk);
 }
 
 void IdsDict::AppendTokens(

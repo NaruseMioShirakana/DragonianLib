@@ -27,15 +27,23 @@ ContextModel::ContextModel(
 
 Tensor<Float32, 3, Device::CPU> ContextModel::Forward(
 	const Tensor<Int64, 2, Device::CPU>& TokenIds,
-	const Tensor<Int64, 2, Device::CPU>& TokenTypeIds,
+	std::optional<Tensor<Int64, 2, Device::CPU>> TokenTypeIds,
 	std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask
 ) const
 {
-	if (TokenIds.Null() || TokenTypeIds.Null())
-		_D_Dragonian_Lib_Throw_Exception("TokenIds or TokenTypeIds could not be null!");
-	if (TokenIds.Shape(0) != TokenTypeIds.Shape(0) ||
-		TokenIds.Shape(1) != TokenTypeIds.Shape(1))
-		_D_Dragonian_Lib_Throw_Exception("TokenIds and TokenTypeIds shape mismatch!");
+	if (TokenIds.Null())
+		_D_Dragonian_Lib_Throw_Exception("TokenIds could not be null!");
+
+	if (_MyInputCount > 1)
+	{
+		if (!TokenTypeIds.has_value() || TokenTypeIds->Null())
+			_D_Dragonian_Lib_Throw_Exception("TokenTypeIds could not be null!");
+
+		if (TokenIds.Shape(0) != TokenTypeIds->Shape(0) ||
+			TokenIds.Shape(1) != TokenTypeIds->Shape(1))
+			_D_Dragonian_Lib_Throw_Exception("TokenIds and TokenTypeIds shape mismatch!");
+	}
+	
 	if (_MyInputCount == 3)
 	{
 		if (!AttentionMask.has_value() || AttentionMask->Null())
@@ -81,19 +89,20 @@ Tensor<Float32, 3, Device::CPU> ContextModel::Forward(
 		);
 	}
 
-	_D_Dragonian_Lib_Rethrow_Block(
-		Inputs.Emplace(
-			CheckAndTryCreateValueFromTensor(
-				*GetMemoryInfo(),
-				TokenTypeIds,
-				_MyInputTypes[Axis],
-				_MyInputDims[Axis],
-				{ L"BatchSize", L"TokenLength" },
-				"TokenTypeIds",
-				GetLoggerPtr()
-			)
+	if (_MyInputCount > 1)
+		_D_Dragonian_Lib_Rethrow_Block(
+			Inputs.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					*TokenTypeIds,
+					_MyInputTypes[Axis],
+					_MyInputDims[Axis],
+					{ L"BatchSize", L"TokenLength" },
+					"TokenTypeIds",
+					GetLoggerPtr()
+				)
+			);
 		);
-	);
 
 	OrtTuple OutputTensors;
 

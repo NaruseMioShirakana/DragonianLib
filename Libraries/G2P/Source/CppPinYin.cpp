@@ -333,6 +333,48 @@ void CppPinYin::LoadUserDict(
 	_MyPinYinDict.AppendTokens(_PinYinTokens);
 }
 
+static inline std::wstring ShengmuDict[]{
+	L"b", L"p", L"m", L"f",
+	L"d", L"t", L"n", L"l",
+	L"g", L"k", L"h",
+	L"j", L"q", L"x",
+	L"zh", L"ch", L"sh", L"r",
+	L"z", L"c", L"s",
+	L"y", L"w"
+};
+
+std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::SplitYunmu(
+	const Vector<std::wstring>& PinYin
+)
+{
+	Vector<std::wstring> Phonemes;
+	Vector<Int64> Phoneme2Word;
+	Int64 WordIdx = 0;
+	for (const auto& Cur : PinYin)
+	{
+		bool Found = false;
+		for (const auto& Shengmu : ShengmuDict)
+		{
+			if (Cur.find(Shengmu) == 0)
+			{
+				Phonemes.EmplaceBack(Shengmu);
+				Phonemes.EmplaceBack(Cur.substr(Shengmu.size()));
+				Phoneme2Word.EmplaceBack(WordIdx);
+				Phoneme2Word.EmplaceBack(WordIdx);
+				Found = true;
+				break;
+			}
+		}
+		if (!Found)
+		{
+			Phonemes.EmplaceBack(Cur);
+			Phoneme2Word.EmplaceBack(WordIdx);
+		}
+		++WordIdx;
+	}
+	return { std::move(Phonemes), std::move(Phoneme2Word) };
+}
+
 void* CppPinYin::GetExtraInfo() const
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;

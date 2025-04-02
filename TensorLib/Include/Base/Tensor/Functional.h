@@ -495,7 +495,7 @@ namespace Functional
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
 	Tensor<_MyValueType, 1, _MyDevice> FromVector(
-		TemplateLibrary::Vector<_MyValueType>&& Buffer
+		TemplateLibrary::Vector<_MyValueType, _MyDevice>&& Buffer
 	)
 	{
 		auto Allocator = Buffer.GetAllocator();

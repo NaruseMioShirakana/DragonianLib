@@ -1,4 +1,305 @@
-﻿/*#include "../GPT-SoVits.hpp"
+﻿#include "../GPT-SoVits.hpp"
+#include "OnnxLibrary/Base/Source/OrtDlib.hpp"
+
+_D_Dragonian_Lib_Lib_Text_To_Speech_Header
+
+namespace GptSoVits
+{
+	T2SAR::T2SAR(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& _Config,
+		const std::shared_ptr<Logger>& _Logger
+	) : _MyPromptModel(_Environment, _Config.ModelPaths.at(L"Prompt"), _Logger),
+		_MyDecodeModel(_Environment, _Config.ModelPaths.at(L"Decode"), _Logger)
+	{
+		if (_Config.Parameters.contains(L"EOSId"))
+			_MyEOSId = std::stoll(_Config.Parameters.at(L"EOSId"));
+	}
+
+	Tensor<Int64, 2, Device::CPU> T2SAR::Forward(
+		const Tensor<Int64, 2, Device::CPU>& _PhonemeIds,
+		const Tensor<Int64, 2, Device::CPU>& _RefPhonemeIds,
+		const Tensor<Float32, 3, Device::CPU>& _BertFeature,
+		Float32 _TopP,
+		Float32 _Temperature,
+		Float32 _RepetitionPenalty
+	)
+	{
+		if (_PhonemeIds.Null())
+			_D_Dragonian_Lib_Throw_Exception("PhonemeIds Could Not Be Null!");
+		if (_RefPhonemeIds.Null())
+			_D_Dragonian_Lib_Throw_Exception("RefPhonemeIds Could Not Be Null!");
+		if (_BertFeature.Null())
+			_D_Dragonian_Lib_Throw_Exception("BertFeature Could Not Be Null!");
+
+		constexpr Int64 One = 1;
+		Int64 PhonemeSize = _PhonemeIds.Shape(1);
+		Int64 RefPhonemeSize = _RefPhonemeIds.Shape(1);
+
+		InputTensorsType PromptInputTensors;
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					_PhonemeIds,
+					_MyPromptModel.GetInputTypes()[0],
+					_MyPromptModel.GetInputDims()[0],
+					{ L"BatchSize", L"SequnceLength" },
+					"Phoneme",
+					_MyPromptModel.GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				Ort::Value::CreateTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					&PhonemeSize,
+					1,
+					&One,
+					1
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					_RefPhonemeIds,
+					_MyPromptModel.GetInputTypes()[2],
+					_MyPromptModel.GetInputDims()[2],
+					{ L"BatchSize", L"SequnceLength" },
+					"RefPhoneme",
+					_MyPromptModel.GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				Ort::Value::CreateTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					&RefPhonemeSize,
+					1,
+					&One,
+					1
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					_BertFeature,
+					_MyPromptModel.GetInputTypes()[4],
+					_MyPromptModel.GetInputDims()[4],
+					{ L"BatchSize", L"SequnceLength", L"FeatureSize" },
+					"BertFeature",
+					_MyPromptModel.GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				Ort::Value::CreateTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					&_TopP,
+					1,
+					&One,
+					1
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				Ort::Value::CreateTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					&_RepetitionPenalty,
+					1,
+					&One,
+					1
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				Ort::Value::CreateTensor(
+					*_MyPromptModel.GetMemoryInfo(),
+					&_Temperature,
+					1,
+					&One,
+					1
+				)
+			);
+		);
+
+		OrtTuple Outputs;
+
+		_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyPromptModel.RunModel(PromptInputTensors););
+
+		auto Sample = *Outputs.back().GetTensorData<Int64>();
+		Outputs.pop_back();
+		Outputs.emplace_back(std::move(PromptInputTensors[5]));
+		Outputs.emplace_back(std::move(PromptInputTensors[6]));
+		Outputs.emplace_back(std::move(PromptInputTensors[7]));
+
+		TemplateLibrary::Vector<Int64> Samples;
+		Samples.Reserve(2000);
+
+		auto Inputs = std::move(Outputs);
+
+		Int64 Idx = 1;
+		for (; Idx < 1500; ++Idx)
+		{
+			if (Sample == _MyEOSId)
+				break;
+			Samples.EmplaceBack(Sample);
+
+			_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyDecodeModel.RunModel(Inputs););
+
+			Inputs[0] = std::move(Outputs[0]);
+			Inputs[1] = std::move(Outputs[1]);
+			Inputs[2] = std::move(Outputs[2]);
+			Inputs[3] = std::move(Outputs[3]);
+			Inputs[4] = std::move(Outputs[4]);
+			Sample = *Outputs[5].GetTensorData<Int64>();
+		}
+
+		return Functional::FromVector(std::move(Samples)).View(1, -1);
+	}
+
+	SoVits::SoVits(
+		const OnnxRuntimeEnvironment& _Environment,
+		const HParams& _Config,
+		const std::shared_ptr<Logger>& _Logger
+	) : OnnxModelBase(_Environment, _Config.ModelPaths.at(L"Vits"), _Logger),
+		_MyExtract(_Environment, _Config.ModelPaths.at(L"Extract"), _Logger),
+		_MySamplingRate(_Config.SamplingRate)
+	{
+
+	}
+
+	Tensor<Float32, 3, Device::CPU> SoVits::Forward(
+		const Tensor<Int64, 2, Device::CPU>& _Phonemes,
+		const Tensor<Int64, 2, Device::CPU>& _PredSemantic,
+		const Tensor<Float32, 2, Device::CPU>& _RefAudio
+	)
+	{
+		if (_Phonemes.Null())
+			_D_Dragonian_Lib_Throw_Exception("Phonemes Could Not Be Null!");
+		if (_PredSemantic.Null())
+			_D_Dragonian_Lib_Throw_Exception("PredSemantic Could Not Be Null!");
+		if (_RefAudio.Null())
+			_D_Dragonian_Lib_Throw_Exception("RefAudio Could Not Be Null!");
+
+		InputTensorsType PromptInputTensors;
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					_Phonemes,
+					GetInputTypes()[0],
+					GetInputDims()[0],
+					{ L"BatchSize", L"SequnceLength" },
+					"Phonemes",
+					GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					_PredSemantic,
+					GetInputTypes()[1],
+					GetInputDims()[1],
+					{ L"BatchSize", L"SequnceLength" },
+					"PredSemantic",
+					GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					_RefAudio,
+					GetInputTypes()[2],
+					GetInputDims()[2],
+					{ L"BatchSize", L"SequnceLength" },
+					"RefAudio",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+		OrtTuple Outputs;
+
+		_D_Dragonian_Lib_Rethrow_Block(Outputs = RunModel(PromptInputTensors););
+		Dimensions<3> Shape;
+		auto OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+		if (OutputShape.size() == 3)
+			Shape = { OutputShape[0], OutputShape[1], OutputShape[2] };
+		else if (OutputShape.size() == 2)
+			Shape = { 1, OutputShape[0], OutputShape[1] };
+		else if (OutputShape.size() == 1)
+			Shape = { 1, 1, OutputShape[0] };
+		else
+			_D_Dragonian_Lib_Throw_Exception("Invalid Output Shape");
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			return CreateTensorViewFromOrtValue<Float>(std::move(Outputs[0]), Shape);
+		);
+	}
+
+	Tensor<Int64, 3, Device::CPU> SoVits::ExtractLatent(
+		const Tensor<Float32, 3, Device::CPU>& _RefSSlContext
+	)
+	{
+		if (_RefSSlContext.Null())
+			_D_Dragonian_Lib_Throw_Exception("RefAudio Could Not Be Null!");
+
+		InputTensorsType PromptInputTensors;
+		_D_Dragonian_Lib_Rethrow_Block(
+			PromptInputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*_MyExtract.GetMemoryInfo(),
+					_RefSSlContext,
+					_MyExtract.GetInputTypes()[0],
+					_MyExtract.GetInputDims()[0],
+					{ L"BatchSize", L"SequnceLength", L"UnitsDim" },
+					"SSL",
+					_MyExtract.GetLoggerPtr()
+				)
+			);
+		);
+
+		OrtTuple Outputs;
+
+		_D_Dragonian_Lib_Rethrow_Block(Outputs = _MyExtract.RunModel(PromptInputTensors););
+		Dimensions<3> Shape;
+		auto OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+		if (OutputShape.size() == 3)
+			Shape = { OutputShape[0], OutputShape[1], OutputShape[2] };
+		else if (OutputShape.size() == 2)
+			Shape = { 1, OutputShape[0], OutputShape[1] };
+		else if (OutputShape.size() == 1)
+			Shape = { 1, 1, OutputShape[0] };
+		else
+			_D_Dragonian_Lib_Throw_Exception("Invalid Output Shape");
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			return CreateTensorViewFromOrtValue<Int64>(std::move(Outputs[0]), Shape);
+		);
+	}
+
+
+}
+
+_D_Dragonian_Lib_Lib_Text_To_Speech_End
+
+
+
+/*#include "../GPT-SoVits.hpp"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
 

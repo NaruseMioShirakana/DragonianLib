@@ -237,6 +237,7 @@ public:
 	 * @param _OutputTokens Result buffer for tokenized tokens
 	 * @param _Method Tokenizer method
 	 * @param _MaximumMatching Maximum matching length
+	 * @param _UNKID UNK token text
 	 */
 	void Tokenize(
 		std::wstring_view _InputText,
@@ -270,7 +271,10 @@ public:
 	 * @brief Construct a new Dict object
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
 	 */
-	IdsDict(const std::wstring& _DictModulePath);
+	IdsDict(
+		const std::wstring& _DictModulePath,
+		std::wstring _Unk = L"UNK"
+	);
 	~IdsDict() = default;
 
 	/**
@@ -323,6 +327,7 @@ public:
 	 * @param _OutputTokens Result buffer for tokenized tokens
 	 * @param _Method Tokenizer method
 	 * @param _MaximumMatching Maximum matching length
+	 * @param _UNKID UNK token id
 	 */
 	void Tokenize(
 		std::wstring_view _InputText,
@@ -335,8 +340,8 @@ private:
 	std::unordered_map<std::wstring, DictType> _MyDict;
 	std::unordered_map<DictType, std::wstring> _MyReverseDict;
 	Int64 MaximumLength = 0;
-	static inline std::wstring _MyUnk = L"UNK";
-	static inline DictType _MyUnkId = -1;
+	std::wstring _MyUnk = L"UNK";
+	DictType _MyUnkId = -1;
 
 public:
 	IdsDict(const IdsDict&) = default;

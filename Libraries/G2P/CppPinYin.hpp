@@ -188,6 +188,8 @@ public:
 		const std::unordered_map<std::wstring, Vector<Dict::Dict::DictType>>& _PhrasesTokens,
 		const std::unordered_map<std::wstring, Dict::IdsDict::DictType>& _PinYinTokens
 	);
+
+	static std::pair<Vector<std::wstring>, Vector<Int64>> SplitYunmu(const Vector<std::wstring>& PinYin);
 private:
 	Dict::Dict _MyPhrasesDict;
 	Dict::IdsDict _MyPinYinDict;
@@ -376,6 +378,7 @@ public:
 	std::wstring SearchChar(
 		const std::wstring& Char
 	) const;
+
 };
 
 

@@ -97,6 +97,10 @@ public:
 	{
 		return OrtTensors;
 	}
+	decltype(auto) operator[](size_t _Index)
+	{
+		return OrtTensors[_Index];
+	}
 };
 
 template <typename _MyValueType, size_t _NRank>

@@ -63,7 +63,7 @@ public:
 	//See Dict::Tokenizer
 	Tensor<Float32, 3, Device::CPU> Forward(
 		const Tensor<Int64, 2, Device::CPU>& TokenIds,
-		const Tensor<Int64, 2, Device::CPU>& TokenTypeIds,
+		std::optional<Tensor<Int64, 2, Device::CPU>> TokenTypeIds = std::nullopt,
 		std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask = std::nullopt
 	) const;
 };

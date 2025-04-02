@@ -279,6 +279,7 @@ private:
 	{
 		_MyInputCount = static_cast<::DragonianLib::Int64>(_MyModel->GetInputCount());
 		_MyOutputCount = static_cast<::DragonianLib::Int64>(_MyModel->GetOutputCount());
+		_MyIONames.Reserve((_MyInputCount + _MyOutputCount) * 3);
 		for (Int64 i = 0; i < _MyInputCount; ++i)
 		{
 			_MyIONames.EmplaceBack(_MyModel->GetInputNameAllocated(i, GetDefaultOrtAllocator()).get());

@@ -36,6 +36,9 @@ void RegisterPlugin(
 		return;
 	}
 
+	if (!exists(std::filesystem::path(_PluginPath)))
+		return;
+
 	if (_GlobalRegisteredG2PModules.contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"G2PModules");
