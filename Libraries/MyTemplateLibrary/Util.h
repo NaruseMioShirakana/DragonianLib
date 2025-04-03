@@ -229,6 +229,26 @@ public:
 		return RangesWrp<const MyValueType*, const MyValueType*>(_MyBegin, _MyEnd);
 	}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Raw() const noexcept
+	{
+		return RangesWrp<decltype(&*_MyBegin), decltype(&*_MyEnd)>{ &*_MyBegin, &* _MyEnd };
+	}
+
+	decltype(auto) Byte() const noexcept
+	{
+		auto RawRange = Raw();
+		if constexpr (TypeTraits::IsConstValue<MyValueType>)
+			return RangesWrp<const DragonianLib::Byte*, const DragonianLib::Byte*>(
+				reinterpret_cast<const DragonianLib::Byte*>(RawRange._MyBegin),
+				reinterpret_cast<const DragonianLib::Byte*>(RawRange._MyEnd)
+			);
+		else
+			return RangesWrp<DragonianLib::Byte*, DragonianLib::Byte*>(
+				reinterpret_cast<DragonianLib::Byte*>(RawRange._MyBegin),
+				reinterpret_cast<DragonianLib::Byte*>(RawRange._MyEnd)
+			);
+	}
+
 protected:
 	MyIterTypeBeg _MyBegin = nullptr;
 	MyIterTypeEnd _MyEnd = nullptr;

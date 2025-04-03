@@ -58,25 +58,26 @@ namespace GptSoVits
 		Int64 _MyEOSId = 1024;
 	};
 
-    class SoVits : public OnnxModelBase<SoVits>
+    class VQModelV1V2 : public OnnxModelBase<VQModelV1V2>
     {
     public:
-		SoVits() = delete;
-		SoVits(
+        VQModelV1V2() = delete;
+        VQModelV1V2(
 			const OnnxRuntimeEnvironment& _Environment,
 			const HParams& _Config,
 			const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Lib_Text_To_Speech_Space GetDefaultLogger()
 		);
-		SoVits(const SoVits&) = default;
-		SoVits& operator=(const SoVits&) = default;
-		SoVits(SoVits&&) noexcept = default;
-		SoVits& operator=(SoVits&&) noexcept = default;
-		~SoVits() = default;
+        VQModelV1V2(const VQModelV1V2&) = default;
+        VQModelV1V2& operator=(const VQModelV1V2&) = default;
+        VQModelV1V2(VQModelV1V2&&) noexcept = default;
+        VQModelV1V2& operator=(VQModelV1V2&&) noexcept = default;
+		~VQModelV1V2() = default;
 
         Tensor<Float32, 3, Device::CPU> Forward(
             const Tensor<Int64, 2, Device::CPU>& _Phonemes,
             const Tensor<Int64, 2, Device::CPU>& _PredSemantic,
-            const Tensor<Float32, 2, Device::CPU>& _RefAudio
+            const Tensor<Float32, 2, Device::CPU>& _RefAudio,
+            Int64 _RefSamplingRate
         );
 
         Tensor<Int64, 3, Device::CPU> ExtractLatent(

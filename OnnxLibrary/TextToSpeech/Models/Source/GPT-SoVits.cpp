@@ -1,4 +1,6 @@
 ﻿#include "../GPT-SoVits.hpp"
+
+#include "Libraries/Util/Logger.h"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header
@@ -14,6 +16,11 @@ namespace GptSoVits
 	{
 		if (_Config.Parameters.contains(L"EOSId"))
 			_MyEOSId = std::stoll(_Config.Parameters.at(L"EOSId"));
+		else
+			_MyPromptModel.GetLoggerPtr()->Log(
+				L"EOSId Not Found, Using Default Value: 1024",
+				Logger::LogLevel::Warn
+			);
 	}
 
 	Tensor<Int64, 2, Device::CPU> T2SAR::Forward(
@@ -167,7 +174,7 @@ namespace GptSoVits
 		return Functional::FromVector(std::move(Samples)).View(1, -1);
 	}
 
-	SoVits::SoVits(
+	VQModelV1V2::VQModelV1V2(
 		const OnnxRuntimeEnvironment& _Environment,
 		const HParams& _Config,
 		const std::shared_ptr<Logger>& _Logger
@@ -178,10 +185,11 @@ namespace GptSoVits
 
 	}
 
-	Tensor<Float32, 3, Device::CPU> SoVits::Forward(
+	Tensor<Float32, 3, Device::CPU> VQModelV1V2::Forward(
 		const Tensor<Int64, 2, Device::CPU>& _Phonemes,
 		const Tensor<Int64, 2, Device::CPU>& _PredSemantic,
-		const Tensor<Float32, 2, Device::CPU>& _RefAudio
+		const Tensor<Float32, 2, Device::CPU>& _RefAudio,
+		Int64 _RefSamplingRate
 	)
 	{
 		if (_Phonemes.Null())
@@ -190,6 +198,13 @@ namespace GptSoVits
 			_D_Dragonian_Lib_Throw_Exception("PredSemantic Could Not Be Null!");
 		if (_RefAudio.Null())
 			_D_Dragonian_Lib_Throw_Exception("RefAudio Could Not Be Null!");
+
+		auto Ref = _RefAudio.View();
+		if (_RefSamplingRate != _MySamplingRate)
+			Ref = Ref.Interpolate<Operators::InterpolateMode::Linear>(
+				IDim(-1),
+				IScale(static_cast<Double>(_MySamplingRate) / static_cast<Double>(_RefSamplingRate))
+			);
 
 		InputTensorsType PromptInputTensors;
 		_D_Dragonian_Lib_Rethrow_Block(
@@ -222,7 +237,7 @@ namespace GptSoVits
 			PromptInputTensors.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*GetMemoryInfo(),
-					_RefAudio,
+					Ref,
 					GetInputTypes()[2],
 					GetInputDims()[2],
 					{ L"BatchSize", L"SequnceLength" },
@@ -251,7 +266,7 @@ namespace GptSoVits
 		);
 	}
 
-	Tensor<Int64, 3, Device::CPU> SoVits::ExtractLatent(
+	Tensor<Int64, 3, Device::CPU> VQModelV1V2::ExtractLatent(
 		const Tensor<Float32, 3, Device::CPU>& _RefSSlContext
 	)
 	{
@@ -291,7 +306,6 @@ namespace GptSoVits
 			return CreateTensorViewFromOrtValue<Int64>(std::move(Outputs[0]), Shape);
 		);
 	}
-
 
 }
 
