@@ -396,6 +396,62 @@ void OnnxRuntimeEnvironmentBase::ClearOnnxRuntimeModel()
 	GlobalOrtModelCache.clear();
 }
 
+void OnnxRuntimeEnvironmentBase::EnableMemPattern(bool Enable) const
+{
+	if (Enable)
+		_MyOrtSessionOptions->EnableMemPattern();
+	else
+		_MyOrtSessionOptions->DisableMemPattern();
+}
+
+void OnnxRuntimeEnvironmentBase::EnableCpuMemArena(bool Enable) const
+{
+	if (Enable)
+		_MyOrtSessionOptions->EnableCpuMemArena();
+	else
+		_MyOrtSessionOptions->DisableCpuMemArena();
+}
+
+void OnnxRuntimeEnvironmentBase::EnableProfiling(bool Enable, const std::wstring& FilePath) const
+{
+	if (Enable)
+	{
+		_MyOrtSessionOptions->EnableProfiling(FilePath.c_str());
+	}
+	else
+	{
+		_MyOrtSessionOptions->DisableProfiling();
+	}
+}
+
+void OnnxRuntimeEnvironmentBase::SetIntraOpNumThreads(Int64 Threads)
+{
+	_MyIntraOpNumThreads = Threads;
+	_MyOrtSessionOptions->SetIntraOpNumThreads(static_cast<int>(Threads));
+}
+
+void OnnxRuntimeEnvironmentBase::SetInterOpNumThreads(Int64 Threads)
+{
+	_MyInterOpNumThreads = Threads;
+	_MyOrtSessionOptions->SetInterOpNumThreads(static_cast<int>(Threads));
+}
+
+void OnnxRuntimeEnvironmentBase::SetExecutionMode(ExecutionMode Mode) const
+{
+	_MyOrtSessionOptions->SetExecutionMode(Mode);
+}
+
+void OnnxRuntimeEnvironmentBase::SetGraphOptimizationLevel(GraphOptimizationLevel Level) const
+{
+	_MyOrtSessionOptions->SetGraphOptimizationLevel(Level);
+}
+
+void OnnxRuntimeEnvironmentBase::SetLogLevel(OrtLoggingLevel Level)
+{
+	_MyOrtSessionOptions->SetLogSeverityLevel(Level);
+	_MyLoggingLevel = Level;
+}
+
 OnnxRuntimeEnvironment OnnxRuntimeEnvironmentBase::CreateEnv(const OnnxEnvironmentOptions& Options)
 {
 	return OnnxRuntimeEnvironment(

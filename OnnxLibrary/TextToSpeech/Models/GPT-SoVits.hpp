@@ -58,26 +58,56 @@ namespace GptSoVits
 		Int64 _MyEOSId = 1024;
 	};
 
-    class VQModelV1V2 : public OnnxModelBase<VQModelV1V2>
+    class CfmModel : public OnnxModelBase<CfmModel>
     {
     public:
-        VQModelV1V2() = delete;
-        VQModelV1V2(
+        CfmModel() = delete;
+        CfmModel(
+            const OnnxRuntimeEnvironment& _Environment,
+            const std::wstring& _ModelPath,
+            const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Lib_Text_To_Speech_Space GetDefaultLogger()
+        );
+		~CfmModel() = default;
+        CfmModel(const CfmModel&) = default;
+        CfmModel& operator=(const CfmModel&) = default;
+        CfmModel(CfmModel&&) noexcept = default;
+        CfmModel& operator=(CfmModel&&) noexcept = default;
+
+		Tensor<Float32, 3, Device::CPU> Forward(
+			const Tensor<Float32, 3, Device::CPU>& _Feature,
+            const Tensor<Float32, 3, Device::CPU>& _Mel,
+			Int64 _SampleSteps = 8,
+			Float32 _Temperature = 0.6f,
+			Float32 _CfgRate = 0.001f
+		);
+    private:
+        Int64 _MyInChannels = 100;
+    };
+
+    class VQModel : public OnnxModelBase<VQModel>
+    {
+    public:
+        VQModel() = delete;
+        VQModel(
 			const OnnxRuntimeEnvironment& _Environment,
 			const HParams& _Config,
 			const std::shared_ptr<Logger>& _Logger = _D_Dragonian_Lib_Lib_Text_To_Speech_Space GetDefaultLogger()
 		);
-        VQModelV1V2(const VQModelV1V2&) = default;
-        VQModelV1V2& operator=(const VQModelV1V2&) = default;
-        VQModelV1V2(VQModelV1V2&&) noexcept = default;
-        VQModelV1V2& operator=(VQModelV1V2&&) noexcept = default;
-		~VQModelV1V2() = default;
+        VQModel(const VQModel&) = default;
+        VQModel& operator=(const VQModel&) = default;
+        VQModel(VQModel&&) noexcept = default;
+        VQModel& operator=(VQModel&&) noexcept = default;
+		~VQModel() = default;
 
         Tensor<Float32, 3, Device::CPU> Forward(
             const Tensor<Int64, 2, Device::CPU>& _Phonemes,
             const Tensor<Int64, 2, Device::CPU>& _PredSemantic,
             const Tensor<Float32, 2, Device::CPU>& _RefAudio,
-            Int64 _RefSamplingRate
+            Int64 _RefSamplingRate,
+			const std::optional<Tensor<Int64, 2, Device::CPU>>& _RefPhonemes = std::nullopt,
+            const std::optional<Tensor<Int64, 2, Device::CPU>>& _RefPrompts = std::nullopt,
+            Int64 _SampleSteps = 8,
+            Float32 _CfgRate = 0.001f
         );
 
         Tensor<Int64, 3, Device::CPU> ExtractLatent(
@@ -86,7 +116,9 @@ namespace GptSoVits
 
     private:
         OnnxModelBase<void> _MyExtract;
-		Int64 _MySamplingRate = 22050;
+		std::optional<CfmModel> _MyCfmModel = std::nullopt;
+		Int64 _MySamplingRate = 32000;
+		bool _IsV3 = false;
     };
 }
 

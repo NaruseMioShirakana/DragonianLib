@@ -245,6 +245,22 @@ public:
      */
 	void ClearOnnxRuntimeModel();
 
+    void EnableMemPattern(bool Enable) const;
+
+    void EnableCpuMemArena(bool Enable) const;
+
+	void EnableProfiling(bool Enable, const std::wstring& FilePath) const;
+
+    void SetIntraOpNumThreads(Int64 Threads);
+
+    void SetInterOpNumThreads(Int64 Threads);
+
+	void SetExecutionMode(ExecutionMode Mode) const;
+
+	void SetGraphOptimizationLevel(GraphOptimizationLevel Level) const;
+
+	void SetLogLevel(OrtLoggingLevel Level);
+
     /**
      * @brief Creates an ONNX Runtime environment.
 	 * @param Options ONNX Runtime environment options.

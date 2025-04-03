@@ -174,7 +174,128 @@ namespace GptSoVits
 		return Functional::FromVector(std::move(Samples)).View(1, -1);
 	}
 
-	VQModelV1V2::VQModelV1V2(
+	CfmModel::CfmModel(
+		const OnnxRuntimeEnvironment& _Environment,
+		const std::wstring& _ModelPath,
+		const std::shared_ptr<Logger>& _Logger
+	) : OnnxModelBase(_Environment, _ModelPath, _Logger)
+	{
+	}
+
+	Tensor<Float32, 3, Device::CPU> CfmModel::Forward(
+		const Tensor<Float32, 3, Device::CPU>& _Feature,
+		const Tensor<Float32, 3, Device::CPU>& _Mel,
+		Int64 _SampleSteps,
+		Float32 _Temperature,
+		Float32 _CfgRate
+	)
+	{
+		if (_Feature.Null())
+			_D_Dragonian_Lib_Throw_Exception("Feature Could Not Be Null!");
+		if (_Mel.Null())
+			_D_Dragonian_Lib_Throw_Exception("Mel Could Not Be Null!");
+
+		auto Mel = _Mel.Pad(
+			{ PadCount(0ll, _Feature.Size(2) - _Mel.Size(2)) },
+			PaddingType::Zero
+		);
+
+		constexpr Int64 One = 1;
+		Float32 _SampleDt = 1.0f / static_cast<Float32>(_SampleSteps);
+		Float32 _T = 0.f;
+
+		const auto OutputShape = IDim(_Feature.Size(0), _MyInChannels, _Feature.Size(2));
+		InputTensorsType InputTensors;
+		auto X = Functional::Randn(OutputShape) * _Temperature;
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					X,
+					GetInputTypes()[0],
+					GetInputDims()[0],
+					{ L"BatchSize", L"InChannels", L"SequnceLength" },
+					"X",
+					GetLoggerPtr()
+				)
+			);
+		);
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					_Feature,
+					GetInputTypes()[1],
+					GetInputDims()[1],
+					{ L"BatchSize", L"InChannels", L"SequnceLength" },
+					"Feature",
+					GetLoggerPtr()
+				)
+			);
+		);
+		_D_Dragonian_Lib_Rethrow_Block(
+			InputTensors.Emplace(
+				CheckAndTryCreateValueFromTensor(
+					*GetMemoryInfo(),
+					Mel,
+					GetInputTypes()[2],
+					GetInputDims()[2],
+					{ L"BatchSize", L"InChannels", L"SequnceLength" },
+					"Mel",
+					GetLoggerPtr()
+				)
+			);
+		);
+		InputTensors.Emplace(
+			Ort::Value::CreateTensor(
+				*GetMemoryInfo(),
+				&_T,
+				1,
+				&One,
+				1
+			)
+		);
+		InputTensors.Emplace(
+			Ort::Value::CreateTensor(
+				*GetMemoryInfo(),
+				&_SampleDt,
+				1,
+				&One,
+				1
+			)
+		);
+		InputTensors.Emplace(
+			Ort::Value::CreateTensor(
+				*GetMemoryInfo(),
+				&_CfgRate,
+				1,
+				&One,
+				1
+			)
+		);
+
+		OrtTuple Outputs;
+
+		for (auto _ : TemplateLibrary::Ranges(_SampleSteps))
+		{
+			_D_Dragonian_Lib_Rethrow_Block(Outputs = RunModel(InputTensors););
+
+			InputTensors[0] = std::move(Outputs[0]);
+
+			_T += _SampleDt;
+		}
+
+		_D_Dragonian_Lib_Rethrow_Block(
+			return CreateTensorViewFromOrtValue<Float>(
+				std::move(InputTensors[0]), OutputShape
+			);
+		);
+	}
+
+
+	VQModel::VQModel(
 		const OnnxRuntimeEnvironment& _Environment,
 		const HParams& _Config,
 		const std::shared_ptr<Logger>& _Logger
@@ -182,14 +303,26 @@ namespace GptSoVits
 		_MyExtract(_Environment, _Config.ModelPaths.at(L"Extract"), _Logger),
 		_MySamplingRate(_Config.SamplingRate)
 	{
-
+		if (_MyInputCount > 3)
+		{
+			_IsV3 = true;
+			_MyCfmModel = std::make_optional<CfmModel>(
+				_Environment,
+				_Config.ModelPaths.at(L"Cfm"),
+				_Logger
+			);
+		}
 	}
 
-	Tensor<Float32, 3, Device::CPU> VQModelV1V2::Forward(
+	Tensor<Float32, 3, Device::CPU> VQModel::Forward(
 		const Tensor<Int64, 2, Device::CPU>& _Phonemes,
 		const Tensor<Int64, 2, Device::CPU>& _PredSemantic,
 		const Tensor<Float32, 2, Device::CPU>& _RefAudio,
-		Int64 _RefSamplingRate
+		Int64 _RefSamplingRate,
+		const std::optional<Tensor<Int64, 2, Device::CPU>>& _RefPhonemes,
+		const std::optional<Tensor<Int64, 2, Device::CPU>>& _RefPrompts,
+		Int64 _SampleSteps,
+		Float32 _CfgRate
 	)
 	{
 		if (_Phonemes.Null())
@@ -198,6 +331,13 @@ namespace GptSoVits
 			_D_Dragonian_Lib_Throw_Exception("PredSemantic Could Not Be Null!");
 		if (_RefAudio.Null())
 			_D_Dragonian_Lib_Throw_Exception("RefAudio Could Not Be Null!");
+		if (_IsV3)
+		{
+			if (!_RefPhonemes.has_value() || _RefPhonemes->Null())
+				_D_Dragonian_Lib_Throw_Exception("RefPhonemes Could Not Be Null!");
+			if (!_RefPrompts.has_value() || _RefPrompts->Null())
+				_D_Dragonian_Lib_Throw_Exception("RefPrompts Could Not Be Null!");
+		}
 
 		auto Ref = _RefAudio.View();
 		if (_RefSamplingRate != _MySamplingRate)
@@ -247,26 +387,109 @@ namespace GptSoVits
 			);
 		);
 
+		if (_IsV3)
+		{
+			_D_Dragonian_Lib_Rethrow_Block(
+				PromptInputTensors.Emplace(
+					CheckAndTryCreateValueFromTensor(
+						*GetMemoryInfo(),
+						*_RefPhonemes,
+						GetInputTypes()[3],
+						GetInputDims()[3],
+						{ L"BatchSize", L"SequnceLength" },
+						"RefPhonemes",
+						GetLoggerPtr()
+					)
+				);
+				);
+
+			auto RefPrompt = _RefPrompts->View();
+			if (RefPrompt.Size(0) > 320)
+				RefPrompt = RefPrompt[{None, { 0, 320 }}];
+
+			_D_Dragonian_Lib_Rethrow_Block(
+				PromptInputTensors.Emplace(
+					CheckAndTryCreateValueFromTensor(
+						*GetMemoryInfo(),
+						*_RefPrompts,
+						GetInputTypes()[4],
+						GetInputDims()[4],
+						{ L"BatchSize", L"SequnceLength" },
+						"RefPrompts",
+						GetLoggerPtr()
+					)
+				);
+			);
+		}
+
 		OrtTuple Outputs;
 
 		_D_Dragonian_Lib_Rethrow_Block(Outputs = RunModel(PromptInputTensors););
-		Dimensions<3> Shape;
-		auto OutputShape = Outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-		if (OutputShape.size() == 3)
-			Shape = { OutputShape[0], OutputShape[1], OutputShape[2] };
-		else if (OutputShape.size() == 2)
-			Shape = { 1, OutputShape[0], OutputShape[1] };
-		else if (OutputShape.size() == 1)
-			Shape = { 1, 1, OutputShape[0] };
-		else
-			_D_Dragonian_Lib_Throw_Exception("Invalid Output Shape");
 
-		_D_Dragonian_Lib_Rethrow_Block(
-			return CreateTensorViewFromOrtValue<Float>(std::move(Outputs[0]), Shape);
-		);
+		auto CreateTensor = [](Ort::Value&& _Value)
+			{
+				Dimensions<3> Shape;
+				auto OutputShape = _Value.GetTensorTypeAndShapeInfo().GetShape();
+				if (OutputShape.size() == 3)
+					Shape = { OutputShape[0], OutputShape[1], OutputShape[2] };
+				else if (OutputShape.size() == 2)
+					Shape = { 1, OutputShape[0], OutputShape[1] };
+				else if (OutputShape.size() == 1)
+					Shape = { 1, 1, OutputShape[0] };
+				else
+					_D_Dragonian_Lib_Throw_Exception("Invalid Output Shape");
+				_D_Dragonian_Lib_Rethrow_Block(
+					return CreateTensorViewFromOrtValue<Float>(std::move(_Value), Shape);
+				);
+			};
+
+		if (_IsV3)
+		{
+			auto FeatureRef = CreateTensor(std::move(Outputs[0]));
+			auto FeatureTodo = CreateTensor(std::move(Outputs[1]));
+			auto Mel = CreateTensor(std::move(Outputs[2]));
+
+			auto TMIN = std::min(Mel.Shape(2), FeatureRef.Shape(2));
+			Mel = Mel[{None, None, { None, TMIN }}];
+			FeatureRef = FeatureRef[{None, None, { None, TMIN }}];
+			if (TMIN > 468)
+			{
+				Mel = Mel[{None, None, { -468, None }}];
+				FeatureRef = FeatureRef[{None, None, { -468, None }}];
+				TMIN = 468;
+			}
+			const auto ChunkLen = 934 - TMIN;
+			Int64 Idx = 0;
+			std::vector<Tensor<Float, 3, Device::CPU>> CfmRess;
+			while (true)
+			{
+				const auto SliceEnd = std::min(Idx + ChunkLen, FeatureTodo.Shape(2));
+				if (Idx >= SliceEnd)
+					break;
+				auto FeatureTodoChunk = FeatureTodo[{None, None, { Idx, SliceEnd }}];
+				auto Feature = Functional::Cat(
+					FeatureRef,
+					FeatureTodoChunk,
+					2
+				);
+				auto Cfmres = _MyCfmModel->Forward(
+					Feature,
+					Mel,
+					_SampleSteps,
+					_CfgRate
+				)[{None, None, { Mel.Size(2), None }}].Continuous();
+				Mel = Cfmres[{None, None, { -TMIN, None }}].Clone();
+				FeatureRef = FeatureTodoChunk[{None, None, { -TMIN, None }}].Clone();
+				CfmRess.emplace_back(std::move(Cfmres));
+				Idx += ChunkLen;
+			}
+			return Functional::ICat(CfmRess, 2);
+		}
+
+		return CreateTensor(std::move(Outputs[0]));
 	}
 
-	Tensor<Int64, 3, Device::CPU> VQModelV1V2::ExtractLatent(
+	Tensor<Int64, 3, Device::CPU> VQModel::ExtractLatent(
 		const Tensor<Float32, 3, Device::CPU>& _RefSSlContext
 	)
 	{

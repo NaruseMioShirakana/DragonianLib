@@ -81,7 +81,7 @@ void TestUVR()
 	OutputStream.EncodeAll(Instrument.GetCRng(), 44100, 2, true);
 }
 
-void TestG2PW()
+auto TestG2PW(const std::wstring& Text)
 {
 	using namespace DragonianLib;
 	const auto Env = OnnxRuntime::CreateEnvironment({ Device::CPU, 0 });
@@ -111,15 +111,14 @@ void TestG2PW()
 	Parameters.ReplaceASV = true;
 
 	auto [PinYin, Tones] = G2PW.Convert(
-		L"我是田所浩二",
+		Text,
 		"",
 		&Parameters
 	);
 
-	for (auto& i : PinYin)
-	{
-		std::wcout << i << L", ";
-	}
+	auto [PinYinNew, Phoneme2Word] = decltype(G2PW)::SplitYunmu(PinYin);
+
+	return PinYinNew;
 }
 
 void TestGptSoVits()
@@ -129,6 +128,9 @@ void TestGptSoVits()
 	auto Jap = G2P::New(L"BasicCleaner", LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\G2P)");
 
 	const auto Env = OnnxRuntime::CreateEnvironment({Device::CPU, 0});
+	Env->SetExecutionMode(ORT_PARALLEL);
+	Env->EnableMemPattern(false);
+
 	/*OnnxRuntime::ContextModel::ContextModel Bert(
 		Env,
 		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\Bert.onnx)"
@@ -151,6 +153,13 @@ void TestGptSoVits()
 		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\symbols1.json)"
 	);
 
+	OnnxRuntime::Vocoder::VocoderBase BigVGan = OnnxRuntime::Vocoder::VocoderBase(
+		LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\BigVGAN.onnx)",
+		Env,
+		24000,
+		100
+	);
+
 	OnnxRuntime::Text2Speech::GptSoVits::T2SAR ARModel(
 		Env,
 		{
@@ -169,17 +178,21 @@ void TestGptSoVits()
 		}
 	);
 
-	OnnxRuntime::Text2Speech::GptSoVits::VQModelV1V2 GSV(
+	OnnxRuntime::Text2Speech::GptSoVits::VQModel GSV(
 		Env,
 		{
 			{
 				{
 					L"Vits",
-				   LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\GptSoVitsV1V2.onnx)"
+				   LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\GptSoVits.onnx)"
 				},
 				{
 					L"Extract",
 					LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\Extractor.onnx)"
+				},
+				{
+					L"Cfm",
+					LR"(D:\VSGIT\GPT-SoVITS-main\GPT_SoVITS\GPT-SoVITS-v3lora-20250228\GPT_SoVITS\onnx\GptSoVits_cfm.onnx)"
 				}
 			},
 			32000,
@@ -239,7 +252,9 @@ void TestGptSoVits()
 		InputPhonemeIds,
 		Ret,
 		SrcAudio,
-		44100
+		44100,
+		RefPhonemeIds,
+		Prompt
 	);
 
 	auto AudioOutStream = AvCodec::OpenOutputStream(

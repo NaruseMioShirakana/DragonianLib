@@ -193,6 +193,7 @@ public:
 	}
 };
 
+using PadCount = Range;
 template<typename... _Up>
 SliceOptions(_Up...) -> ::DragonianLib::SliceOptions<sizeof...(_Up)>;
 template<typename... _Up>
@@ -1983,14 +1984,22 @@ public:
 	 * @brief Transform the index which is negative to the positive index and check if it is out of range.
 	 * @param _Index The index to transform.
 	 * @param _Max The max index.
+	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (0 ~ (Max - 1))
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max, bool _Strict = true)
 	{
 		if (_Index < 0)
 			_Index += _Max;
 		if (_Index >= _Max || _Index < 0)
-			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+		{
+			if (_Strict)
+				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+			if (_Index >= _Max)
+				return _Max - 1;
+			if (_Index < 0)
+				_Index = 0;
+		}
 		return _Index;
 	}
 
@@ -2005,9 +2014,10 @@ public:
 	 * if _Index is negative, it means the position from the end of the element(4(v5)),
 	 * @param _Index The index to transform.
 	 * @param _Max The max index.
+	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (-1 ~ Max)
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcEndPos(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcEndPos(SizeType _Index, SizeType _Max, bool _Strict = true)
 	{
 		if (_Index == RangeEndPos)
 			return _Max;
@@ -2015,7 +2025,7 @@ public:
 			return -1;
 		if (_Index == _Max)
 			return _Max;
-		return CalcIndex(_Index, _Max);
+		return CalcIndex(_Index, _Max, _Strict);
 	}
 
 	/**
@@ -2028,9 +2038,10 @@ public:
 	 * so -1 means back of v5(5), -2 means back of v4(4), and so on.
 	 * @param _Index The index to transform.
 	 * @param _Max The max index.
+	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (0 ~ Max)
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIterator(SizeType _Index, SizeType _Max)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIterator(SizeType _Index, SizeType _Max, bool _Strict = true)
 	{
 		if (_Index == RangeEndPos)
 			return _Max;
@@ -2040,7 +2051,14 @@ public:
 		if (_Index < 0)
 			_Index += _Max + 1;
 		if (_Index > _Max || _Index < 0)
-			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+		{
+			if (_Strict)
+				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
+			if (_Index > _Max)
+				return _Max;
+			if (_Index < 0)
+				_Index = 0;
+		}
 		return _Index;
 	}
 
@@ -2084,7 +2102,7 @@ public:
 
 			if (_SliceOptions[i].Begin == _SliceOptions[i].Step && _SliceOptions[i].Begin == _SliceOptions[i].End)
 			{
-				SliceBeginPos = CalcIndex(_SliceOptions[i].Step, _MyShape[i]);
+				SliceBeginPos = CalcIndex(_SliceOptions[i].Step, _MyShape[i], false);
 				SliceStep = 1;
 				SliceEndPos = SliceBeginPos + 1;
 			}
@@ -2093,8 +2111,8 @@ public:
 				SliceStep = _SliceOptions[i].Step;
 				if (SliceStep == 0)
 					_D_Dragonian_Lib_Throw_Exception("SliceStep Should Not Be Zero!");
-				SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i]);
-				SliceEndPos = CalcEndPos(_SliceOptions[i].End, _MyShape[i]);
+				SliceBeginPos = CalcIndex(_SliceOptions[i].Begin, _MyShape[i], false);
+				SliceEndPos = CalcEndPos(_SliceOptions[i].End, _MyShape[i], false);
 			}
 
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
