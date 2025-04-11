@@ -173,7 +173,7 @@ endif()
 find_package(libremidi)
 if(NOT libremidi_FOUND)
 	if(NOT DEFINED LIBREMIDI_LIBRARIES)
-		if((${CMAKE_BUILD_TYPE}) STREQUAL "Debug")
+		if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 			set(LIBREMIDI_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/libmidi/out/install/x64-Debug/lib/libremidi.lib)
 		else()
 			set(LIBREMIDI_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/libmidi/out/install/x64-Release/lib/libremidi.lib)
@@ -244,10 +244,10 @@ if(DRAGONIANLIB_ONNXRUNTIME)
 	if(NOT DEFINED ONNXRUNTIME_LIBRARIES)
 		set(
 			ONNXRUNTIME_LIBRARIES
-			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/Release/Release/onnxruntime_providers_shared.lib
-			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/Release/Release/onnxruntime_providers_dml.lib
-			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/Release/Release/onnxruntime_providers_cuda.lib
-			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/Release/Release/onnxruntime.lib
+			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/RelWithDebInfo/RelWithDebInfo/onnxruntime_providers_shared.lib
+			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/RelWithDebInfo/RelWithDebInfo/onnxruntime_providers_dml.lib
+			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/RelWithDebInfo/RelWithDebInfo/onnxruntime_providers_cuda.lib
+			${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ortmain/build/Windows/RelWithDebInfo/RelWithDebInfo/onnxruntime.lib
 		)
 	endif()
 	if(NOT DEFINED ONNXRUNTIME_INCLUDE_DIRS)
@@ -322,7 +322,7 @@ add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 message("Project Name: "${DRAGONIANLIB_LIB})
 
 #Build Type
-if((${CMAKE_BUILD_TYPE}) STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	message("Build Type: \"Release\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
@@ -332,7 +332,7 @@ if((${CMAKE_BUILD_TYPE}) STREQUAL "Release")
         ${DRAGONIANLIB_LIB} PRIVATE
         /LTCG
     )
-elseif((${CMAKE_BUILD_TYPE}) STREQUAL "RelWithDebInfo")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	message("Build Type: \"RelWithDebInfo\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
@@ -482,7 +482,7 @@ endif()
 
 #Natvis File
 set(DragonianLibNatvisFile ${PROJECT_SOURCE_DIR}/NatvisFile.natvis)
-if((${CMAKE_BUILD_TYPE}) STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 else()
 	add_link_options(
 		/NATVIS:${DragonianLibNatvisFile}
