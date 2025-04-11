@@ -173,7 +173,7 @@ endif()
 find_package(libremidi)
 if(NOT libremidi_FOUND)
 	if(NOT DEFINED LIBREMIDI_LIBRARIES)
-		if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+		if((${CMAKE_BUILD_TYPE}) STREQUAL "Debug")
 			set(LIBREMIDI_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/libmidi/out/install/x64-Debug/lib/libremidi.lib)
 		else()
 			set(LIBREMIDI_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/libmidi/out/install/x64-Release/lib/libremidi.lib)
@@ -188,10 +188,10 @@ endif()
 find_package(FFTW3)
 if(NOT FFTW3_FOUND)
 	if(NOT DEFINED FFTW3_LIBRARIES)
-		set(FFTW3_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/fftw-3.3.10/out/install/x64-Release/lib/fftw3.lib)
+		set(FFTW3_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/fftw/out/install/x64-Release/lib/fftw3.lib)
 	endif()
 	if(NOT DEFINED FFTW3_INCLUDE_DIRS)
-		set(FFTW3_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/fftw-3.3.10/out/install/x64-Release/include)
+		set(FFTW3_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/fftw/out/install/x64-Release/include)
 	endif()
 endif()
 
@@ -322,7 +322,7 @@ add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 message("Project Name: "${DRAGONIANLIB_LIB})
 
 #Build Type
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if((${CMAKE_BUILD_TYPE}) STREQUAL "Release")
 	message("Build Type: \"Release\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
@@ -332,7 +332,7 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
         ${DRAGONIANLIB_LIB} PRIVATE
         /LTCG
     )
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+elseif((${CMAKE_BUILD_TYPE}) STREQUAL "RelWithDebInfo")
 	message("Build Type: \"RelWithDebInfo\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
@@ -482,7 +482,7 @@ endif()
 
 #Natvis File
 set(DragonianLibNatvisFile ${PROJECT_SOURCE_DIR}/NatvisFile.natvis)
-if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if((${CMAKE_BUILD_TYPE}) STREQUAL "Release")
 else()
 	add_link_options(
 		/NATVIS:${DragonianLibNatvisFile}
