@@ -159,6 +159,8 @@ enum class PaddingType
 	Replicate ///< Replicate padding
 };
 
+constexpr Range NPAD{ 0, 0, 0 }; ///< Zero padding count
+
 template <size_t _NRank>
 class SliceOptions : public IDLArray<Range, _NRank> {}; ///< Alias for vector of ranges
 template <size_t _NRank>
@@ -540,7 +542,7 @@ private:
 	}
 
 	template <size_t _TRank, typename = std::enable_if_t<(_NRank > _TRank)>>
-	constexpr decltype(auto) ViewDimensions(const Dimensions<_TRank>& _Indice) const
+		constexpr decltype(auto) ViewDimensions(const Dimensions<_TRank>& _Indice) const
 
 	{
 		Tensor<_TensorType, _NRank - _TRank, _MyDevice> Ret;
@@ -683,7 +685,7 @@ public:
 	 * @return The element tensor.
 	 */
 	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<(_TmpTank > 1) && _TmpTank == _NRank>>
-	constexpr decltype(auto) operator[](SizeType _Index) const
+		constexpr decltype(auto) operator[](SizeType _Index) const
 	{
 		return ViewFirstDim(_Index);
 	}
@@ -712,7 +714,7 @@ public:
 	 * @return
 	 */
 	template <size_t _TRank, typename = std::enable_if_t<(_NRank > _TRank)>>
-	constexpr decltype(auto) operator[](const Dimensions<_TRank>& _Indice) const
+		constexpr decltype(auto) operator[](const Dimensions<_TRank>& _Indice) const
 	{
 		return ViewDimensions(_Indice);
 	}
@@ -759,7 +761,7 @@ public:
 	 */
 	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> ||
 		std::is_default_constructible_v<_CurValueType>)>>
-	static constexpr decltype(auto) New(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
+		static constexpr decltype(auto) New(const Dimensions<_NRank>& _Shape, Allocator _Al = Allocator())
 	{
 		return Tensor(_Shape, _Al);
 	}
@@ -1133,7 +1135,7 @@ private:
 	{
 		if (IsBroadCasted())
 			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		if(_Count != ElementCount())
+		if (_Count != ElementCount())
 			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
 		WaitingAsResult();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMoveBuffer(
@@ -1427,7 +1429,7 @@ public:
 	template <typename _MaskType, size_t _TRank, typename _CurValueType = ValueType, typename = std::enable_if_t<
 		TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&
 		std::is_copy_assignable_v<_CurValueType>&&
-		TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>&&
+		TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> &&
 		(_NRank >= _TRank)
 		>> decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const Tensor<ValueType, _TRank, _MyDevice>& _Value)
 	{
@@ -1455,7 +1457,7 @@ public:
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Add);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Add, +, (Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Add, +, (Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Sub);
@@ -1582,22 +1584,22 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(Polar);
 
 	template <typename _CurValueType = ValueType,
-		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NegativeUnary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
-	decltype(auto) operator-() const
+		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NegativeUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
+		decltype(auto) operator-() const
 	{
 		return Negative();
 	}
 
 	template <typename _CurValueType = ValueType,
-		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NotUnary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
-	decltype(auto) operator!() const
+		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NotUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
+		decltype(auto) operator!() const
 	{
 		return Not();
 	}
 
 	template <typename _CurValueType = ValueType,
-		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::BitwiseNotUnary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
-	decltype(auto) operator~() const
+		typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::BitwiseNotUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)>>
+		decltype(auto) operator~() const
 	{
 		return BitwiseNot();
 	}
@@ -2078,6 +2080,81 @@ public:
 
 	//*********************************************************View*********************************************************//
 
+	template <size_t _Count>
+	decltype(auto) Split(const Dimensions<_Count>& _Size, SizeType _Axis = 0) const
+	{
+		ThrowOnNotEnabled();
+		IDLArray<Tensor, _Count> Ret;
+		_Axis = CalcIndex(_Axis, Rank());
+		const auto _SizeTgr = _MyShape[_Axis];
+		const auto _SizeSrc = _Size.Multiply();
+
+		if (_SizeTgr != _SizeSrc)
+			_D_Dragonian_Lib_Throw_Exception("The Size Of The Split Is Not Equal To The Source!");
+
+		SliceOptions<_Count> SliceOptions;
+		for (size_t i = 0; i < _Count; ++i)
+		{
+			SliceOptions[_Axis].Begin = i * _Size[i];
+			SliceOptions[_Axis].Step = 1;
+			SliceOptions[_Axis].End = SliceOptions[_Axis].Begin + _Size[i];
+			Ret[i] = Slice(SliceOptions);
+		}
+
+		return Ret;
+	}
+
+	decltype(auto) Split(SizeType _Size, SizeType _Axis = 0) const
+	{
+		ThrowOnNotEnabled();
+		TemplateLibrary::Vector<Tensor> Ret;
+		_Axis = CalcIndex(_Axis, Rank());
+
+		if (_Size <= 0)
+			_D_Dragonian_Lib_Throw_Exception("The Size Of The Split Is Not Valid!");
+
+		auto Remain = _MyShape[_Axis];
+		Ret.Reserve(Remain / _Size + 1);
+
+		SliceOptions<_NRank> SliceOptions;
+		Int64 i = 0;
+		while (Remain)
+		{
+			const auto CSize = std::min(_Size, Remain);
+			SliceOptions[_Axis].Begin = i * _Size;
+			SliceOptions[_Axis].Step = 1;
+			SliceOptions[_Axis].End = SliceOptions[_Axis].Begin + CSize;
+			Ret.EmplaceBack(Slice(SliceOptions));
+			Remain -= CSize;
+			++i;
+		}
+		return Ret;
+	}
+
+	decltype(auto) Window(SizeType _HopSize, SizeType _WinLength, SizeType _Axis = 0)
+	{
+		ThrowOnNotEnabled();
+		_Axis = CalcIndex(_Axis, Rank());
+		if (_HopSize <= 0 || _WinLength <= 0 || _MyShape[_Axis] < _WinLength)
+			_D_Dragonian_Lib_Throw_Exception("The Size Of The Window Is Not Valid!");
+
+		TemplateLibrary::Vector<Tensor> Ret;
+		auto Remain = _MyShape[_Axis];
+		Ret.Reserve(Remain / _HopSize + 1);
+		SliceOptions<_NRank> SliceOptions;
+		Int64 i = 0;
+		while (Remain >= _WinLength)
+		{
+			SliceOptions[_Axis].Begin = i * _HopSize;
+			SliceOptions[_Axis].Step = 1;
+			SliceOptions[_Axis].End = SliceOptions[_Axis].Begin + _WinLength;
+			Ret.EmplaceBack(Slice(SliceOptions));
+			Remain -= _HopSize;
+			++i;
+		}
+		return Ret;
+	}
+
 	/**
 	 * @brief Slice the tensor, the order of the axes is ([0, 1, ... , N_DIMS - 1]).
 	 * @param _SliceOptions A [[begin, step, end]/null, ...] array of all sliced axes, null means no slice.
@@ -2382,7 +2459,7 @@ public:
 	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
 	 * @return New tensor.
 	 */
-	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Clone() const
 	{
 		auto Ret = New(_MyShape, _MyAllocator);
@@ -2401,7 +2478,7 @@ public:
 	 * @brief If the tensor is not continuous, make output continuous.
 	 * @return New tensor (view or clone).
 	 */
-	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Continuous() const
 	{
 		if (IsContinuous())
@@ -2431,7 +2508,7 @@ public:
 	 * @brief Make this tensor continuous.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <typename _CurValueType = ValueType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) MakeContinuous()
 	{
 		if (IsContinuous())
@@ -2439,7 +2516,7 @@ public:
 		return *this = Clone();
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <typename _CurValueType = ValueType, size_t _TRank, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) ReShape(const Dimensions<_TRank>& _ViewShape) const
 	{
 		if (IsContinuous())
@@ -2455,7 +2532,7 @@ public:
 		return Clone(_Buffer).View(_ViewShape);
 	}
 
-	template <typename _CurValueType = ValueType, typename... _Args, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <typename _CurValueType = ValueType, typename... _Args, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) ReShape(_Args... _Shape) const
 	{
 		Dimensions<sizeof...(_Args)> _ViewShape{ _Shape... };
@@ -2479,7 +2556,7 @@ public:
 		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(0, ShapeInfo, BeginInfo, ViewStrideInfo, Function);
 	}
 
-	template <SizeType _Axis = 0, typename _CurValueType = ValueType, typename _IndexType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&&  TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
+	template <SizeType _Axis = 0, typename _CurValueType = ValueType, typename _IndexType, typename = std::enable_if_t<TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>>>
 	decltype(auto) Gather(const Tensor<_IndexType, _NRank, _MyDevice>& _Indices) const
 	{
 		for (size_t i = 0; i < _NRank; ++i)
@@ -2563,7 +2640,7 @@ public:
 	template <typename _Type, typename = std::enable_if_t<
 		std::is_trivially_copy_assignable_v<_Type> &&
 		(sizeof(_Type) % sizeof(ValueType) || sizeof(ValueType) % sizeof(_Type))>>
-	decltype(auto) ViewAs() const
+		decltype(auto) ViewAs() const
 	{
 		const auto TailShape = _MyShape.Back();
 		const auto TailSize = size_t(TailShape) * sizeof(ValueType);
@@ -2604,7 +2681,7 @@ public:
 			NewTensorSlice[i].Begin = _PaddingCount[i].Begin;
 			NewTensorSlice[i].End = _PaddingCount[i].Begin + _MyShape[i];
 		}
-		
+
 		auto Ret = New(Shape, _MyAllocator);
 
 		Ret.WaitingAsResult();
@@ -2793,7 +2870,7 @@ public:
 	decltype(auto) CumMin(SizeType _Axis) const _D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumMin);
 
 	template <bool KeepDim = false, typename _CurValueType = ValueType, typename = std::enable_if_t <TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>>>
-	decltype(auto) ReduceLp(SizeType _Axis,const ValueType& _P) const
+	decltype(auto) ReduceLp(SizeType _Axis, const ValueType& _P) const
 	{
 		if constexpr (_NRank == 1)
 			return UnSqueeze(0).template LpNorm<false>(-1, _P).Squeeze(0);
@@ -2874,7 +2951,7 @@ public:
 		Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&&
 		Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType
 		>>>
-	decltype(auto) Interpolate(const Dimensions<Operators::GetInterpolateModeRank<_Mode>>& _Dims, Operators::InterpolateParam<_Mode> _InterpParams) const
+		decltype(auto) Interpolate(const Dimensions<Operators::GetInterpolateModeRank<_Mode>>& _Dims, Operators::InterpolateParam<_Mode> _InterpParams) const
 	{
 		using ParamsType = Operators::InterpolateParam<_Mode>;
 

@@ -1,5 +1,7 @@
 ﻿# DragonianLib
 
+A C++ library include tensor library, audio(1d-signal) library, text library, image library, video library, and so on.
+
 ## 构建选项
 
 在构建 DragonianLib 时，可以通过以下选项启用或禁用特定的功能：

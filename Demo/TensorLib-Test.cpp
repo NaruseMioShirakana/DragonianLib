@@ -53,7 +53,7 @@ void WithTimer(const Fn& fn)
 void TestUVR()
 {
 	using namespace DragonianLib;
-	const auto Env = OnnxRuntime::CreateEnvironment({});
+	const auto Env = OnnxRuntime::CreateEnvironment({Device::CUDA});
 	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
 		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\UVR\HP5_only_main_vocal.onnx)",
 		Env,
@@ -66,7 +66,8 @@ void TestUVR()
 	auto AudioData = AudioInStream.DecodeAll(
 		44100, 2, true
 	);
-	AudioData = AudioData[{":", "441000:882000"}];
+	//AudioData = AudioData[{":", "441000:882000"}];
+	//auto AudioDatas = AudioData.Split(441000, -1);
 
 	auto [Vocal, Instrument] =
 		Net.Forward(AudioData, 85, 0.5f, 44100);
@@ -127,7 +128,7 @@ void TestGptSoVits()
 	G2P::RegisterG2PModules(LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\G2P)");
 	auto Jap = G2P::New(L"BasicCleaner", LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\G2P)");
 
-	const auto Env = OnnxRuntime::CreateEnvironment({Device::CPU, 0});
+	const auto Env = OnnxRuntime::CreateEnvironment({ Device::CPU, 0 });
 	Env->SetExecutionMode(ORT_PARALLEL);
 	Env->EnableMemPattern(false);
 
@@ -295,7 +296,7 @@ void TestStft()
 		Signal.GetCRng(), 44100
 	);
 }
-	
+
 int main()
 {
 	using namespace DragonianLib;
@@ -304,7 +305,6 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(4);
 
-	TestStft();
-	TestGptSoVits();
+	TestUVR();
 
 }

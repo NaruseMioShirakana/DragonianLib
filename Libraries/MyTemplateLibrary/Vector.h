@@ -109,9 +109,23 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
         if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
             for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
                 for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-                    _Dest[i + j] = _Src[i + j];
+                {
+                    if constexpr (std::is_copy_assignable_v<ValueType>)
+                        _Dest[i + j] = _Src[i + j];
+                    else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+                        _Dest[i + j] = ValueType(_Src[i + j]);
+                    else
+                        _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+                }
         for (; i < _Count; ++i)
-            _Dest[i] = _Src[i];
+        {
+            if constexpr (std::is_copy_assignable_v<ValueType>)
+                _Dest[i] = _Src[i];
+            else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+                _Dest[i] = ValueType(_Src[i]);
+            else
+                _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+        }
     }
 }
 
@@ -124,9 +138,23 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
         for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
             for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-                _Dest[i + j] = _Src;
+            {
+                if constexpr (std::is_copy_assignable_v<ValueType>)
+                    _Dest[i + j] = _Src[i + j];
+                else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+                    _Dest[i + j] = ValueType(_Src[i + j]);
+                else
+                    _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+            }
     for (; i < _Count; ++i)
-        _Dest[i] = _Src;
+    {
+        if constexpr (std::is_copy_assignable_v<ValueType>)
+            _Dest[i] = _Src[i];
+        else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+            _Dest[i] = ValueType(_Src[i]);
+        else
+            _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+    }
 }
 
 template <typename ValueType>
@@ -157,9 +185,25 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
         for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
             for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-                _Dest[_Count - (1 + i + j)] = _Src[_Count - (1 + i + j)];
+            {
+                const auto Index = _Count - (1 + i + j);
+                if constexpr (std::is_copy_assignable_v<ValueType>)
+                    _Dest[Index] = _Src[Index];
+                else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+                    _Dest[Index] = ValueType(_Src[Index]);
+                else
+                    _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+            }
     for (; i < _Count; ++i)
-        _Dest[_Count - (i + 1)] = _Src[_Count - (i + 1)];
+    {
+        const auto Index = _Count - (1 + i);
+        if constexpr (std::is_copy_assignable_v<ValueType>)
+            _Dest[Index] = _Src[Index];
+        else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
+            _Dest[Index] = ValueType(_Src[Index]);
+        else
+            _D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
+    }
 }
 
 template <typename ValueType>
@@ -363,9 +407,6 @@ public:
     using IndexType = long long;
     using Allocator = GetAllocatorType<Device_>;
 	static constexpr auto _MyDevice = Device_;
-
-    static_assert(std::is_copy_assignable_v<ValueType>, "ValueType Must Be Copy Assignable!");
-	static_assert(std::is_copy_constructible_v<ValueType>, "ValueType Must Be Copy Constructible!");
 
 protected:
     _D_Dragonian_Lib_Constexpr_Force_Inline void _Tidy() noexcept
