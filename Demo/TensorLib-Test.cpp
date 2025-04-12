@@ -3,6 +3,9 @@
 
 #include "OnnxLibrary/BertClap/Context.hpp"
 #include "OnnxLibrary/TextToSpeech/Models/GPT-SoVits.hpp"
+#include "OnnxLibrary/UnitsEncoder/Register.hpp"
+#include "OnnxLibrary/Vocoder/Register.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/DDSP-Svc.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
 
 auto MyLastTime = std::chrono::high_resolution_clock::now();
@@ -297,6 +300,173 @@ void TestStft()
 	);
 }
 
+void TestSvc()
+{
+	
+	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
+	);
+
+	DragonianLib::OnnxRuntime::OnnxEnvironmentOptions Options{
+		DragonianLib::Device::CUDA,
+		0,
+		8,
+		4,
+		ORT_LOGGING_LEVEL_WARNING
+	};
+
+	auto Env = DragonianLib::OnnxRuntime::CreateEnvironment(
+		Options
+	);
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
+	hParams.F0Max = 800;
+	hParams.F0Min = 65;
+	hParams.HopSize = 512;
+	hParams.MelBins = 128;
+	hParams.UnitsDim = 768;
+	hParams.OutputSamplingRate = 44100;
+	hParams.SpeakerCount = 92;
+	hParams.HasSpeakerEmbedding = true;
+	hParams.HasVolumeEmbedding = true;
+	hParams.HasSpeakerMixLayer = true;
+	hParams.ModelPaths[L"Ctrl"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\encoder.onnx)";
+	hParams.ModelPaths[L"Velocity"] = LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\velocity.onnx)";
+	//hParams.ModelPaths[L"Ctrl"] = LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_encoder.onnx)";
+	//hParams.ModelPaths[L"Velocity"] = LR"(D:\VSGIT\MoeVoiceStudio\Diffusion-SVC-2.0_dev\checkpoints\d-hifigan\d-hifigan_velocity.onnx)";
+
+	auto Model = DragonianLib::OnnxRuntime::SingingVoiceConversion::ReflowSvc(
+		Env,
+		hParams
+	);
+
+	auto Vocoder = DragonianLib::OnnxRuntime::Vocoder::New(
+		L"Nsf-HiFi-GAN",
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)",
+		Env
+	);
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params;
+	Params.SpeakerId = 0;
+	Params.PitchOffset = 0.f;
+	Params.StftNoiseScale = 1.f;
+	Params.NoiseScale = 1.f;
+	Params.Reflow.Begin = 0.f;
+	Params.Reflow.End = 0.99f;
+	Params.Reflow.Stride = 0.1f;
+	Params.F0HasUnVoice = false;
+	Params.Reflow.Sampler = L"Eular";
+
+	//vec-768-layer-12-f16
+	const auto UnitsEncoder = DragonianLib::OnnxRuntime::UnitsEncoder::New(
+		L"ContentVec-768-l12",
+		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\vec-768-layer-12-f16.onnx)",
+		Env,
+		16000,
+		768
+	);
+
+	const auto F0Extractor = DragonianLib::F0Extractor::New(
+		L"Dio",
+		nullptr
+	);
+
+	constexpr auto F0Params = DragonianLib::F0Extractor::Parameters{
+		44100,
+		320,
+		256,
+		2048,
+		800,
+		65,
+		0.03f,
+		nullptr
+	};
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::SliceDatas MyData;
+	auto AudioStream = DragonianLib::AvCodec::OpenInputStream(
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
+	);
+	auto Audio = AudioStream.DecodeAll(44100, 2);
+	auto Input = Audio[{"900000:1341000", "0"}].Transpose(-1, -2).Contiguous();
+
+	auto Mel = Model.Inference(
+		Params,
+		Input.UnSqueeze(0),
+		44100,
+		UnitsEncoder,
+		F0Extractor,
+		F0Params,
+		std::nullopt,
+		std::nullopt,
+		&MyData
+	);
+
+	Mel = Model.DenormSpec(Mel);
+	auto Output = Vocoder->Forward(Mel, MyData.F0);
+	
+
+	auto AudioOutStream = DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Test-IStft.wav)"
+	);
+	AudioOutStream.EncodeAll(
+		Output.GetCRng(), 44100
+	);
+}
+
+void TestVocoder()
+{
+	DragonianLib::OnnxRuntime::OnnxEnvironmentOptions Options{
+		DragonianLib::Device::CUDA,
+		0,
+		8,
+		4,
+		ORT_LOGGING_LEVEL_WARNING
+	};
+
+	auto Env = DragonianLib::OnnxRuntime::CreateEnvironment(
+		Options
+	);
+	auto Vocoder = DragonianLib::OnnxRuntime::Vocoder::New(
+		L"Nsf-HiFi-GAN",
+		LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)",
+		Env
+	);
+	auto MFCCKernel = DragonianLib::FunctionTransform::MFCCKernel(
+		44100, 2048, 512, 2048, 128
+	);
+	auto F0Extractor = DragonianLib::F0Extractor::New(
+		L"Dio",
+		nullptr
+	);
+
+	auto AudioStream = DragonianLib::AvCodec::OpenInputStream(
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
+	);
+	auto Audio = AudioStream.DecodeAll(44100, 2);
+	auto Input = Audio[{"900000:1341000", "0"}].Transpose(-1, -2);
+
+	auto F0 = F0Extractor->ExtractF0(Input, {44100, 512, 256, 2048, 800, 65, 0.03f}).UnSqueeze(0);
+	auto Mel = MFCCKernel(Input.UnSqueeze(0));
+	DragonianLib::Functional::NumpySave(L"C:/DataSpace/MediaProj/PlayList/Echoism_mel.npy", Mel);
+	DragonianLib::Functional::NumpySave(L"C:/DataSpace/MediaProj/PlayList/Echoism.npy", Input.Contiguous().Evaluate());
+	Mel = DragonianLib::Functional::NumpyLoad<float, 4>(L"C:/DataSpace/MediaProj/PlayList/Echoism_mel2.npy");
+	F0 = F0[{":", ":", ":-1"}];
+	Audio = Vocoder->Forward(
+		Mel,
+		F0
+	).Squeeze(0);
+
+	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-test.mp3)"
+	);
+	OutStream.EncodeAll(
+		Audio.GetCRng(), 44100, 1, true
+	);
+}
+
 int main()
 {
 	using namespace DragonianLib;
@@ -305,6 +475,6 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(4);
 
-	TestUVR();
+	TestSvc();
 
 }

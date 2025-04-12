@@ -69,7 +69,7 @@ public:
 	 * @param UnitsCluster Units cluster
 	 * @param AudioMask Audio mask
 	 * @param[Output] OutPointers If it is not null, the function will override the data in the OutPointers with preprocessed datas, It is useful when you need to get the preprocessed datas
-	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio, if output is audio, shape must be {BatchSize, Channels, SampleCount}, if output is mel spectrogram, shape must be {BatchSize, Channels, MelBins, AudioFrames}
+	 * @return Tensor<Float32, 4, Device::CPU> Inference result, may be the mel spectrogram or the audio, if output is audio, shape must be {1, BatchSize, Channels, SampleCount}, if output is mel spectrogram, shape must be {BatchSize, Channels, MelBins, AudioFrames}
 	 */
 	Tensor<Float32, 4, Device::CPU> Inference(
 		const Parameters& Params,

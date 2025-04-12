@@ -30,13 +30,13 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 	auto& F0 = InputDatas.F0;
 	auto Mel = InputDatas.GTSpec;
 
-	const bool OutputHasSpec = (Tuple[0].GetTensorTypeAndShapeInfo().GetElementCount() != 1) && _MyOutputCount == 3;
+	const bool OutputHasSpec = Tuple[0].GetTensorTypeAndShapeInfo().GetElementCount() != 1;
 	Ort::Value Spec{ nullptr };
 
 	if (OutputHasSpec && abs(Params.NoiseScale) < 1e-4f)
 	{
 		Spec = std::move(Tuple[0]);
-		if ((Params.Reflow.End - Params.Reflow.Begin) / Params.Reflow.Stride <= 0.f)
+		if ((Params.Reflow.End - Params.Reflow.Begin) / Params.Reflow.Stride <= 0.99f)
 		{
 			LogInfo(L"Reflow step is zero or negative, skip reflow");
 			auto OutputShape = Spec.GetTensorTypeAndShapeInfo().GetShape();
@@ -62,7 +62,7 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 
 		if (OutputHasSpec)
 		{
-			const auto Mel2Scale = 1.f - Params.NoiseScale;
+			const auto Mel2Scale = Params.Reflow.Begin * Params.Reflow.Scale / 1000.f;
 
 			auto Mel2 = Tensor<Float32, 4, Device::CPU>::FromBuffer(
 				Mel->Shape(),

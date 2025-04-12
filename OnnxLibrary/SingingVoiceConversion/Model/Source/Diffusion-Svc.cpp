@@ -350,14 +350,16 @@ Tensor<Float32, 4, Device::CPU> DiffusionSvc::Forward(
 		if (_MyOutputCount == 3)
 		{
 			const auto Mel2Scale = 1.f - Params.NoiseScale;
+			if (Mel2Scale > 0.f)
+			{
+				auto Mel2 = Tensor<Float32, 4, Device::CPU>::FromBuffer(
+					Mel->Shape(),
+					Tuple[2].GetTensorMutableData<Float32>(),
+					Tuple[2].GetTensorTypeAndShapeInfo().GetElementCount()
+				);
 
-			auto Mel2 = Tensor<Float32, 4, Device::CPU>::FromBuffer(
-				Mel->Shape(),
-				Tuple[2].GetTensorMutableData<Float32>(),
-				Tuple[2].GetTensorTypeAndShapeInfo().GetElementCount()
-			);
-
-			(*Mel += (Mel2 * Mel2Scale)).Evaluate();
+				(*Mel += (Mel2 * Mel2Scale)).Evaluate();
+			}
 		}
 
 		if ((Params.Diffusion.End - Params.Diffusion.Begin) / Params.Diffusion.Stride <= 0)

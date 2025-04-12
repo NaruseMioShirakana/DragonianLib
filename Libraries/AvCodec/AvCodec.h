@@ -589,7 +589,7 @@ namespace AvCodec
 							 for (auto& Frame : Frames)
 							 {
 								 auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
-								 auto Size = Frame.GetSampleCount();
+								 auto Size = Frame.GetSampleCount() * _OutputChannels;
 								 OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
 							 }
 						 }

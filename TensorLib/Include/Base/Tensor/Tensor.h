@@ -50,15 +50,15 @@ struct Range
 	SizeType Step = 1; ///< Step value
 	SizeType End = RangeEndPos; ///< End value
 
-	Range() = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range() = default;
 
 	/**
 	 * @brief Constructor for a none range.
 	 * @param _NoneVal The none value to initialize the range.
 	 */
-	Range(NoneType _NoneVal) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType _NoneVal) { UNUSED(_NoneVal); }
 
-	Range(SizeType _Val) : Begin(_Val), Step(_Val), End(_Val) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Val) : Begin(_Val), Step(_Val), End(_Val) {}
 
 	/**
 	 * @brief Constructor for a range with begin, step, and end values.
@@ -90,33 +90,33 @@ struct Range
 	 * @param _Step The step value.
 	 * @param _End The end value.
 	 */
-	Range(SizeType _Begin, SizeType _Step, SizeType _End) :Begin(_Begin), Step(_Step), End(_End) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, SizeType _Step, SizeType _End) :Begin(_Begin), Step(_Step), End(_End) {}
 
 	/**
 	 * @brief Constructor for a range with begin and end values.
 	 * @param _Begin The begining value.
 	 * @param _End The end value.
 	 */
-	Range(SizeType _Begin, SizeType _End) :Begin(_Begin), End(_End) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, SizeType _End) :Begin(_Begin), End(_End) {}
 
 	/**
 	 * @brief Constructor for a range with none and end values.
 	 * @param _NoneVal The none value.
 	 * @param _End The end value.
 	 */
-	Range(NoneType _NoneVal, SizeType _End) :End(_End) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType _NoneVal, SizeType _End) :End(_End) { UNUSED(_NoneVal); }
 
 	/**
 	 * @brief Constructor for a range with begin and none values.
 	 * @param _Begin The begining value.
 	 * @param _NoneVal The none value.
 	 */
-	Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin) { UNUSED(_NoneVal); }
 
 	/**
 	 * @brief Reverse the range.
 	 */
-	void Reverse() { std::swap(Begin, End); Step = -Step; }
+	_D_Dragonian_Lib_Constexpr_Force_Inline void Reverse() { std::swap(Begin, End); Step = -Step; }
 
 	std::string ToString() const
 	{
