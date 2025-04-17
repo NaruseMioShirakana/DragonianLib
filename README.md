@@ -69,7 +69,7 @@ A C++ library for singing voice conversion, text to speech, super resolution, mu
 
 ## References
 
->- [libcudacxx](https://developer.nvidia.com/cuda-toolkit) (enabled if `DRAGONIANLIB_CUDA` is set to `ON`))
+>- [libcudacxx](https://developer.nvidia.com/cuda-toolkit) (enabled if `DRAGONIANLIB_CUDA` is set to `ON`)
 >- [TensorRT](https://developer.nvidia.com/tensorrt) (enabled if `DRAGONIANLIB_TENSORRT` is set to `ON`)
 
 >- [FFMPEG](https://ffmpeg.org/) (audio/video codec library)
@@ -80,8 +80,8 @@ A C++ library for singing voice conversion, text to speech, super resolution, mu
 >- [Faiss](https://github.com/facebookresearch/faiss) (index cluster, used for units cluster)
 >- [KDTree](https://github.com/crvs/KDTree) (an implementation of KDTree, used for units cluster)
 
->- [ONNXRuntime](https://onnxruntime.ai/) (enabled if `DRAGONIANLIB_ONNXRUNTIME` is set to `ON`)))
->- [NCNN](https://github.com/Tencent/ncnn) (enabled if `DRAGONIANLIB_NCNN` is set to `ON`)))
+>- [ONNXRuntime](https://onnxruntime.ai/) (enabled if `DRAGONIANLIB_ONNXRUNTIME` is set to `ON`)
+>- [NCNN](https://github.com/Tencent/ncnn) (enabled if `DRAGONIANLIB_NCNN` is set to `ON`)
 
 >- [pypinyin](https://github.com/mozillazg/python-pinyin) (a python library for Chinese G2P, DragonianLib implemented a C++ version)
 
