@@ -521,24 +521,40 @@ private:
 		}
 	}
 
-	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<(_TmpTank > 1) && _TmpTank == _NRank>>
-		_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		ViewFirstDim(SizeType _Index) const
+	template <size_t _Axis, size_t _TmpTank = _NRank, typename = std::enable_if_t<_TmpTank && _TmpTank == _NRank && _Axis < _NRank>> _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+		GatherAxis(SizeType _Index) const
 	{
-		const auto Idx = CalcIndex(_Index, _MyShape.Front());
-		Tensor<_TensorType, _TmpTank - 1, _MyDevice> Ret;
+		if constexpr (_NRank == 1)
+			return Get(_Index);
+		else
+		{
+			constexpr auto _MyRnk = _NRank - 1;
+			Tensor<_TensorType, _MyRnk, _MyDevice> Ret;
 
-		Ret._MyShape.Assign(_MyShape.begin() + 1);
-		Ret._MyViewStride.Assign(_MyViewStride.begin() + 1);
+			for (size_t i = 0, j = 0; i < _NRank; ++i)
+			{
+				if (i == _Axis)
+					continue;
+				Ret._MyShape[j] = _MyShape[i];
+				Ret._MyViewStride[j] = _MyViewStride[i];
+				++j;
+			}
 
-		auto Index = Idx * _MyViewStride.Front();
-		Ret._MyFirst = _MyFirst;
-		Ret._MyData = _MyData + Index;
-		Ret._MyLast = _MyLast;
-		Ret._MyFuturesAsResult = _MyFuturesAsResult;
-		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyAllocator = _MyAllocator;
-		return Ret;
+			Ret._MyFirst = _MyFirst;
+			Ret._MyData = _MyData + CalcIndex(_Index, _MyShape[_Axis]) * _MyViewStride[_Axis];
+			Ret._MyLast = _MyLast;
+			Ret._MyFuturesAsResult = _MyFuturesAsResult;
+			Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
+			Ret._MyAllocator = _MyAllocator;
+			return Ret;
+		}
+	}
+
+	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<_TmpTank && _TmpTank == _NRank>>
+		_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
+		ViewFirstAxis(SizeType _Index) const
+	{
+		return GatherAxis<0>(_Index);
 	}
 
 	template <size_t _TRank, typename = std::enable_if_t<(_NRank > _TRank)>>
@@ -684,19 +700,12 @@ public:
 	 * @param _Index The index of the element tensor.
 	 * @return The element tensor.
 	 */
-	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<(_TmpTank > 1) && _TmpTank == _NRank>>
-		constexpr decltype(auto) operator[](SizeType _Index) const
+	template <size_t _TmpTank = _NRank, typename = std::enable_if_t<_TmpTank&& _TmpTank == _NRank>>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](SizeType _Index) const
 	{
-		return ViewFirstDim(_Index);
+		return ViewFirstAxis(_Index);
 	}
 
-	template <size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		(_TmpTank <= 1) && _TmpTank == _NRank,
-		ValueType&> operator[](SizeType _Index) const
-	{
-		return Get(_Index);
-	}
 
 	/**
 	 * @brief Get a sliced tensor of the tensor.
@@ -2642,6 +2651,9 @@ public:
 		(sizeof(_Type) % sizeof(ValueType) || sizeof(ValueType) % sizeof(_Type))>>
 		decltype(auto) ViewAs() const
 	{
+		if (!IsContinuous())
+			_D_Dragonian_Lib_Throw_Exception("ViewAs Should Be Contiguous!");
+
 		const auto TailShape = _MyShape.Back();
 		const auto TailSize = size_t(TailShape) * sizeof(ValueType);
 		if (TailSize % sizeof(_Type))

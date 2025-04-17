@@ -1,61 +1,57 @@
-﻿#include "../UVR.hpp"
+﻿#include "../CascadedNet.hpp"
 
 #include <iostream>
 
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
-_D_Dragonian_Lib_Onnx_UVR_Header
+_D_Dragonian_Lib_Onnx_Demix_Header
 
-DLogger& GetDefaultLogger() noexcept
-{
-	static DLogger _MyLogger = std::make_shared<Logger>(
-		_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->GetLoggerId() + L"::UVR",
-		_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->GetLoggerLevel(),
-		nullptr
-	);
-	return _MyLogger;
-}
-
-CascadedNet::HParams CascadedNet::GetPreDefinedHParams(
+HyperParameters CascadedNet::GetPreDefinedHParams(
 	const std::wstring& Name
 )
 {
 	if (Name == L"4band_v2")
 	{
-		return HParams{
-			672,
-			8,
-			637,
-			512,
+		return HyperParameters{
+			{},
 			{
-				{7350,80,640,0,85,-1,-1,25,53},
-				{7350,80,320,4,87,25,12,31,62},
-				{14700,160,512,17,216,48,24,139,210},
-				{44100,480,960,78,383,130,86,-1,-1}
-			},
-			44100,
-			668,
-			672,
-			128
+				672,
+				8,
+				637,
+				512,
+				{
+					{7350,80,640,0,85,-1,-1,25,53},
+					{7350,80,320,4,87,25,12,31,62},
+					{14700,160,512,17,216,48,24,139,210},
+					{44100,480,960,78,383,130,86,-1,-1}
+				},
+				44100,
+				668,
+				672,
+				128
+			}
 		};
 	}
 	if (Name == L"4band_v3")
 	{
-		return HParams{
-			672,
-			8,
-			530,
-			512,
+		return HyperParameters{
+			{},
 			{
-				{7350,80,640,0,85,-1,-1,25,53},
-				{7350,80,320,4,87,25,12,31,62},
-				{14700,160,512,17,216,48,24,139,210},
-				{44100,480,960,78,383,130,86,-1,-1}
-			},
-			44100,
-			668,
-			672,
-			64
+				672,
+				8,
+				530,
+				512,
+				{
+					{7350,80,640,0,85,-1,-1,25,53},
+					{7350,80,320,4,87,25,12,31,62},
+					{14700,160,512,17,216,48,24,139,210},
+					{44100,480,960,78,383,130,86,-1,-1}
+				},
+				44100,
+				668,
+				672,
+				64
+			}
 		};
 	}
 	_D_Dragonian_Lib_Throw_Exception("Unknown HParams.");
@@ -64,9 +60,9 @@ CascadedNet::HParams CascadedNet::GetPreDefinedHParams(
 CascadedNet::CascadedNet(
 	const std::wstring& ModelPath,
 	const OnnxRuntimeEnvironment& Environment,
-	HParams Setting,
+	const HyperParameters& Setting,
 	const DLogger& Logger
-) : OnnxModelBase(Environment, ModelPath, Logger), _MySetting(std::move(Setting))
+) : OnnxModelBase(Environment, ModelPath, Logger), _MySetting(Setting.Cascaded)
 {
 	_MyStftKernels.reserve(_MySetting.Bands.size());
 	for (const auto& Band : _MySetting.Bands)
@@ -111,7 +107,7 @@ void LowPass(
 	_Signal[{None, { BinStop, None }}].Ignore() = 0.f;
 }
 
-std::tuple<FltTensor, Cpx32Tensor, Cpx32Tensor, Cpx32Tensor, Int64, Int64, Float32, Int64> CascadedNet::Preprocess(
+std::tuple<SignalTensor, SpecTensor, SpecTensor, SpecTensor, Int64, Int64, Float32, Int64> CascadedNet::Preprocess(
 	const Tensor<Float32, 2, Device::CPU>& Signal,
 	Int64 SamplingRate
 ) const
@@ -206,7 +202,7 @@ std::tuple<FltTensor, Cpx32Tensor, Cpx32Tensor, Cpx32Tensor, Int64, Int64, Float
 	};
 }
 
-FltTensor CascadedNet::Spec2Audio(
+SignalTensor CascadedNet::Spec2Audio(
 	const Tensor<Complex32, 3, Device::CPU>& Spec,
 	const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
 	Int64 InputHighEndH
@@ -303,23 +299,23 @@ FltTensor CascadedNet::Spec2Audio(
 	return Audio.Evaluate();
 }
 
-std::pair<FltTensor, FltTensor> CascadedNet::Forward(
-	const Tensor<Float32, 2, Device::CPU>& Signal,
-	Int64 SplitBin,
-	Float32 Value,
-	Int64 SamplingRate
+TemplateLibrary::Vector<SignalTensor> CascadedNet::Forward(
+	const SignalTensor& Signal,
+	const Parameters& Params
 ) const
 {
+	auto SplitBin = Params.SplitBin;
+	auto Value = Params.Value;
+
 	auto [
 		Mangitude, Phase,
 			XSpecM, InputHighEnd,
 			NumWindow, Frames, Coef, InputHighEndH
-	] = Preprocess(Signal, SamplingRate);
+	] = Preprocess(Signal.Squeeze(0), Params.SamplingRate);
 	Mangitude.Evaluate();
 	Phase.Evaluate();
 	XSpecM.Evaluate();
 	InputHighEnd.Evaluate();
-
 	constexpr Int64 One = 1;
 	const Int64 InputShape[4]{ 1, 2, _MySetting.Bins + 1, _MySetting.WindowSize };
 	const auto OutShape = Dimensions{ 1, 2, _MySetting.Bins + 1, _MyRoiSize };
@@ -329,6 +325,8 @@ std::pair<FltTensor, FltTensor> CascadedNet::Forward(
 		Ort::Value::CreateTensor(*_MyMemoryInfo, &Value, 1, &One, 1)
 	};
 	std::vector<Tensor<Float32, 4, Device::CPU>> OutputTensors;
+	if (Params.Progress)
+		Params.Progress(true, NumWindow);
 	for (Int64 i = 0; i < NumWindow; ++i)
 	{
 		const auto Start = i * _MyRoiSize;
@@ -343,6 +341,8 @@ std::pair<FltTensor, FltTensor> CascadedNet::Forward(
 				CreateTensorViewFromOrtValue<Float32>(std::move(Outputs[0]), OutShape)
 			);
 		);
+		if (Params.Progress)
+			Params.Progress(false, i);
 	}
 	auto Pred =
 		(Functional::ICat(OutputTensors, -1).Evaluate().Squeeze(0) * Coef)[{None, None, { None, Frames }}];
@@ -350,7 +350,10 @@ std::pair<FltTensor, FltTensor> CascadedNet::Forward(
 	auto YSpec = (Pred * Phase).Evaluate();
 	auto VSpec = (XSpecM - YSpec).Evaluate();
 
-	return { Spec2Audio(VSpec, InputHighEnd, InputHighEndH), Spec2Audio(YSpec, InputHighEnd, InputHighEndH) };
+	return TemplateLibrary::MakeVector<SignalTensor>(
+		Spec2Audio(VSpec, InputHighEnd, InputHighEndH),
+		Spec2Audio(YSpec, InputHighEnd, InputHighEndH)
+	);
 }
 
-_D_Dragonian_Lib_Onnx_UVR_End
+_D_Dragonian_Lib_Onnx_Demix_End

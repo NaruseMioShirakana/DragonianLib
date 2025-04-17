@@ -89,7 +89,7 @@ struct OnnxEnvironmentOptions
 protected:
     std::unordered_map<std::string, std::string> CUDAOptions{
         {"device_id", "0"},
-        {"gpu_mem_limit", "2147483648"},
+        {"gpu_mem_limit", "4294967296"},
         {"arena_extend_strategy", "kNextPowerOfTwo"},
         {"cudnn_conv_algo_search", "EXHAUSTIVE"},
         {"do_copy_in_default_stream", "0"},

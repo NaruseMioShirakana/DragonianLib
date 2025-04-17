@@ -453,14 +453,13 @@ public:
         Destory();
     }
 
-	Vector()
-    {
-        _MyAllocator = Allocator();
+    Vector(Allocator _Allocator = Allocator())
+	{
+        _MyAllocator = _Allocator;
         _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
         _MyLast = _MyFirst;
         _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
-        return;
-    }
+	}
 
 	Vector(SizeType _Size, Allocator _Alloc = Allocator())
     {
@@ -535,7 +534,7 @@ public:
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Buffer, _Size);
     }
-
+    
 	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = Allocator())
     {
         auto _Size = _List.size();
@@ -1324,7 +1323,37 @@ public:
             *(Iter++) = (ValueType)pow(*(Iter++), _Val);
         return *this;
     }
+
+    template <typename... _ArgTypes>
+	static decltype(auto) MakeVector(_ArgTypes&&... _Args)
+	{
+        constexpr auto _Size = sizeof...(_Args);
+        Vector Result;
+        if constexpr (_Size)
+        {
+            if constexpr (DRAGONIANLIB_EMPTY_CAPACITY < _Size)
+                Result.Reserve(_Size);
+            Result._MyLast = Result._MyFirst + _Size;
+            MakeVector(Result._MyFirst, std::forward<_ArgTypes>(_Args)...);
+        }
+        return Result;
+	}
+
+private:
+    template <typename _ArgType, typename ... _RestTypes>
+    _D_Dragonian_Lib_Constexpr_Force_Inline static decltype(auto) MakeVector(ValueType* _Result, _ArgType&& _Arg, _RestTypes&&... _Args)
+    {
+        _Impl_Dragonian_Lib_Construct_At(*_Result, std::forward<_ArgType>(_Arg));
+        if constexpr (sizeof...(_Args))
+            MakeVector(_Result + 1, std::forward<_RestTypes>(_Args)...);
+    }
 };
+
+template <typename _Type, Device _Device = Device::CPU, typename ... _ArgTypes>
+decltype(auto) MakeVector(_Type&& _First, _ArgTypes&&... _Args)
+{
+	return Vector<_Type, _Device>::MakeVector(std::forward<_Type>(_First), std::forward<_ArgTypes>(_Args)...);
+}
 
 /**
  * @brief Generate an arithmetic progression within the range [Start, End) and step size Step.

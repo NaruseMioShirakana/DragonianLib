@@ -49,41 +49,41 @@ namespace FunctionTransform
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
-		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
 		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
-		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
 		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
-		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
 		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
-		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
 		Tensor<Complex32, 4, Device::CPU> Execute(const Tensor<Float32, 3, Device::CPU>& Signal) const;
 
 		/**
 		 * @brief Inverse Short-Time Fourier Transform
-		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 * @return Signal, Shape [Batch, Channel, SampleCount]
 		 */
 		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const;
 
 		/**
 		 * @brief Inverse Short-Time Fourier Transform
-		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, FFTSize]
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 * @return Signal, Shape [Batch, Channel, SampleCount]
 		 */
 		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const;

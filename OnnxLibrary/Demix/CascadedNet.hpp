@@ -1,5 +1,5 @@
 ﻿/**
- * @file UVR.hpp
+ * @file CascadedNet.hpp
  * @author NaruseMioShirakana
  * @email shirakanamio@foxmail.com
  * @copyright Copyright (C) 2022-2025 NaruseMioShirakana (shirakanamio@foxmail.com)
@@ -16,64 +16,21 @@
  *
  *  - You should have received a copy of the GNU Affero General Public License along with Foobar.
  *  - If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
- * @brief Ultimate Vocal Remover
+ * @brief CascadedNet
  * @changes
  *  > 2025/3/28 NaruseMioShirakana Created <
  */
 
 #pragma once
 
-#include "OnnxLibrary/Base/OrtBase.hpp"
-#include "Libraries/Stft/Stft.hpp"
+#include "Base.hpp"
 
-#define _D_Dragonian_Lib_Onnx_UVR_Header \
-	_D_Dragonian_Lib_Onnx_Runtime_Header \
-	namespace UltimateVocalRemover \
-	{
+_D_Dragonian_Lib_Onnx_Demix_Header
 
-#define _D_Dragonian_Lib_Onnx_UVR_End \
-	} \
-	_D_Dragonian_Lib_Onnx_Runtime_End
-
-#define _D_Dragonian_Lib_Onnx_UVR_Space \
-	_D_Dragonian_Lib_Onnx_Runtime_Space \
-	UltimateVocalRemover::
-
-_D_Dragonian_Lib_Onnx_UVR_Header
-
-using Cpx32Tensor = Tensor<Complex32, 3, Device::CPU>;
-using FltTensor = Tensor<Float32, 3, Device::CPU>;
-
-DLogger& GetDefaultLogger() noexcept;
-
-class CascadedNet : public OnnxModelBase<CascadedNet>
+class CascadedNet : public OnnxModelBase<CascadedNet>, public DemixModel
 {
 public:
-	struct BandSetting
-	{
-		Int64 SamplingRate;
-		Int64 HopSize;
-		Int64 FFTSize;
-		Int64 CropStart;
-		Int64 CropStop;
-		Int64 HpfStart;
-		Int64 HpfStop;
-		Int64 LpfStart;
-		Int64 LpfStop;
-	};
-	struct HParams
-	{
-		Int64 Bins;
-		Int64 UnstableBins;
-		Int64 ReductionBins;
-		Int64 WindowSize;
-		std::vector<BandSetting> Bands;
-		Int64 SamplingRate;
-		Int64 PreFilterStart;
-		Int64 PreFilterStop;
-		Int64 Offset;
-	};
-	static HParams GetPreDefinedHParams(
+	static HyperParameters GetPreDefinedHParams(
 		const std::wstring& Name
 	);
 
@@ -81,38 +38,36 @@ public:
 	CascadedNet(
 		const std::wstring& ModelPath,
 		const OnnxRuntimeEnvironment& Environment,
-		HParams Setting = GetPreDefinedHParams(L"4band_v2"),
-		const DLogger& Logger = _D_Dragonian_Lib_Onnx_UVR_Space GetDefaultLogger()
+		const HyperParameters& Setting = GetPreDefinedHParams(L"4band_v2"),
+		const DLogger& Logger = _D_Dragonian_Lib_Onnx_Demix_Space GetDefaultLogger()
 	);
-	~CascadedNet() = default;
+	~CascadedNet() override = default;
 	CascadedNet(const CascadedNet&) = default;
 	CascadedNet(CascadedNet&&) noexcept = default;
 	CascadedNet& operator=(const CascadedNet&) = default;
 	CascadedNet& operator=(CascadedNet&&) noexcept = default;
 
-	std::pair<FltTensor, FltTensor> Forward(
-		const Tensor<Float32, 2, Device::CPU>& Signal,
-		Int64 SplitBin,
-		Float32 Value,
-		Int64 SamplingRate
-	) const;
+	TemplateLibrary::Vector<SignalTensor> Forward(
+		const SignalTensor& Signal,
+		const Parameters& Params
+	) const override;
 
 private:
-	std::tuple<FltTensor, Cpx32Tensor, Cpx32Tensor, Cpx32Tensor, Int64, Int64, Float32, Int64> Preprocess(
+	std::tuple<SignalTensor, SpecTensor, SpecTensor, SpecTensor, Int64, Int64, Float32, Int64> Preprocess(
 		const Tensor<Float32, 2, Device::CPU>& Signal,
 		Int64 SamplingRate
 	) const;
 
-	FltTensor Spec2Audio(
+	SignalTensor Spec2Audio(
 		const Tensor<Complex32, 3, Device::CPU>& Spec,
 		const Tensor<Complex32, 3, Device::CPU>& InputHighEnd,
 		Int64 InputHighEndH
 	) const;
 
-	HParams _MySetting;
+	CascadedNetConfig _MySetting;
 	std::vector<FunctionTransform::StftKernel> _MyStftKernels;
 	Int64 _MyPaddingLeft;
 	Int64 _MyRoiSize;
 };
 
-_D_Dragonian_Lib_Onnx_UVR_End
+_D_Dragonian_Lib_Onnx_Demix_End

@@ -9,8 +9,8 @@
 #include "Libraries/G2P/G2PModule.hpp"
 
 auto MyLastTime = std::chrono::high_resolution_clock::now();
-size_t TotalStep = 0;
-void ShowProgressBar(size_t progress) {
+int64_t TotalStep = 0;
+void ShowProgressBar(int64_t progress) {
 	int barWidth = 70;
 	float progressRatio = static_cast<float>(progress) / float(TotalStep);
 	int pos = static_cast<int>(float(barWidth) * progressRatio);
@@ -19,7 +19,7 @@ void ShowProgressBar(size_t progress) {
 	std::cout.flush();
 	auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - MyLastTime).count();
 	MyLastTime = std::chrono::high_resolution_clock::now();
-	std::cout << "[Speed: " << 6000.0f / static_cast<float>(TimeUsed) << " it/s] ";
+	std::cout << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
 	std::cout << "[";
 	for (int i = 0; i < barWidth; ++i) {
 		if (i < pos) std::cout << "=";
@@ -30,11 +30,12 @@ void ShowProgressBar(size_t progress) {
 	MyLastTime = std::chrono::high_resolution_clock::now();
 }
 
-void ProgressCb(size_t a, size_t b)
+void ProgressCb(bool a, int64_t b)
 {
-	if (a == 0)
+	if (a)
 		TotalStep = b;
-	ShowProgressBar(a);
+	else
+		ShowProgressBar(b);
 }
 
 template <typename Fn>
@@ -50,39 +51,40 @@ void WithTimer(const Fn& fn)
 #include "Libraries/F0Extractor/DioF0Extractor.hpp"
 #include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
 #include "OnnxLibrary/G2P/G2PW.hpp"
-#include "OnnxLibrary/UVR/UVR.hpp"
+#include "OnnxLibrary/Demix/CascadedNet.hpp"
 #include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
+#include "OnnxLibrary/Demix/Demix.hpp"
 
 void TestUVR()
 {
 	using namespace DragonianLib;
-	const auto Env = OnnxRuntime::CreateEnvironment({Device::CUDA});
-	OnnxRuntime::UltimateVocalRemover::CascadedNet Net(
-		LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\UVR\HP5_only_main_vocal.onnx)",
+	const auto Env = OnnxRuntime::CreateEnvironment({Device::CUDA,});
+	Env->EnableMemPattern(true);
+	OnnxRuntime::AudioDemix::Demix Net(
+		L"D:\\VSGIT\\MSST-WebUI-main\\configs_backup\\vocal_models\\melband_roformer_instvox_duality_v2.onnx",
 		Env,
-		OnnxRuntime::UltimateVocalRemover::CascadedNet::GetPreDefinedHParams(L"4band_v2")
+		{}
 	);
-
 	auto AudioInStream = AvCodec::OpenInputStream(
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)"
 	);
 	auto AudioData = AudioInStream.DecodeAll(
-		44100, 2, true
+		32000, 2, true
 	);
-	//AudioData = AudioData[{":", "441000:882000"}];
-	//auto AudioDatas = AudioData.Split(441000, -1);
 
-	auto [Vocal, Instrument] =
-		Net.Forward(AudioData, 85, 0.5f, 44100);
+	auto Results = Net.Forward(
+		AudioData.UnSqueeze(0),
+		{ 32000, 85, 0.5f, 512, ProgressCb }
+	);
 
 	auto OutputStream = AvCodec::OpenOutputStream(
 		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Vocal.wav)"
 	);
-	OutputStream.EncodeAll(Vocal.GetCRng(), 44100, 2, true);
+	OutputStream.EncodeAll(Results[0].GetCRng(), 44100, 2, true);
 	OutputStream = AvCodec::OpenOutputStream(
 		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Instrument.wav)"
 	);
-	OutputStream.EncodeAll(Instrument.GetCRng(), 44100, 2, true);
+	OutputStream.EncodeAll(Results[1].GetCRng(), 44100, 2, true);
 }
 
 auto TestG2PW(const std::wstring& Text)
@@ -321,6 +323,7 @@ void TestSvc()
 	);
 
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::HParams hParams;
+	hParams.ProgressCallback = ProgressCb;
 	hParams.F0Max = 800;
 	hParams.F0Min = 65;
 	hParams.HopSize = 512;
@@ -353,8 +356,8 @@ void TestSvc()
 	Params.StftNoiseScale = 1.f;
 	Params.NoiseScale = 1.f;
 	Params.Reflow.Begin = 0.f;
-	Params.Reflow.End = 0.99f;
-	Params.Reflow.Stride = 0.1f;
+	Params.Reflow.End = 1.f;
+	Params.Reflow.Stride = 0.05f;
 	Params.F0HasUnVoice = false;
 	Params.Reflow.Sampler = L"Eular";
 
@@ -388,7 +391,7 @@ void TestSvc()
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
 	);
 	auto Audio = AudioStream.DecodeAll(44100, 2);
-	auto Input = Audio[{"900000:1341000", "0"}].Transpose(-1, -2).Contiguous();
+	auto Input = Audio[{"900000:944100", "0"}].Transpose(-1, -2).Contiguous();
 
 	auto Mel = Model.Inference(
 		Params,
@@ -402,9 +405,54 @@ void TestSvc()
 		&MyData
 	);
 
+	WithTimer(
+		[&]
+		{
+			Mel = Model.Forward(
+				Params,
+				MyData
+			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			Mel = Model.Forward(
+				Params,
+				MyData
+			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			Mel = Model.Forward(
+				Params,
+				MyData
+			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			Mel = Model.Forward(
+				Params,
+				MyData
+			);
+		}
+	);
+	WithTimer(
+		[&]
+		{
+			Mel = Model.Forward(
+				Params,
+				MyData
+			);
+		}
+	);
+
 	Mel = Model.DenormSpec(Mel);
 	auto Output = Vocoder->Forward(Mel, MyData.F0);
-	
 
 	auto AudioOutStream = DragonianLib::AvCodec::OpenOutputStream(
 		44100,
@@ -475,6 +523,5 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(4);
 
-	TestSvc();
-
+	TestUVR();
 }
