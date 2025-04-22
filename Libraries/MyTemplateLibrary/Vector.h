@@ -27,7 +27,7 @@
 #include <initializer_list>
 #include <algorithm>
 
-#define _D_Dragonian_Lib_Stl_Throw(message) _Impl_Dragonian_Lib_Template_Library_Throw_Exception(message, __FILE__, __FUNCSIG__, __LINE__)
+#define _D_Dragonian_Lib_Stl_Throw(message) _D_Dragonian_Lib_TL_Namespace _Impl_Dragonian_Lib_Template_Library_Throw_Exception(message, __FILE__, __FUNCSIG__, __LINE__)
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
@@ -225,13 +225,13 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
 {
-	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], _Src[_Count - (1 + i + j)]);
-	for (; i < _Count; ++i)
-		_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], _Src[_Count - (i + 1)]);
+    size_t i = 0;
+    if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
+        for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
+            for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
+                _Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], _Src[_Count - (1 + i + j)]);
+    for (; i < _Count; ++i)
+        _Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], _Src[_Count - (i + 1)]);
 }
 
 template <typename ValueType>
@@ -239,13 +239,13 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
     std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
-	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], std::move(_Src[_Count - (1 + i + j)]));
-	for (; i < _Count; ++i)
-		_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], std::move(_Src[_Count - (i + 1)]));
+    size_t i = 0;
+    if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
+        for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
+            for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
+                _Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], std::move(_Src[_Count - (1 + i + j)]));
+    for (; i < _Count; ++i)
+        _Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], std::move(_Src[_Count - (i + 1)]));
 }
 
 template <typename ValueType>
@@ -329,23 +329,23 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
     std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Offset_Construct(ValueType* _Src, size_t _Count, int64_t Offset)
 {
-	if (Offset == 0 || _Count == 0)
-		return;
-	auto _Dest = _Src + Offset;
-	if (Offset < 0)
-	{
-		if constexpr (std::is_move_constructible_v<ValueType>)
-			_Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
-		else
-			_Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
-	}
-	else
-	{
-		if constexpr (std::is_move_constructible_v<ValueType>)
-			_Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(_Dest, _Src, _Count);
-		else
-			_Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(_Dest, _Src, _Count);
-	}
+    if (Offset == 0 || _Count == 0)
+        return;
+    auto _Dest = _Src + Offset;
+    if (Offset < 0)
+    {
+        if constexpr (std::is_move_constructible_v<ValueType>)
+            _Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
+        else
+            _Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
+    }
+    else
+    {
+        if constexpr (std::is_move_constructible_v<ValueType>)
+            _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(_Dest, _Src, _Count);
+        else
+            _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(_Dest, _Src, _Count);
+    }
 }
 
 template <typename ValueType>
@@ -364,24 +364,38 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 
 template <typename ValueType>
 _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
+    std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
-	if constexpr (std::is_move_constructible_v<ValueType>)
-		_Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
-	else
-		_Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
+    if constexpr (std::is_move_constructible_v<ValueType>)
+        _Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
+    else
+        _Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
 }
 
 template <typename ValueType>
 _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
-	std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
+    std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
 > _Impl_Dragonian_Lib_Iterator_Try_Move_Assign(ValueType* _Dest, ValueType* _Src, size_t _Count)
 {
-	if constexpr (std::is_move_assignable_v<ValueType>)
-		_Impl_Dragonian_Lib_Iterator_Move(_Dest, _Src, _Count);
-	else
-		_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
+    if constexpr (std::is_move_assignable_v<ValueType>)
+        _Impl_Dragonian_Lib_Iterator_Move(_Dest, _Src, _Count);
+    else
+        _Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
+}
+
+template <typename ValueType1, typename ValueType2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<ValueType1, ValueType2>>>
+void _Impl_Dragonian_Lib_Cast_Range(
+    ValueType1* _Dest, const ValueType2* _Src, size_t _Count
+)
+{
+    size_t i = 0;
+    if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
+        for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
+            for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
+                _Dest[i + j] = ValueType1(_Src[i + j]);
+    for (; i < _Count; ++i)
+        _Dest[i] = ValueType1(_Src[i]);
 }
 
 constexpr struct VectorViewPlaceholder {} TypeVectorView;

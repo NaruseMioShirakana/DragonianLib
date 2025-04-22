@@ -1144,8 +1144,6 @@ namespace Functional
 			return A / B;
 		_D_Dragonian_Lib_Throw_Exception("Invalid InnerOuterType.");
 	}
-
-
 }
 
 _D_Dragonian_Lib_Space_End

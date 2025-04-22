@@ -94,23 +94,15 @@ namespace FunctionTransform
 
 	StftKernel::~StftKernel() = default;
 
-	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
-	{
-		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < WINDOW_SIZE)
-			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-		return operator()(Signal.Cast<Float64>());
-	}
-
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
 	{
 		const auto SignalSize = Signal.Size(2);
 		if (SignalSize < WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-		return operator()(Signal.Cast<Float64>());
+		return operator()(Signal.Cast<Float32>() / 32768.f);
 	}
 
-	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		const auto BatchSize = Signal.Size(0);
 		const auto Channel = Signal.Size(1);
@@ -130,6 +122,64 @@ namespace FunctionTransform
 		const auto NUM_FRAMES = (SignalSize - WINDOW_SIZE) / HOP_SIZE + 1;
 		const auto Shape = Dimensions<4>{ BatchSize, Channel, NUM_FRAMES, FFT_BINS };
 		auto Output = Tensor<Float32, 4, Device::CPU>::New(Shape);
+		const auto& SignalDataBegin = SignalCont.Data();
+		std::lock_guard Lock(FFTW_MUTEX);
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < Channel; c++)
+			{
+				const auto SignalData = SignalDataBegin + (b * Channel + c) * SignalSize;
+				auto SpectrogramData = Output.Data() + (b * Channel + c) * NUM_FRAMES * FFT_BINS;
+
+				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
+				const auto fftOut = std::shared_ptr<_M_MCPX>(
+					(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_BINS)),
+					fftw_free
+				);
+				const auto plan = std::shared_ptr<fftw_plan_s>(
+					fftw_plan_dft_r2c_1d(NUM_FFT, hannWindow.Data(), (fftw_complex*)fftOut.get(), FFTW_ESTIMATE),
+					fftw_destroy_plan
+				);
+				for (int i = 0; i < NUM_FRAMES; i++) {
+					TemplateLibrary::_Impl_Dragonian_Lib_Cast_Range(
+						hannWindow.Data() + PADDING,
+						&SignalData[size_t(i) * HOP_SIZE],
+						WINDOW_SIZE
+					);
+					HannWindow(
+						hannWindow.Data() + PADDING,
+						WINDOW_SIZE
+					);
+					fftw_execute(plan.get());
+					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
+					for (int j = 0; j < FFT_BINS; j++)
+						SpectrogramData[BgnPtn + j] = float(CalculatePowerSpectrum(fftOut.get()[j]));
+				}
+			}
+		}
+		return std::move(Output.Evaluate());
+	}
+
+	Tensor<Float64, 4, Device::CPU> StftKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	{
+		const auto BatchSize = Signal.Size(0);
+		const auto Channel = Signal.Size(1);
+		auto SignalSize = Signal.Size(2);
+		if (SignalSize < WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		auto SignalCont = Signal.Continuous().Evaluate();
+		SignalCont = SignalCont.Padding(
+			{
+				None,
+				None,
+				{ CENTER_PADDING_SIZE + WINDOW_SIZE / 2 , WINDOW_SIZE / 2 }
+			},
+			PADDING_TYPE
+		).Evaluate();
+		SignalSize = SignalCont.Size(2);
+		const auto NUM_FRAMES = (SignalSize - WINDOW_SIZE) / HOP_SIZE + 1;
+		const auto Shape = Dimensions<4>{ BatchSize, Channel, NUM_FRAMES, FFT_BINS };
+		auto Output = Tensor<Float64, 4, Device::CPU>::New(Shape);
 		const auto& SignalDataBegin = SignalCont.Data();
 		std::lock_guard Lock(FFTW_MUTEX);
 		for (SizeType b = 0; b < BatchSize; b++)
@@ -161,7 +211,7 @@ namespace FunctionTransform
 					fftw_execute(plan.get());
 					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
 					for (int j = 0; j < FFT_BINS; j++)
-						SpectrogramData[BgnPtn + j] = float(CalculatePowerSpectrum(fftOut.get()[j]));
+						SpectrogramData[BgnPtn + j] = CalculatePowerSpectrum(fftOut.get()[j]);
 				}
 			}
 		}
@@ -210,6 +260,64 @@ namespace FunctionTransform
 					HannWindow(
 						hannWindow.Data() + PADDING,
 						&SignalData[size_t(i) * HOP_SIZE],
+						WINDOW_SIZE
+					);
+					fftw_execute(plan.get());
+					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
+					for (int j = 0; j < FFT_BINS; j++)
+						SpectrogramData[BgnPtn + j] = fftOut.get()[j];
+				}
+			}
+		}
+		return std::move(Output.Evaluate());
+	}
+
+	Tensor<Complex64, 4, Device::CPU> StftKernel::Execute(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	{
+		const auto BatchSize = Signal.Size(0);
+		const auto Channel = Signal.Size(1);
+		auto SignalSize = Signal.Size(2);
+		if (SignalSize < WINDOW_SIZE)
+			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+		auto SignalCont = Signal.Continuous().Evaluate();
+		SignalCont = SignalCont.Padding(
+			{
+				None,
+				None,
+				{ CENTER_PADDING_SIZE + WINDOW_SIZE / 2 , WINDOW_SIZE / 2 }
+			},
+			PADDING_TYPE
+		).Evaluate();
+		SignalSize = SignalCont.Size(2);
+		const auto NUM_FRAMES = (SignalSize - WINDOW_SIZE) / HOP_SIZE + 1;
+		const auto Shape = Dimensions<4>{ BatchSize, Channel, NUM_FRAMES, FFT_BINS };
+		auto Output = Tensor<Complex64, 4, Device::CPU>::New(Shape);
+		const auto& SignalDataBegin = SignalCont.Data();
+		std::lock_guard Lock(FFTW_MUTEX);
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < Channel; c++)
+			{
+				const auto SignalData = SignalDataBegin + (b * Channel + c) * SignalSize;
+				auto SpectrogramData = Output.Data() + (b * Channel + c) * NUM_FRAMES * FFT_BINS;
+
+				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
+				const auto fftOut = std::shared_ptr<_M_MCPX>(
+					(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_BINS * 2)),
+					fftw_free
+				);
+				const auto plan = std::shared_ptr<fftw_plan_s>(
+					fftw_plan_dft_r2c_1d(NUM_FFT, hannWindow.Data(), (fftw_complex*)fftOut.get(), FFTW_ESTIMATE),
+					fftw_destroy_plan
+				);
+				for (int i = 0; i < NUM_FRAMES; i++) {
+					std::memcpy(
+						hannWindow.Data() + PADDING,
+						&SignalData[size_t(i) * HOP_SIZE],
+						size_t(sizeof(double)) * WINDOW_SIZE
+					);
+					HannWindow(
+						hannWindow.Data() + PADDING,
 						WINDOW_SIZE
 					);
 					fftw_execute(plan.get());
@@ -314,6 +422,52 @@ namespace FunctionTransform
 		return std::move(Output.Evaluate());
 	}
 
+	Tensor<Float64, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex64, 4, Device::CPU>& Spectrogram) const
+	{
+		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] =
+			Spectrogram.Shape().RawArray();
+		const auto SignalSize = FrameCount * HOP_SIZE + WINDOW_SIZE;
+		auto Output = Tensor<Float64, 3, Device::CPU>::Zeros(
+			{ BatchSize, ChannelCount, SignalSize }
+		).Evaluate();
+		auto SpectrogramCont = Spectrogram.Continuous().Evaluate();
+		auto SpectrogramBins = Spectrogram.Size(3);
+		if (SpectrogramBins != FFT_BINS)
+			_D_Dragonian_Lib_Throw_Exception("Invalid FFT size.");
+		const auto& SpectrogramDataBegin = SpectrogramCont.Data();
+		std::lock_guard Lock(FFTW_MUTEX);
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < ChannelCount; c++)
+			{
+				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFTSize;
+				auto SignalData = Output.Data() + (b * ChannelCount + c) * SignalSize;
+
+				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
+				const auto fftOut = std::shared_ptr<_M_MCPX>(
+					(_M_MCPX*)(fftw_malloc(sizeof(_M_MCPX) * FFT_BINS)),
+					fftw_free
+				);
+				const auto plan = std::shared_ptr<fftw_plan_s>(
+					fftw_plan_dft_c2r_1d(NUM_FFT, (fftw_complex*)fftOut.get(), hannWindow.Data(), FFTW_ESTIMATE),
+					fftw_destroy_plan
+				);
+				for (int i = 0; i < FrameCount; i++) {
+					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
+					for (int j = 0; j < FFT_BINS; j++)
+					{
+						fftOut.get()[j][0] = SpectrogramData[BgnPtn + j].real();
+						fftOut.get()[j][1] = SpectrogramData[BgnPtn + j].imag();
+					}
+					fftw_execute(plan.get());
+					for (int j = 0; j < WINDOW_SIZE; j++)
+						SignalData[size_t(i) * HOP_SIZE + j] += hannWindow[j + PADDING] / NUM_FFT;
+				}
+			}
+		}
+		return std::move(Output.Evaluate());
+	}
+
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram, Int64 HopSize)
 	{
 		const auto [BatchSize, ChannelCount, FrameCount, FFTBin] =
@@ -368,19 +522,12 @@ namespace FunctionTransform
 			MEL_F[{Range{ None, MEL_BINS }}].Ignore();
 		(Weight *= 2) /= ENORM.UnSqueeze(-1);
 		WEIGHT = std::move(Weight.Evaluate());
+		WEIGHTDBL = WEIGHT.Cast<Float64>().Evaluate();
 	}
-
-	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	
+	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const
 	{
-		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
-			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-
-		auto BgnTime = clock();
-		const auto Spec = STFT_KERNEL(Signal);
-		if (_MyLogger)
-			_MyLogger->Log((L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
-
+		const auto Spec = Spectrogram.Continuous().Evaluate();
 		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] = Spec.Shape().RawArray();
 		const auto MelShape = Dimensions<4>{ BatchSize, ChannelCount, MEL_BINS, FrameCount };
 		auto Result = Tensor<Float32, 4, Device::CPU>::New(MelShape);
@@ -420,19 +567,60 @@ namespace FunctionTransform
 			}
 		}
 
-		BgnTime = clock();
+		const auto BgnTime = clock();
 		Result.Evaluate();
 		if (_MyLogger)
 			_MyLogger->Log((L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
-		return Result;
+		return std::move(Result.Evaluate());
 	}
 
-	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
+	Tensor<Float64, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 4, Device::CPU>& Spectrogram) const
 	{
-		const auto SignalSize = Signal.Size(2);
-		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
-			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-		return operator()(Signal.Cast<Float64>());
+		const auto Spec = Spectrogram.Continuous().Evaluate();
+		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] = Spec.Shape().RawArray();
+		const auto MelShape = Dimensions<4>{ BatchSize, ChannelCount, MEL_BINS, FrameCount };
+		auto Result = Tensor<Float64, 4, Device::CPU>::New(MelShape);
+		for (SizeType b = 0; b < BatchSize; b++)
+		{
+			for (SizeType c = 0; c < ChannelCount; c++)
+			{
+				const auto SpecData = Spec.Data() + (b * ChannelCount + c) * FrameCount * FFTSize;
+				auto MelData = Result.Data() + (b * ChannelCount + c) * MEL_BINS * FrameCount;
+				Result.AppendTask(
+					[this, SpecData, MelData, FrameCount]
+					{
+						//MelBasis[MelBins, FFTSize]
+						//SpecData[FrameCount, FFTSize]
+						//MelData[MelBins, FrameCount]
+						//MelBasis * SpecData.T
+						cblas_dgemm(
+							CblasRowMajor,
+							CblasNoTrans,
+							CblasTrans,
+							MEL_BINS,
+							blasint(FrameCount),
+							FFT_BINS,
+							1.f,
+							WEIGHTDBL.Data(),
+							FFT_BINS,
+							SpecData,
+							blasint(FFT_BINS),
+							0.f,
+							MelData,
+							blasint(FrameCount)
+						);
+						for (int i = 0; i < MEL_BINS * FrameCount; i++)
+							MelData[i] = log(std::max(1e-5, MelData[i]));
+					}
+				);
+			}
+		}
+
+		const auto BgnTime = clock();
+		Result.Evaluate();
+		if (_MyLogger)
+			_MyLogger->Log((L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
+		return std::move(Result.Evaluate());
 	}
 
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
@@ -440,7 +628,19 @@ namespace FunctionTransform
 		const auto SignalSize = Signal.Size(2);
 		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-		return operator()(Signal.Cast<Float64>());
+		return operator()(Signal.Cast<Float32>());
+	}
+
+	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
+	{
+		auto [Mel, Spec] = WithSpec(Signal);
+		return std::move(Mel.Evaluate());
+	}
+
+	Tensor<Float64, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
+	{
+		auto [Mel, Spec] = WithSpec(Signal);
+		return std::move(Mel.Evaluate());
 	}
 
 	DragonianLibSTL::Vector<float> CQT(

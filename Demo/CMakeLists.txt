@@ -7,7 +7,23 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 
-add_executable(${DRAGONIANLIBDEMOEXE} "TensorLib-Test.cpp")
+if (true)
+	file(GLOB_RECURSE F0EditorUISrc 
+		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.h
+		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.c
+		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.hpp
+		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.cpp
+	)
+	add_executable(${DRAGONIANLIBDEMOEXE} ${F0EditorUISrc})
+	include_directories("D:/VSGIT/MoeVS-SVC/Lib/MiaoUI/MiaoUI/src/include")
+	if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+		target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE "D:/VSGIT/MoeVS-SVC/Lib/MiaoUI/MiaoUI/library/MiaoUI64d.lib")
+	else()
+		target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE "D:/VSGIT/MoeVS-SVC/Lib/MiaoUI/MiaoUI/library/MiaoUI64.lib")
+	endif()
+else()
+	add_executable(${DRAGONIANLIBDEMOEXE} "TensorLib-Test.cpp")
+endif()
 
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")

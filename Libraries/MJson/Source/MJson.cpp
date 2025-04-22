@@ -1,9 +1,9 @@
 ﻿#include "../MJson.h"
 #include "yyjson.h"
+#include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_MJson_Namespace_Begin
-
-void ValueDeleter(void*) {}
+	void ValueDeleter(void*) {}
 void DocDeleter(void* _Pointer) { yyjson_doc_free((yyjson_doc*)_Pointer); }
 
 MJsonValue::MJsonValue(void* _Object, std::shared_ptr<YYJsonDoc> _Doc) noexcept :
@@ -146,6 +146,15 @@ bool MJsonValue::HasMember(const std::string& _Key) const noexcept
 	return yyjson_obj_get((yyjson_val*)_MyObject.get(), _Key.c_str());
 }
 
+MJsonDocument::MJsonDocument(const char* _Path)
+{
+	const auto File = FileGuard(UTF8ToWideString(_Path), L"rb");
+	_MyDocument = { (YYJsonDoc*)yyjson_read_fp(File, YYJSON_READ_NOFLAG, nullptr, nullptr), DocDeleter };
+	if (!_MyDocument)
+		throw std::exception("Json Parse Error!");
+	_MyObject = { (YYJsonVal*)yyjson_doc_get_root((yyjson_doc*)_MyDocument.get()), ValueDeleter };
+}
+
 MJsonDocument::MJsonDocument(const wchar_t* _Path)
 {
 	const auto File = FileGuard(_Path, L"rb");
@@ -154,13 +163,7 @@ MJsonDocument::MJsonDocument(const wchar_t* _Path)
 		throw std::exception("Json Parse Error!");
 	_MyObject = { (YYJsonVal*)yyjson_doc_get_root((yyjson_doc*)_MyDocument.get()), ValueDeleter };
 }
-MJsonDocument::MJsonDocument(const std::string& _StringData)
-{
-	_MyDocument = { (YYJsonDoc*)yyjson_read(_StringData.c_str(), _StringData.length(), YYJSON_READ_NOFLAG), DocDeleter };
-	if (!_MyDocument)
-		throw std::exception("Json Parse Error!");
-	_MyObject = { (YYJsonVal*)yyjson_doc_get_root((yyjson_doc*)_MyDocument.get()), ValueDeleter };
-}
+
 void MJsonDocument::Parse(const std::string& _StringData)
 {
 	_MyDocument = { (YYJsonDoc*)yyjson_read(_StringData.c_str(), _StringData.length(), YYJSON_READ_NOFLAG), DocDeleter };

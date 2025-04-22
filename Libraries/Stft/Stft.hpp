@@ -38,11 +38,14 @@ namespace FunctionTransform
 	{
 	public:
 		StftKernel() = default; ///< Default constructor
-		~StftKernel(); ///< Destructor
+
 		StftKernel(
 			int NumFFT, int HopSize = -1, int WindowSize = -1,
 			bool Center = true, PaddingType Padding = PaddingType::Reflect
 		); ///< Parameterized constructor
+
+		~StftKernel(); ///< Destructor
+
 		friend class MFCCKernel; ///< Friend class
 		inline static double PI = 3.14159265358979323846; ///< Constant value of PI
 
@@ -51,44 +54,82 @@ namespace FunctionTransform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Int16, 3, Device::CPU>& Signal
+			) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const;
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Float32, 3, Device::CPU>& Signal
+			) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
+		Tensor<Float64, 4, Device::CPU> operator()(
+			const Tensor<Float64, 3, Device::CPU>& Signal
+			) const;
 
 		/**
 		 * @brief Short-Time Fourier Transform
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 */
-		Tensor<Complex32, 4, Device::CPU> Execute(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+		Tensor<Complex32, 4, Device::CPU> Execute(
+			const Tensor<Float32, 3, Device::CPU>& Signal
+		) const;
+
+		/**
+		 * @brief Short-Time Fourier Transform
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
+		 */
+		Tensor<Complex64, 4, Device::CPU> Execute(
+			const Tensor<Float64, 3, Device::CPU>& Signal
+		) const;
 
 		/**
 		 * @brief Inverse Short-Time Fourier Transform
 		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 * @return Signal, Shape [Batch, Channel, SampleCount]
 		 */
-		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const;
+		Tensor<Float32, 3, Device::CPU> Inverse(
+			const Tensor<Float32, 4, Device::CPU>& Spectrogram
+		) const;
 
 		/**
 		 * @brief Inverse Short-Time Fourier Transform
 		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
 		 * @return Signal, Shape [Batch, Channel, SampleCount]
 		 */
-		Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const;
+		Tensor<Float32, 3, Device::CPU> Inverse(
+			const Tensor<Complex32, 4, Device::CPU>& Spectrogram
+		) const;
 
-		static Tensor<Float32, 3, Device::CPU> Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram, Int64 HopSize);
+		/**
+		 * @brief Inverse Short-Time Fourier Transform
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
+		 * @return Signal, Shape [Batch, Channel, SampleCount]
+		 */
+		Tensor<Float64, 3, Device::CPU> Inverse(
+			const Tensor<Complex64, 4, Device::CPU>& Spectrogram
+		) const;
+
+		static Tensor<Float32, 3, Device::CPU> Inverse(
+			const Tensor<Complex32, 4, Device::CPU>& Spectrogram,
+			Int64 HopSize
+		);
+
+		StftKernel(const StftKernel&) = default; ///< Disable copy constructor
+		StftKernel(StftKernel&&) = default; ///< Disable move constructor
+		StftKernel& operator=(const StftKernel&) = default; ///< Disable copy assignment
+		StftKernel& operator=(StftKernel&&) = default; ///< Disable move assignment
 
 	private:
 		int NUM_FFT = 2048; ///< FFT size
@@ -109,33 +150,90 @@ namespace FunctionTransform
 	{
 	public:
 		MFCCKernel() = delete; ///< Disable default constructor
-		~MFCCKernel() = default; ///< Default destructor
+
 		MFCCKernel(
 			int SamplingRate, int NumFFT, int HopSize = -1, int WindowSize = -1, int MelBins = 0,
 			double FreqMin = 20., double FreqMax = 11025., bool Center = true, PaddingType Padding = PaddingType::Reflect,
 			DLogger _Logger = nullptr
 		);
 
+		~MFCCKernel() = default; ///< Default destructor
+
 		/**
 		 * @brief Mel Frequency Cepstral Coefficients
-		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
 		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const;
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Float32, 4, Device::CPU>& Spectrogram
+			) const;
+
+		/**
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Spectrogram Input spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
+		 */
+		Tensor<Float64, 4, Device::CPU> operator()(
+			const Tensor<Float64, 4, Device::CPU>& Spectrogram
+			) const;
 
 		/**
 		 * @brief Mel Frequency Cepstral Coefficients
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const;
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Int16, 3, Device::CPU>& Signal
+			) const;
 
 		/**
 		 * @brief Mel Frequency Cepstral Coefficients
 		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
 		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
 		 */
-		Tensor<Float32, 4, Device::CPU> operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const;
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Float32, 3, Device::CPU>& Signal
+			) const;
+
+		/**
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount]
+		 */
+		Tensor<Float64, 4, Device::CPU> operator()(
+			const Tensor<Float64, 3, Device::CPU>& Signal
+			) const;
+
+		/**
+		 * @brief Mel Frequency Cepstral Coefficients
+		 * @param Signal Input signal, Shape [Batch, Channel, SampleCount]
+		 * @return Log mel spectrogram, Shape [Batch, Channel, MelBins, FrameCount], Spectrogram, Shape [Batch, Channel, FrameCount, StftBins]
+		 */
+		template <typename _Type>
+		std::pair<Tensor<_Type, 4, Device::CPU>, Tensor<_Type, 4, Device::CPU>> WithSpec(const Tensor<_Type, 3, Device::CPU>& Signal) const
+		{
+			const auto SignalSize = Signal.Size(2);
+			if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
+				_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
+
+			auto BgnTime = clock();
+			auto Spec = STFT_KERNEL(Signal);
+			if (_MyLogger)
+				_MyLogger->Log((L"Stft Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
+
+			return { operator()(Spec), std::move(Spec) };
+		}
+
+		const StftKernel& GetStftKernel() const
+		{
+			return STFT_KERNEL;
+		}
+
+		MFCCKernel(const MFCCKernel&) = default; ///< Disable copy constructor
+		MFCCKernel(MFCCKernel&&) = default; ///< Disable move constructor
+		MFCCKernel& operator=(const MFCCKernel&) = delete; ///< Disable copy assignment
+		MFCCKernel& operator=(MFCCKernel&&) = default; ///< Disable move assignment
+
 	private:
 		StftKernel STFT_KERNEL; ///< STFT instance
 		int MEL_BINS = 128; ///< Mel spectrum size
@@ -143,6 +241,7 @@ namespace FunctionTransform
 		int FFT_BINS = 0; ///< FFT bins
 		int SAMPLING_RATE = 22050; ///< Sampling rate
 		Tensor<Float32, 2, Device::CPU> WEIGHT; ///< Mel basis [MelBins, FFTSize]
+		Tensor<Float64, 2, Device::CPU> WEIGHTDBL; ///< Mel basis [MelBins, FFTSize]
 		DLogger _MyLogger = nullptr; ///< Logger
 	};
 

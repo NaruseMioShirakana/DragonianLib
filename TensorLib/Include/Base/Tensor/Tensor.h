@@ -295,6 +295,10 @@ public:
 
 	Tensor() = default;
 
+	Tensor(std::nullopt_t) : Tensor() {} ///< Constructor for nullopt
+
+	//operator bool() const { return !Null(); } ///< Implicit conversion to bool
+
 	//Waiting for all the tasks which dependent on this tensor.
 	void WaitingForTheInplaceLock() const
 	{
@@ -460,7 +464,7 @@ public:
 	decltype(auto) GetCRng(this _ThisType&& _Self)
 	{
 		if (std::forward<_ThisType>(_Self).IsContinuous())
-			return TemplateLibrary::ConstantRanges(
+			return TemplateLibrary::ConstantRanges<ValueType>(
 				std::forward<_ThisType>(_Self)._MyData,
 				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
 			);
@@ -1733,6 +1737,11 @@ public:
 		return _MyData == nullptr;
 	}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool HasValue() const
+	{
+		return _MyData != nullptr;
+	}
+
 	/**
 	 * @brief Reset the tensor to null.
 	 */
@@ -1828,6 +1837,11 @@ public:
 		return true;
 	}
 
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContiguous() const
+	{
+		return IsContinuous();
+	}
+
 	/**
 	 * @brief Check if the tensor is continuous in the specified range.
 	 * @return True if the tensor is continuous, false otherwise.
@@ -1839,7 +1853,7 @@ public:
 
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
+			if (_MyViewStride[i - 1] % _MyShape[i] || _MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
 				return false;
 		return true;
 	}

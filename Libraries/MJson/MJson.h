@@ -236,13 +236,13 @@ public:
      * @brief Construct a new MJsonDocument object from a file path
      * @param _Path The file path
      */
-    MJsonDocument(const wchar_t* _Path);
+    MJsonDocument(const char* _Path);
 
     /**
-     * @brief Construct a new MJsonDocument object from a string
-     * @param _StringData The string data
+     * @brief Construct a new MJsonDocument object from a file path
+     * @param _Path The file path
      */
-    MJsonDocument(const std::string& _StringData);
+    MJsonDocument(const wchar_t* _Path);
 
     /**
      * @brief Parse the JSON document from a string

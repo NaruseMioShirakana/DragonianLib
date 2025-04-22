@@ -130,7 +130,7 @@ public:
 	using MyRefType = decltype(*TypeTraits::InstanceOf<MyIterTypeBeg>());
 	using MyValueType = TypeTraits::RemoveReferenceType<MyRefType>;
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp() = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline ~RangesWrp() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp(const RangesWrp&) = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp(RangesWrp&&) = default;
@@ -202,8 +202,8 @@ public:
 			_D_Dragonian_Lib_Throw_Exception("Could not index!");
 	}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(RangesWrp&& _RRight) noexcept = delete;
-	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(const RangesWrp& _Right) = delete;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(RangesWrp&& _RRight) noexcept = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(const RangesWrp& _Right) noexcept = default;
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& Assign(const RangesWrp& _Right)
 	{
@@ -226,12 +226,12 @@ public:
 
 	RangesWrp<const MyValueType*, const MyValueType*> RawConst() const
 	{
-		return RangesWrp<const MyValueType*, const MyValueType*>(_MyBegin, _MyEnd);
+		return RangesWrp<const TypeTraits::RemoveReferenceType<decltype(*_MyBegin)>*, const TypeTraits::RemoveReferenceType<decltype(*_MyEnd)>*>(&*_MyBegin, &*_MyEnd);
 	}
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Raw() const noexcept
 	{
-		return RangesWrp<decltype(&*_MyBegin), decltype(&*_MyEnd)>{ &*_MyBegin, &* _MyEnd };
+		return RangesWrp<TypeTraits::RemoveReferenceType<decltype(*_MyBegin)>*, TypeTraits::RemoveReferenceType<decltype(*_MyEnd)>*>{ &*_MyBegin, &* _MyEnd };
 	}
 
 	decltype(auto) Byte() const noexcept
@@ -247,6 +247,16 @@ public:
 				reinterpret_cast<DragonianLib::Byte*>(RawRange._MyBegin),
 				reinterpret_cast<DragonianLib::Byte*>(RawRange._MyEnd)
 			);
+	}
+
+	bool Null() const noexcept
+	{
+		return (_MyBegin == nullptr) || (_MyEnd == nullptr);
+	}
+
+	bool Contains(const MyIterTypeBeg& _Pointer) const
+	{
+		return (_Pointer >= _MyBegin) && (_Pointer < _MyEnd);
 	}
 
 protected:

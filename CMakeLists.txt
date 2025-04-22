@@ -326,7 +326,7 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	message("Build Type: \"Release\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
-		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental
+		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
 	)
 	target_link_options(
         ${DRAGONIANLIB_LIB} PRIVATE
@@ -336,7 +336,7 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	message("Build Type: \"RelWithDebInfo\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
-		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi
+		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj
 	)
 	target_link_options(
         ${DRAGONIANLIB_LIB} PRIVATE
@@ -347,7 +347,7 @@ else()
 	add_definitions(-DDRAGONIANLIB_DEBUG)
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
-		/Zi /Gy /experimental:module /openmp:experimental
+		/Zi /Gy /experimental:module /openmp:experimental /bigobj
 	)
 endif()
 #Link Libraries

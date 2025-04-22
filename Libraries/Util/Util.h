@@ -22,6 +22,7 @@
  */
 
 #pragma once
+
 #include <stdexcept>
 #include <string>
 #include <filesystem>
@@ -99,6 +100,31 @@ while (0) \
 // Define registration layer macro
 #define DragonianLibRegLayer(ModuleName, MemberName, ...) ModuleName MemberName{this, #MemberName, __VA_ARGS__}
 
+#ifndef DRAGONIANLIB_ALLOC_ALIG
+#define DRAGONIANLIB_ALLOC_ALIG 32
+#endif
+#ifndef DRAGONIANLIB_ALIG_DIM_SHAPE
+#define DRAGONIANLIB_ALIG_DIM_SHAPE 8
+#endif
+#ifndef DRAGONIANLIB_CONT_THRESHOLD_FRONT
+#define DRAGONIANLIB_CONT_THRESHOLD_FRONT 8
+#endif
+#ifndef DRAGONIANLIB_CONT_THRESHOLD_BACK
+#define DRAGONIANLIB_CONT_THRESHOLD_BACK 32
+#endif
+#ifndef DRAGONIANLIB_EMPTY_CAPACITY
+#define DRAGONIANLIB_EMPTY_CAPACITY 16
+#endif
+#ifndef DRAGONIANLIB_PADDING_COUNT
+#define DRAGONIANLIB_PADDING_COUNT 64000
+#endif
+#ifndef DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE
+#define DRAGONIANLIB_CONT_THRESHOLD_MIN_SIZE 8192
+#endif
+#ifndef DRAGONIANLIB_NAME_MAX_SIZE
+#define DRAGONIANLIB_NAME_MAX_SIZE 1024
+#endif
+
 _D_Dragonian_Lib_Space_Begin
 
 struct NoneType {}; ///< None type
@@ -134,7 +160,5 @@ _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Imp
 	}
 	return Prefix + ' ' + Message;
 }
-
-
 
 _D_Dragonian_Lib_Space_End
