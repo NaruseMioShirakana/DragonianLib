@@ -216,6 +216,11 @@ namespace Mui::Ctrl
 		}
 	}
 
+	bool Waveform::IsPlay() const
+	{
+		return !m_isPause;
+	}
+
 	void Waveform::SetVolume(_m_byte vol) const
 	{
 		if (m_player && m_track)

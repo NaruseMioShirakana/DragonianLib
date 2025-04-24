@@ -8,10 +8,10 @@
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 
-std::unordered_map<std::wstring, Constructor> _GlobalRegisteredCluster;
-std::vector<std::wstring> _GlobalClusterList;
+static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredCluster;
+static inline std::vector<std::wstring> _GlobalClusterList;
 
-void RegisterPlugin(
+static void RegisterPlugin(
 	const std::wstring& _PluginPath,
 	const std::wstring& _PluginName
 )
@@ -33,7 +33,14 @@ void RegisterPlugin(
 		_GlobalRegisteredCluster.emplace(
 			_PluginName,
 			[Plugin](const std::wstring& ClusterFile, Int64 ClusterDimension, Int64 ClusterSize) -> Cluster {
-				return std::make_shared<PluginCluster>(Plugin, PluginClusterInfo{ ClusterFile, ClusterDimension, ClusterSize });
+				return std::make_shared<PluginCluster>(
+					Plugin,
+					PluginClusterInfo{
+						.ClusterFile = ClusterFile,
+						.ClusterDimension = ClusterDimension,
+						.ClusterSize = ClusterSize
+					}
+				);
 			}
 		);
 	}
@@ -136,6 +143,6 @@ struct Init
 		RegisterClusters(GetCurrentFolder() + L"/Plugins/Cluster");
 	}
 };
-Init _Valdef_Init;
+[[maybe_unused]] static inline Init _Valdef_Init;
 
 _D_Dragonian_Lib_Cluster_Namespace_End

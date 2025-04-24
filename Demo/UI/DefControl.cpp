@@ -3,6 +3,9 @@
 #include "TensorLib/Include/Base/Tensor/Functional.h"
 
 #include <Render/Sound/Mui_DirectSound.h>
+#include <gdiplus.h>
+#pragma comment(lib, "Msimg32.lib")
+#pragma comment(lib, "gdiplus.lib")
 
 #include "Page/SidePage.h"
 
@@ -11,22 +14,88 @@ namespace WndControls
 	const auto MaxFreq = Mui::Ctrl::PitchLabel::PitchToF0(119.9f);
 	const auto MinFreq = Mui::Ctrl::PitchLabel::PitchToF0(0);
 
-	std::vector<std::wstring> AudioPaths;
-	std::deque<std::pair<std::wstring, MyAudioData>> AudioCaches;
-	size_t MaxCacheCount = 20;
+	static inline Mui::_m_color __SpecColorMap[]{
+		Mui::Color::M_RGB(int(0.0f * 255), int(0.0f * 255),int(0.0f * 255)),       // black
+		Mui::Color::M_RGB(int(0.251f * 255), int(0.0f * 255),int(0.f * 255)),     // dark blue
+		Mui::Color::M_RGB(int(0.502f * 255), int(0.0f * 255),int(0.f * 255)),     // blue
+		Mui::Color::M_RGB(int(0.502f * 255), int(0.0f * 255),int(0.251f * 255)),   // purple-blue
+		Mui::Color::M_RGB(int(0.502f * 255),int(0.0f * 255),int(0.502f * 255)),   // purple
+		Mui::Color::M_RGB(int(0.502f * 255),int(0.0f * 255),int(0.753f * 255)),   // magenta
+		Mui::Color::M_RGB(int(0.0f * 255),int(0.0f * 255),int(1.0f * 255)),       // red
+		Mui::Color::M_RGB(int(0.0f * 255),int(0.502f * 255),int(1.0f * 255)),     // orange
+		Mui::Color::M_RGB(int(0.0f * 255),int(1.0f * 255),int(1.0f * 255)),       // yellow
+		Mui::Color::M_RGB(int(0.502f * 255),int(1.0f * 255),int(1.0f * 255)),     // light yellow
+	};
 
-	std::mutex UndoMutex;
-	std::deque<std::deque<FloatTensor2D>> UndoList;
-	std::deque<std::deque<FloatTensor2D>> RedoList;
-	size_t UndoRedoMaxCount = 200;
+	static inline std::vector<std::wstring> AudioPaths;
+	static inline std::deque<std::pair<std::wstring, MyAudioData>> AudioCaches;
+	constexpr size_t MaxCacheCount = 10;
 
-	Mui::XML::MuiXML* LanguageXml = nullptr;
-	MyControls LabelControls;
+	static inline std::mutex UndoMutex;
+	static inline std::deque<std::deque<FloatTensor2D>> UndoList;
+	static inline std::deque<std::deque<FloatTensor2D>> RedoList;
+	constexpr size_t UndoRedoMaxCount = 100;
 
-	const DragonianLib::FunctionTransform::MFCCKernel& GetMelFn()
+	static inline Mui::XML::MuiXML* LanguageXml = nullptr;
+	static inline MyControls LabelControls;
+
+	static inline Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+	static inline ULONG_PTR gdiplusToken;
+
+	static DragonianLib::OnStartUP StartUPLabel{
+		[]
+		{
+			GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
+		}
+	};
+
+	static DragonianLib::SharedScopeExit OnLabelExit{
+		[]
+		{
+			if (gdiplusToken)
+				Gdiplus::GdiplusShutdown(gdiplusToken);
+		}
+	};
+
+	static std::pair<ImageTensor, ImageTensor> Write2Bmp(
+		const std::wstring& Path,
+		const FloatTensor2D& Spec
+	)
+	{
+		const auto [Frames, Bins] = Spec.Size().RawArray();
+
+		Gdiplus::Bitmap bitmap(static_cast<INT>(Frames), static_cast<INT>(Bins), PixelFormat24bppRGB);
+
+		const auto SpecFlat = (Spec.View(-1) + 1e-5f).Log10();
+		const auto Max = SpecFlat.ReduceMax(0);
+		const auto Min = SpecFlat.ReduceMin(0);
+		const auto SpecMin = Min.Evaluate().Item();
+		const auto SpecMax = Max.Evaluate().Item();
+
+		const auto SpecData = Spec.Data();
+
+		for (INT y = 0; y < static_cast<INT>(Bins); ++y)
+		{
+			for (INT x = 0; x < static_cast<INT>(Frames); ++x)
+			{
+				float Value = (*(SpecData + x * Bins + y) - SpecMin) / (SpecMax - SpecMin);
+				Value = std::clamp(Value, 0.001f, 0.999f);
+				const auto Color = __SpecColorMap[int(Value * 9.f)];
+				bitmap.SetPixel(x, static_cast<INT>(Bins) - y, Color);
+			}
+		}
+
+		CLSID pngClsid;
+		CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &pngClsid); // PNG CLSID
+		bitmap.Save(Path.c_str(), &pngClsid, nullptr);
+
+		return {};
+	}
+
+	static const DragonianLib::FunctionTransform::MFCCKernel& GetMelFn()
 	{
 		static DragonianLib::FunctionTransform::MFCCKernel MelKernel{
-			48000, 8192, 480, -1, 128, 20, 16000
+			SpecSamplingRate, 8192, SpecSamplingRate / 400, -1, 128, 20.f, 11025.f
 		};
 		return MelKernel;
 	}
@@ -43,7 +112,37 @@ namespace WndControls
 		GetMelFn();
 	}
 
-	std::wstring GetPath(const std::wstring& RawAudioPath, const wchar_t* Fol, const wchar_t* Ext)
+	class ListItemC : public Mui::Ctrl::ListItem
+	{
+	public:
+		void SetColor(Mui::_m_color color)
+		{
+			m_color = color;
+		}
+	};
+
+	static void SaveWithHistory(const std::wstring& Path, const FloatTensor2D& Data)
+	{
+		auto CurDir = std::filesystem::path(Path);
+		auto LastDir = CurDir; 
+		LastDir.replace_filename(LastDir.filename().string() + ".last");
+		auto OldDir = LastDir;
+		OldDir.replace_filename(OldDir.filename().string() + ".old");
+
+		if (exists(CurDir))
+		{
+			if (exists(LastDir))
+			{
+				if (exists(OldDir))
+					remove(OldDir);
+				rename(LastDir, OldDir);
+			}
+			rename(CurDir, LastDir);
+		}
+		DragonianLib::Functional::NumpySave(Path, Data);
+	}
+
+	static std::wstring GetPath(const std::wstring& RawAudioPath, const wchar_t* Fol, const wchar_t* Ext)
 	{
 		auto Path = std::filesystem::path(RawAudioPath);
 		std::wstring NewPath;
@@ -55,54 +154,33 @@ namespace WndControls
 			std::ranges::replace(StemStr, L':', L'_');
 			NewPath += StemStr;
 		}
-		NewPath += Ext;
+		NewPath = std::filesystem::path(NewPath).replace_extension(Ext);
 		NewPath = DragonianLib::GetCurrentFolder() + L"/User/" + Fol + NewPath;
 		return NewPath;
 	}
 
-	std::wstring GetF0Path(const std::wstring& RawAudioPath)
+	static std::wstring GetF0Path(const std::wstring& RawAudioPath)
 	{
 		return GetPath(RawAudioPath, L"F0/", L".npy");
 	}
 
-	std::wstring GetAudioPath(const std::wstring& RawAudioPath)
+	static std::wstring GetAudioPath(const std::wstring& RawAudioPath)
 	{
-		return GetPath(RawAudioPath, L"Audio/", L".wav");
+		return GetPath(RawAudioPath, L"Audio/", L".mp3");
 	}
 
-	std::wstring GetSpecPath(const std::wstring& RawAudioPath)
+	static std::wstring GetSpecPath(const std::wstring& RawAudioPath)
 	{
-		return GetPath(RawAudioPath, L"Spec/", L".npy");
+		return GetPath(RawAudioPath, L"Spec/", L".png");
 	}
 
-	std::wstring GetMelPath(const std::wstring& RawAudioPath)
+	static std::wstring GetMelPath(const std::wstring& RawAudioPath)
 	{
-		return GetPath(RawAudioPath, L"Mel/", L".npy");
-	}
-
-	static void SaveData(size_t idx)
-	{
-		if (idx < AudioCaches.size())
-		{
-			const auto& Path = AudioCaches[idx].first;
-			DragonianLib::Functional::NumpySave(
-				GetF0Path(Path),
-				AudioCaches[idx].second.F0
-			);
-			DragonianLib::Functional::NumpySave(
-				GetSpecPath(Path),
-				AudioCaches[idx].second.Spec
-			);
-			DragonianLib::Functional::NumpySave(
-				GetMelPath(Path),
-				AudioCaches[idx].second.Mel
-			);
-		}
+		return GetPath(RawAudioPath, L"Mel/", L".png");
 	}
 
 	static void EraseFront()
 	{
-		SaveData(0);
 		AudioCaches.pop_front();
 		std::lock_guard lg(UndoMutex);
 		UndoList.pop_front();
@@ -118,7 +196,6 @@ namespace WndControls
 		if (Iter != AudioCaches.end())
 		{
 			auto Offset = std::distance(AudioCaches.begin(), Iter);
-			SaveData(Offset);
 			AudioCaches.erase(Iter);
 			std::lock_guard lg(UndoMutex);
 			UndoList.erase(UndoList.begin() + Offset);
@@ -136,8 +213,6 @@ namespace WndControls
 			return Iter->second;
 		auto AudioPath = GetAudioPath(Path);
 		auto F0Path = GetF0Path(Path);
-		auto SpecPath = GetSpecPath(Path);
-		auto MelPath = GetMelPath(Path);
 		FloatTensor2D Audio, F0, Spec, Mel;
 		if (std::filesystem::exists(AudioPath))
 			Audio = DragonianLib::AvCodec::OpenInputStream(
@@ -148,72 +223,65 @@ namespace WndControls
 			Audio = DragonianLib::AvCodec::OpenInputStream(
 				Path
 			).DecodeAll(SamplingRate, 2);
-			auto Rng = Audio.GetCRng();
-			OpenOutputStream(
-				SamplingRate,
-				AudioPath,
-				DragonianLib::AvCodec::AvCodec::PCM_FORMAT_FLOAT32,
-				2
-			).EncodeAll(
-				Rng, SamplingRate, 2
-			);
 		}
-		if (std::filesystem::exists(F0Path))
+		OpenOutputStream(
+			SamplingRate,
+			std::filesystem::path(AudioPath),
+			DragonianLib::AvCodec::AvCodec::PCM_FORMAT_FLOAT32,
+			2
+		).EncodeAll(
+			Audio.GetCRng(), SamplingRate, 2
+		);
+		const auto HopSize = SamplingRate / 100;
+		const auto AudioFrames = (DragonianLib::SizeType)ceil(double(Audio.Shape(0)) / double(HopSize)) + 1;
+		if (std::filesystem::exists(F0Path + L".cache"))
 		{
+			F0 = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
+				F0Path + L".cache"
+			);
+			if (F0.Size(0) != 10 || F0.Size(1) != AudioFrames)
+			{
+				if (std::filesystem::exists(F0Path))
+					goto __F0CacheSizeMisMatch;
+				goto __F0SizeMisMatch;
+			}
+		}
+		else if (std::filesystem::exists(F0Path))
+		{
+		__F0CacheSizeMisMatch:
 			F0 = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
 				F0Path
 			);
-			if (F0.Size(0) != 10)
-				F0 = F0.Padding(
-					IArray(
-						DragonianLib::PadCount(0, 10 - F0.Size(0))
-					),
-					DragonianLib::PaddingType::Zero
-				);
+			if (F0.Size(0) != 10 || F0.Size(1) != AudioFrames)
+				goto __F0SizeMisMatch;
 		}
 		else
 		{
-			const auto HopSize = SamplingRate / 100;
-			const auto F0Size = (DragonianLib::SizeType)ceil(double(Audio.Shape(0)) / double(HopSize)) + 1;
-			const auto F0Shape = DragonianLib::Dimensions{ 10, F0Size };
+		__F0SizeMisMatch:
+			const auto F0Shape = DragonianLib::Dimensions{ 10, AudioFrames };
 			F0 = DragonianLib::Functional::Zeros(F0Shape);
-			DragonianLib::Functional::NumpySave(
-				F0Path,
-				F0
-			);
 		}
-		Audio = Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+		Audio = Audio.Mean(-1).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
 			DragonianLib::IDim(0),
 			DragonianLib::IScale(48000. / double(SamplingRate))
-		).Evaluate();
-		if (std::filesystem::exists(SpecPath))
-			Spec = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
-				SpecPath
-			);
-		else
-		{
-			Spec = GetMelFn().GetStftKernel()(
-				Audio.Mean(-1).UnSqueeze(0).UnSqueeze(0)
-				).Squeeze(0).Squeeze(0).Evaluate();
-			DragonianLib::Functional::NumpySave(
-				SpecPath,
-				Spec
-			);
-		}
-		if (std::filesystem::exists(MelPath))
-			Mel = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
-				MelPath
-			);
-		else
-		{
-			Mel = GetMelFn()(
-			   Spec.View(1, 1, Spec.Size(0), Spec.Size(1))
-			   ).Squeeze(0).Squeeze(0).Evaluate();
-			DragonianLib::Functional::NumpySave(
-				MelPath,
-				Mel
-			);
-		}
+		).Evaluate().UnSqueeze(-1);
+
+		Spec = GetMelFn().GetStftKernel()(
+			Audio.View(1, 1, Audio.Size(0)).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+				DragonianLib::IDim(-1),
+				DragonianLib::IScale(double(SpecSamplingRate) / 48000.)
+			)
+			).Squeeze(0).Squeeze(0)[{DragonianLib::Range{ 0, AudioFrames }}].Contiguous().Evaluate();
+
+		Mel = GetMelFn()(
+		   Spec.View(1, 1, Spec.Size(0), Spec.Size(1))
+		   ).Squeeze(0).Squeeze(0).Evaluate();
+
+		Write2Bmp(
+			GetSpecPath(Path),
+			Spec
+		);
+
 		if (AudioCaches.size() >= MaxCacheCount - 1)
 			EraseFront();
 		{
@@ -225,10 +293,11 @@ namespace WndControls
 			Path,
 			MyAudioData{
 				SamplingRate,
-				std::move(Audio),
-				std::move(F0),
-				std::move(Spec),
-				std::move(Mel)
+				Audio.Pad(DragonianLib::PaddingCounts{DragonianLib::PadCount{0, 1}}, DragonianLib::PaddingType::Zero).Evaluate(),
+				std::move(F0.Evaluate()),
+				std::move(Spec.Evaluate()),
+				std::move(Mel.Evaluate()),
+				std::move(F0Path)
 			}
 		).second;
 	}
@@ -242,6 +311,28 @@ namespace WndControls
 		if (Iter != AudioCaches.end())
 			return std::distance(AudioCaches.begin(), Iter);
 		return -1;
+	}
+
+	static void IncModifyCount(auto CurSel, auto Offset)
+	{
+		const auto Prev = AudioCaches[Offset].second.ModifyCount;
+		++AudioCaches[Offset].second.ModifyCount;
+		if (Prev && !AudioCaches[Offset].second.ModifyCount)
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(Mui::Color::M_White);
+		else if (!Prev && AudioCaches[Offset].second.ModifyCount)
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(Mui::Color::M_RED);
+		LabelControls.AudioList->UpdateLayout();
+	}
+
+	static void DecModifyCount(auto CurSel, auto Offset)
+	{
+		const auto Prev = AudioCaches[Offset].second.ModifyCount;
+		--AudioCaches[Offset].second.ModifyCount;
+		if (Prev && !AudioCaches[Offset].second.ModifyCount)
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(Mui::Color::M_White);
+		else if (!Prev && AudioCaches[Offset].second.ModifyCount)
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(Mui::Color::M_RED);
+		LabelControls.AudioList->UpdateLayout();
 	}
 
 	static bool AllEqual(const float* a, const float* b, size_t size)
@@ -279,6 +370,7 @@ namespace WndControls
 			UndoList[CacheIdx].pop_back();
 		else
 		{
+			IncModifyCount(CurSel, CacheIdx);
 			if (UndoList[CacheIdx].size() > UndoRedoMaxCount)
 				UndoList[CacheIdx].pop_front();
 			RedoList[CacheIdx].clear();
@@ -334,8 +426,6 @@ namespace WndControls
 
 	void EmptyCache()
 	{
-		for (size_t i = 0; i < AudioCaches.size(); ++i)
-			SaveData(i);
 		AudioCaches.clear();
 		std::lock_guard lg(UndoMutex);
 		UndoList.clear();
@@ -344,10 +434,12 @@ namespace WndControls
 
 	void InsertAudio(std::wstring Path)
 	{
+		if (std::ranges::contains(AudioPaths, Path))
+			return;
 		auto FileName = std::filesystem::path(Path).stem().wstring();
 		FileName = L"    " + FileName.substr(0, 50);
 		AudioPaths.emplace_back(std::move(Path));
-		auto Item = new Mui::Ctrl::ListItem;
+		auto Item = new ListItemC;
 		Item->SetText(std::move(FileName));
 		LabelControls.AudioList->AddItem(Item, -1, true);
 	}
@@ -361,8 +453,7 @@ namespace WndControls
 	{
 		auto& AudioAndF0 = GetData(AudioIdx, SamplingRate);
 		LabelControls.CurveEditor->SetPlayLinePos(0);
-		(AudioAndF0.F0 = 261.626f).Evaluate();
-		LabelControls.CurveEditor->SetCurveData(AudioAndF0.F0);
+		LabelControls.CurveEditor->SetCurveData(AudioAndF0.F0, AudioAndF0.Spec);
 		LabelControls.CurvePlayer->SetPlayPos(0);
 		LabelControls.CurvePlayer->SetAudioData(AudioAndF0.Audio);
 	}
@@ -370,7 +461,7 @@ namespace WndControls
 	void DeleteAudio(int idx)
 	{
 		LabelControls.CurveEditor->SetPlayLinePos(0);
-		LabelControls.CurveEditor->SetCurveData(std::nullopt);
+		LabelControls.CurveEditor->SetCurveData(std::nullopt, std::nullopt);
 		LabelControls.CurvePlayer->Clear();
 		LabelControls.AudioList->DeleteItem(idx);
 		LabelControls.AudioList->SetCurSelItem(-1);
@@ -379,7 +470,7 @@ namespace WndControls
 		EraseCache(idx);
 	}
 
-	void MoeURDo(
+	static bool MoeURDo(
 		std::deque<FloatTensor2D>& CurUndo,
 		std::deque<FloatTensor2D>& CurRedo,
 		ptrdiff_t Offset
@@ -387,7 +478,7 @@ namespace WndControls
 	{
 		std::unique_lock lg(UndoMutex, std::try_to_lock);
 		if (CurUndo.empty())
-			return;
+			return false;
 		auto UndoData = std::move(CurUndo.back());
 		CurRedo.emplace_back(std::move(AudioCaches[Offset].second.F0));
 		AudioCaches[Offset].second.F0 = std::move(UndoData.Evaluate());
@@ -397,6 +488,7 @@ namespace WndControls
 		if (CurRedo.size() > UndoRedoMaxCount)
 			CurRedo.pop_front();
 		CurUndo.pop_back();
+		return true;
 	}
 
 	void MoeVSUndo()
@@ -405,7 +497,8 @@ namespace WndControls
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || Offset >= static_cast<ptrdiff_t>(UndoList.size()))
 			return;
-		MoeURDo(UndoList[Offset], RedoList[Offset], Offset);
+		if (MoeURDo(UndoList[Offset], RedoList[Offset], Offset))
+			DecModifyCount(CurSel, Offset);
 	}
 
 	void MoeVSRedo()
@@ -414,12 +507,93 @@ namespace WndControls
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || Offset >= static_cast<ptrdiff_t>(UndoList.size()))
 			return;
-		MoeURDo(RedoList[Offset], UndoList[Offset], Offset);
+		if (MoeURDo(RedoList[Offset], UndoList[Offset], Offset))
+			IncModifyCount(CurSel, Offset);
 	}
 
-	void ExportSliceCurveData(HWND hwnd)
+	void SaveData()
 	{
-		
+		auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		auto Offset = GetOffset(CurSel);
+		if (Offset == -1 || Offset >= static_cast<ptrdiff_t>(UndoList.size()))
+			return;
+		if (AudioCaches[Offset].second.ModifyCount)
+		{
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(Mui::Color::M_White);
+			LabelControls.AudioList->UpdateLayout();
+			AudioCaches[Offset].second.ModifyCount = 0;
+			SaveWithHistory(
+				AudioCaches[Offset].second.F0Path,
+				AudioCaches[Offset].second.F0
+			);
+		}
+	}
+
+	static const FloatTensor2D& GetUpSampleRates()
+	{
+		static FloatTensor2D Upp(DragonianLib::Functional::Arange(1.f, 481.f, 1.f).UnSqueeze(0).Evaluate());
+		return Upp;
+	}
+
+	void SineGen()
+	{
+		auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		auto Offset = GetOffset(CurSel);
+		if (Offset == -1 || Offset >= static_cast<ptrdiff_t>(UndoList.size()))
+			return;
+		auto& Audio = LabelControls.CurvePlayer->GetAudio();
+		const auto& F0 = AudioCaches[Offset].second.F0;
+		const auto SineSize = std::min(F0.Size(1) * 480, Audio.Size(0));
+		const auto Freq = F0[0].Clone().UnSqueeze(-1);
+
+		auto Rad = Freq / 48000.f * GetUpSampleRates();
+		auto Rad2 = (Rad[{":", "-1:"}] + 0.5f) % 1.f - 0.5f;
+		auto RadAcc = Rad2.CumSum(0) % 1.f;
+		Rad[{"1:"}] += RadAcc[{":-1"}];
+		Rad = Rad.View(1, -1);
+		Rad.Evaluate();
+		const auto F0Data = Rad.Data();
+		const auto AudioData = Audio.Data() + 1;
+		for (DragonianLib::SizeType F0Idx = 0; F0Idx < SineSize; ++F0Idx)
+		{
+			auto& SamplePoint = AudioData[F0Idx << 1];
+			SamplePoint = short(sin(F0Data[F0Idx] * 2.f * 3.1415926535f) * 4000.f);
+		}
+	}
+
+	void LoadFiles(HWND hWnd)
+	{
+		auto Files = MoeGetOpenFiles(
+			TEXT("Audio Files (*.wav; *.mp3; *.ogg; *.flac)|*.wav;*.mp3;*.ogg;*.flac|All Files (*.*)|*.*||"),
+			hWnd
+		);
+		for (auto& i : Files)
+			InsertAudio(std::move(i));
+	}
+
+	void LoadF0(HWND hWnd)
+	{
+		const auto Path = MoeGetOpenFile(
+			TEXT("Numpy Files (*.wav)|*.npy||"),
+			hWnd,
+			L"npy"
+		);
+		if (!Path.empty())
+		{
+			try
+			{
+				auto F0Tensor = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
+					Path
+				);
+				Mui::Ctrl::Write2Clipboard(
+					F0Tensor.GetRng()
+				);
+			}
+			catch (std::exception& e)
+			{
+				DragonianLib::GetDefaultLogger()->LogError(DragonianLib::UTF8ToWideString(e.what()));
+			}
+		}
 	}
 }
 
@@ -454,7 +628,7 @@ std::wstring MoeGetOpenFile(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* 
 
 std::vector<std::wstring> MoeGetOpenFiles(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt)
 {
-	constexpr long MaxPath = 8000;
+	constexpr long MaxPath = 1024 * 512;
 	std::vector<std::wstring> OFNLIST;
 #ifdef WIN32
 	std::vector<TCHAR> szFileName(MaxPath);
@@ -495,36 +669,16 @@ std::vector<std::wstring> MoeGetOpenFiles(const TCHAR* szFilter, HWND hwndOwner,
 #endif
 }
 
-std::wstring MoeGetSaveFile(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt)
-{
-	constexpr long MaxPath = 8000;
-#ifdef WIN32
-	std::vector<TCHAR> szFileName(MaxPath);
-	std::vector<TCHAR> szTitleName(MaxPath);
-	OPENFILENAME ofn;
-	ZeroMemory(&ofn, sizeof(ofn));
-	ofn.lpstrFile = szFileName.data();
-	ofn.nMaxFile = MaxPath;
-	ofn.lpstrFileTitle = szTitleName.data();
-	ofn.nMaxFileTitle = MaxPath;
-	ofn.lStructSize = sizeof(OPENFILENAME);
-	ofn.hwndOwner = hwndOwner;
-	//constexpr TCHAR szFilter[] = TEXT("Audio (*.wav;*.mp3;*.ogg;*.flac;*.aac)\0*.wav;*.mp3;*.ogg;*.flac;*.aac\0");
-	ofn.lpstrFilter = szFilter;
-	ofn.lpstrTitle = nullptr;
-	ofn.lpstrDefExt = lpstrDefExt;
-	ofn.Flags = OFN_PATHMUSTEXIST | OFN_EXPLORER | OFN_OVERWRITEPROMPT;
-	if (GetSaveFileName(&ofn))
-	{
-		std::wstring preFix = szFileName.data();
-		return preFix;
-	}
-	return L"";
-#else
-#endif
-}
-
 std::wstring GetLocalizationString(const std::wstring_view& _Str)
 {
 	return WndControls::LanguageXml->GetStringValue(_Str);
+}
+
+MyAudioData::~MyAudioData()
+{
+	if (!F0Path.empty())
+		WndControls::SaveWithHistory(
+			F0Path + L".cache",
+			F0
+		);
 }

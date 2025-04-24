@@ -33,6 +33,10 @@ namespace AvCodec
 	double CalculateDB(const float* Begin, const float* End);
 	UInt64 GetAVTimeBase();
 
+	bool RunWithComMultiThread();
+
+	void ComUninitialize();
+
 	struct SlicerSettings
 	{
 		int32_t SamplingRate = 48000;
@@ -92,7 +96,7 @@ namespace AvCodec
 		AvCodec operator=(const AvCodec&) = delete;
 		AvCodec operator=(AvCodec&&) = delete;
 
-		enum PCMFormat {
+		enum PCMFormat : Int8 {
 			PCM_FORMAT_NONE = -1,
 			PCM_FORMAT_UINT8,				///< unsigned 8 bits
 			PCM_FORMAT_INT16,				///< signed 16 bits
@@ -420,7 +424,7 @@ namespace AvCodec
 	class AudioCodec
 	{
 	public:
-		enum CodecType
+		enum CodecType : UInt8
 		{
 			DECODER = 0,
 			ENCODER = 1
@@ -478,6 +482,7 @@ namespace AvCodec
 	public:
 		TemplateLibrary::Vector<AudioFrame> Decode(const AudioPacket& _Packet) const;
 		TemplateLibrary::Vector<AudioPacket> Encode(const AudioFrame& _Frame) const;
+		TemplateLibrary::Vector<AudioPacket> EncodeTail() const;
 	};
 
 	/**
@@ -508,6 +513,7 @@ namespace AvCodec
 		void Reset(const std::wstring& _Path = L"");
 		AudioIStream& operator>>(AudioPacket& _Packet);
 		UInt64 GetDurations() const;
+		std::pair<UInt64, UInt64> GetTimeBase() const;
 
 	private:
 		int _MyCode = 0;
@@ -541,61 +547,90 @@ namespace AvCodec
 			if (MOutputFormat == AvCodec::PCM_FORMAT_NONE)
 				_D_Dragonian_Lib_Throw_Exception("Invalid output format!");
 
-			auto DecoderSetting = GetCodecSettings();
-			DecoderSetting._ParameterDict = _ParameterDict;
-			DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
-			DecoderSetting._OutputSampleFormat = MOutputFormat;
-			DecoderSetting._OutputChannels = _OutputChannels;
-			auto _MyCodec = AudioCodec(DecoderSetting);
+			auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
+			const auto TimeBase = GetTimeBase();
 
-			const auto nSample = size_t(GetDurations() * DecoderSetting._OutputSamplingRate / GetAVTimeBase());
+			const auto nSample = size_t(
+				GetDurations() * _OutputSamplingRate * TimeBase.first / TimeBase.second
+			);
 			const auto nBuffer = nSample + (nSample >> 1);
 
-			auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
-			for (auto& Buf : MyBuf)
-				Buf.Reserve(nBuffer);
+			auto Task = [&] -> std::string
+				{
+					if (!RunWithComMultiThread())
+						return "Error when decode!";
 
-			if (_OutputPlanar)
-			{
-				_D_Dragonian_Lib_Rethrow_Block(
+					SharedScopeExit OnExit(ComUninitialize);
+
+					auto DecoderSetting = GetCodecSettings();
+					DecoderSetting._ParameterDict = _ParameterDict;
+					DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
+					DecoderSetting._OutputSampleFormat = MOutputFormat;
+					DecoderSetting._OutputChannels = _OutputChannels;
+
+					std::shared_ptr<AudioCodec> _MyCodec;
+					try
 					{
-						AudioPacket Packet;
-						while (!(*this >> Packet).IsEnd())
-						{
-							auto Frames = _MyCodec.Decode(Packet);
-							for (auto& Frame : Frames)
+						_MyCodec = std::make_shared<AudioCodec>(DecoderSetting);
+					}
+					catch (const std::exception& e)
+					{
+						return _D_Dragonian_Error_Message_With_Trace(e.what());
+					}
+
+					for (auto& Buf : MyBuf)
+						Buf.Reserve(nBuffer);
+
+					if (_OutputPlanar)
+					{
+						_D_Dragonian_Lib_Return_Exception_Block(
 							{
-								for (UInt32 i = 0; i < _OutputChannels; ++i)
+								AudioPacket Packet;
+								while (!(*this >> Packet).IsEnd())
 								{
-									auto& Buf = MyBuf[i];
-									auto Data = (const _RetType* const)Frame.GetDataPointerArray()[i];
-									auto Size = Frame.GetSampleCount();
-									Buf.Insert(Buf.End(), Data, Data + Size);
+									auto Frames = _MyCodec->Decode(Packet);
+									for (auto& Frame : Frames)
+									{
+										for (UInt32 i = 0; i < _OutputChannels; ++i)
+										{
+											auto& Buf = MyBuf[i];
+											auto Data = (const _RetType* const)Frame.GetDataPointerArray()[i];
+											auto Size = Frame.GetSampleCount();
+											Buf.Insert(Buf.End(), Data, Data + Size);
+										}
+									}
 								}
 							}
-						}
+						);
 					}
-				);
-			}
-			else
-			{
-				_D_Dragonian_Lib_Rethrow_Block(
+					else
 					{
-						 auto & OutputBuffer = MyBuf[0];
-						 AudioPacket Packet;
-						 while (!(*this >> Packet).IsEnd())
-						 {
-							 auto Frames = _MyCodec.Decode(Packet);
-							 for (auto& Frame : Frames)
-							 {
-								 auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
-								 auto Size = Frame.GetSampleCount() * _OutputChannels;
-								 OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
-							 }
-						 }
+						_D_Dragonian_Lib_Return_Exception_Block(
+							{
+								 auto& OutputBuffer = MyBuf[0];
+								 AudioPacket Packet;
+								 while (!(*this >> Packet).IsEnd())
+								 {
+									 auto Frames = _MyCodec->Decode(Packet);
+									 for (auto& Frame : Frames)
+									 {
+										 auto Data = (const _RetType* const)Frame.GetDataPointerArray()[0];
+										 auto Size = Frame.GetSampleCount() * _OutputChannels;
+										 OutputBuffer.Insert(OutputBuffer.End(), Data, Data + Size);
+									 }
+								 }
+							}
+						);
 					}
-				);
-			}
+					return "";
+				};
+
+			auto Future = std::async(std::launch::async, Task);
+
+			auto ErrorMessage = Future.get();
+
+			if (!ErrorMessage.empty())
+				_D_Dragonian_Lib_Throw_Raw_Exception(ErrorMessage.c_str());
 
 			const auto MBufSize = static_cast<SizeType>(MyBuf[0].Size());
 
@@ -693,51 +728,113 @@ namespace AvCodec
 			if (_InputDataFormat == AvCodec::PCM_FORMAT_NONE)
 				_D_Dragonian_Lib_Throw_Exception("Invalid sample format!");
 
-			auto DecoderSetting = GetCodecSettings();
-			DecoderSetting._ParameterDict = _ParameterDict;
-			DecoderSetting._InputSamplingRate = _InputSamplingRate;
-			DecoderSetting._InputSampleFormat = _InputDataFormat;
-			DecoderSetting._InputChannels = _InputChannelCount;
+			const auto Task = [&] -> std::string
+				{
+					if (!RunWithComMultiThread())
+						return "Error when encode!";
 
-			auto Codec = AudioCodec(DecoderSetting);
-			SetBitRate(Codec.GetBitRate());
+					SharedScopeExit OnExit(ComUninitialize);
 
-			const auto TotalSampleCount = _PCMData.Size() / _InputChannelCount;
-			const _InputType* Buffer[8]{
-				_PCMData.Data(), nullptr, nullptr, nullptr,
-				nullptr, nullptr, nullptr, nullptr
-			};
-			UInt64 AudioShape[]{ 1 ,TotalSampleCount, _InputChannelCount };
-			if (_InputPlanar)
-			{
-				std::swap(AudioShape[0], AudioShape[2]);
-				for (UInt32 i = 0; i < AudioShape[0]; ++i)
-					Buffer[i] = _PCMData.Data() + i * AudioShape[1];
-			}
+					auto DecoderSetting = GetCodecSettings();
+					DecoderSetting._ParameterDict = _ParameterDict;
+					DecoderSetting._InputSamplingRate = _InputSamplingRate;
+					DecoderSetting._InputSampleFormat = _InputDataFormat;
+					DecoderSetting._InputChannels = _InputChannelCount;
 
-			const auto FrameSize = static_cast<UInt64>(Codec.GetFrameSize() ? Codec.GetFrameSize() : 2048);
-			AudioFrame MyFrame(
-				static_cast<long>(_InputSamplingRate),
-				static_cast<long>(_InputChannelCount),
-				_InputDataFormat,
-				static_cast<long>(FrameSize)
-			);
-			for (UInt64 Time = 0; Time < AudioShape[1]; Time += FrameSize)
-			{
-				const auto ChannelSampleCount = std::min(FrameSize, AudioShape[1] - Time);
-				const auto ChannelPaddingCount = FrameSize - ChannelSampleCount;
-				const auto SampleCount = ChannelSampleCount * AudioShape[2];
-				const auto PaddingCount = ChannelPaddingCount * AudioShape[2];
-				TemplateLibrary::Vector<AudioPacket> Packets;
+					std::shared_ptr<AudioCodec> Codec;
+					try
+					{
+						Codec = std::make_shared<AudioCodec>(DecoderSetting);
+					}
+					catch (const std::exception& e)
+					{
+						return _D_Dragonian_Error_Message_With_Trace(e.what());
+					}
 
-				_D_Dragonian_Lib_Rethrow_Block(Packets = Codec.Encode(MyFrame.CopyData((const uint8_t* const*)Buffer, (ULong)AudioShape[0], (ULong)SampleCount, (ULong)PaddingCount)););
+					SetBitRate(Codec->GetBitRate());
 
-				for (auto& Packet : Packets)
-					*this << Packet;
+					const auto TotalSampleCount = _PCMData.Size() / _InputChannelCount;
+					const _InputType* Buffer[8]{
+						_PCMData.Data(), nullptr, nullptr, nullptr,
+						nullptr, nullptr, nullptr, nullptr
+					};
 
-				for (UInt32 i = 0; i < AudioShape[0]; ++i)
-					Buffer[i] += SampleCount;
-			}
+					UInt64 AudioShape[]{ 1 ,TotalSampleCount, _InputChannelCount };
+
+					if (_InputPlanar)
+					{
+						std::swap(AudioShape[0], AudioShape[2]);
+						for (UInt32 i = 0; i < AudioShape[0]; ++i)
+							Buffer[i] = _PCMData.Data() + i * AudioShape[1];
+					}
+
+					const auto FrameSize = static_cast<UInt64>(Codec->GetFrameSize() ? Codec->GetFrameSize() : 2048);
+
+					std::shared_ptr<AudioFrame> MyFrame;
+					try
+					{
+						MyFrame = std::make_shared<AudioFrame>(
+							static_cast<long>(_InputSamplingRate),
+							static_cast<long>(_InputChannelCount),
+							_InputDataFormat,
+							static_cast<long>(FrameSize)
+						);
+					}
+					catch (const std::exception& e)
+					{
+						return _D_Dragonian_Error_Message_With_Trace(e.what());
+					}
+
+					for (UInt64 Time = 0; Time < AudioShape[1]; Time += FrameSize)
+					{
+						const auto ChannelSampleCount = std::min(FrameSize, AudioShape[1] - Time);
+						const auto ChannelPaddingCount = FrameSize - ChannelSampleCount;
+						const auto SampleCount = ChannelSampleCount * AudioShape[2];
+						const auto PaddingCount = ChannelPaddingCount * AudioShape[2];
+						try
+						{
+							auto Packets = Codec->Encode(
+								MyFrame->CopyData(
+									(const uint8_t* const*)Buffer,
+									(ULong)AudioShape[0],
+									(ULong)SampleCount,
+									(ULong)PaddingCount
+								)
+							);
+
+							for (auto& Packet : Packets)
+								*this << Packet;
+
+							for (UInt32 i = 0; i < AudioShape[0]; ++i)
+								Buffer[i] += SampleCount;
+						}
+						catch (const std::exception& e)
+						{
+							return _D_Dragonian_Error_Message_With_Trace(e.what());
+						}
+					}
+
+					try
+					{
+						auto Packets = Codec->EncodeTail();
+						for (auto& Packet : Packets)
+							*this << Packet;
+					}
+					catch (const std::exception& e)
+					{
+						return _D_Dragonian_Error_Message_With_Trace(e.what());
+					}
+
+					return "";
+				};
+
+			auto Future = std::async(std::launch::async, Task);
+
+			auto ErrorMessage = Future.get();
+
+			if (!ErrorMessage.empty())
+				_D_Dragonian_Lib_Throw_Raw_Exception(ErrorMessage.c_str());
+
 			Close();
 		}
 	};
@@ -883,7 +980,7 @@ namespace AvCodec
 			{
 				T Sum = Factor;
 				auto j = Signal1Pow2Begin;
-				for (auto k = 0; k < Signal2Overlap; ++j, ++k)
+				for (auto k = 0; std::cmp_less(k, Signal2Overlap); ++j, ++k)
 					Sum += (*j++);
 				i /= (T)sqrtf(float(Sum));
 				++Signal1Pow2Begin;

@@ -37,7 +37,7 @@ struct CppPinYinConfigs
 
 struct CppPinYinParameters
 {
-	enum Type {
+	enum Type : UInt8 {
 		// 普通风格，不带声调。如： 中国 -> ``zhong guo``
 		NORMAL = 0,
 		// 标准声调风格，拼音声调在韵母第一个字母上（默认风格）。如： 中国 -> ``zhōng guó``
@@ -47,7 +47,7 @@ struct CppPinYinParameters
 		// 声调风格3，即拼音声调在各个拼音之后，用数字 [1-4] 进行表示。如： 中国 -> ``zhong1 guo2``
 		TONE3 = 3,
 	};
-	enum Number
+	enum Number : UInt8
 	{
 		// 输出阿拉伯数字
 		DEFAULT = 0,
@@ -62,7 +62,7 @@ struct CppPinYinParameters
 		// 将阿拉伯数字直接删除
 		DEL = 5,
 	};
-	enum ErrorType {
+	enum ErrorType : UInt8 {
 		// 不处理错误音节，保持原样
 		NONE = 0,
 		// 替换为 UNK
@@ -143,7 +143,7 @@ class CppPinYin : public G2PBase
 public:
 	struct Segment
 	{
-		enum Type {
+		enum Type : UInt8 {
 			// 未知
 			UNKNOWN = 0,
 			// 汉字

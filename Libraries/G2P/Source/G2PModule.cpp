@@ -3,9 +3,8 @@
 
 _D_Dragonian_Lib_G2P_Header
 
-
-std::vector<std::wstring> _GlobalG2PModulesList;
-std::unordered_map<std::wstring, Constructor> _GlobalRegisteredG2PModules;
+static inline std::vector<std::wstring> _GlobalG2PModulesList;
+static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredG2PModules;
 
 G2PModule New(
 	const std::wstring& Name,
@@ -25,7 +24,7 @@ G2PModule New(
 	_D_Dragonian_Lib_Throw_Exception("Unable To Find An Available G2PModule");
 }
 
-void RegisterPlugin(
+static void RegisterPlugin(
 	const std::wstring& _PluginPath,
 	const std::wstring& _PluginName
 )
@@ -132,6 +131,6 @@ struct Init {
 		RegG2PW();
 	}
 };
-Init _Init;
+[[maybe_unused]] static inline Init _Init;
 
 _D_Dragonian_Lib_G2P_End

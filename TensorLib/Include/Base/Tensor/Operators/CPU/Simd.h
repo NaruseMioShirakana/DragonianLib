@@ -1768,8 +1768,7 @@ namespace SimdTypeTraits
 template <
 	Int64 Throughput, typename Type,
 	typename _FunctionTypePre, typename _FunctionTypeMid, typename _FunctionTypeEnd,
-	typename _FunctionTypePreVec, typename _FunctionTypeMidVec,
-	typename = std::enable_if_t<IsCallableValue<_FunctionTypeMid>>
+	typename _FunctionTypePreVec, typename _FunctionTypeMidVec
 > Type ReduceFunction(
 	const Type* _Src, SizeType _Size, Type _InitValue,
 	_FunctionTypePre _PreFunction,
@@ -1777,7 +1776,7 @@ template <
 	_FunctionTypeMid _MidFunction,
 	_FunctionTypeMidVec _MidFunctionVec,
 	_FunctionTypeEnd _EndFunction
-)
+) requires (IsCallableValue<_FunctionTypeMid>)
 {
 	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(Type));
 	constexpr Int64 LoopStride = Throughput * Stride;
@@ -1862,9 +1861,10 @@ template <
 	SizeType _DestSize,
 	const _InputType* _Src1 = nullptr,
 	const _InputType* _Src2 = nullptr,
-	const std::shared_ptr<_ParameterType> _ValPtr = nullptr
+	std::shared_ptr<_ParameterType> _IValPtr = nullptr
 )
 {
+	auto _ValPtr = std::move(_IValPtr);
 	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(_InputType));
 	constexpr Int64 LoopStride = OpThroughput * Stride;
 
@@ -1880,6 +1880,8 @@ template <
 					*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
 				else if constexpr (_OType == TypeDef::ConstantOperatorType)
 					*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+				else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+					*_Dest++ = (_RetType)_Function(*_ValPtr, *_Src1++);
 				--_DestSize;
 			}
 
@@ -1905,6 +1907,9 @@ template <
 				else if constexpr (_OType == TypeDef::ConstantOperatorType)
 					for (Int64 i = 0; i < OpThroughput; ++i)
 						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[i], VectorizedValue[OpThroughput]);
+				else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+					for (Int64 i = 0; i < OpThroughput; ++i)
+						VectorizedValue[i] = _VectorizedFunction(VectorizedValue[OpThroughput], VectorizedValue[i]);
 
 				for (Int64 i = 0; i < OpThroughput; ++i)
 					if constexpr (IsCompare)
@@ -1928,6 +1933,8 @@ template <
 				_Dest[i] = (_RetType)_Function(_Src1[i], _Src2[i]);
 			else if constexpr (_OType == TypeDef::ConstantOperatorType)
 				_Dest[i] = (_RetType)_Function(_Src1[i], *_ValPtr);
+			else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+				_Dest[i] = (_RetType)_Function(*_ValPtr, _Src1[i]);
 		}
 		_Dest += LoopStride;
 		_Src1 += LoopStride;
@@ -1944,6 +1951,8 @@ template <
 			*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
 		else if constexpr (_OType == TypeDef::ConstantOperatorType)
 			*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+		else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+			*_Dest++ = (_RetType)_Function(*_ValPtr, *_Src1++);
 		--_DestSize;
 	}
 }
@@ -1958,9 +1967,10 @@ template <
 	SizeType _DestSize,
 	const _InputType* _Src1 = nullptr,
 	const _InputType* _Src2 = nullptr,
-	const std::shared_ptr<_ParameterType> _ValPtr = nullptr
+	const std::shared_ptr<_ParameterType> _IValPtr = nullptr
 )
 {
+	auto _ValPtr = std::move(_IValPtr);
 	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(_InputType));
 	constexpr Int64 LoopStride = OpThroughput * Stride;
 
@@ -1974,6 +1984,8 @@ template <
 				_Dest[i] = (_RetType)_Function(_Src1[i], _Src2[i]);
 			else if constexpr (_OType == TypeDef::ConstantOperatorType)
 				_Dest[i] = (_RetType)_Function(_Src1[i], *_ValPtr);
+			else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+				_Dest[i] = (_RetType)_Function(*_ValPtr, _Src1[i]);
 		}
 		_Dest += LoopStride;
 		_Src1 += LoopStride;
@@ -1990,6 +2002,8 @@ template <
 			*_Dest++ = (_RetType)_Function(*_Src1++, *_Src2++);
 		else if constexpr (_OType == TypeDef::ConstantOperatorType)
 			*_Dest++ = (_RetType)_Function(*_Src1++, *_ValPtr);
+		else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+			*_Dest++ = (_RetType)_Function(*_ValPtr, *_Src1++);
 		--_DestSize;
 	}
 }

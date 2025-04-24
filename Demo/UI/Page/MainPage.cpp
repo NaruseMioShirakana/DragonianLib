@@ -3,10 +3,11 @@
 #include "SettingsPage.h"
 #include "../MainWindow.h"
 #include "../DefControl.hpp"
+#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 
 namespace UI
 {
-	std::wstring formatTime(float time)
+	static std::wstring formatTime(float time)
 	{
 		const auto minutes = int(time) / 60;
 		const auto seconds = int(time) % 60;
@@ -27,8 +28,7 @@ namespace UI
 		<UIControl autoSize="false" size="100%,100%" name="mainPage" align="Absolute">
 			<UIControl autoSize="false" size="100%,20" align="LinearH">
 				<UIButton frame="5,0,60,20" text="导入文件" name="import_file" />
-				<UIButton frame="5,0,80,20" text="导入文件夹" name="import_dir" />
-				<UIButton frame="5,0,80,20" text="保存为文件" name="save_file" />
+				<UIButton frame="5,0,60,20" text="导入F0" name="import_f0" />
 				<UIButton frame="5,0,60,20" text="保存所有" name="save_all" />
 			</UIControl>
 			<UIControl autoSize="false" frame="0,25,100%,1" bgColor="#menuline" />
@@ -112,13 +112,16 @@ namespace UI
 		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Mel/"); !exists(Directory))
 			create_directories(Directory);
 		//m_editor->SetShowPitch(false);
-		WndControls::InsertAudio(LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Vocal.wav)");
 	}
 
 	bool MainPage::EventProc(UINotifyEvent event, Ctrl::UIControl* control, _m_param param)
 	{
-		if(MUIEVENT(Event_Mouse_LClick, L"slidebar_show"))
+		if (MUIEVENT(Event_Mouse_LClick, L"slidebar_show"))
 			dynamic_cast<SidePage*>(FindPage(L"sidepage"))->Show(!m_sidepage->IsVisible());
+		else if (MUIEVENT(Event_Mouse_LClick, L"import_file"))
+			WndControls::LoadFiles(MoeGetHwnd);
+		else if (MUIEVENT(Event_Mouse_LClick, L"import_f0"))
+			WndControls::LoadF0(MoeGetHwnd);
 		else if (MUIEVENT(Event_Slider_Change, L"editor_vol"))
 			m_wave->SetVolume((_m_byte)param);
 		else if (MUIEVENT(Event_ListBox_ItemChanged, L"audio_list"))
@@ -133,12 +136,18 @@ namespace UI
 			m_editor->SetShowPitch(dynamic_cast<Ctrl::UICheckBox*>(control)->GetSel());
 		else if (event == Event_Key_Down)
 		{
-			if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState(0x5a) & 0x8000)
+			if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Z') & 0x8000)
 				WndControls::MoeVSUndo();
-			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState(0x59) & 0x8000)
+			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Y') & 0x8000)
 				WndControls::MoeVSRedo();
 			else if (GetKeyState(VK_SPACE) & 0x8000)
-				 m_wave->PlayPause();
+			{
+				if (!m_wave->IsPlay())
+					WndControls::SineGen();
+				m_wave->PlayPause();
+			}
+			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('S') & 0x8000)
+				WndControls::SaveData();
 			return false;
 		}
 		else

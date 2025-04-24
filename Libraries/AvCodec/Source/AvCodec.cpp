@@ -1,9 +1,11 @@
 ﻿#include "../AvCodec.h"
 #include "Libraries/Base.h"
-#include "Libraries/MyTemplateLibrary/Array.h"
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
 #include "libremidi/writer.hpp"
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
@@ -17,6 +19,17 @@ _D_Dragonian_Lib_Space_Begin
 namespace AvCodec
 {
 	Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
+
+	bool RunWithComMultiThread()
+	{
+		HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+		return SUCCEEDED(hr);
+	}
+
+	void ComUninitialize()
+	{
+		CoUninitialize();
+	}
 
 	static void* DefaultAlloc(size_t Size)
 	{
@@ -1557,6 +1570,28 @@ namespace AvCodec
 		return OPackets;
 	}
 
+	TemplateLibrary::Vector<AudioPacket> AudioCodec::EncodeTail() const
+	{
+		auto MyContext = static_cast<AVCodecContext*>(_MyContext.get());
+		TemplateLibrary::Vector<AudioPacket> OPackets;
+		avcodec_send_frame(MyContext, nullptr);
+		while (true) {
+			auto MPacket = AudioPacket::CreateReference();
+			auto ErrorCode = avcodec_receive_packet(MyContext, static_cast<AVPacket*>(MPacket.Get()));
+			if (ErrorCode == AVERROR(EAGAIN) || ErrorCode == AVERROR_EOF)
+				break;
+			if (ErrorCode < 0)
+			{
+				char ErrorMessage[128];
+				av_strerror(ErrorCode, ErrorMessage, 1024);
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage);
+			}
+
+			OPackets.EmplaceBack(std::move(MPacket));
+		}
+		return OPackets;
+	}
+
 	AudioCodec::AudioCodecSettings AudioIStream::GetCodecSettings() const noexcept
 	{
 		const auto MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
@@ -1643,6 +1678,12 @@ namespace AvCodec
 	{
 		auto MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
 		return MyContext->streams[_MyStreamIndex]->duration;
+	}
+
+	std::pair<UInt64, UInt64> AudioIStream::GetTimeBase() const
+	{
+		auto MyContext = static_cast<AVFormatContext*>(_MyFormatContext.get());
+		return { MyContext->streams[_MyStreamIndex]->time_base.num, MyContext->streams[_MyStreamIndex]->time_base.den };
 	}
 
 	AudioCodec::AudioCodecSettings AudioOStream::GetCodecSettings() const noexcept
@@ -2054,7 +2095,6 @@ namespace AvCodec
 		SlicePos.EmplaceBack(PcmData.Size());
 		return SlicePos;
 	}
-
 }
 
 _D_Dragonian_Lib_Space_End

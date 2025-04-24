@@ -7,8 +7,8 @@
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 
-std::unordered_map<std::wstring, Constructor> _GlobalVocoders;
-std::vector<std::wstring> _GlobalVocoderList;
+static inline std::unordered_map<std::wstring, Constructor> _GlobalVocoders;
+static inline std::vector<std::wstring> _GlobalVocoderList;
 
 void RegisterVocoder(
 	const std::wstring& _PluginName,
@@ -99,6 +99,6 @@ public:
 	}
 };
 
-Init _Valdef_Init;
+[[maybe_unused]] static inline Init _Valdef_Init;
 
 _D_Dragonian_Lib_Onnx_Vocoder_End

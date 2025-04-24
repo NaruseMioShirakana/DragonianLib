@@ -33,7 +33,7 @@ namespace TypeDef
 		constexpr float32_bits f16max = { (127 + 16) << 23 };
 		constexpr float32_bits denorm_magic = { ((127 - 15) + (23 - 10) + 1) << 23 };
 		constexpr unsigned int sign_mask = 0x80000000u;
-		uint16_t val = static_cast<uint16_t>(0x0u);
+		uint16_t val;
 
 		unsigned int sign = f.u & sign_mask;
 		f.u ^= sign;
@@ -185,7 +185,7 @@ namespace TypeDef
 	};
 
 	template <typename T>
-	F8Base FromFloat32Impl(Float32 f32) noexcept {
+	static F8Base FromFloat32Impl(Float32 f32) noexcept {
 		constexpr uint8_t exp_bits = Float8Traits<T>::exp_bits;
 		constexpr uint8_t mant_bits = Float8Traits<T>::mant_bits;
 		constexpr bool has_zero = Float8Traits<T>::has_zero;
@@ -220,7 +220,7 @@ namespace TypeDef
 	}
 
 	template <typename T>
-	Float32 Cast2Float32Impl(F8Base f8) noexcept {
+	static Float32 Cast2Float32Impl(F8Base f8) noexcept {
 		constexpr uint8_t exp_bits = Float8Traits<T>::exp_bits;
 		constexpr uint8_t mant_bits = Float8Traits<T>::mant_bits;
 

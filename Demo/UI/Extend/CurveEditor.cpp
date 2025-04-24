@@ -91,7 +91,7 @@ namespace Mui::Ctrl
 		}
 	}
 
-	void CurveEditor::SetCurveData(const FloatTensor2D& data)
+	void CurveEditor::SetCurveData(const FloatTensor2D& data, const FloatTensor2D& spec)
 	{
 		std::lock_guard lock(mx);
 		curve_idx = 0;
@@ -99,6 +99,10 @@ namespace Mui::Ctrl
 			m_f0data = data.View();
 		else
 			m_f0data = std::nullopt;
+		if (spec.HasValue())
+			m_specData = spec.View();
+		else
+			m_specData = std::nullopt;
 		selected_f0_begin = selected_f0_end = nullptr;
 		m_viewScaleH = 1.f;
 		CalcRangeViewH();
@@ -134,6 +138,17 @@ namespace Mui::Ctrl
 			if (idx < m_f0data.Size(0))
 				curve_idx = idx;
 			selected_f0_begin = selected_f0_end = nullptr;
+		}
+	}
+
+	void CurveEditor::SetCurveIndex(int64_t idx)
+	{
+		std::lock_guard lock(mx);
+		if (idx != curve_idx)
+		{
+			curve_idx = idx;
+			selected_f0_begin = selected_f0_end = nullptr;
+			UpDate();
 		}
 	}
 
@@ -529,11 +544,9 @@ namespace Mui::Ctrl
 			const auto range_sel = GetSelectedRange();
 
 			for (size_t i = 0; i < count; ++i)
-			{
 				if (xbegin + i < static_cast<size_t>(m_f0data.Size(1)))
 					if (auto cur_data_ptr = &m_f0data_data[xbegin + i]; range_sel.Contains(cur_data_ptr))
 						*cur_data_ptr = value;
-			}
 
 			if (count == 0 && xbegin < static_cast<size_t>(m_f0data.Size(1)))
 				if (auto cur_data_ptr = &m_f0data_data[xbegin]; range_sel.Contains(cur_data_ptr))
@@ -568,9 +581,11 @@ namespace Mui::Ctrl
 
 	bool CurveEditor::OnRButtonUp(_m_uint flag, const UIPoint& point)
 	{
-		m_isdown = false;
-		if(m_f0data.HasValue())
+		if(m_isdown && m_f0data.HasValue())
+		{
 			WndControls::CheckUnchanged();
+			m_isdown = false;
+		}
 
 		return UIScroll::OnRButtonUp(flag, point);
 	}
@@ -683,7 +698,7 @@ namespace Mui::Ctrl
 		return UIScroll::OnLButtonUp(flag, point);
 	}
 
-	static void Write2Clipboard(const DragonianLib::TemplateLibrary::MutableRanges<float>& Range)
+	void Write2Clipboard(const DragonianLib::TemplateLibrary::MutableRanges<float>& Range)
 	{
 		if (OpenClipboard(nullptr))
 		{
@@ -706,6 +721,8 @@ namespace Mui::Ctrl
 		selected_f0_begin = selected_f0_end = nullptr;
 		return UIScroll::OnLButtonDoubleClicked(flag, point);
 	}
+
+	char VK_Nums[]{ L'1',L'2',L'3',L'4',L'5',L'6',L'7',L'8',L'9' };
 
 	bool CurveEditor::OnWindowMessage(MEventCodeEnum code, _m_param wParam, _m_param lParam)
 	{
@@ -799,7 +816,14 @@ namespace Mui::Ctrl
 				{
 					selected_f0_begin = m_f0data.Data() + curve_idx * m_f0data.Size(1);
 					selected_f0_end = m_f0data.Data() + (curve_idx + 1) * m_f0data.Size(1);
+					return true;
 				}
+				else if (GetKeyState('0') & 0x8000)
+					SetCurveIndex(9);
+				else
+					for (auto k : VK_Nums)
+						if (GetKeyState(k) & 0x8000)
+							SetCurveIndex(k - '1');
 			}
 			else if (GetKeyState(VK_DELETE) & 0x8000)
 			{
@@ -825,7 +849,13 @@ namespace Mui::Ctrl
 				selected_f0_begin = selected_f0_end = nullptr;
 		m_insel = false;
 		time_in_sel = false;
-		m_isdown = false;
+
+		if (m_isdown && m_f0data.HasValue())
+		{
+			WndControls::CheckUnchanged();
+			m_isdown = false;
+		}
+
 		in_move = false;
 		return false;
 	}
@@ -1017,8 +1047,6 @@ namespace Mui::Ctrl
 		param->render->PopClipRect();
 		param->render->PushClipRect(viewRect);
 
-		m_brush_m->SetColor(m_curveColor);
-
 #ifdef _WIN32
 		auto render = param->render->GetBase<MRender_D2D>();
 
@@ -1065,13 +1093,12 @@ namespace Mui::Ctrl
 		const auto PointRange = 2.f * (float)viewRect.GetWidth() / (float(Frames) / m_viewScaleH);
 		const float DrawRangeLeft = (float)viewRect.left - PointRange;
 		const float DrawRangeRight = (float)viewRect.right + PointRange;
-		//const auto FramePerPix = float(Frames) / float(width);
 
 		constexpr float jump_dis_val = 0.1f;
 
-		auto drawPart = [&factory, this, rStepX, &viewRect, fullHeight, offsetY, DrawRangeLeft, DrawRangeRight, context, &scale](
-			const float* BeginPos, const float* EndPos, float LineWidth, float PosX, ID2D1StrokeStyle* pt_style = nullptr
-			)
+		m_brush_m->SetColor(m_curveColor);
+
+		auto drawPart = [&factory, this, rStepX, &viewRect, fullHeight, offsetY, DrawRangeLeft, DrawRangeRight, context, &scale](const float* BeginPos, const float* EndPos, float LineWidth, float PosX, ID2D1StrokeStyle* pt_style = nullptr)
 			{
 				bool figure_begin = false;
 				ID2D1PathGeometry* geometry = nullptr;
@@ -1085,7 +1112,7 @@ namespace Mui::Ctrl
 
 				std::vector<std::pair<D2D1_POINT_2F, D2D1_POINT_2F>> jump_discontinuity;
 				jump_discontinuity.reserve(size_t(size));
-				float x = PosX;
+				float x = 0.f;
 				float x_prev = 0.f;
 				const float stride = std::max(1.f, rStepX);
 				for (; int(curIndex) < int(size); curIndex += stride)
@@ -1104,18 +1131,24 @@ namespace Mui::Ctrl
 					const float indexPrev = std::max(0.f, curIndex - rStepX);
 					float value = BeginPos[int(curIndex)];
 					float value_prev = BeginPos[int(indexPrev)];
-					if (m_showPitch)
+					if (value >= MinFreq)
 					{
-						if (abs(value_prev) > 1e-5)
-							value_prev = (PitchLabel::F0ToPitch(value_prev) + .1f) / 120.f;
-						if (abs(value) > 1e-5)
+						if (m_showPitch)
 							value = (PitchLabel::F0ToPitch(value) + .1f) / 120.f;
+						else
+							value = value / MaxFreq;
 					}
 					else
+						value = 0.f;
+					if (value_prev >= MinFreq)
 					{
-						value = value / MaxFreq;
-						value_prev = value_prev / MaxFreq;
+						if (m_showPitch)
+							value_prev = (PitchLabel::F0ToPitch(value_prev) + .1f) / 120.f;
+						else
+							value_prev = value_prev / MaxFreq;
 					}
+					else
+						value_prev = 0.f;
 
 					float y = (float)viewRect.top + ((float)fullHeight - value * (float)fullHeight);
 					y -= offsetY;
@@ -1187,38 +1220,56 @@ namespace Mui::Ctrl
 				return x;
 			};
 
-		//
-		for (int64_t curveIdx = 0; curveIdx < Batch; ++curveIdx)
+		ID2D1StrokeStyle* MinorStyle = nullptr;
+		D2D1_STROKE_STYLE_PROPERTIES MinroProperties = D2D1::StrokeStyleProperties();
+		MinroProperties.dashStyle = D2D1_DASH_STYLE_DASH;
+		factory->CreateStrokeStyle(MinroProperties, nullptr, 0, &MinorStyle);
+		for (int64_t curveIdx = Batch - 1; curveIdx >= 0; --curveIdx)
 		{
-			const auto CurvePointer = DataPointer + curveIdx * Frames;
+			ID2D1StrokeStyle* Style = curveIdx == curve_idx ? nullptr : MinorStyle;
+			float LineWidth = curveIdx == curve_idx ? 1.f : 0.5;
+			const float* CurvePointer = DataPointer + curveIdx * Frames;
 			const float* CurveEnd = CurvePointer + Frames;
-			auto SelectedRange = GetSelectedRange();
+			auto SelectedRange = GetSelectedRange().RawConst();
 			DragonianLib::TemplateLibrary::ConstantRanges<float> Ranges[3];
-			if (SelectedRange.Null() || !SelectedRange.Size())
+			if (SelectedRange.Null() || !SelectedRange.Size() || curveIdx != curve_idx)
 				Ranges[0] = { CurvePointer, CurveEnd };
 			else
 			{
 				if (SelectedRange.Begin() > CurvePointer)
 					Ranges[0] = { CurvePointer, SelectedRange.Begin() };
-				Ranges[1] = SelectedRange.RawConst();
+				Ranges[1] = SelectedRange;
 				if (SelectedRange.End() < CurveEnd)
 					Ranges[2] = { SelectedRange.End(), CurveEnd };
 			}
 			float x = (float)viewRect.left - offsetX;
 			if (!Ranges[0].Null() && Ranges[0].Size())
-				x = drawPart(Ranges[0].begin(), std::min(Ranges[0].end() + 1, CurveEnd), 1.f, x);
+				x = drawPart(
+					Ranges[0].begin(),
+					std::min(Ranges[0].end() + 1, CurveEnd),
+					LineWidth, x, Style
+				);
 			if (!Ranges[1].Null() && Ranges[1].Size())
-				x = drawPart(Ranges[1].begin(), std::min(Ranges[1].end() + 1, CurveEnd), 2.f, x);
+				x = drawPart(
+					Ranges[1].begin(),
+					std::min(Ranges[1].end() + 1, CurveEnd),
+					LineWidth + 1.5f, x, Style
+				);
 			if (!Ranges[2].Null() && Ranges[2].Size())
-				x = drawPart(Ranges[2].begin(), Ranges[2].end(), 1.f, x);
+				x = drawPart(
+					Ranges[2].begin(),
+					Ranges[2].end(),
+					LineWidth, x, Style
+				);
 		}
+		MinorStyle->Release();
 #endif
-		//恢复
 		param->render->PopClipRect();
 		param->render->PushClipRect(*param->destRect);
 
 #ifdef _WIN32
-		/*//绘制缩略图
+		const auto PreViewData = curve_idx * m_f0data.Size(1) + m_f0data.Data();
+
 		int preHeight = _scale_to(m_preHeight, scale.cy);
 		viewRect = *param->destRect;
 		viewRect.top = param->destRect->bottom - preHeight;
@@ -1227,51 +1278,67 @@ namespace Mui::Ctrl
 			UIRect subrect = param->render->GetCanvas()->GetSubRect();
 			viewRect.Offset(subrect.left, subrect.top);
 		}
-		auto drawPreview = [&](const std::vector<float>* _data)
-		{
-			factory->CreatePathGeometry(&geometry);
-			geometry->Open(&sink);
-			float max_val = 0.f, min_val = 50000.f;
-			for(const auto& i : *_data)
+		auto drawPreview = [factory, this, &param, &viewRect, PreViewData, context, &scale, Frames, preHeight]()
 			{
-				if (i > max_val) max_val = i;
-				if (i < min_val && i > 0.001f) min_val = i;
-			}
-			if (m_showPitch)
-			{
-				max_val = PitchLabel::F0ToPitch(max_val) / 120.f;
-				min_val = PitchLabel::F0ToPitch(min_val) / 120.f;
-			}
-			max_val = Helper::M_MIN(max_val + 0.02f, 1.f);
-			min_val = Helper::M_MAX(min_val - 0.02f, 0.f);
-			const auto range_pc = (max_val - min_val) / 1.f;
-			stepX = (float)param->destRect->GetWidth() / float(_data->size() - 1);
-			sink->BeginFigure(D2D1::Point2F((float)viewRect.left, (float)viewRect.bottom), D2D1_FIGURE_BEGIN_FILLED);
-			for (size_t i = 0; i < _data->size(); ++i)
-			{
-				float value = 0.f;
-				if ((*_data)[i] != 0.f)
+				ID2D1PathGeometry* geometry = nullptr;
+
+				ID2D1GeometrySink* sink = nullptr;
+				factory->CreatePathGeometry(&geometry);
+				geometry->Open(&sink);
+
+				float stepX = (float)param->destRect->GetWidth() / float(Frames - 1);
+				float rStepX = 1.f / stepX;
+				const float stride = std::max(1.f, rStepX);
+
+				float max_val = 0.f, min_val = 50000.f;
+				for (float curIndex = 0.f, size = float(Frames); int(curIndex) < int(size); curIndex += stride)
 				{
-					if (m_showPitch)
-						value = PitchLabel::F0ToPitch((*_data)[i]) / 120.f;
+					const auto i = PreViewData[int(curIndex)];
+					if (i > max_val) max_val = i;
+					if (i < min_val && i > 0.001f) min_val = i;
+				}
+				if (m_showPitch)
+				{
+					max_val = PitchLabel::F0ToPitch(max_val) / 120.f;
+					min_val = PitchLabel::F0ToPitch(min_val) / 120.f;
+				}
+				else
+				{
+					max_val /= MaxFreq;
+					min_val /= MaxFreq;
+				}
+				max_val = Helper::M_MIN(max_val + 0.02f, 1.f);
+				min_val = Helper::M_MAX(min_val - 0.02f, 0.f);
+				const auto range_pc = (max_val - min_val) / 1.f;
+
+				sink->BeginFigure(D2D1::Point2F((float)viewRect.left, (float)viewRect.bottom), D2D1_FIGURE_BEGIN_FILLED);
+
+				for (float curIndex = 0.f, size = float(Frames); int(curIndex) < int(size); curIndex += stride)
+				{
+					float value = PreViewData[int(curIndex)];
+					if (value >= MinFreq)
+					{
+						if (m_showPitch)
+							value = PitchLabel::F0ToPitch(value) / 120.f;
+						else
+							value = value / MaxFreq;
+					}
 					else
-						value = (*_data)[i] / MaxFreq;
+						value = 0.f;
+					float x = (float)viewRect.left + curIndex / rStepX;
+					float y = (float)viewRect.top + ((float)preHeight - ((value - min_val) / range_pc) * (float)preHeight);
+
+					sink->AddLine(D2D1::Point2F(x, y));
 				}
 
-				float x = (float)viewRect.left + (float)i * stepX;
-				float y = (float)viewRect.top + ((float)preHeight - ((value - min_val) / range_pc) * (float)preHeight);
+				sink->EndFigure(D2D1_FIGURE_END_OPEN);
+				sink->Close();
+				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m), (float)_scale_to(0.5, scale.cx));
 
-				sink->AddLine(D2D1::Point2F(x, y));
-			}
-
-			sink->EndFigure(D2D1_FIGURE_END_OPEN);
-			sink->Close();
-			context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m), (float)_scale_to(0.5, scale.cx));
-
-			sink->Release();
-			geometry->Release();
-		};
-		drawPreview(respdata);*/
+				sink->Release();
+				geometry->Release();
+			};
+		drawPreview();
 #endif
 	}
 

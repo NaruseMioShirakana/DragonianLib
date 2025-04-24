@@ -77,9 +77,9 @@ void AssignTensorCont(
 template<typename _TypeDest, typename _TypeSrc, size_t _NRank>
 void AssignTensor(
 	_TypeDest* _Dest,
-	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoOld,
 	const _TypeSrc* _Src,
-	const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _ISrcInfoOld,
 	const std::shared_ptr<int>&
 )
 {
@@ -88,6 +88,9 @@ void AssignTensor(
 		(TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_copy_assignable_v<_TypeDest>)
 		)
 	{
+		auto _DestInfoOld = std::move(_IDestInfoOld);
+		auto _SrcInfoOld = std::move(_ISrcInfoOld);
+
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 		const OperatorParameter<_NRank>& _SrcInfo = *_SrcInfoOld;
 
@@ -402,9 +405,10 @@ template<typename _Type>
 void AssignScalarCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	const std::shared_ptr<_Type> _ValPtr
+	std::shared_ptr<_Type> _IValPtr
 )
 {
+	const auto _ValPtr = std::move(_IValPtr);
 	constexpr int64_t OpThroughput = 2;
 	constexpr int64_t Stride = int64_t(sizeof(__m256) / sizeof(_Type));
 	constexpr int64_t LoopStride = OpThroughput * Stride;
@@ -439,12 +443,15 @@ void AssignScalarCont(
 template<typename _Type, size_t _NRank>
 void AssignScalar(
 	_Type* _Dest,
-	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	const std::shared_ptr<_Type> _ValPtr
+	std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoOld,
+	std::shared_ptr<_Type> _IValPtr
 )
 {
 	if constexpr (std::is_copy_assignable_v<_Type>)
 	{
+		auto _DestInfoOld = std::move(_IDestInfoOld);
+		auto _ValPtr = std::move(_IValPtr);
+
 		const OperatorParameter<_NRank>& _DestInfo = *_DestInfoOld;
 		const auto& _Value = *_ValPtr;
 
@@ -727,9 +734,11 @@ template<typename _Type>
 void ArangeImpCont(
 	_Type* _Dest,
 	SizeType DestSize,
-	std::shared_ptr<ArangeParams<_Type>> _Value
+	std::shared_ptr<ArangeParams<_Type>> _IValue
 )
 {
+	auto _Value = std::move(_IValue);
+
 	const auto Index = _Dest - _Value->_DestBegin;
 	_Dest[0] = _Value->_Start + _Type(Index) * _Value->_Step;
 
@@ -779,9 +788,9 @@ void ArangeImpCont(
 
 template<typename _Type, size_t _NRank>
 void ArangeImp(
-	_Type* _Dest,
-	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
-	std::shared_ptr<ArangeParams<_Type>> Settings
+	_Type*,
+	const std::shared_ptr<OperatorParameter<_NRank>>&,
+	const std::shared_ptr<ArangeParams<_Type>>&
 )
 {
 	_D_Dragonian_Lib_Not_Implemented_Error;
@@ -819,12 +828,12 @@ void OperatorsBase<_Type, Device::CPU>::ImplArange(
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, int64_t _Dim, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> GatherLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline void GatherLoop(
 	int64_t Value1, int64_t Value2, int64_t Value3,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2, const int64_t* __restrict Stride3,
 	_Fn _Func
-)
+) requires (IsCallableValue<_Fn>)
 {
 	if constexpr (LoopCount - 1)
 		for (int64_t i = *LoopBegin; i < *Shape; ++i)

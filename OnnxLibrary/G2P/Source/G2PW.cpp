@@ -70,7 +70,7 @@ G2PWModel::G2PWModel(
 
 	std::ranges::sort(_MyPolyphonicLabels);
 
-	for (Int64 i = 0; i < static_cast<Int64>(_MyPolyphonicLabels.Size()); ++i)
+	for (Int64 i = 0; std::cmp_less(i, _MyPolyphonicLabels.Size()); ++i)
 		_MyPolyphonicLabels2Ids[_MyPolyphonicLabels[i]] = i;
 
 	FileGuard VocabFile(((const G2PWModelHParams*)Parameter)->VocabPath, L"r");
@@ -291,7 +291,7 @@ std::pair<Vector<std::wstring>, std::optional<Vector<Int64>>> G2PWModel::Convert
 			for (auto& Ch : PinYin)
 				if (std::ranges::contains(ToneDict, Ch))
 				{
-					Ch = ToneDict2[(Tone - 1) * 6 + std::ranges::distance(ToneDict.begin(), std::ranges::find(ToneDict, Ch))];
+					Ch = ToneDict2[(Tone - 1ll) * 6ll + std::ranges::distance(ToneDict.begin(), std::ranges::find(ToneDict, Ch))];
 					break;
 				}
 		auto [NewPinYin, NewTone] = StyleCast(
@@ -304,7 +304,7 @@ std::pair<Vector<std::wstring>, std::optional<Vector<Int64>>> G2PWModel::Convert
 	return { std::move(PinYinResult), std::move(ToneResult) };
 }
 
-void RegG2PW()
+extern void RegG2PW()
 {
 	RegisterG2PModule(L"g2pw", [](const void* Parameter) -> G2PModule
 		{

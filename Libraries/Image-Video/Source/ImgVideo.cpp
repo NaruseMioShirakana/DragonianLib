@@ -35,7 +35,7 @@ _D_Dragonian_Lib_Image_Video_Header
 
 #if _D_Dragonian_Lib_Image_Video_W32 + _D_Dragonian_Lib_Image_Video_Static == 2
 
-void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
+static void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
 	UINT num = 0;           // number of image encoders
 	UINT size = 0;          // size of the image encoder array in bytes
@@ -61,7 +61,7 @@ void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	free(pImageCodecInfo);
 }
 
-bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT quality = 100)
+static bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT quality = 100)
 {
 	CLSID pngClsid;
 	GetEncoderClsid(L"image/png", &pngClsid);
@@ -77,7 +77,7 @@ bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT qualit
 	return true;
 }
 
-void DrawRectangle(HDC hdc, int x, int y, int width, int height)
+static void DrawRectangle(HDC hdc, int x, int y, int width, int height)
 {
 	MoveToEx(hdc, x, y, nullptr);
 	LineTo(hdc, x + width, y);
@@ -722,7 +722,7 @@ void Image::TransposeBGR(size_t scale)
 	}
 }
 
-UInt64 Token = 0;
+static inline UInt64 Token = 0;
 
 void GdiInit()
 {

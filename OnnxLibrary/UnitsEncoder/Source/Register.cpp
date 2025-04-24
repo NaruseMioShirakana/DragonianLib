@@ -4,8 +4,8 @@
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 
-std::unordered_map<std::wstring, Constructor> _GlobalUnitsEncoders;
-std::vector<std::wstring> _GlobalUnitsEncoderList;
+static inline std::unordered_map<std::wstring, Constructor> _GlobalUnitsEncoders;
+static inline std::vector<std::wstring> _GlobalUnitsEncoderList;
 
 void RegisterUnitsEncoder(
 	const std::wstring& _PluginName,
@@ -141,6 +141,6 @@ public:
 	}
 };
 
-Init _Valdef_Init;
+[[maybe_unused]] static inline Init _Valdef_Init;
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_End

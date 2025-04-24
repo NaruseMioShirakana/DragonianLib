@@ -19,6 +19,11 @@ namespace Mui::Ctrl
 		void SetAudioPlayer(MAudioPlayer* player);
 		void SetAudioData(const FloatTensor2D& data);
 
+		Int16Tensor2D& GetAudio()
+		{
+			return m_audio;
+		}
+
 		size_t GetPCMSize() const;
 
 		void SetPtrOffset(_m_ptrv offset);
@@ -37,6 +42,8 @@ namespace Mui::Ctrl
 		void Play() const;
 		void Pause() const;
 		void PlayPause();
+
+		bool IsPlay() const;
 
 		void SetVolume(_m_byte vol) const;
 

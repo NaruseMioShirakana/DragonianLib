@@ -2,15 +2,15 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-const char* DenoiseFnInput[] = { "noise", "time", "condition" };
-const char* DenoiseFnOutput[] = { "noise_pred" };
-const char* PredFnInput[] = { "noise", "noise_pred", "time", "time_prev" };
-const char* PredFnOutput[] = { "noise_pred_o" };
-const char* AlphaFnInput[] = { "time" };
-const char* AlphaFnOutput[] = { "alphas_cumprod" };
+static inline const char* DenoiseFnInput[] = { "noise", "time", "condition" };
+static inline const char* DenoiseFnOutput[] = { "noise_pred" };
+static inline const char* PredFnInput[] = { "noise", "noise_pred", "time", "time_prev" };
+static inline const char* PredFnOutput[] = { "noise_pred_o" };
+static inline const char* AlphaFnInput[] = { "time" };
+static inline const char* AlphaFnOutput[] = { "alphas_cumprod" };
 
-const char* VelocityFnInput[] = { "x", "t", "cond" };
-const char* VelocityFnOutput[] = { "o" };
+static inline const char* VelocityFnInput[] = { "x", "t", "cond" };
+static inline const char* VelocityFnOutput[] = { "o" };
 
 struct NoiseList
 {
@@ -24,7 +24,7 @@ struct NoiseList
 	Float32* operator[](Int64 Index) { return reinterpret_cast<Float32**>(this)[Index % 4]; }
 };
 
-Ort::Value SampleDDim(
+static Ort::Value SampleDDim(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const DiffusionParameters& _Params,
@@ -37,7 +37,7 @@ Ort::Value SampleDDim(
 	const DLogger& _Logger
 );
 
-Ort::Value SamplePndm(
+static Ort::Value SamplePndm(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const DiffusionParameters& _Params,
@@ -388,7 +388,7 @@ Ort::Value SampleDDim(
 	return std::move(DenoiseIn.X);
 }
 
-std::unordered_map<std::wstring, DiffusionSampler> DiffusionSamplers{
+static inline std::unordered_map<std::wstring, DiffusionSampler> DiffusionSamplers{
 	{ L"DDim", SampleDDim },
 	{ L"Pndm", SamplePndm },
 	{ L"ddim", SampleDDim },
@@ -409,7 +409,7 @@ DiffusionSampler GetDiffusionSampler(const std::wstring& _Name)
 	return DiffusionSamplers[_Name];
 }
 
-Ort::Value ReflowEularSampler(
+static Ort::Value ReflowEularSampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -475,7 +475,7 @@ Ort::Value ReflowEularSampler(
 	return std::move(VelocityIn.X);
 }
 
-Ort::Value ReflowHeunSampler(
+static Ort::Value ReflowHeunSampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -575,7 +575,7 @@ Ort::Value ReflowHeunSampler(
 	return std::move(VelocityIn.X);
 }
 
-Ort::Value ReflowRk2Sampler(
+static Ort::Value ReflowRk2Sampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -675,7 +675,7 @@ Ort::Value ReflowRk2Sampler(
 	return std::move(VelocityIn.X);
 }
 
-Ort::Value ReflowRk4Sampler(
+static Ort::Value ReflowRk4Sampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -823,7 +823,7 @@ Ort::Value ReflowRk4Sampler(
 	return std::move(VelocityIn.X);
 }
 
-Ort::Value ReflowRk6Sampler(
+static Ort::Value ReflowRk6Sampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -1019,7 +1019,7 @@ Ort::Value ReflowRk6Sampler(
 	return std::move(VelocityIn.X);
 }
 
-Ort::Value ReflowPECECESampler(
+static Ort::Value ReflowPECECESampler(
 	Ort::Value&& _Mel,
 	Ort::Value&& _Condition,
 	const ReflowParameters& _Params,
@@ -1167,7 +1167,7 @@ Ort::Value ReflowPECECESampler(
 	return std::move(VelocityIn.X);
 }
 
-std::unordered_map<std::wstring, ReflowSampler> ReflowSamplers{
+static inline std::unordered_map<std::wstring, ReflowSampler> ReflowSamplers{
 	{L"Eular", ReflowEularSampler},
 	{L"Heun", ReflowHeunSampler},
 	{L"Rk2", ReflowRk2Sampler},

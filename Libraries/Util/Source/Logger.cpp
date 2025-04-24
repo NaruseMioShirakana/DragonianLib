@@ -2,8 +2,6 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-Logger GlobalLogger;
-
 Logger::~Logger() noexcept = default;
 
 Logger::Logger(std::wstring _LoggerId, LogLevel _LogLevel, LoggerFunction _LogFunction) noexcept

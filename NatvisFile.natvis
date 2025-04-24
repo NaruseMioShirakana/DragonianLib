@@ -87,7 +87,7 @@
 
 	<Type Name="DragonianLib::Tensor&lt;*,*&gt;">
 		<DisplayString>
-			{{ Rank: { _MyShape._MyRank }, ValueType: { _DType }, Device: { _Device } }}
+			{{ Shape: { _MyShape }, ValueType: { _DType }, Device: { _Device } }}
 		</DisplayString>
 		<Expand>
 			<Item Name="[Type]" ExcludeView="simple">_DType</Item>

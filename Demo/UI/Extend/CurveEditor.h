@@ -16,9 +16,11 @@ namespace Mui::Ctrl
 		CurveEditor(UIControl* parent);
 		~CurveEditor() override;
 
-		void SetCurveData(const FloatTensor2D& data);
+		void SetCurveData(const FloatTensor2D& data, const FloatTensor2D& spec);
 
 		void ReSetCurveData(const FloatTensor2D& data, int64_t idx);
+
+		void SetCurveIndex(int64_t idx);
 
 		const FloatTensor2D& GetCurveData() const { return m_f0data; }
 
@@ -104,7 +106,12 @@ namespace Mui::Ctrl
 
 		float m_viewScaleV = 1.f;
 		float m_viewScaleH = 1.f;
+		float m_viewScaleV_last = 0.f;
+		float m_viewScaleH_last = 0.f;
 		UIRect m_viewRect;
+
+		int m_dragValueV_last = -114;
+		int m_dragValueH_last = -514;
 
 		UIPoint m_lastPos;
 		bool m_isdown = false;
@@ -116,6 +123,7 @@ namespace Mui::Ctrl
 		_m_size m_plineOffset = 0;
 
 		FloatTensor2D m_f0data;
+		FloatTensor2D m_specData;
 
 		bool m_lisdown = false;
 		UIPoint m_llastPos;
@@ -131,4 +139,6 @@ namespace Mui::Ctrl
 		float* selected_f0_begin = nullptr;
 		float* selected_f0_end = nullptr;
 	};
+
+	void Write2Clipboard(const DragonianLib::TemplateLibrary::MutableRanges<float>& Range);
 }

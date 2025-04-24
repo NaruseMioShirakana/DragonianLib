@@ -34,17 +34,14 @@ _D_Dragonian_Lib_Template_Library_Space_Begin
 constexpr size_t _D_Dragonian_Lib_Stl_Unfold_Count = 8;
 
 template <typename ValueType, typename ...ArgTypes>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_constructible_v<ValueType, ArgTypes...>,
-	ValueType&
-> _Impl_Dragonian_Lib_Construct_At(ValueType& _Where, ArgTypes&&... _Args)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Construct_At(ValueType& _Where, ArgTypes&&... _Args)
+	requires (std::is_constructible_v<ValueType, ArgTypes...>)
 {
 	return *new (std::addressof(_Where)) ValueType(std::forward<ArgTypes>(_Args)...);
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline void
-_Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
+_D_Dragonian_Lib_Constexpr_Force_Inline void _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
 {
 	if constexpr (!std::is_trivially_destructible_v<ValueType>)
 	{
@@ -62,9 +59,8 @@ _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_default_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Default_Construct(ValueType* _Ptr, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Default_Construct(ValueType* _Ptr, size_t _Count)
+	requires (std::is_default_constructible_v<ValueType>)
 {
 	if constexpr (std::is_trivially_copyable_v<ValueType>)
 		return;
@@ -81,9 +77,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename DestType, typename SrcType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_assignable_v<DestType, SrcType>
-> _Impl_Dragonian_Lib_Iterator_Cast(DestType* _Dest, const SrcType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Cast(DestType* _Dest, const SrcType* _Src, size_t _Count)
+	requires (std::is_assignable_v<DestType, SrcType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -95,9 +90,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+	requires (std::is_copy_assignable_v<ValueType>)
 {
 	if constexpr (std::is_trivially_copyable_v<ValueType>)
 		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
@@ -128,9 +122,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Copy_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
+	requires (std::is_copy_assignable_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -156,9 +149,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_move_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_move_assignable_v<ValueType>)
 {
 	if constexpr (std::is_trivially_copyable_v<ValueType>)
 		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
@@ -175,9 +167,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Reversed_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+	requires (std::is_copy_assignable_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -205,9 +196,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_move_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Reversed_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_move_assignable_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -219,9 +209,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+	requires (std::is_copy_constructible_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -233,9 +222,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
-	std::is_move_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_move_constructible_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -247,9 +235,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
+	requires (std::is_copy_constructible_v<ValueType>)
 {
 	if constexpr (std::is_trivially_copyable_v<ValueType>)
 		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
@@ -266,9 +253,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
+	requires (std::is_copy_constructible_v<ValueType>)
 {
 	size_t i = 0;
 	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
@@ -280,9 +266,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_move_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_move_constructible_v<ValueType>)
 {
 	if constexpr (std::is_trivially_copyable_v<ValueType>)
 		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
@@ -299,9 +284,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Offset(ValueType* _Src, size_t _Count, int64_t Offset)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset(ValueType* _Src, size_t _Count, int64_t Offset)
+	requires (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)
 {
 	if (Offset == 0 || _Count == 0)
 		return;
@@ -323,9 +307,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Offset_Construct(ValueType* _Src, size_t _Count, int64_t Offset)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset_Construct(ValueType* _Src, size_t _Count, int64_t Offset)
+	requires (std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>)
 {
 	if (Offset == 0 || _Count == 0)
 		return;
@@ -347,9 +330,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Offset_Copy(ValueType* _Src, size_t _Count, int64_t Offset)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset_Copy(ValueType* _Src, size_t _Count, int64_t Offset)
+	requires (std::is_copy_assignable_v<ValueType>)
 {
 	if (Offset == 0)
 		return;
@@ -361,9 +343,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-	std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>)
 {
 	if constexpr (std::is_move_constructible_v<ValueType>)
 		_Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
@@ -372,9 +353,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
 }
 
 template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
-	std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>
-> _Impl_Dragonian_Lib_Iterator_Try_Move_Assign(ValueType* _Dest, ValueType* _Src, size_t _Count)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Try_Move_Assign(ValueType* _Dest, ValueType* _Src, size_t _Count)
+	requires (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)
 {
 	if constexpr (std::is_move_assignable_v<ValueType>)
 		_Impl_Dragonian_Lib_Iterator_Move(_Dest, _Src, _Count);
@@ -382,7 +362,8 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t <
 		_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
 }
 
-template <typename ValueType1, typename ValueType2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<ValueType1, ValueType2>>>
+template <typename ValueType1, typename ValueType2>
+	requires (TypeTraits::CouldBeConvertedFromValue<ValueType1, ValueType2>)
 void _Impl_Dragonian_Lib_Cast_Range(
 	ValueType1* _Dest, const ValueType2* _Src, size_t _Count
 )
@@ -396,16 +377,18 @@ void _Impl_Dragonian_Lib_Cast_Range(
 		_Dest[i] = ValueType1(_Src[i]);
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasCRange<_Type>>>
+template <typename _Type>
 decltype(auto) CBegin(const _Type& _Container)
+	requires (TypeTraits::HasCRange<_Type>)
 {
 	if constexpr (TypeTraits::HasCLRange<_Type>)
 		return _Container.cbegin();
 	else if constexpr (TypeTraits::HasCHRange<_Type>)
 		return _Container.CBegin();
 }
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasCRange<_Type>>>
+template <typename _Type>
 decltype(auto) CEnd(const _Type& _Container)
+	requires (TypeTraits::HasCRange<_Type>)
 {
 	if constexpr (TypeTraits::HasCLRange<_Type>)
 		return _Container.cend();
@@ -413,8 +396,9 @@ decltype(auto) CEnd(const _Type& _Container)
 		return _Container.CEnd();
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type>
 decltype(auto) Begin(_Type&& _Container)
+	requires (TypeTraits::HasRange<_Type>)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
 		return std::forward<_Type>(_Container).begin();
@@ -423,8 +407,9 @@ decltype(auto) Begin(_Type&& _Container)
 	else
 		return CBegin(std::forward<_Type>(_Container));
 }
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type>
 decltype(auto) End(_Type&& _Container)
+	requires (TypeTraits::HasRange<_Type>)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
 		return std::forward<_Type>(_Container).end();
@@ -436,7 +421,7 @@ decltype(auto) End(_Type&& _Container)
 
 template <typename _IteratorTypeBeg, typename _IteratorTypeEnd, typename = std::enable_if_t<
 	TypeTraits::IsSameIterator<_IteratorTypeBeg, _IteratorTypeEnd>>>
-class RangesWrp
+	class RangesWrp
 {
 public:
 	using MyIterTypeBeg = _IteratorTypeBeg;
@@ -496,7 +481,7 @@ public:
 			}
 			return _Size;
 		}
-		else 			
+		else
 			_D_Dragonian_Lib_Throw_Exception("Could not get size!");
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const
@@ -530,8 +515,9 @@ public:
 		return *this;
 	}
 
-	template <typename _Type2, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<MyValueType, _Type2>>>
+	template <typename _Type2>
 	_D_Dragonian_Lib_Constexpr_Force_Inline RangesWrp& operator=(const _Type2& _Right)
+		requires (TypeTraits::CouldBeConvertedFromValue<MyValueType, _Type2>)
 	{
 		for (size_t i = 0; i < Size(); ++i)
 			operator[](i) = static_cast<MyValueType>(_Right);
@@ -573,6 +559,16 @@ public:
 		return (_Pointer >= _MyBegin) && (_Pointer < _MyEnd);
 	}
 
+	bool IsSubRangeOf(const RangesWrp& _Right) const
+	{
+		return (_MyBegin >= _Right._MyBegin) && (_MyEnd <= _Right._MyEnd);
+	}
+
+	bool IsSubRangeOf(const MyIterTypeBeg& _Begin, const MyIterTypeEnd& _End) const
+	{
+		return (_MyBegin >= _Begin) && (_MyEnd <= _End);
+	}
+
 protected:
 	MyIterTypeBeg _MyBegin = nullptr;
 	MyIterTypeEnd _MyEnd = nullptr;
@@ -583,7 +579,8 @@ using ConstantRanges = RangesWrp<const _ValueType*, const _ValueType*>;
 template <typename _ValueType>
 using MutableRanges = RangesWrp<_ValueType*, _ValueType*>;
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+template <typename _Type>
+	requires (TypeTraits::IsArithmeticValue<_Type>)
 class NumberRangesIterator
 {
 public:
@@ -602,7 +599,8 @@ private:
 	_Type _MyStep;
 };
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+template <typename _Type>
+	requires (TypeTraits::IsArithmeticValue<_Type>)
 class NumberRanges
 {
 public:
@@ -620,7 +618,8 @@ private:
 	_Type _MyEnd;
 };
 
-template <typename _IteratorType, typename _IntegerType = Int64, typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>>
+template <typename _IteratorType, typename _IntegerType = Int64>
+	requires (TypeTraits::IsIntegerValue<_IntegerType>)
 class EnumratedRangesIterator
 {
 public:
@@ -641,9 +640,8 @@ private:
 	_IntegerType _MyIndex;
 };
 
-template <typename _Type, typename _IntegerType = Int64,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type, typename _IntegerType = Int64>
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 class MutableEnumrate
 {
 public:
@@ -655,9 +653,8 @@ private:
 	_Type* _MyValue;
 };
 
-template <typename _Type, typename _IntegerType = Int64,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type, typename _IntegerType = Int64>
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 class ConstEnumrate
 {
 public:
@@ -669,9 +666,8 @@ private:
 	const _Type* _MyValue;
 };
 
-template <typename _Type, typename _IntegerType = Int64,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type, typename _IntegerType = Int64>
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 class ObjectiveEnumrate
 {
 public:
@@ -683,26 +679,23 @@ private:
 	_Type _MyValue;
 };
 
-template <typename _IntegerType = Int64, typename _Type,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _IntegerType = Int64, typename _Type>
 decltype(auto) Enumrate(_Type& _Value)
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 {
 	return MutableEnumrate<_Type, _IntegerType>(_Value);
 }
 
-template <typename _IntegerType = Int64, typename _Type,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _IntegerType = Int64, typename _Type>
 decltype(auto) Enumrate(const _Type& _Value)
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 {
 	return ConstEnumrate<_Type, _IntegerType>(_Value);
 }
 
-template <typename _IntegerType = Int64, typename _Type,
-	typename = std::enable_if_t<TypeTraits::IsIntegerValue<_IntegerType>>,
-	typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _IntegerType = Int64, typename _Type>
 decltype(auto) Enumrate(_Type&& _Value)
+	requires (TypeTraits::HasRange<_Type>&& TypeTraits::IsIntegerValue<_IntegerType>)
 {
 	return ObjectiveEnumrate<_Type, _IntegerType>(std::forward<_Type>(_Value));
 }
@@ -713,14 +706,16 @@ decltype(auto) Ranges(_IteratorTypeBeg _Begin, _IteratorTypeEnd _End)
 	return RangesWrp(_Begin, _End);
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::HasRange<_Type>>>
+template <typename _Type>
 decltype(auto) Ranges(_Type&& _Rng)
+	requires (TypeTraits::HasRange<_Type>)
 {
 	return RangesWrp(Begin(std::forward<_Type>(_Rng)), End(std::forward<_Type>(_Rng)));
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+template <typename _Type>
 decltype(auto) Ranges(_Type _Begin, _Type _End, _Type _Step)
+	requires (TypeTraits::IsArithmeticValue<_Type>)
 {
 	if (_Step == 0)
 		_D_Dragonian_Lib_Throw_Exception("Step cannot be 0.");
@@ -731,14 +726,16 @@ decltype(auto) Ranges(_Type _Begin, _Type _End, _Type _Step)
 	return NumberRanges<_Type>(_Begin, _End, _Step);
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+template <typename _Type>
 decltype(auto) Ranges(_Type _Begin, _Type _End)
+	requires (TypeTraits::IsArithmeticValue<_Type>)
 {
 	return NumberRanges<_Type>(_Begin, _End, _Begin < _End ? _Type(1) : _Type(-1));
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_Type>>>
+template <typename _Type>
 decltype(auto) Ranges(_Type _End)
+	requires (TypeTraits::IsArithmeticValue<_Type>)
 {
 	return NumberRanges<_Type>(_Type(0), _End, _End > _Type(0) ? _Type(1) : _Type(-1));
 }
@@ -747,7 +744,7 @@ _D_Dragonian_Lib_Template_Library_Space_End
 
 _D_Dragonian_Lib_Space_Begin
 
-enum class Device
+enum class Device : UInt8
 {
 	CPU = 0,
 	CUDA,
@@ -764,7 +761,3 @@ namespace DragonianLibSTL
 }
 
 _D_Dragonian_Lib_Space_End
-
-
-
-

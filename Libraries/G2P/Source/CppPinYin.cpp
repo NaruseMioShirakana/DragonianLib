@@ -355,7 +355,7 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::SplitYunmu(
 		bool Found = false;
 		for (const auto& Shengmu : ShengmuDict)
 		{
-			if (Cur.find(Shengmu) == 0)
+			if (Cur.starts_with(Shengmu))
 			{
 				Phonemes.EmplaceBack(Shengmu);
 				Phonemes.EmplaceBack(Cur.substr(Shengmu.size()));

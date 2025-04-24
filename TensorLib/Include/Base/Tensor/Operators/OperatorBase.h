@@ -300,11 +300,26 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(AddReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(SubReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MulReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(DivReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(ModReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(AndReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(OrReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(XorReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShiftReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShiftReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(PowReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOrReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAndReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Binary_Define(Max) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Max) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MaxReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define(Min) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Min) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MinReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Comparison_Define(Equal) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
@@ -319,6 +334,12 @@ public:
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Less) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqual) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(EqualReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(NotEqualReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqualReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqualReverse) { _D_Dragonian_Lib_Not_Implemented_Error; }
 
 	_D_Dragonian_Lib_Operator_Unary_Define(Sqrt) { _D_Dragonian_Lib_Not_Implemented_Error; }
 	_D_Dragonian_Lib_Operator_Unary_Define(RSqrt) { _D_Dragonian_Lib_Not_Implemented_Error; }

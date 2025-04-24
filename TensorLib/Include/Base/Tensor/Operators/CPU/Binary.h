@@ -73,6 +73,41 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
  \
 template <typename _Type> \
 template<size_t _NRank> \
+void OperatorsBase<_Type, Device::CPU>::Impl##_Function##ReverseScalar( \
+	_Type* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	const _Type& _Value, \
+	bool Continuous \
+) \
+{ \
+	if constexpr (TypeTraits::IsAvx256SupportedValue<_Type>) \
+		ImplMultiThreadBasic<decltype(BinaryOperators::_Function##<_Type>), BinaryOperators::_Function##<_Type>, decltype(BinaryOperators::_Function##<Vectorized<_Type>>), BinaryOperators::_Function##<Vectorized<_Type>>, TypeDef::ReversedConstantOperatorType, false, Unfold, AvxThroughput, _NRank, _Type, _Type, _Type>(\
+			_Dest, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
+			_Src, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
+			nullptr, \
+			nullptr, \
+			std::make_shared<_Type>(_Value), \
+			Continuous \
+		); \
+	else \
+		ImplMultiThreadBasic<decltype(BinaryOperators::_Function##<_Type>), BinaryOperators::_Function##<_Type>, decltype(BinaryOperators::_Function##<_Type>), BinaryOperators::_Function##<_Type>, TypeDef::ReversedConstantOperatorType, false, Unfold, AvxThroughput, _NRank, _Type, _Type, _Type>(\
+			_Dest, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
+			_Src, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
+			nullptr, \
+			nullptr, \
+			std::make_shared<_Type>(_Value), \
+			Continuous \
+		); \
+} \
+ \
+template <typename _Type> \
+template<size_t _NRank> \
 void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 	_Type* _Dest, \
 	const OperatorParameter<_NRank>& _DestInfo, \
@@ -175,7 +210,7 @@ namespace BinaryOperators
 	{
 		if constexpr (IsFloatingPointValue<_Type>)
 			return std::fmod(_Left, _Right);
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A% _B }; })
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A % _B }; })
 			return _Left % _Right;
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Mod(_B) }; })
 			return _Left.Mod(_Right);

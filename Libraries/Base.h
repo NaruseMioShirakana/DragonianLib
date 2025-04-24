@@ -23,6 +23,7 @@
 
 #pragma once
 #include <unordered_map>
+#include <functional>
 #include "Util/TypeTraits.h"
 
 _D_Dragonian_Lib_Space_Begin
@@ -127,7 +128,7 @@ private:
 	TidyGuard& operator=(TidyGuard&&) = delete;
 };
 
-enum class FloatPrecision
+enum class FloatPrecision : UInt8
 {
 	BFloat16,
 	Float16,
@@ -180,6 +181,34 @@ public:
 	size_t Tell() const noexcept;
 
 	void Reserve(size_t _Size);
+};
+
+template <typename _FunTy>
+class SharedScopeExit
+{
+public:
+	static_assert(std::is_invocable_v<_FunTy>, "_FunTy is not invocable!");
+
+	SharedScopeExit() = delete;
+	SharedScopeExit(_FunTy _Fn) : _MyFun(std::move(_Fn)) {}
+	~SharedScopeExit() { if (_MyFun) _MyFun(); }
+	SharedScopeExit(SharedScopeExit&&) noexcept = default;
+	SharedScopeExit(const SharedScopeExit&) = default;
+	SharedScopeExit& operator=(SharedScopeExit&&) noexcept = default;
+	SharedScopeExit& operator=(const SharedScopeExit&) = default;
+
+private:
+	_FunTy _MyFun;
+};
+
+template <typename _FunTy>
+class OnStartUP
+{
+public:
+	static_assert(std::is_invocable_v<_FunTy>, "_FunTy is not invocable!");
+
+	OnStartUP() = delete;
+	OnStartUP(_FunTy _Fn) { if (_Fn) _Fn(); }
 };
 
 _D_Dragonian_Lib_Space_End

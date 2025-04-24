@@ -80,13 +80,13 @@ namespace PreDefinedRegex
 	static inline const std::wregex PunctuationGroupRegex = std::wregex(AllSymbol + L"+");
 }
 
-const std::string& WideStringToUTF8(const std::string& input);
+std::string WideStringToUTF8(const std::string& input);
 std::string WideStringToUTF8(const std::wstring& input);
 
-const std::string& UnicodeToAnsi(const std::string& input);
+std::string UnicodeToAnsi(const std::string& input);
 std::string UnicodeToAnsi(const std::wstring& input);
 
-const std::wstring& UTF8ToWideString(const std::wstring& input);
+std::wstring UTF8ToWideString(const std::wstring& input);
 std::wstring UTF8ToWideString(const std::string& input);
 
 std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::string>& vector);
@@ -156,16 +156,16 @@ decltype(auto) CvtToString(const _Type& _Value)
 		return "UnknownObject";
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsCppStringValue<_Type>>>
-_Type ToLowerString(const _Type& _String)
+template <typename _Type>
+_Type ToLowerString(const _Type& _String) requires (TypeTraits::IsCppStringValue<_Type>)
 {
 	_Type LowerString = _String;
 	std::transform(LowerString.begin(), LowerString.end(), LowerString.begin(), ::tolower);
 	return LowerString;
 }
 
-template <typename _Type, typename = std::enable_if_t<TypeTraits::IsCppStringValue<_Type>>>
-_Type ToUpperString(const _Type& _String)
+template <typename _Type>
+_Type ToUpperString(const _Type& _String) requires (TypeTraits::IsCppStringValue<_Type>)
 {
 	_Type UpperString = _String;
 	std::transform(UpperString.begin(), UpperString.end(), UpperString.begin(), ::toupper);

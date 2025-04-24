@@ -27,7 +27,7 @@ Ort::AllocatorWithDefaultOptions& GetDefaultOrtAllocator()
 	return Allocator;
 }
 
-void DragonianLibOrtLoggingFn(
+static void DragonianLibOrtLoggingFn(
 	void*, 
 	OrtLoggingLevel severity, 
 	const char* category, 
@@ -150,7 +150,7 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			std::to_string(std::thread::hardware_concurrency()) +
 			"], got: " + std::to_string(_MyIntraOpNumThreads)
 		);
-	if (_MyIntraOpNumThreads > std::thread::hardware_concurrency())
+	if (std::cmp_greater(_MyIntraOpNumThreads, std::thread::hardware_concurrency()))
 		_D_Dragonian_Lib_Throw_Exception("Invalid Thread Count, expected: [1, " +
 			std::to_string(std::thread::hardware_concurrency()) + "], got: " +
 			std::to_string(_MyIntraOpNumThreads)
@@ -162,7 +162,7 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			std::to_string(std::thread::hardware_concurrency()) +
 			"], got: " + std::to_string(_MyInterOpNumThreads)
 		);
-	if (_MyInterOpNumThreads > std::thread::hardware_concurrency())
+	if (std::cmp_greater(_MyInterOpNumThreads, std::thread::hardware_concurrency()))
 		_D_Dragonian_Lib_Throw_Exception("Invalid Thread Count, expected: [1, " +
 			std::to_string(std::thread::hardware_concurrency()) + "], got: " +
 			std::to_string(_MyInterOpNumThreads)

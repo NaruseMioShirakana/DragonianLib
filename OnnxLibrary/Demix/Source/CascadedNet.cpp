@@ -77,7 +77,7 @@ CascadedNet::CascadedNet(
 		_MyRoiSize = _MySetting.WindowSize;
 }
 
-void HighPass(
+static void HighPass(
 	const Tensor<Complex32, 3, Device::CPU>& _Signal,
 	Int64 BinStart,
 	Int64 BinStop
@@ -92,7 +92,7 @@ void HighPass(
 	_Signal[{None, { None, BinStop + 1 }}].Ignore() = 0.f;
 }
 
-void LowPass(
+static void LowPass(
 	const Tensor<Complex32, 3, Device::CPU>& _Signal,
 	Int64 BinStart,
 	Int64 BinStop

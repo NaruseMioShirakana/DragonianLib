@@ -81,11 +81,12 @@ namespace TypeDef
 	constexpr UInt16 kOneBits = 0x3F80U;
 	constexpr UInt16 kMinusOneBits = 0xBF80U;
 
-	enum OperatorType
+	enum OperatorType : UInt8
 	{
 		UnaryOperatorType,
 		BinaryOperatorType,
-		ConstantOperatorType
+		ConstantOperatorType,
+		ReversedConstantOperatorType
 	};
 
 	template <typename _Type, size_t _Rank>
@@ -115,7 +116,7 @@ namespace TypeDef
 		using Type = _Type[_Size];
 	};
 
-	enum class BuiltInTypes
+	enum class BuiltInTypes : UInt8
 	{
 		None,
 		Int8,

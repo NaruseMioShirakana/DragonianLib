@@ -184,11 +184,26 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(AddReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(SubReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MulReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(DivReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(ModReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(AndReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(OrReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(XorReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShiftReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShiftReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(PowReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOrReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAndReverse);
 
 	_D_Dragonian_Lib_Operator_Binary_Define(Max);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Max);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MaxReverse);
 	_D_Dragonian_Lib_Operator_Binary_Define(Min);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Min);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MinReverse);
 
 	_D_Dragonian_Lib_Operator_Comparison_Define(Equal);
 	_D_Dragonian_Lib_Operator_Comparison_Define(NotEqual);
@@ -203,6 +218,12 @@ public:
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqual);
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(Less);
 	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqual);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(EqualReverse);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(NotEqualReverse);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterReverse);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(GreaterEqualReverse);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessReverse);
+	_D_Dragonian_Lib_Operator_Comparison_Define_Scalar(LessEqualReverse);
 
 	_D_Dragonian_Lib_Operator_Unary_Define(Sqrt);
 	_D_Dragonian_Lib_Operator_Unary_Define(RSqrt);
@@ -313,12 +334,12 @@ template <typename _Type>
 using _Impl_Dragonian_Lib_Normal_Distribution_Type = typename RandomSettings<_Type>::NormalDistributionType;
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> SingleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline void SingleTensorLoop(
 	int64_t Value,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Stride,
 	_Fn _Func
-)
+) requires (IsCallableValue<_Fn>)
 {
 	if constexpr (LoopCount == 0)
 		_Func(Value);
@@ -355,12 +376,12 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> S
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> DoubleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline void DoubleTensorLoop(
 	int64_t Value1, int64_t Value2,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2,
 	_Fn _Func
-)
+) requires (IsCallableValue<_Fn>)
 {
 	if constexpr (LoopCount == 0)
 		_Func(Value1, Value2);
@@ -400,12 +421,12 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> D
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> TripleTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline void TripleTensorLoop(
 	int64_t Value1, int64_t Value2, int64_t Value3,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2, const int64_t* __restrict Stride3,
 	_Fn _Func
-)
+) requires (IsCallableValue<_Fn>)
 {
 	if constexpr (LoopCount == 0)
 		_Func(Value1, Value2, Value3);
@@ -448,12 +469,12 @@ _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> T
 }
 
 template<int64_t LoopCount, int64_t LoopUnfold, typename _Fn>
-_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<IsCallableValue<_Fn>> InlinedTensorLoop(
+_D_Dragonian_Lib_Constexpr_Force_Inline void InlinedTensorLoop(
 	int64_t Value1, int64_t Value2, int64_t Value3, int64_t Value4,
 	const int64_t* __restrict Shape, const int64_t* __restrict LoopBegin,
 	const int64_t* __restrict Stride1, const int64_t* __restrict Stride2, const int64_t* __restrict Stride3, const int64_t* __restrict Stride4,
 	_Fn _Func
-)
+) requires (IsCallableValue<_Fn>)
 {
 	if constexpr (LoopCount == 0)
 		_Func(Value1, Value2, Value3, Value4);
@@ -505,14 +526,19 @@ template <
 	size_t _NRank, size_t _Unfold
 > void BasicOperators(
 	_RetType* _Dest,
-	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoOld,
 	const _InputType* _Src1,
-	const std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _ISrc1InfoOld,
 	const _InputType* _Src2,
-	const std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
-	const std::shared_ptr<_ParameterType> _Value
+	std::shared_ptr<OperatorParameter<_NRank>> _ISrc2InfoOld,
+	std::shared_ptr<_ParameterType> _IValue
 )
 {
+	auto _DestInfoOld = std::move(_IDestInfoOld);
+	auto _Src1InfoOld = std::move(_ISrc1InfoOld);
+	auto _Src2InfoOld = std::move(_ISrc2InfoOld);
+	auto _Value = std::move(_IValue);
+
 	const auto& _DestInfo = *_DestInfoOld;
 	const auto& _Src1Info = *_Src1InfoOld;
 
@@ -561,6 +587,20 @@ template <
 			Func
 		);
 	}
+	else if constexpr (_OType == TypeDef::ReversedConstantOperatorType)
+	{
+		const auto& _ParameterValue = *_Value;
+		auto Func = [&](int64_t _IndexA, int64_t _IndexB)
+			{
+				_Dest[_IndexA] = (_RetType)_Function(_ParameterValue, _Src1[_IndexB]);
+			};
+		DoubleTensorLoop<_NRank, _Unfold>(
+			0, 0,
+			DestShape, DestBegin,
+			DestViewStride, Src1ViewStride,
+			Func
+		);
+	}
 }
 
 template<
@@ -595,7 +635,7 @@ template<
 	if constexpr (_OType == TypeDef::BinaryOperatorType)
 		_DataPointer[2] = _Src2InfoOld->Data;
 
-	auto CreateTask = [&](std::shared_future<void> TaskFuture)
+	auto CreateTask = [&](const std::shared_future<void>& TaskFuture)
 		{
 			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
 			if (_Src1InfoOld->ArgumentDependency != _DestInfoOld->ArgumentDependency)
@@ -655,7 +695,7 @@ template<
 			GetMaxTaskCountPerOperator()
 		);
 		SizeType TotalTaskCount = -1, TaskDim = -1;
-		for (SizeType i = 0; i < _NRank; ++i)
+		for (SizeType i = 0; std::cmp_less(i, _NRank); ++i)
 			if (_DestInfoOld->Shape[i] >= NTasks)
 			{
 				TotalTaskCount = _DestInfoOld->Shape[i];
@@ -698,18 +738,23 @@ template<
 >
 void ImplMultiThreadCaller(
 	_DstType* _Dest,
-	const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoOld,
 	const _Src1Type* _Src1,
-	const std::shared_ptr<OperatorParameter<_NRank>> _Src1InfoOld,
+	std::shared_ptr<OperatorParameter<_NRank>> _ISrc1InfoOld,
 	const _Src2Type* _Src2,
-	const std::shared_ptr<OperatorParameter<_NRank>> _Src2InfoOld,
-	const std::shared_ptr<_ParameterType> _UserParameter,
+	std::shared_ptr<OperatorParameter<_NRank>> _ISrc2InfoOld,
+	std::shared_ptr<_ParameterType> _IUserParameter,
 	bool Continuous,
 	_FunctionType _Function,
 	_ContinuousFunctionType _ContFunction
 )
 {
 	static_assert((_ArgCount < 4) && (_ArgCount > 0));
+
+	auto _DestInfoOld = std::move(_IDestInfoOld);
+	auto _Src1InfoOld = std::move(_ISrc1InfoOld);
+	auto _Src2InfoOld = std::move(_ISrc2InfoOld);
+	auto _UserParameter = std::move(_IUserParameter);
 
 	const auto TotalRank = _DestInfoOld->GetRank();
 	const auto BatchDims = TotalRank - OperatorDims;
@@ -726,7 +771,7 @@ void ImplMultiThreadCaller(
 	if constexpr (_ArgCount > 2)
 		_DataPointer[2] = _Src2InfoOld->Data;
 
-	auto CreateTask = [&](std::shared_future<void> TaskFuture)
+	auto CreateTask = [&](const std::shared_future<void>& TaskFuture)
 		{
 			_DestInfoOld->ResultDependency->emplace_back(TaskFuture, _DataPointer);
 			if constexpr (_ArgCount > 1)

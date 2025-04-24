@@ -647,12 +647,13 @@ namespace Vits
 
 		if (_HasVQ)
 		{
+			++Axis;
 			_D_Dragonian_Lib_Rethrow_Block(
 				Inputs.Emplace(
 					CheckAndTryCreateValueFromTensor(
 						*_MyMemoryInfo,
 						Tensor<Int64, 2, Device::CPU>::ConstantOf({ Batch, 1 }, VQIndex),
-						_MyInputTypes[++Axis],
+						_MyInputTypes[Axis],
 						_MyInputDims[Axis],
 						{ L"BatchSize", L"1" },
 						"VQIndex",
@@ -660,12 +661,13 @@ namespace Vits
 					)
 				);
 			);
+			++Axis;
 			_D_Dragonian_Lib_Rethrow_Block(
 				Inputs.Emplace(
 					CheckAndTryCreateValueFromTensor(
 						*_MyMemoryInfo,
 						Tensor<Int64, 2, Device::CPU>::ConstantOf({ Batch, 1 }, SpeakerIndex),
-						_MyInputTypes[++Axis],
+						_MyInputTypes[Axis],
 						_MyInputDims[Axis],
 						{ L"BatchSize", L"1" },
 						"SpeakerIndex",
@@ -997,7 +999,7 @@ namespace Vits
 	}
 
 	//[Batch, PhonemeSize, Durations]
-	std::pair<Tensor<Float32, 3, Device::CPU>, Tensor<Float32, 3, Device::CPU>> GeneratePath(
+	static std::pair<Tensor<Float32, 3, Device::CPU>, Tensor<Float32, 3, Device::CPU>> GeneratePath(
 		const Tensor<Float32, 3, Device::CPU>& W_Ceil,
 		Int64 XSize
 	)

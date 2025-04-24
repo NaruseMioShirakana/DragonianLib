@@ -24,6 +24,8 @@ std::wstring GetLocalizationString(const std::wstring_view& _Str);
 
 namespace WndControls
 {
+	constexpr DragonianLib::Int64 SpecSamplingRate = 16000;
+
 	struct MyControls
 	{
 		Mui::Ctrl::UIListBox* AudioList = nullptr;
@@ -65,5 +67,11 @@ namespace WndControls
 
 	void MoeVSRedo();
 
-	void ExportSliceCurveData(HWND hwnd);
+	void SaveData();
+
+	void SineGen();
+
+	void LoadFiles(HWND hWnd);
+
+	void LoadF0(HWND hWnd);
 }

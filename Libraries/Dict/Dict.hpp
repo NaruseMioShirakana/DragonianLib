@@ -40,8 +40,8 @@ DLogger& GetDefaultLogger() noexcept;
 class Tokenizer
 {
 public:
-	enum TokenizerMethod { Maximum, ReversedMaximum, Minimum, ReversedMinimum };
-	enum TokenizerFix { Prefix, Suffix };
+	enum TokenizerMethod : UInt8 { Maximum, ReversedMaximum, Minimum, ReversedMinimum };
+	enum TokenizerFix : UInt8 { Prefix, Suffix };
 	using TokenizerType = int64_t;
 
 	Tokenizer() = delete;
@@ -270,6 +270,7 @@ public:
 	/**
 	 * @brief Construct a new Dict object
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
+	 * @param _Unk Unk token
 	 */
 	IdsDict(
 		const std::wstring& _DictModulePath,

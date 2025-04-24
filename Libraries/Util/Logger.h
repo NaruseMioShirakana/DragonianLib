@@ -30,7 +30,7 @@ class Logger : public std::enable_shared_from_this<Logger>
 {
 public:
 	using LoggerFunction = void(*)(const wchar_t* Message, unsigned Level);
-	enum class LogLevel { Info, Warn, Error, None };
+	enum class LogLevel : uint8_t { Info, Warn, Error, None };
 
 	virtual ~Logger() noexcept;
 	virtual void Log(const std::wstring& _Message, LogLevel _Level = LogLevel::Info, const wchar_t* _NameSpace = nullptr) noexcept;

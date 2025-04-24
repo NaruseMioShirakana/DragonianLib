@@ -2,7 +2,7 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-void InitNetPE()
+extern void InitNetPE()
 {
 	RegisterF0Extractor(
 		L"RMVPE",

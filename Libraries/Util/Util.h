@@ -66,6 +66,16 @@
 // Define exception throwing macro(without function name)
 #define _D_Dragonian_Lib_Throw_Impl_With_Inline_Function(message, exception_type) throw exception_type(_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Throw_Function_Impl(message, __FILE__, "Inlined", __LINE__).c_str())
 
+// Define exception throwing macro with trace
+#define _D_Dragonian_Error_Message_With_Trace(message) \
+	_D_Dragonian_Lib_Namespace _Impl_Dragonian_Lib_Throw_Function_Impl(message, __FILE__, _D_Dragonian_Lib_Function_Signature, __LINE__)
+
+// Define exception throwing macro with raw message and exception type
+#define _D_Dragonian_Lib_Throw_Raw_Exception_Impl(message, exception_type) throw exception_type(message)
+
+// Define exception throwing macro with raw message
+#define _D_Dragonian_Lib_Throw_Raw_Exception(message) _D_Dragonian_Lib_Throw_Raw_Exception_Impl(message, std::exception)
+
 // Define general exception throwing macro
 #define _D_Dragonian_Lib_Throw_Exception(message) _D_Dragonian_Lib_Throw_Impl(message, std::exception)
 
@@ -93,6 +103,19 @@ do{ \
 	catch(std::exception& _M_EXCEPT) \
 	{ \
 		_D_Dragonian_Lib_Throw_Exception(_M_EXCEPT.what()); \
+	} \
+} \
+while (0) \
+
+#define _D_Dragonian_Lib_Return_Exception_Block(Expr) \
+do{ \
+	try \
+	{ \
+		Expr \
+	} \
+	catch(std::exception& _M_EXCEPT) \
+	{ \
+		return _D_Dragonian_Error_Message_With_Trace(_M_EXCEPT.what()); \
 	} \
 } \
 while (0) \
@@ -152,9 +175,9 @@ _D_Dragonian_Lib_Force_Inline std::string _Impl_Dragonian_Lib_Throw_Function_Imp
 		std::string("[@file: \"") + std::filesystem::path(Path).filename().string() + "\"; " +
 		"function: \"" + Function + "\"; " +
 		"line: " + std::to_string(Line) + "]:";
-	if (Message.substr(0, 2) == "[@")
+	if (Message.starts_with("[@"))
 	{
-		if (Message.substr(0, Prefix.length()) == Prefix)
+		if (Message.starts_with(Prefix))
 			return Message;
 		return Prefix.substr(0, Prefix.length() - 2) + "\n " + Message.substr(1);
 	}

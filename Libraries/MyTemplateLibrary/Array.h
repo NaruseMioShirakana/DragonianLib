@@ -54,10 +54,8 @@ public:
 			_MyData[i] = _Value;
 	}
 	template <typename _Type = _ValueType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::IsArithmeticValue<_Type>&&
-		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
-		_ValueType> Sum() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto Sum() const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
 	{
 		_ValueType _Sum = 0;
 		for (size_t i = 0; i < _Rank; ++i)
@@ -65,10 +63,8 @@ public:
 		return _Sum;
 	}
 	template <typename _Type = _ValueType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::IsArithmeticValue<_Type>&&
-		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
-		_ValueType> InnerProduct(const Array<_Type, _Rank>& _Right) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto InnerProduct(const Array<_Type, _Rank>& _Right) const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
 	{
 		_ValueType _Sum = 0;
 		for (size_t i = 0; i < _Rank; ++i)
@@ -76,10 +72,8 @@ public:
 		return _Sum;
 	}
 	template <typename _Type = _ValueType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-		TypeTraits::IsArithmeticValue<_Type>&&
-		TypeTraits::IsSameTypeValue<_Type, _ValueType>,
-		_ValueType> Multiply() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto Multiply() const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
 	{
 		_ValueType _Sum = 1;
 		for (size_t i = 0; i < _Rank; ++i)
@@ -270,37 +264,35 @@ template <typename _Type, size_t _Rank>
 struct _Impl_Static_Array_Type
 {
 	_Impl_Static_Array_Type() = delete;
-	template<size_t _TRank, typename = std::enable_if_t<(_Rank > 1) && _TRank == _Rank - 1>>
+	template<size_t _TRank>
 		_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Static_Array_Type(
 			const _Type& _Value,
 			const _Impl_Static_Array_Type<_Type, _TRank>& _Array
-		)
+		) requires ((_Rank > 1) && _TRank == _Rank - 1)
 	{
 		for (size_t i = 0; i < _Array.Rank; ++i)
 			Data[i + 1] = _Array.Data[i];
 		Data[0] = _Value;
 	}
-	template<size_t _TRank, typename = std::enable_if_t<(_Rank > 1) && _TRank == _Rank - 1>>
+	template<size_t _TRank>
 		_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Static_Array_Type(
 			const _Impl_Static_Array_Type<_Type, _TRank>& _Array,
 			const _Type& _Value
-		)
+		) requires ((_Rank > 1) && _TRank == _Rank - 1)
 	{
 		for (size_t i = 0; i < _Array.Rank; ++i)
 			Data[i] = _Array.Data[i];
 		Data[_Array.Rank] = _Value;
 	}
 
-	template<typename = std::enable_if_t<_Rank == 1>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Static_Array_Type(
 		const _Type& _Value,
 		const _Impl_Static_Array_Type<_Type, 0>& _Array
-	)
+	) requires (_Rank == 1)
 	{
 		UNUSED(_Array);
 		Data[0] = _Value;
 	}
-	template<typename = std::enable_if_t<_Rank == 1>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Static_Array_Type(
 		const _Impl_Static_Array_Type<_Type, 0>& _Array,
 		const _Type& _Value
@@ -310,10 +302,9 @@ struct _Impl_Static_Array_Type
 		Data[0] = _Value;
 	}
 
-	template<typename = std::enable_if_t<_Rank == 1>>
 	_D_Dragonian_Lib_Constexpr_Force_Inline _Impl_Static_Array_Type(
 		const _Type& _Value
-	)
+	) requires (_Rank == 1)
 	{
 		Data[0] = _Value;
 	}
@@ -330,8 +321,7 @@ template <typename _Type, size_t _Size>
 struct ExtractAllShapesOfArrayLikeType<_Type[_Size]>
 {
 	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_Type> +1;
-	template <typename = std::enable_if_t<(Rank > 0)>>
-		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
+		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape() requires (Rank > 0)
 	{
 		if constexpr (Rank == 1)
 		{
@@ -352,8 +342,7 @@ template <template <typename, size_t> typename _ObjType, typename _ValueType, si
 struct ExtractAllShapesOfArrayLikeType<_ObjType<_ValueType, _ValueSize>>
 {
 	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
-	template <typename = std::enable_if_t<(Rank > 0)>>
-		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
+		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape() requires (Rank > 0)
 	{
 		if constexpr (Rank == 1)
 		{
@@ -374,8 +363,7 @@ template <template <size_t, typename> typename _ObjType, size_t _ValueSize, type
 struct ExtractAllShapesOfArrayLikeType<_ObjType<_ValueSize, _ValueType>>
 {
 	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
-	template <typename = std::enable_if_t<(Rank > 0)>>
-		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape()
+		static constexpr const _Impl_Static_Array_Type<int64_t, Rank>& GetShape() requires (Rank > 0)
 	{
 		if constexpr (Rank == 1)
 		{
@@ -401,8 +389,7 @@ template <typename _ValueType>
 struct ExtractAllShapesOfInitializerList<std::initializer_list<_ValueType>>
 {
 	static constexpr size_t Rank = TypeTraits::ExtractRankValue<_ValueType> +1;
-	template <typename = std::enable_if_t<(Rank > 0)>>
-		static constexpr _Impl_Static_Array_Type<int64_t, Rank> GetShape(const std::initializer_list<_ValueType>& _Val)
+		static constexpr _Impl_Static_Array_Type<int64_t, Rank> GetShape(const std::initializer_list<_ValueType>& _Val) requires (Rank > 0)
 	{
 		if constexpr (Rank == 1)
 		{

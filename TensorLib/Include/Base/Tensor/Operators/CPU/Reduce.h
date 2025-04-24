@@ -29,7 +29,7 @@ _D_Dragonian_Lib_Operator_Space_Begin
 template <
 	Int64 Throughput, typename _Type, size_t _NRank,
 	typename _FunctionTypePre, typename _FunctionTypeMid, typename _FunctionTypeEnd,
-	typename _FunctionTypePreVec, typename _FunctionTypeMidVec, typename = std::enable_if_t<IsCallableValue<_FunctionTypeMid>>
+	typename _FunctionTypePreVec, typename _FunctionTypeMidVec
 > _D_Dragonian_Lib_Force_Inline void ImplReduceOperators(
 	_Type* _Dest,
 	const OperatorParameter<_NRank>& _DestInfo,
@@ -42,7 +42,7 @@ template <
 	_FunctionTypeMid ReduceMidOperator,
 	_FunctionTypeMidVec ReduceMidOperatorVec,
 	_FunctionTypeEnd ReducePostOperator
-)
+) requires (IsCallableValue<_FunctionTypeMid>)
 {
 	constexpr size_t _ReduceDim = _NRank - 1;
 	const auto _SrcShape = _SrcInfo.Shape[_ReduceDim];

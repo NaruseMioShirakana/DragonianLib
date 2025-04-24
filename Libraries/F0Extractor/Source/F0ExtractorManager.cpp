@@ -8,10 +8,10 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-std::vector<std::wstring> _GlobalF0ExtractorsList;
-std::unordered_map<std::wstring, Constructor> _GlobalRegisteredF0Extractors;
+static inline std::vector<std::wstring> _GlobalF0ExtractorsList;
+static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredF0Extractors;
 
-void RegisterPlugin(
+static void RegisterPlugin(
 	const std::wstring& _PluginPath,
 	const std::wstring& _PluginName
 )
@@ -141,6 +141,6 @@ struct Init
 #endif
 	}
 };
-Init _Valdef_Init;
+[[maybe_unused]] static inline Init _Valdef_Init;
 
 _D_Dragonian_Lib_F0_Extractor_End

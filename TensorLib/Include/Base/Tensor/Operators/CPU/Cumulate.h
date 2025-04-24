@@ -28,7 +28,7 @@ _D_Dragonian_Lib_Operator_Space_Begin
 
 template <
 	typename _Type, size_t _NRank,
-	typename _FunctionTypeMid, typename = std::enable_if_t<IsCallableValue<_FunctionTypeMid>>
+	typename _FunctionTypeMid
 > _D_Dragonian_Lib_Force_Inline void ImplCumulateOperators(
 	_Type* _Dest,
 	const OperatorParameter<_NRank>& _DestInfo,
@@ -36,7 +36,7 @@ template <
 	const OperatorParameter<_NRank>& _SrcInfo,
 	bool Continuous,
 	_FunctionTypeMid CumulateMidOperator
-)
+) requires (IsCallableValue<_FunctionTypeMid>)
 {
 	constexpr size_t _CumulateDim = _NRank - 1;
 	const auto _SrcShape = _SrcInfo.Shape[_CumulateDim];
@@ -223,8 +223,11 @@ void OperatorsBase<_Type, Device::CPU>::ImplDiffUnary(
 				_DestBegin[(i - 1) * _DestStride] = _SrcBegin[i * _SrcStride] - _SrcBegin[(i - 1) * _SrcStride];
 		};
 
-	auto LoopFn = [=](_Type*, const std::shared_ptr<OperatorParameter<_NRank>> _DestInfoNew, const _Type*, const std::shared_ptr<OperatorParameter<_NRank>> _SrcInfoNew, const std::shared_ptr<int>&)
+	auto LoopFn = [=](_Type*, std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoNew, const _Type*, std::shared_ptr<OperatorParameter<_NRank>> _ISrcInfoNew, const std::shared_ptr<int>&)
 		{
+			auto _DestInfoNew = std::move(_IDestInfoNew);
+			auto _SrcInfoNew = std::move(_ISrcInfoNew);
+
 			DoubleTensorLoop<_CumulateDim, 8>(
 				0, 0,
 				_DestInfoNew->Shape.Data(), _DestInfoNew->Begin.Data(),

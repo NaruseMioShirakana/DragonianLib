@@ -73,6 +73,41 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
  \
 template <typename _Type> \
 template<size_t _NRank> \
+void OperatorsBase<_Type, Device::CPU>::Impl##_Function##ReverseScalar( \
+	bool* _Dest, \
+	const OperatorParameter<_NRank>& _DestInfo, \
+	const _Type* _Src, \
+	const OperatorParameter<_NRank>& _SrcInfo, \
+	const _Type& _Value, \
+	bool Continuous \
+) \
+{ \
+	if constexpr (ComparisonOperators::##_Function##Binary::HasVectorOperatorValue<_Type>) \
+		ImplMultiThreadBasic<decltype(ComparisonOperators::_Function##<_Type>), ComparisonOperators::_Function##<_Type>, decltype(ComparisonOperators::_Function##<Vectorized<_Type>>), ComparisonOperators::_Function##<Vectorized<_Type>>, TypeDef::ReversedConstantOperatorType, true, Unfold, AvxThroughput, _NRank, bool, _Type, _Type>(\
+			_Dest, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
+			_Src, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
+			nullptr, \
+			nullptr, \
+			std::make_shared<_Type>(_Value), \
+			Continuous \
+		); \
+	else \
+		ImplMultiThreadBasic<decltype(ComparisonOperators::_Function##<_Type>), ComparisonOperators::_Function##<_Type>, decltype(ComparisonOperators::_Function##<_Type>), ComparisonOperators::_Function##<_Type>, TypeDef::ReversedConstantOperatorType, true, Unfold, AvxThroughput, _NRank, bool, _Type, _Type>(\
+			_Dest, \
+			std::make_shared<OperatorParameter<_NRank>>(_DestInfo), \
+			_Src, \
+			std::make_shared<OperatorParameter<_NRank>>(_SrcInfo), \
+			nullptr, \
+			nullptr, \
+			std::make_shared<_Type>(_Value), \
+			Continuous \
+		); \
+} \
+ \
+template <typename _Type> \
+template<size_t _NRank> \
 void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 	bool* _Dest, \
 	const OperatorParameter<_NRank>& _DestInfo, \

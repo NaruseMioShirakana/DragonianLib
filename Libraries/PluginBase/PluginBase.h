@@ -50,7 +50,7 @@ namespace Plugin
 		ReturnType Invoke(const std::string& FunctionName, ArgTypes... Args)
 		{
 			auto Iter = _MyFunctions.find(FunctionName);
-			void* Function = nullptr;
+			void* Function;
 			if (Iter == _MyFunctions.end())
 				Function = GetFunction(FunctionName, true);
 			else

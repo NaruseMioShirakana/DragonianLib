@@ -3,8 +3,9 @@
 #include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_MJson_Namespace_Begin
-	void ValueDeleter(void*) {}
-void DocDeleter(void* _Pointer) { yyjson_doc_free((yyjson_doc*)_Pointer); }
+
+static void ValueDeleter(void*) {}
+static void DocDeleter(void* _Pointer) { yyjson_doc_free((yyjson_doc*)_Pointer); }
 
 MJsonValue::MJsonValue(void* _Object, std::shared_ptr<YYJsonDoc> _Doc) noexcept :
 	_MyObject((YYJsonVal*)_Object, ValueDeleter), _MyDocument(std::move(_Doc))

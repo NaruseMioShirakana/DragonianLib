@@ -10,7 +10,8 @@ Demix::Demix(
 	const DLogger& Logger
 ) : OnnxModelBase(Environment, ModelPath, Logger), _MySamplingRate(HParams.Demix.SamplingRate),
 _MySubBandCount(HParams.Demix.SubBandCount), _MyStftBins(HParams.Demix.StftBins), _ComplexAsChannel(HParams.Demix.ComplexAsChannel),
-_MyStftKernel(HParams.Demix.NumStft, HParams.Demix.HopSize, HParams.Demix.WindowSize, HParams.Demix.Center, HParams.Demix.Padding)
+_MyStftKernel(HParams.Demix.NumStft, HParams.Demix.HopSize, HParams.Demix.WindowSize, HParams.Demix.Window, HParams.Demix.Center, HParams.Demix.Padding
+)
 {
 
 }

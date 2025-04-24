@@ -79,6 +79,7 @@ struct DemixConfig
 	Int64 StftBins = 1025;
 	Boolean ComplexAsChannel = true;
 
+	const double* Window = nullptr;
 	bool Center = true;
 	PaddingType Padding = PaddingType::Reflect;
 };

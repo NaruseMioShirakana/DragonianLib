@@ -413,8 +413,7 @@ void Tokenizer::LoadUserVocab(
 {
 	for (const auto& Token : _Vocab)
 	{
-		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
-			MaximumLength = static_cast<Int64>(Token.first.size());
+		MaximumLength = std::max(MaximumLength, static_cast<Int64>(Token.first.size()));
 		_MyVocab[Token.first] = Token.second;
 	}
 }
@@ -451,15 +450,13 @@ Tokenizer::Tokenizer(
 					if (Beg.Empty())
 						continue;
 					auto Key = UTF8ToWideString(Beg.Front().first);
-					if (static_cast<Int64>(Key.size()) > MaximumLength)
-						MaximumLength = static_cast<Int64>(Key.size());
+					MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 					_MyVocab[Key] = Beg.Front().second.GetInt64();
 				}
 				else
 				{
 					auto Key = UTF8ToWideString(Object.IsString() ? Object.GetString() : Object.GetArray()[0].GetString());
-					if (static_cast<Int64>(Key.size()) > MaximumLength)
-						MaximumLength = static_cast<Int64>(Key.size());
+					MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 					_MyVocab[Key] = Index++;
 				}
 			}
@@ -472,8 +469,7 @@ Tokenizer::Tokenizer(
 				if (Pair.second.IsInt64())
 				{
 					const auto& Key = UTF8ToWideString(Pair.first);
-					if (static_cast<Int64>(Key.size()) > MaximumLength)
-						MaximumLength = static_cast<Int64>(Key.size());
+					MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 					_MyVocab[UTF8ToWideString(Pair.first)] = TokenizerType(Pair.second.GetInt64());
 				}
 			}
@@ -486,8 +482,7 @@ Tokenizer::Tokenizer(
 			if (Pair.second.IsInt64())
 			{
 				const auto& Key = UTF8ToWideString(Pair.first);
-				if (static_cast<Int64>(Key.size()) > MaximumLength)
-					MaximumLength = static_cast<Int64>(Key.size());
+				MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 				_MyVocab[Key] = TokenizerType(Pair.second.GetInt64());
 			}
 	}
@@ -506,8 +501,7 @@ Dict::Dict(
 	{
 		std::wstring Key = UTF8ToWideString(itr.first);
 		_MyDict[Key] = Vector<std::wstring>();
-		if (static_cast<Int64>(Key.size()) > MaximumLength)
-			MaximumLength = static_cast<Int64>(Key.size());
+		MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 		if (itr.second.IsString())
 		{
 			_MyDict[Key].EmplaceBack(UTF8ToWideString(itr.second.GetString()));
@@ -537,8 +531,7 @@ void Dict::AppendTokens(
 {
 	for (const auto& Token : _Tokens)
 	{
-		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
-			MaximumLength = static_cast<Int64>(Token.first.size());
+		MaximumLength = std::max(MaximumLength, static_cast<Int64>(Token.first.size()));
 		_MyDict[Token.first] = Token.second;
 	}
 }
@@ -710,8 +703,7 @@ IdsDict::IdsDict(
 		std::wstring Key = UTF8ToWideString(itr.first);
 		if (itr.second.IsInt64())
 		{
-			if (static_cast<Int64>(Key.size()) > MaximumLength)
-				MaximumLength = static_cast<Int64>(Key.size());
+			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 			_MyDict[Key] = itr.second.GetInt64();
 			_MyReverseDict[itr.second.GetInt64()] = Key;
 			continue;
@@ -722,15 +714,13 @@ IdsDict::IdsDict(
 		auto Value = UTF8ToWideString(itr.second.GetString());
 		if (std::regex_match(Key, PreDefinedRegex::IntegerRegex))
 		{
-			if (static_cast<Int64>(Value.size()) > MaximumLength)
-				MaximumLength = static_cast<Int64>(Value.size());
+			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 			_MyReverseDict[wcstoll(Key.c_str(), nullptr, 10)] = UTF8ToWideString(Value);
 			_MyDict[Value] = wcstoll(Key.c_str(), nullptr, 10);
 		}
 		else if (std::regex_match(Value, PreDefinedRegex::IntegerRegex))
 		{
-			if (static_cast<Int64>(Key.size()) > MaximumLength)
-				MaximumLength = static_cast<Int64>(Key.size());
+			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
 			_MyDict[Key] = wcstoll(Value.c_str(), nullptr, 10);
 			_MyReverseDict[wcstoll(Value.c_str(), nullptr, 10)] = Key;
 		}
@@ -747,8 +737,7 @@ void IdsDict::AppendTokens(
 {
 	for (const auto& Token : _Tokens)
 	{
-		if (static_cast<Int64>(Token.first.size()) > MaximumLength)
-			MaximumLength = static_cast<Int64>(Token.first.size());
+		MaximumLength = std::max(MaximumLength, static_cast<Int64>(Token.first.size()));
 		_MyDict[Token.first] = Token.second;
 		_MyReverseDict[Token.second] = Token.first;
 	}

@@ -46,12 +46,12 @@ public:
     using ConstPointer = const ValueType*;
     using Iterator = LinearIterator<ValueType>;
     using ConstIterator = ConstLinearIterator<ValueType>;
-	using ReversedIterator = ReversedLinearIterator<ValueType>;
-	using ConstReversedIterator = ConstReversedLinearIterator<ValueType>;
+    using ReversedIterator = ReversedLinearIterator<ValueType>;
+    using ConstReversedIterator = ConstReversedLinearIterator<ValueType>;
     using SizeType = size_t;
     using IndexType = long long;
     using Allocator = GetAllocatorType<Device_>;
-	static constexpr auto _MyDevice = Device_;
+    static constexpr auto _MyDevice = Device_;
 
 protected:
     _D_Dragonian_Lib_Constexpr_Force_Inline void _Tidy() noexcept
@@ -71,8 +71,8 @@ private:
         _Tidy();
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline void AllocateMemory(SizeType _Size)
-	{
+    _D_Dragonian_Lib_Constexpr_Force_Inline void AllocateMemory(SizeType _Size)
+    {
         if (_Size == 0)
         {
             _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
@@ -85,7 +85,7 @@ private:
         if (!_MyFirst) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyLast = _MyFirst + _Size;
         _MyEnd = _MyFirst + _Size * 2;
-	}
+    }
 
 protected:
     Pointer _MyFirst, _MyLast, _MyEnd;
@@ -93,39 +93,39 @@ protected:
     bool _MyOwner = true;
 
 public:
-	~Vector() noexcept
+    ~Vector() noexcept
     {
         Destory();
     }
 
     Vector(Allocator _Allocator = Allocator())
-	{
+    {
         _MyAllocator = _Allocator;
         _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
         _MyLast = _MyFirst;
         _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
-	}
-
-	Vector(SizeType _Size, Allocator _Alloc = Allocator())
-    {
-		if constexpr (std::is_default_constructible_v<ValueType>)
-	    {
-	    	_MyAllocator = _Alloc;
-	    	AllocateMemory(_Size);
-	    	_Impl_Dragonian_Lib_Iterator_Default_Construct(_MyFirst, _Size);
-	    }
-        else
-			_D_Dragonian_Lib_Stl_Throw("Default Construct Of ValueType Not Allowed!");
     }
 
-	Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = Allocator())
+    Vector(SizeType _Size, Allocator _Alloc = Allocator())
+    {
+        if constexpr (std::is_default_constructible_v<ValueType>)
+        {
+            _MyAllocator = _Alloc;
+            AllocateMemory(_Size);
+            _Impl_Dragonian_Lib_Iterator_Default_Construct(_MyFirst, _Size);
+        }
+        else
+            _D_Dragonian_Lib_Stl_Throw("Default Construct Of ValueType Not Allowed!");
+    }
+
+    Vector(SizeType _Size, ConstReference _Value, Allocator _Alloc = Allocator())
     {
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(_MyFirst, _Size, _Value);
     }
 
-	Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
+    Vector(Pointer* _Block, SizeType _Size, Allocator _Alloc, bool _Owner = true)
     {
         _MyAllocator = _Alloc;
         _MyOwner = _Owner;
@@ -144,7 +144,7 @@ public:
     }
 
     static Vector CreateView(Pointer _Block, SizeType _Size, Allocator _Alloc)
-	{
+    {
         Vector _Result;
         if (!_Alloc) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _Result._MyAllocator = _Alloc;
@@ -153,9 +153,9 @@ public:
         _Result._MyLast = _Result._MyFirst + _Size;
         _Result._MyEnd = _Result._MyLast;
         return _Result;
-	}
+    }
 
-	Vector(ConstPointer _Begin, ConstPointer _End, Allocator _Alloc = Allocator())
+    Vector(ConstPointer _Begin, ConstPointer _End, Allocator _Alloc = Allocator())
     {
         auto _Size = _End - _Begin;
         _MyAllocator = _Alloc;
@@ -163,24 +163,24 @@ public:
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Begin, _Size);
     }
 
-	Vector(const ConstIterator& _Begin, const ConstIterator& _End, Allocator _Alloc = Allocator())
+    Vector(const ConstIterator& _Begin, const ConstIterator& _End, Allocator _Alloc = Allocator())
     {
         auto _Size = _End - _Begin;
         if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
-		_Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Begin.Get(), _Size);
+        _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Begin.Get(), _Size);
     }
 
-	Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = Allocator())
+    Vector(ConstPointer _Buffer, SizeType _Size, Allocator _Alloc = Allocator())
     {
         if (!_Alloc || _Size < 0) _D_Dragonian_Lib_Stl_Throw("Bad Alloc!");
         _MyAllocator = _Alloc;
         AllocateMemory(_Size);
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Buffer, _Size);
     }
-    
-	Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = Allocator())
+
+    Vector(const std::initializer_list<ValueType>& _List, Allocator _Alloc = Allocator())
     {
         auto _Size = _List.size();
         _MyAllocator = _Alloc;
@@ -188,20 +188,20 @@ public:
         _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _List.begin(), _Size);
     }
 
-	Vector(const Vector& _Left)
+    Vector(const Vector& _Left)
     {
-		if constexpr (!std::is_copy_constructible_v<ValueType>)
-			_D_Dragonian_Lib_Stl_Throw("Copy Assign Of ValueType Not Allowed!");
+        if constexpr (!std::is_copy_constructible_v<ValueType>)
+            _D_Dragonian_Lib_Stl_Throw("Copy Assign Of ValueType Not Allowed!");
         else
         {
-	        _MyAllocator = _Left._MyAllocator;
-        	auto _Size = _Left.Size();
-        	AllocateMemory(_Size);
-        	_Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Left._MyFirst, _Size);
+            _MyAllocator = _Left._MyAllocator;
+            auto _Size = _Left.Size();
+            AllocateMemory(_Size);
+            _Impl_Dragonian_Lib_Iterator_Copy_Construct(_MyFirst, _Left._MyFirst, _Size);
         }
     }
 
-	Vector(Vector&& _Right) noexcept
+    Vector(Vector&& _Right) noexcept
     {
         _MyFirst = _Right._MyFirst;
         _MyLast = _Right._MyLast;
@@ -214,7 +214,7 @@ public:
         _Right._MyEnd = nullptr;
     }
 
-	Vector& operator=(const Vector& _Left)
+    Vector& operator=(const Vector& _Left)
     {
         if (&_Left == this)
             return *this;
@@ -231,7 +231,7 @@ public:
         return *this;
     }
 
-	Vector& operator=(Vector&& _Right) noexcept
+    Vector& operator=(Vector&& _Right) noexcept
     {
         if (&_Right != this)
             Destory();
@@ -258,52 +258,52 @@ public:
         return _MyFirst[_Index];
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline Reference operator[](SizeType _Index)
-	{
+    _D_Dragonian_Lib_Constexpr_Force_Inline Reference operator[](SizeType _Index)
+    {
 #ifdef DRAGONIANLIB_DEBUG
-		if (size_t(_Index) >= Size())
-			_D_Dragonian_Lib_Stl_Throw("Out Of Range!");
+        if (size_t(_Index) >= Size())
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		return _MyFirst[_Index];
-	}
+        return _MyFirst[_Index];
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline ConstReference At(SizeType _Index) const
-	{
+    _D_Dragonian_Lib_Constexpr_Force_Inline ConstReference At(SizeType _Index) const
+    {
 #ifdef DRAGONIANLIB_DEBUG
-		if (size_t(_Index) >= Size())
-			_D_Dragonian_Lib_Stl_Throw("Out Of Range!");
+        if (size_t(_Index) >= Size())
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		return _MyFirst[_Index];
-	}
+        return _MyFirst[_Index];
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline Reference At(SizeType _Index)
-	{
+    _D_Dragonian_Lib_Constexpr_Force_Inline Reference At(SizeType _Index)
+    {
 #ifdef DRAGONIANLIB_DEBUG
-		if (size_t(_Index) >= Size())
-			_D_Dragonian_Lib_Stl_Throw("Out Of Range!");
+        if (size_t(_Index) >= Size())
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		return _MyFirst[_Index];
-	}
+        return _MyFirst[_Index];
+    }
 
 public:
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin()
     {
-		return Iterator(_MyFirst);
+        return Iterator(_MyFirst);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End()
     {
-		return Iterator(_MyLast);
+        return Iterator(_MyLast);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedBegin()
     {
-		return ReversedIterator(_MyLast - 1);
+        return ReversedIterator(_MyLast - 1);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedEnd()
     {
-		return ReversedIterator(_MyFirst - 1);
+        return ReversedIterator(_MyFirst - 1);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin()
@@ -313,85 +313,85 @@ public:
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end()
     {
-		return Iterator(_MyLast);
+        return Iterator(_MyLast);
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin()
-	{
-		return ReversedIterator(_MyLast - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin()
+    {
+        return ReversedIterator(_MyLast - 1);
+    }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rend()
     {
-		return ReversedIterator(_MyFirst - 1);
+        return ReversedIterator(_MyFirst - 1);
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const
-	{
-		return ConstIterator(_MyFirst);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Begin() const
+    {
+        return ConstIterator(_MyFirst);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const
-	{
-		return ConstIterator(_MyLast);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) End() const
+    {
+        return ConstIterator(_MyLast);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedBegin() const
-	{
-		return ConstReversedIterator(_MyLast - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedBegin() const
+    {
+        return ConstReversedIterator(_MyLast - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedEnd() const
-	{
-		return ConstReversedIterator(_MyFirst - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ReversedEnd() const
+    {
+        return ConstReversedIterator(_MyFirst - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const
-	{
-		return ConstIterator(_MyFirst);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) begin() const
+    {
+        return ConstIterator(_MyFirst);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const
-	{
-		return ConstIterator(_MyLast);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) end() const
+    {
+        return ConstIterator(_MyLast);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin() const
-	{
-		return ConstReversedIterator(_MyLast - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rbegin() const
+    {
+        return ConstReversedIterator(_MyLast - 1);
+    }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) rend() const
     {
-		return ConstReversedIterator(_MyFirst - 1);
+        return ConstReversedIterator(_MyFirst - 1);
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin()
-	{
-		return LinearIterator(_MyLast - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin()
+    {
+        return LinearIterator(_MyLast - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd()
-	{
-		return LinearIterator(_MyFirst - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd()
+    {
+        return LinearIterator(_MyFirst - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin() const
-	{
-		return ConstLinearIterator(_MyLast - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedBegin() const
+    {
+        return ConstLinearIterator(_MyLast - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd() const
-	{
-		return ConstLinearIterator(_MyFirst - 1);
-	}
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) FrontReversedEnd() const
+    {
+        return ConstLinearIterator(_MyFirst - 1);
+    }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size() const
     {
         return static_cast<SizeType>(_MyLast - _MyFirst);
     }
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Capacity() const
+    _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Capacity() const
     {
         return static_cast<SizeType>(_MyEnd - _MyFirst);
     }
@@ -438,15 +438,15 @@ public:
 
 private:
     template<typename... _ArgsTy>
-    static _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-        std::is_constructible_v<ValueType, _ArgsTy...>,
-        Reference> EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
+    static _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) EmplaceImpl(Reference _Obj, _ArgsTy &&... _Args)
+        requires (std::is_constructible_v<ValueType, _ArgsTy...>)
     {
-		return _Impl_Dragonian_Lib_Construct_At(_Obj, std::forward<_ArgsTy>(_Args)...);
+        return _Impl_Dragonian_Lib_Construct_At(_Obj, std::forward<_ArgsTy>(_Args)...);
     }
 
-    template<typename... _ArgsTy, typename = std::enable_if_t<std::is_constructible_v<ValueType, _ArgsTy...>>>
-	decltype(auto) EmplaceImpl(const ConstIterator& _Where, _ArgsTy&&... _Args)
+    template<typename... _ArgsTy>
+    decltype(auto) EmplaceImpl(const ConstIterator& _Where, _ArgsTy&&... _Args)
+        requires (std::is_constructible_v<ValueType, _ArgsTy...>)
     {
         constexpr auto _Size = 1ll;
         const auto _MySize = _MyLast - _MyFirst;
@@ -460,7 +460,7 @@ private:
                 _NewBuffer, _MyFirst, _FrontCount
             );
             _Impl_Dragonian_Lib_Construct_At(
-				*(_NewBuffer + _FrontCount), std::forward<_ArgsTy>(_Args)...
+                *(_NewBuffer + _FrontCount), std::forward<_ArgsTy>(_Args)...
             );
             _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(
                 _NewBuffer + _FrontCount + _Size, _MyFirst + _FrontCount, _Remainder
@@ -498,7 +498,7 @@ private:
         }
     }
 
-	void InsertImpl(const ConstIterator& _Where, const ConstIterator& _Begin, const ConstIterator& _End)
+    void InsertImpl(const ConstIterator& _Where, const ConstIterator& _Begin, const ConstIterator& _End)
     {
         const auto _Size = _End - _Begin;
         const auto _MySize = _MyLast - _MyFirst;
@@ -608,7 +608,7 @@ private:
         }
     }
 
-	void MoveInsertImpl(const ConstIterator& _Where, const Iterator& _Begin, const Iterator& _End)
+    void MoveInsertImpl(const ConstIterator& _Where, const Iterator& _Begin, const Iterator& _End)
     {
         const auto _Size = _End - _Begin;
         const auto _MySize = _MyLast - _MyFirst;
@@ -664,7 +664,7 @@ private:
     }
 
 public:
-	void Reserve(SizeType _NewCapacity)
+    void Reserve(SizeType _NewCapacity)
     {
         if (_NewCapacity == Capacity())
             return;
@@ -691,10 +691,9 @@ public:
         _MyEnd = _Data + _NewCapacity;
     }
 
-	template <typename TmpTy = ValueType>
-	std::enable_if_t<
-		std::is_default_constructible_v<TmpTy>&& std::is_same_v<TmpTy, ValueType>
-	> Resize(SizeType _NewSize)
+    template <typename TmpTy = ValueType>
+    decltype(auto) Resize(SizeType _NewSize)
+        requires (std::is_default_constructible_v<TmpTy>&& std::is_same_v<TmpTy, ValueType>)
     {
         if (_NewSize == Size())
             return;
@@ -704,20 +703,20 @@ public:
                 _MyFirst + _NewSize,
                 _MyLast
             );
-			_MyLast = _MyFirst + _NewSize;
+            _MyLast = _MyFirst + _NewSize;
             return;
         }
 
         if (_NewSize > Capacity())
             Reserve(_NewSize * 2);
 
-		_Impl_Dragonian_Lib_Iterator_Default_Construct(
-			_MyLast, _NewSize - Size()
-		);
+        _Impl_Dragonian_Lib_Iterator_Default_Construct(
+            _MyLast, _NewSize - Size()
+        );
         _MyLast = _MyFirst + _NewSize;
     }
 
-	void Resize(SizeType _NewSize, const ValueType& _Value)
+    void Resize(SizeType _NewSize, const ValueType& _Value)
     {
         if (_NewSize == Size())
             return;
@@ -735,33 +734,31 @@ public:
             Reserve(_NewSize * 2);
 
         _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(
-			_MyLast, _NewSize - Size(), _Value
+            _MyLast, _NewSize - Size(), _Value
         );
         _MyLast = _MyFirst + _NewSize;
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-        std::is_constructible_v<ValueType, _ArgsTy...>,
-        Reference> Emplace(const ConstIterator& _Where, _ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Emplace(const ConstIterator& _Where, _ArgsTy &&... _Args)
+        requires (std::is_constructible_v<ValueType, _ArgsTy...>)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
             _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		auto Idx = _Where - _MyFirst;
+        auto Idx = _Where - _MyFirst;
         EmplaceImpl(_Where, std::forward<_ArgsTy>(_Args)...);
-		return *(_MyFirst + Idx);
+        return *(_MyFirst + Idx);
     }
 
     template<typename... _ArgsTy>
-    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-        std::is_constructible_v<ValueType, _ArgsTy...>,
-        Reference> EmplaceBack(_ArgsTy &&... _Args)
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) EmplaceBack(_ArgsTy &&... _Args)
+        requires (std::is_constructible_v<ValueType, _ArgsTy...>)
     {
-		if (_MyLast == _MyEnd)
-			Reserve(Capacity() * 2);
-		return EmplaceImpl(*_MyLast++, std::forward<_ArgsTy>(_Args)...);
+        if (_MyLast == _MyEnd)
+            Reserve(Capacity() * 2);
+        return EmplaceImpl(*_MyLast++, std::forward<_ArgsTy>(_Args)...);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline Reference Insert(const ConstIterator& _Where, const ValueType& _Value)
@@ -770,13 +767,12 @@ public:
         if (_Where > _MyLast || _Where < _MyFirst)
             _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		return Emplace(_Where, _Value);
+        return Emplace(_Where, _Value);
     }
 
     template <typename TmpTy = ValueType>
-    _D_Dragonian_Lib_Constexpr_Force_Inline std::enable_if_t<
-        std::is_move_assignable_v<TmpTy>&& std::is_move_constructible_v<TmpTy>&& std::is_same_v<TmpTy, ValueType>,
-        Reference> Insert(const ConstIterator& _Where, ValueType&& _Value)
+    _D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Insert(const ConstIterator& _Where, ValueType&& _Value)
+        requires (std::is_move_assignable_v<TmpTy>&& std::is_move_constructible_v<TmpTy>&& std::is_same_v<TmpTy, ValueType>)
     {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
@@ -799,10 +795,10 @@ public:
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
             _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
-		if (_First > _Last)
-			_D_Dragonian_Lib_Stl_Throw("Invalid Range!");
+        if (_First > _Last)
+            _D_Dragonian_Lib_Stl_Throw("Invalid Range!");
 #endif
-		InsertImpl(_Where, _First, _Last);
+        InsertImpl(_Where, _First, _Last);
     }
 
     _D_Dragonian_Lib_Constexpr_Force_Inline void MoveTo(const ConstIterator& _Where, const Iterator& _First, const Iterator& _Last)
@@ -810,60 +806,60 @@ public:
 #ifdef DRAGONIANLIB_DEBUG
         if (_Where > _MyLast || _Where < _MyFirst)
             _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
-		if (_First > _Last)
-			_D_Dragonian_Lib_Stl_Throw("Invalid Range!");
+        if (_First > _Last)
+            _D_Dragonian_Lib_Stl_Throw("Invalid Range!");
 #endif
-		MoveInsertImpl(_Where, _First, _Last);
+        MoveInsertImpl(_Where, _First, _Last);
     }
 
-	ValueType Erase(const ConstIterator& _Where)
+    ValueType Erase(const ConstIterator& _Where)
     {
 #ifdef DRAGONIANLIB_DEBUG
-		if (_Where >= _MyLast || _Where < _MyFirst)
-			_D_Dragonian_Lib_Stl_Throw("Out Of Range!");
+        if (_Where >= _MyLast || _Where < _MyFirst)
+            _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
 #endif
-		const auto _Idx = _Where - _MyFirst;
+        const auto _Idx = _Where - _MyFirst;
         auto _Value = std::move(*(_MyFirst + _Idx));
         _Impl_Dragonian_Lib_Iterator_Offset(
             _MyFirst + _Idx + 1,
             1,
             -1
         );
-		--_MyLast;
+        --_MyLast;
         if constexpr (!std::is_trivially_copyable_v<ValueType>)
             _MyLast->~ValueType();
-		return _Value;
-	}
+        return _Value;
+    }
 
-	void Erase(const ConstIterator& _First, const ConstIterator& _Last)
-	{
+    void Erase(const ConstIterator& _First, const ConstIterator& _Last)
+    {
 #ifdef DRAGONIANLIB_DEBUG
         if (_Last >= _MyLast || _First < _MyFirst)
             _D_Dragonian_Lib_Stl_Throw("Out Of Range!");
-		if (_First >= _Last)
-			_D_Dragonian_Lib_Stl_Throw("Invalid Range!");
+        if (_First >= _Last)
+            _D_Dragonian_Lib_Stl_Throw("Invalid Range!");
 #endif
         const auto _Idx = _First - _MyFirst;
-		const auto _Count = _Last - _First;
-		const auto _MySize = _MyLast - _MyFirst;
-		_Impl_Dragonian_Lib_Iterator_Offset(
-			_MyFirst + _Idx + _Count,
-			_MySize - _Idx - _Count,
-			-(_Count)
-		);
-        _Impl_Dragonian_Lib_Destroy_Range(
-			_MyFirst + _MySize - _Count,
-			_MyLast
+        const auto _Count = _Last - _First;
+        const auto _MySize = _MyLast - _MyFirst;
+        _Impl_Dragonian_Lib_Iterator_Offset(
+            _MyFirst + _Idx + _Count,
+            _MySize - _Idx - _Count,
+            -(_Count)
         );
-		_MyLast -= _Count;
+        _Impl_Dragonian_Lib_Destroy_Range(
+            _MyFirst + _MySize - _Count,
+            _MyLast
+        );
+        _MyLast -= _Count;
     }
 
-	void Clear()
+    void Clear()
     {
         _Impl_Dragonian_Lib_Destroy_Range(
-			_MyFirst,
-			_MyLast
-		);
+            _MyFirst,
+            _MyLast
+        );
         _MyLast = _MyFirst;
     }
 
@@ -970,8 +966,8 @@ public:
     }
 
     template <typename... _ArgTypes>
-	static decltype(auto) MakeVector(_ArgTypes&&... _Args)
-	{
+    static decltype(auto) MakeVector(_ArgTypes&&... _Args)
+    {
         constexpr auto _Size = sizeof...(_Args);
         Vector Result;
         if constexpr (_Size)
@@ -982,7 +978,7 @@ public:
             MakeVector(Result._MyFirst, std::forward<_ArgTypes>(_Args)...);
         }
         return Result;
-	}
+    }
 
 private:
     template <typename _ArgType, typename ... _RestTypes>
@@ -997,7 +993,7 @@ private:
 template <typename _Type, Device _Device = Device::CPU, typename ... _ArgTypes>
 decltype(auto) MakeVector(_Type&& _First, _ArgTypes&&... _Args)
 {
-	return Vector<_Type, _Device>::MakeVector(std::forward<_Type>(_First), std::forward<_ArgTypes>(_Args)...);
+    return Vector<_Type, _Device>::MakeVector(std::forward<_Type>(_First), std::forward<_ArgTypes>(_Args)...);
 }
 
 /**
@@ -1250,10 +1246,10 @@ _D_Dragonian_Lib_Constexpr_Force_Inline Vector<TypeOutput> SignalCast(
     const Vector<TypeInput>& Data
 )
 {
-	Vector<TypeOutput> Output(Data.Size());
-	for (size_t i = 0; i < Data.Size(); ++i)
-		Output[i] = static_cast<TypeOutput>(Data[i]);
-	return Output;
+    Vector<TypeOutput> Output(Data.Size());
+    for (size_t i = 0; i < Data.Size(); ++i)
+        Output[i] = static_cast<TypeOutput>(Data[i]);
+    return Output;
 }
 
 /**

@@ -43,7 +43,7 @@ using UnorderedMap = std::unordered_map<_TyA, _TyB>;
 template <typename _TyA, typename _TyB>
 using ContainerMap = std::unordered_map<_TyA, _TyB>;
 
-enum class DType
+enum class DType : uint8_t
 {
 	Bool,
 	Int8,

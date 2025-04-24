@@ -78,7 +78,7 @@ Tensor<Float32, 3, Device::CPU> ContextModel::Forward(
 			Inputs.Emplace(
 				CheckAndTryCreateValueFromTensor(
 					*GetMemoryInfo(),
-					std::move(AttentionMask.value()),
+					AttentionMask.value(),
 					_MyInputTypes[1],
 					_MyInputDims[1],
 					{ L"BatchSize", L"TokenLength" },

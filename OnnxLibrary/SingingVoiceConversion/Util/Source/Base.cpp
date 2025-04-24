@@ -277,10 +277,8 @@ Tensor<Int64, 3, Device::CPU> SingingVoiceConversionModule::GetF0Embed(
 						auto F0Mel = 1127.f * log(1.f + F0Data[k] / 700.f);
 						if (F0Mel > 0.f)
 							F0Mel = (F0Mel - F0MelMin) * (F0Bin - 2.f) / (F0MelMax - F0MelMin) + 1.f;
-						if (F0Mel < 1.f)
-							F0Mel = 1.f;
-						if (F0Mel > F0Bin - 1.f)
-							F0Mel = F0Bin - 1.f;
+						F0Mel = std::max(F0Mel, 1.f);
+						F0Mel = std::min(F0Mel, F0Bin - 1.f);
 						F0EmbedData[k] = static_cast<Int64>(F0Mel);
 					}
 				}

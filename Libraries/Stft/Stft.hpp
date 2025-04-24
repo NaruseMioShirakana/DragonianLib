@@ -40,7 +40,7 @@ namespace FunctionTransform
 		StftKernel() = default; ///< Default constructor
 
 		StftKernel(
-			int NumFFT, int HopSize = -1, int WindowSize = -1,
+			int NumFFT, int HopSize = -1, int WindowSize = -1, const double* Window = nullptr,
 			bool Center = true, PaddingType Padding = PaddingType::Reflect
 		); ///< Parameterized constructor
 
@@ -139,7 +139,9 @@ namespace FunctionTransform
 		int PADDING = 0; ///< Padding size
 		bool CENTER = true;
 		int CENTER_PADDING_SIZE = 256;
+		double WindowPowSum = 0.0; ///< Window power sum
 		PaddingType PADDING_TYPE = PaddingType::Reflect;
+		TemplateLibrary::Vector<Double> WINDOW;
 	};
 
 	/**
@@ -153,7 +155,8 @@ namespace FunctionTransform
 
 		MFCCKernel(
 			int SamplingRate, int NumFFT, int HopSize = -1, int WindowSize = -1, int MelBins = 0,
-			double FreqMin = 20., double FreqMax = 11025., bool Center = true, PaddingType Padding = PaddingType::Reflect,
+			double FreqMin = 20., double FreqMax = 11025., const double* Window = nullptr,
+			bool Center = true, PaddingType Padding = PaddingType::Reflect,
 			DLogger _Logger = nullptr
 		);
 
