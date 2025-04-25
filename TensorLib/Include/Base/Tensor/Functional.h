@@ -495,9 +495,10 @@ namespace Functional
 
 	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
 	Tensor<_MyValueType, 1, _MyDevice> FromVector(
-		TemplateLibrary::Vector<_MyValueType, _MyDevice>&& Buffer
+		TemplateLibrary::Vector<_MyValueType, _MyDevice>&& _Buffer
 	)
 	{
+		auto Buffer = std::move(_Buffer);
 		auto Allocator = Buffer.GetAllocator();
 		auto [Data, Size] = Buffer.Release();
 		auto Shape = IDim(static_cast<SizeType>(Size));
@@ -1143,6 +1144,14 @@ namespace Functional
 		if (_Type == InnerOuterType::DIV)
 			return A / B;
 		_D_Dragonian_Lib_Throw_Exception("Invalid InnerOuterType.");
+	}
+
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
+	decltype(auto) MinMaxNormalize(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor, SizeType _Axis)
+	{
+		auto Min = _Tensor.template ReduceMin<true>(_Axis);
+		auto Max = _Tensor.template ReduceMax<true>(_Axis);
+		return (_Tensor - Min) / (Max - Min);
 	}
 }
 

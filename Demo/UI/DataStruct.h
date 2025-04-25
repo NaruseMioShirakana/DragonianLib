@@ -4,7 +4,7 @@
 using FloatTensor1D = DragonianLib::Tensor<DragonianLib::Float32, 1, DragonianLib::Device::CPU>;
 using FloatTensor2D = DragonianLib::Tensor<DragonianLib::Float32, 2, DragonianLib::Device::CPU>;
 using Int16Tensor2D = DragonianLib::Tensor<DragonianLib::Int16, 2, DragonianLib::Device::CPU>;
-using ImageTensor = DragonianLib::Tensor<DragonianLib::Int32, 3, DragonianLib::Device::CPU>;
+using ImageTensor = DragonianLib::Tensor<DragonianLib::Int32, 2, DragonianLib::Device::CPU>;
 
 struct MyAudioData
 {
@@ -14,7 +14,8 @@ struct MyAudioData
 		FloatTensor2D _F0,
 		FloatTensor2D _Spec,
 		FloatTensor2D _Mel,
-		std::wstring _F0Path
+		std::wstring _F0Path,
+		bool Modified
 	): 
 		SamplingRate(_SamplingRate),
 		Audio(std::move(_Audio)),
@@ -23,6 +24,8 @@ struct MyAudioData
 		Mel(std::move(_Mel)),
 		F0Path(std::move(_F0Path))
 	{
+		if (Modified)
+			ModifyCount = 1;
 	}
 
 	DragonianLib::Int64 SamplingRate;
@@ -32,6 +35,7 @@ struct MyAudioData
 	FloatTensor2D Mel;
 	std::wstring F0Path;
 	int64_t ModifyCount = 0;
+	std::deque<FloatTensor2D> UndoList, RedoList;
 
 	MyAudioData(const MyAudioData&) = delete;
 	MyAudioData(MyAudioData&&) = default;
@@ -39,4 +43,5 @@ struct MyAudioData
 	MyAudioData& operator=(MyAudioData&&) = default;
 
 	~MyAudioData();
+	void SaveCache() const;
 };

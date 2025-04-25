@@ -7,7 +7,7 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 
-if (true)
+if (false)
 	file(GLOB_RECURSE F0EditorUISrc 
 		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.h
 		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.c

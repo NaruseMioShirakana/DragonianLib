@@ -85,8 +85,8 @@ namespace UI
 		auto callback = [this, timelabel](float pre, float tm)
 		{
 			_m_size ps = 0;
-			if (const auto data = m_editor->GetCurveData(); !data.Null())
-				ps = size_t((float)data.Size(1) * pre);
+			if (const auto& data = m_editor->GetCurveData(); !data.Null())
+				ps = size_t(round((float)data.Size(1) * pre));
 			m_editor->SetPlayLinePos(ps);
 			const std::wstring str = formatTime(tm) + L"\\" + formatTime(m_wave->GetDataDuration());
 			timelabel->SetAttribute(L"text", str);
@@ -122,6 +122,8 @@ namespace UI
 			WndControls::LoadFiles(MoeGetHwnd);
 		else if (MUIEVENT(Event_Mouse_LClick, L"import_f0"))
 			WndControls::LoadF0(MoeGetHwnd);
+		else if (MUIEVENT(Event_Mouse_LClick, L"save_all"))
+			WndControls::SaveAll();
 		else if (MUIEVENT(Event_Slider_Change, L"editor_vol"))
 			m_wave->SetVolume((_m_byte)param);
 		else if (MUIEVENT(Event_ListBox_ItemChanged, L"audio_list"))
@@ -141,14 +143,11 @@ namespace UI
 			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Y') & 0x8000)
 				WndControls::MoeVSRedo();
 			else if (GetKeyState(VK_SPACE) & 0x8000)
-			{
-				if (!m_wave->IsPlay())
-					WndControls::SineGen();
-				m_wave->PlayPause();
-			}
+				WndControls::PlayPause();
 			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('S') & 0x8000)
 				WndControls::SaveData();
-			return false;
+			else
+				return false;
 		}
 		else
 			return false;

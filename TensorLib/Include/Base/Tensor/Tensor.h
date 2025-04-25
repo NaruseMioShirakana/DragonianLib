@@ -434,7 +434,7 @@ public:
 
 	template <typename _ThisType, typename _TFn>
 	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn)
-		requires (TypeTraits::IsInvokeableValue<_TFn>)
+		requires (TypeTraits::IsInvocableValue<_TFn>)
 	{
 		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst, nullptr, nullptr };
 		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
@@ -1451,17 +1451,16 @@ public:
 	decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const ValueType& _Value)
 		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>)
 	{
-		if (_Mask.Shape() != Shape())
-			_D_Dragonian_Lib_Throw_Exception("Mask Shape MisMatch!");
+		auto MaskBroadCasted = BroadCast(_Mask);
 		WaitingAsResult();
-		_Mask.WaitingAsArgument();
+		MaskBroadCasted.WaitingAsArgument();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssignScalar(
 			_MyData,
 			GetDefaultOperatorParameter(),
-			_Mask.Data(),
-			_Mask.GetDefaultOperatorParameter(),
+			MaskBroadCasted.Data(),
+			MaskBroadCasted.GetDefaultOperatorParameter(),
 			_Value,
-			!IsBroadCasted() && !_Mask.IsBroadCasted() && IsContinuous() && _Mask.IsContinuous()
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContinuous() && MaskBroadCasted.IsContinuous()
 		);
 		return *this;
 	}
@@ -1470,22 +1469,78 @@ public:
 	decltype(auto) MaskedFill(const Tensor<_MaskType, _NRank, _MyDevice>& _Mask, const Tensor<ValueType, _TRank, _MyDevice>& _Value)
 		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
 	{
-		if (_Mask.Shape() != Shape())
-			_D_Dragonian_Lib_Throw_Exception("Mask Shape MisMatch!");
+		auto MaskBroadCasted = BroadCast(_Mask);
 		auto BroadCasted = BroadCast(_Value);
 		WaitingAsResult();
-		_Mask.WaitingAsArgument();
+		MaskBroadCasted.WaitingAsArgument();
 		BroadCasted.WaitingAsArgument();
 		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssign(
 			_MyData,
 			GetDefaultOperatorParameter(),
 			BroadCasted.Data(),
 			BroadCasted.GetDefaultOperatorParameter(),
-			_Mask.Data(),
-			_Mask.GetDefaultOperatorParameter(),
-			!IsBroadCasted() && !_Mask.IsBroadCasted() &&
+			MaskBroadCasted.Data(),
+			MaskBroadCasted.GetDefaultOperatorParameter(),
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
 			!BroadCasted.IsBroadCasted() && IsContinuous() &&
-			_Mask.IsContinuous() && BroadCasted.IsContinuous()
+			MaskBroadCasted.IsContinuous() && BroadCasted.IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _MaskType, typename _FunTy, size_t _TRank,
+		typename _ArgType = std::nullptr_t, typename _VectorizedFnTy = nullptr_t
+	> decltype(auto) MaskedInplace(
+		const Tensor<_MaskType, _TRank, _MyDevice>& _Mask,
+		const _ArgType& _Value,
+		_FunTy _ScalarFun,
+		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
+	)
+		requires (TypeTraits::IsInvocableValue<std::decay_t<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
+	{
+		auto MaskBroadCasted = BroadCast(_Mask);
+		WaitingAsResult();
+		MaskBroadCasted.WaitingAsArgument();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedInplaceScalar(
+			_MyData,
+			GetDefaultOperatorParameter(),
+			MaskBroadCasted.Data(),
+			MaskBroadCasted.GetDefaultOperatorParameter(),
+			_Value,
+			_ScalarFun,
+			_VectorizedFn,
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContinuous() && MaskBroadCasted.IsContinuous()
+		);
+		return *this;
+	}
+
+	template <typename _ArgType, typename _MaskType,
+		typename _FunTy, size_t _TRank1, size_t _TRank2, typename _VectorizedFnTy = nullptr_t
+	> decltype(auto) MaskedInplace(
+		const Tensor<_MaskType, _TRank1, _MyDevice>& _Mask,
+		const Tensor<_ArgType, _TRank2, _MyDevice>& _Value,
+		_FunTy _ScalarFun,
+		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
+	)
+		requires (TypeTraits::IsInvocableValue<TypeTraits::RemoveReferenceType<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank1) && (_NRank >= _TRank2))
+	{
+		auto MaskBroadCasted = BroadCast(_Mask);
+		auto BroadCasted = BroadCast(_Value);
+		WaitingAsResult();
+		MaskBroadCasted.WaitingAsArgument();
+		BroadCasted.WaitingAsArgument();
+		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedInplace(
+			_MyData,
+			GetDefaultOperatorParameter(),
+			BroadCasted.Data(),
+			BroadCasted.GetDefaultOperatorParameter(),
+			MaskBroadCasted.Data(),
+			MaskBroadCasted.GetDefaultOperatorParameter(),
+			_ScalarFun,
+			_VectorizedFn,
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
+			!BroadCasted.IsBroadCasted() && IsContinuous() &&
+			MaskBroadCasted.IsContinuous() && BroadCasted.IsContinuous()
 		);
 		return *this;
 	}
@@ -1533,12 +1588,12 @@ public:
 	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(RShift, >> , (Operators::BinaryOperators::RShiftBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
 
 	//*****************************************************************************************************************//
-	_D_Dragonian_Lib_Operator_Binary_Function_Define(BinaryOr);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BinaryOr, | , (Operators::BinaryOperators::BinaryOrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Binary_Function_Define(BitwiseOr);
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseOr, | , (Operators::BinaryOperators::BitwiseOrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
 
 	//*****************************************************************************************************************//
-	_D_Dragonian_Lib_Operator_Binary_Function_Define(BinaryAnd);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BinaryAnd, &, (Operators::BinaryOperators::BinaryAndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Binary_Function_Define(BitwiseAnd);
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseAnd, &, (Operators::BinaryOperators::BitwiseAndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Equal);

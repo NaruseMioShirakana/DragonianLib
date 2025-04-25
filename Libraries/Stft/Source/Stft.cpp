@@ -65,7 +65,7 @@ namespace FunctionTransform
 			double Real = 0., double Imaginary = 0.
 		) : Complex{ Real, Imaginary }
 		{
-
+			return;
 		}
 		_D_Dragonian_Lib_Constexpr_Force_Inline FFTW_COMPLEX(
 			const Complex32& Cpx
@@ -167,7 +167,10 @@ namespace FunctionTransform
 						fftw_execute(PlanDftReal2Complex.get());
 						const auto BeginIdx = UInt64(CurFrame) * FFT_BINS;
 						for (int j = 0; j < FFT_BINS; j++)
-							Spectrogram[BeginIdx + j] = ComplexData[j];
+						{
+							auto Cpx = ComplexData[j];
+							Spectrogram[BeginIdx + j] = Cpx;
+						}
 					}
 				}
 			);
@@ -176,7 +179,7 @@ namespace FunctionTransform
 
 	template <typename TypeInput, typename TypeOutput>
 	static void ExecuteIStft(
-		Tensor<TypeOutput, 4, Device::CPU>& View, TypeOutput* Signal, const TypeInput* Spectrogram, const double* WINDOW,
+		Tensor<TypeOutput, 3, Device::CPU>& View, TypeOutput* Signal, const TypeInput* Spectrogram, const double* WINDOW,
 		double WINDOW_POW_SUM, int WINDOW_SIZE, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES
 	)
 	{
@@ -213,7 +216,7 @@ namespace FunctionTransform
 							WINDOW_SIZE
 						);
 						for (int j = 0; j < WINDOW_SIZE; j++)
-							Signal[size_t(CurFrame) * HOP_SIZE + j] += TypeOutput(SignalData[j + PADDING]) / TypeOutput(NUM_FFT);
+							Signal[size_t(CurFrame) * HOP_SIZE + j] += TypeOutput(SignalData[j + PADDING]);
 					}
 				}
 			);
@@ -290,7 +293,7 @@ namespace FunctionTransform
 				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFT_BINS;
 				ExecuteIStft(
 					Signal, SignalData, SpectrogramData, WINDOW, WINDOW_POW_SUM,
-					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, FrameCount
+					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(FrameCount)
 				);
 			}
 		}
@@ -333,9 +336,9 @@ namespace FunctionTransform
 			WINDOW.Resize(WINDOW_SIZE);
 			HannWindowFn(WINDOW.Data(), WINDOW_SIZE);
 		}
-		WindowPowSum = 0.;
+		WINDOW_POWER_SUM = 0.;
 		for (int i = 0; i < WINDOW_SIZE; i++)
-			WindowPowSum += WINDOW[i] * WINDOW[i];
+			WINDOW_POWER_SUM += WINDOW[i] * WINDOW[i];
 	}
 
 	StftKernel::~StftKernel() = default;
@@ -382,140 +385,31 @@ namespace FunctionTransform
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const
 	{
-		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] =
-			Spectrogram.Shape().RawArray();
-		const auto SignalSize = FrameCount * HOP_SIZE + WINDOW_SIZE;
-		auto Output = Tensor<Float32, 3, Device::CPU>::Zeros(
-			{ BatchSize, ChannelCount, SignalSize }
-		).Evaluate();
-		auto SpectrogramCont = Spectrogram.Continuous().Evaluate();
-		auto SpectrogramBins = Spectrogram.Size(3);
-		if (SpectrogramBins != FFT_BINS)
-			_D_Dragonian_Lib_Throw_Exception("Invalid FFT size.");
-		const auto& SpectrogramDataBegin = SpectrogramCont.Data();
-		std::lock_guard Lock(FFTW_MUTEX);
-		for (SizeType b = 0; b < BatchSize; b++)
-		{
-			for (SizeType c = 0; c < ChannelCount; c++)
-			{
-				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFTSize;
-				auto SignalData = Output.Data() + (b * ChannelCount + c) * SignalSize;
-				
-				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
-				const auto fftOut = std::shared_ptr<FFTW_COMPLEX>(
-					(FFTW_COMPLEX*)(fftw_malloc(sizeof(FFTW_COMPLEX) * FFT_BINS)),
-					fftw_free
-				);
-				const auto plan = std::shared_ptr<fftw_plan_s>(
-					fftw_plan_dft_c2r_1d(NUM_FFT, (fftw_complex*)fftOut.get(), hannWindow.Data(), FFTW_ESTIMATE),
-					fftw_destroy_plan
-				);
-				for (int i = 0; i < FrameCount; i++) {
-					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
-					for (int j = 0; j < FFT_BINS; j++)
-					{
-						fftOut.get()[j][0] = static_cast<double>(SpectrogramData[BgnPtn + j]);
-						fftOut.get()[j][1] = 0.f;
-					}
-					fftw_execute(plan.get());
-					for (int j = 0; j < WINDOW_SIZE; j++)
-						SignalData[size_t(i) * HOP_SIZE + j] += float(hannWindow[j + PADDING]) / float(NUM_FFT);
-				}
-			}
-		}
-		return std::move(Output.Evaluate());
+		return ExecuteIStft<Float32>(
+			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+		);
 	}
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const
 	{
-		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] =
-			Spectrogram.Shape().RawArray();
-		const auto SignalSize = FrameCount * HOP_SIZE + WINDOW_SIZE;
-		auto Output = Tensor<Float32, 3, Device::CPU>::Zeros(
-			{ BatchSize, ChannelCount, SignalSize }
-		).Evaluate();
-		auto SpectrogramCont = Spectrogram.Continuous().Evaluate();
-		auto SpectrogramBins = Spectrogram.Size(3);
-		if (SpectrogramBins != FFT_BINS)
-			_D_Dragonian_Lib_Throw_Exception("Invalid FFT size.");
-		const auto& SpectrogramDataBegin = SpectrogramCont.Data();
-		std::lock_guard Lock(FFTW_MUTEX);
-		for (SizeType b = 0; b < BatchSize; b++)
-		{
-			for (SizeType c = 0; c < ChannelCount; c++)
-			{
-				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFTSize;
-				auto SignalData = Output.Data() + (b * ChannelCount + c) * SignalSize;
-				
-				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
-				const auto fftOut = std::shared_ptr<FFTW_COMPLEX>(
-					(FFTW_COMPLEX*)(fftw_malloc(sizeof(FFTW_COMPLEX) * FFT_BINS)),
-					fftw_free
-				);
-				const auto plan = std::shared_ptr<fftw_plan_s>(
-					fftw_plan_dft_c2r_1d(NUM_FFT, (fftw_complex*)fftOut.get(), hannWindow.Data(), FFTW_ESTIMATE),
-					fftw_destroy_plan
-				);
-				for (int i = 0; i < FrameCount; i++) {
-					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
-					for (int j = 0; j < FFT_BINS; j++)
-					{
-						fftOut.get()[j][0] = static_cast<double>(SpectrogramData[BgnPtn + j].real());
-						fftOut.get()[j][1] = static_cast<double>(SpectrogramData[BgnPtn + j].imag());
-					}
-					fftw_execute(plan.get());
-					for (int j = 0; j < WINDOW_SIZE; j++)
-						SignalData[size_t(i) * HOP_SIZE + j] += float(hannWindow[j + PADDING]) / float(NUM_FFT);
-				}
-			}
-		}
-		return std::move(Output.Evaluate());
+		return ExecuteIStft<Float32>(
+			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+		);
 	}
 
 	Tensor<Float64, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex64, 4, Device::CPU>& Spectrogram) const
 	{
-		const auto [BatchSize, ChannelCount, FrameCount, FFTSize] =
-			Spectrogram.Shape().RawArray();
-		const auto SignalSize = FrameCount * HOP_SIZE + WINDOW_SIZE;
-		auto Output = Tensor<Float64, 3, Device::CPU>::Zeros(
-			{ BatchSize, ChannelCount, SignalSize }
-		).Evaluate();
-		auto SpectrogramCont = Spectrogram.Continuous().Evaluate();
-		auto SpectrogramBins = Spectrogram.Size(3);
-		if (SpectrogramBins != FFT_BINS)
-			_D_Dragonian_Lib_Throw_Exception("Invalid FFT size.");
-		const auto& SpectrogramDataBegin = SpectrogramCont.Data();
-		std::lock_guard Lock(FFTW_MUTEX);
-		for (SizeType b = 0; b < BatchSize; b++)
-		{
-			for (SizeType c = 0; c < ChannelCount; c++)
-			{
-				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFTSize;
-				auto SignalData = Output.Data() + (b * ChannelCount + c) * SignalSize;
+		return ExecuteIStft<Float64>(
+			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+		);
+	}
 
-				DragonianLibSTL::Vector hannWindow(NUM_FFT, 0.0);
-				const auto fftOut = std::shared_ptr<FFTW_COMPLEX>(
-					(FFTW_COMPLEX*)(fftw_malloc(sizeof(FFTW_COMPLEX) * FFT_BINS)),
-					fftw_free
-				);
-				const auto plan = std::shared_ptr<fftw_plan_s>(
-					fftw_plan_dft_c2r_1d(NUM_FFT, (fftw_complex*)fftOut.get(), hannWindow.Data(), FFTW_ESTIMATE),
-					fftw_destroy_plan
-				);
-				for (int i = 0; i < FrameCount; i++) {
-					const auto BgnPtn = size_t(unsigned(i * FFT_BINS));
-					for (int j = 0; j < FFT_BINS; j++)
-					{
-						fftOut.get()[j][0] = SpectrogramData[BgnPtn + j].real();
-						fftOut.get()[j][1] = SpectrogramData[BgnPtn + j].imag();
-					}
-					fftw_execute(plan.get());
-					for (int j = 0; j < WINDOW_SIZE; j++)
-						SignalData[size_t(i) * HOP_SIZE + j] += hannWindow[j + PADDING] / NUM_FFT;
-				}
-			}
-		}
-		return std::move(Output.Evaluate());
+	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal, Int64 HopSize) const
+	{
+		return ExecuteStft<Float32>(
+			Signal, WINDOW.Data(),
+			WINDOW_SIZE, NUM_FFT, static_cast<int>(HopSize), PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+		);
 	}
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram, Int64 HopSize)

@@ -224,8 +224,8 @@ namespace BinaryOperators
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		And(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (requires(_Type & _A, _Type & _B) { { _A& _B }; })
-			return _Left & _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A && _B }; })
+			return _Left && _Right;
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.And(_B) }; })
 			return _Left.And(_Right);
 		else
@@ -236,8 +236,8 @@ namespace BinaryOperators
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
 		Or(const _Type& _Left, const _Type& _Right)
 	{
-		if constexpr (requires(_Type & _A, _Type & _B) { { _A | _B }; })
-			return _Left | _Right;
+		if constexpr (requires(_Type & _A, _Type & _B) { { _A || _B }; })
+			return _Left || _Right;
 		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.Or(_B) }; })
 			return _Left.Or(_Right);
 		else
@@ -246,24 +246,24 @@ namespace BinaryOperators
 
 	template <typename _Type>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		BinaryAnd(_Type& _Left, const _Type& _Right)
+		BitwiseAnd(_Type& _Left, const _Type& _Right)
 	{
 		if constexpr (requires(_Type & _A, _Type & _B) { { _A& _B }; })
 			return _Left & _Right;
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BinaryAnd(_B) }; })
-			return _Left.BinaryAnd(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BitwiseAnd(_B) }; })
+			return _Left.BitwiseAnd(_Right);
 		else
 			return std::nullopt;
 	}
 
 	template <typename _Type>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		BinaryOr(_Type& _Left, const _Type& _Right)
+		BitwiseOr(_Type& _Left, const _Type& _Right)
 	{
 		if constexpr (requires(_Type & _A, _Type & _B) { { _A | _B }; })
 			return _Left | _Right;
-		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BinaryOr(_B) }; })
-			return _Left.BinaryOr(_Right);
+		else if constexpr (requires(_Type & _A, _Type & _B) { { _A.BitwiseOr(_B) }; })
+			return _Left.BitwiseOr(_Right);
 		else
 			return std::nullopt;
 	}
@@ -359,8 +359,8 @@ _D_Dragonian_Lib_Operator_Binary_Function_Def(Mod, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(And, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Or, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Xor, 8, 2);
-_D_Dragonian_Lib_Operator_Binary_Function_Def(BinaryOr, 8, 2);
-_D_Dragonian_Lib_Operator_Binary_Function_Def(BinaryAnd, 8, 2);
+_D_Dragonian_Lib_Operator_Binary_Function_Def(BitwiseOr, 8, 2);
+_D_Dragonian_Lib_Operator_Binary_Function_Def(BitwiseAnd, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(LShift, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(RShift, 8, 2);
 _D_Dragonian_Lib_Operator_Binary_Function_Def(Pow, 8, 2);

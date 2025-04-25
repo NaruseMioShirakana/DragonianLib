@@ -366,10 +366,7 @@ using ArgumentTypesType = typename _D_Dragonian_Lib_Type_Traits_Namespace
 ExtractCallableInfo<Objt>::_ArgumentTypes;
 
 template<typename FunType, typename ...ArgTypes>
-concept IsInvokeableValue = requires(FunType && fn, ArgTypes&&... args)
-{
-	{ std::forward<FunType>(fn)(std::forward<ArgTypes>(args)...) }; // Check if the function is callable
-};
+concept IsInvocableValue = std::is_invocable_v<FunType, ArgTypes...>;
 
 template <int64_t Idx, int64_t Range>
 struct CalculateIndex

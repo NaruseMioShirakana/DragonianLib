@@ -275,26 +275,22 @@ void TestStft()
 	using namespace DragonianLib;
 
 	FunctionTransform::StftKernel Stft(
-		2048, 512, 2048, true
+		2048, 512, 2048
 	);
 
 	auto AudioInStream = AvCodec::OpenInputStream(
 		LR"(C:\DataSpace\MediaProj\PlayList\ttt.wav)"
 	);
 	auto SrcAudio = AudioInStream.DecodeAll(
-		32000
+		44100
 	).View(1, 1, -1);
-	SrcAudio = SrcAudio.Interpolate<Operators::InterpolateMode::Linear>(
-		IDim(-1),
-		IScale(44100.0f / 32000.0f)
-	);
 
 	auto Spec = Stft.Execute(SrcAudio);
 
-	auto Signal = Stft.Inverse(Spec);
+	auto Signal = Functional::MinMaxNormalize(Stft.Inverse(Spec), -1).Evaluate();
 
 	auto AudioOutStream = AvCodec::OpenOutputStream(
-		32000,
+		44100,
 		LR"(C:\DataSpace\MediaProj\PlayList\Test-IStft.wav)"
 	);
 	AudioOutStream.EncodeAll(
@@ -521,7 +517,7 @@ int main()
 	std::wcout.imbue(std::locale("zh_CN"));
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
-	SetTaskPoolSize(4);
+	SetTaskPoolSize(8);
 
-	TestUVR();
+	TestStft();
 }

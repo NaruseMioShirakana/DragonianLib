@@ -121,6 +121,11 @@ namespace FunctionTransform
 			const Tensor<Complex64, 4, Device::CPU>& Spectrogram
 		) const;
 
+		Tensor<Float32, 4, Device::CPU> operator()(
+			const Tensor<Float32, 3, Device::CPU>& Signal,
+			Int64 HopSize
+			) const;
+
 		static Tensor<Float32, 3, Device::CPU> Inverse(
 			const Tensor<Complex32, 4, Device::CPU>& Spectrogram,
 			Int64 HopSize
@@ -131,6 +136,41 @@ namespace FunctionTransform
 		StftKernel& operator=(const StftKernel&) = default; ///< Disable copy assignment
 		StftKernel& operator=(StftKernel&&) = default; ///< Disable move assignment
 
+		auto GetStftSize() const
+		{
+			return NUM_FFT;
+		}
+
+		auto GetStftBins() const
+		{
+			return FFT_BINS;
+		}
+
+		auto GetHopSize() const
+		{
+			return HOP_SIZE;
+		}
+
+		auto GetWindowSize() const
+		{
+			return WINDOW_SIZE;
+		}
+
+		decltype(auto) GetWindow() const
+		{
+			return WINDOW;
+		}
+
+		auto GetFreqPerBin(Int64 SamplingRate) const
+		{
+			return double(SamplingRate) / 2. / double(FFT_BINS);
+		}
+
+		void SetHopSize(int HopSize)
+		{
+			if (HopSize > 0)
+				HOP_SIZE = HopSize;
+		}
 	private:
 		int NUM_FFT = 2048; ///< FFT size
 		int FFT_BINS = 1025; ///< FFT bins
@@ -139,7 +179,7 @@ namespace FunctionTransform
 		int PADDING = 0; ///< Padding size
 		bool CENTER = true;
 		int CENTER_PADDING_SIZE = 256;
-		double WindowPowSum = 0.0; ///< Window power sum
+		double WINDOW_POWER_SUM = 0.0; ///< Window power sum
 		PaddingType PADDING_TYPE = PaddingType::Reflect;
 		TemplateLibrary::Vector<Double> WINDOW;
 	};
@@ -236,6 +276,46 @@ namespace FunctionTransform
 		MFCCKernel(MFCCKernel&&) = default; ///< Disable move constructor
 		MFCCKernel& operator=(const MFCCKernel&) = delete; ///< Disable copy assignment
 		MFCCKernel& operator=(MFCCKernel&&) = default; ///< Disable move assignment
+
+		auto GetMelBins() const
+		{
+			return MEL_BINS;
+		}
+
+		auto GetStftSize() const
+		{
+			return FFT_SIZE;
+		}
+
+		auto GetStftBins() const
+		{
+			return FFT_BINS;
+		}
+
+		auto GetSamplingRate() const
+		{
+			return SAMPLING_RATE;
+		}
+
+		decltype(auto) GetMelBasis() const
+		{
+			return WEIGHT;
+		}
+
+		decltype(auto) GetMelBasisDbl() const
+		{
+			return WEIGHTDBL;
+		}
+
+		auto GetFreqPerBin() const
+		{
+			return STFT_KERNEL.GetFreqPerBin(SAMPLING_RATE);
+		}
+
+		auto GetMaxFreq() const
+		{
+			return double(SAMPLING_RATE) / 2.;
+		}
 
 	private:
 		StftKernel STFT_KERNEL; ///< STFT instance

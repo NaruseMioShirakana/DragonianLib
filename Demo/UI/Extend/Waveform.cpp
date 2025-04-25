@@ -112,11 +112,13 @@ namespace Mui::Ctrl
 
 	void Waveform::SetAudioData(const FloatTensor2D& data)
 	{
+		Clear();
 		m_audio = (data * 32767.f).Cast<short>().Evaluate();
 		static_cast<WAVAudio*>(m_audioData)->source = m_audio.View();
 		if (m_player && m_track)
 			m_player->SetTrackSound(m_track, static_cast<MAudio*>(m_audioData));
 		m_cacheUpdate = true;
+		UpdateDisplay();
 	}
 
 	size_t Waveform::GetPCMSize() const

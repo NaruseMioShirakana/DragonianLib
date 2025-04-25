@@ -147,6 +147,26 @@ public:
 		bool Continuous
 	);
 
+	template<typename _ArgType, typename _MaskType, typename _FunTy, typename _VectorizedFnTy, size_t _NRank>
+	static void ImplMaskedInplace(
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _ArgType* _Src, const OperatorParameter<_NRank>& _SrcInfo,
+		const _MaskType* _Mask, const OperatorParameter<_NRank>& _MaskInfo,
+		_FunTy _ScalarFun,
+		_VectorizedFnTy _VectorizedFn,
+		bool Continuous
+	);
+
+	template<typename _ArgType, typename _MaskType, typename _FunTy, typename _VectorizedFnTy, size_t _NRank>
+	static void ImplMaskedInplaceScalar(
+		_Type* _Dest, const OperatorParameter<_NRank>& _DestInfo,
+		const _MaskType* _Mask, const OperatorParameter<_NRank>& _MaskInfo,
+		const _ArgType& _Value,
+		_FunTy _ScalarFun,
+		_VectorizedFnTy _VectorizedFn,
+		bool Continuous
+	);
+
 	template<size_t _NRank>
 	static void MatMul(
 		_Type* _OutFeature, const OperatorParameter<_NRank>& _OutFeatureInfo,
@@ -168,8 +188,8 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define(LShift);
 	_D_Dragonian_Lib_Operator_Binary_Define(RShift);
 	_D_Dragonian_Lib_Operator_Binary_Define(Pow);
-	_D_Dragonian_Lib_Operator_Binary_Define(BinaryOr);
-	_D_Dragonian_Lib_Operator_Binary_Define(BinaryAnd);
+	_D_Dragonian_Lib_Operator_Binary_Define(BitwiseOr);
+	_D_Dragonian_Lib_Operator_Binary_Define(BitwiseAnd);
 
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Add);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Sub);
@@ -182,8 +202,8 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShift);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShift);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Pow);
-	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOr);
-	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAnd);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BitwiseOr);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BitwiseAnd);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(AddReverse);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(SubReverse);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(MulReverse);
@@ -195,8 +215,8 @@ public:
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(LShiftReverse);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(RShiftReverse);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(PowReverse);
-	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryOrReverse);
-	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BinaryAndReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BitwiseOrReverse);
+	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(BitwiseAndReverse);
 
 	_D_Dragonian_Lib_Operator_Binary_Define(Max);
 	_D_Dragonian_Lib_Operator_Binary_Define_Scalar(Max);

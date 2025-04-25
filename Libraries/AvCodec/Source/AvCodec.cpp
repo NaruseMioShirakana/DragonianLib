@@ -18,7 +18,7 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace AvCodec
 {
-	Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
+	static inline Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
 
 	bool RunWithComMultiThread()
 	{
@@ -75,7 +75,7 @@ namespace AvCodec
 		return AV_TIME_BASE;
 	}
 
-	AVSampleFormat PCMFormat2AVSampleFormat(const AvCodec::PCMFormat& Format) noexcept
+	static AVSampleFormat PCMFormat2AVSampleFormat(const AvCodec::PCMFormat& Format) noexcept
 	{
 		switch (Format)
 		{
@@ -97,7 +97,7 @@ namespace AvCodec
 		return AV_SAMPLE_FMT_NONE;
 	}
 
-	AvCodec::PCMFormat AVSampleFormat2PCMFormat(const AVSampleFormat& Format) noexcept
+	static AvCodec::PCMFormat AVSampleFormat2PCMFormat(const AVSampleFormat& Format) noexcept
 	{
 		switch (Format)
 		{
@@ -1060,7 +1060,7 @@ namespace AvCodec
 		const auto Bps = size_t(av_get_bytes_per_sample(static_cast<AVSampleFormat>(Frame->format)));
 
 		_BufferCount = std::min(_BufferCount, static_cast<ULong>(Frame->ch_layout.nb_channels));
-		if (IsPlanar && TotalSampleCount != static_cast<ULong>(Frame->nb_samples))
+		if (IsPlanar && std::cmp_not_equal(TotalSampleCount, Frame->nb_samples))
 			_D_Dragonian_Lib_Throw_Exception("Total sample count (including padding) should be equal to frame's sample count");
 		if (IsPack && TotalSampleCount != Frame->nb_samples * static_cast<ULong>(Frame->ch_layout.nb_channels))
 			_D_Dragonian_Lib_Throw_Exception("Total sample count (including padding) should be equal to frame's sample count");
@@ -1310,7 +1310,7 @@ namespace AvCodec
 				auto Buf = (void**)_MyBuf;
 				for (UInt32 i = 0; i < OutputChannel; ++i)
 					_Free(Buf[i]);
-				_Free(Buf);
+				_Free(_MyBuf);
 			}
 		};
 	}
@@ -1873,7 +1873,7 @@ namespace AvCodec
 		return _MyStream;
 	}
 
-	TemplateLibrary::Vector<UInt8> Transpose2Packed(const TemplateLibrary::ConstantRanges<Byte>& PCMData, AVSampleFormat SampleFormat)
+	static TemplateLibrary::Vector<UInt8> Transpose2Packed(const TemplateLibrary::ConstantRanges<Byte>& PCMData, AVSampleFormat SampleFormat)
 	{
 		TemplateLibrary::Vector<UInt8> Ret(PCMData.Size());
 		const auto Samples = PCMData.Size() / av_get_bytes_per_sample(SampleFormat) / 2;
@@ -2004,8 +2004,7 @@ namespace AvCodec
 			if (CurrentTicks >= 0)
 			{
 				long DiffTicks = CurrentTicks - PreviousTicks;
-				if (DiffTicks < 0)
-					DiffTicks = 0;
+				DiffTicks = std::max(0l, DiffTicks);
 				PreviousTicks = CurrentTicks;
 				if (Event.Velocity)
 					Writer.add_event(DiffTicks, 0, libremidi::channel_events::note_on(0, uint8_t(unsigned long(Event.MidiNote)), uint8_t(unsigned long(Event.Velocity))));

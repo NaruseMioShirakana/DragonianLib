@@ -168,7 +168,6 @@ namespace Mui::Ctrl
 
 	void CurveEditor::UpDate()
 	{
-		SetDragValue(false, 0);
 		m_cacheUpdate = true;
 		UpdateDisplay();
 	}
@@ -178,6 +177,15 @@ namespace Mui::Ctrl
 		auto begin = selected_f0_begin < selected_f0_end ? selected_f0_begin : selected_f0_end;
 		auto end = selected_f0_begin < selected_f0_end ? selected_f0_end : selected_f0_begin;
 		return { begin, end };
+	}
+
+	void CurveEditor::UPRButton()
+	{
+		if (m_isdown && m_f0data.HasValue())
+		{
+			m_isdown = false;
+			WndControls::CheckUnchanged();
+		}
 	}
 
 	void CurveEditor::SetAttribute(std::wstring_view attribName, std::wstring_view attrib, bool draw)
@@ -201,12 +209,13 @@ namespace Mui::Ctrl
 		}
 		else if(attribName == L"fontName")
 		{
-			m_font->SetFontName(attrib.data());
+			m_font->SetFontName({ attrib.data(), attrib.size() });
 		}
 		else if(attribName == L"fontSize")
 		{
 			_m_scale scale = GetRectScale().scale();
-			m_fontSize = Helper::M_StoInt(attrib.data());
+			std::wstring attrstr = { attrib.data(), attrib.size() };
+			m_fontSize = Helper::M_StoInt(attrstr);
 			const float fontSize = Helper::M_MIN(scale.cx, scale.cy) * (float)m_fontSize;
 			m_font->SetFontSize((_m_uint)fontSize, std::make_pair(0u, (_m_uint)m_font->GetText().length()));
 		}
@@ -284,7 +293,7 @@ namespace Mui::Ctrl
 			float value = ((float)(pt.y - space - fontHeight) + offsetY) / (float)fullHeight;
 			value = Helper::M_Clamp(0.f, 120.f, 119.9f - value * 120.f);
 			auto Pitch = DWORD(round(value));
-			if (Pitch > 0x7f) Pitch = 0x7f;
+			Pitch = std::min(Pitch, DWORD(0x7f));
 			if(Pitch != LastMidiPitch)
 			{
 				constexpr int volume = 0x7f;
@@ -314,33 +323,50 @@ namespace Mui::Ctrl
 
 		_m_scale scale = GetRectScale().scale();
 
-		if (m_insel)
+		const int space = _scale_to(5, scale.cy);
+		const int fontHeight = m_font->GetMetrics().bottom;
+		const int preHeight = _scale_to(m_preHeight, scale.cy);
+		const int fontCenter = fontHeight / 2;
+		const auto bot = param->destRect->bottom - preHeight - space - fontCenter;
+		const auto top = param->destRect->top + space;
+
+		const auto Range = GetSelectedRange();
+		if (!Range.Null() && Range.Size())
 		{
-			int space = _scale_to(5, scale.cy);
-			int fontHeight = m_font->GetMetrics().bottom;
-			int preHeight = _scale_to(m_preHeight, scale.cy);
-			int fontCenter = fontHeight / 2;
-			const auto bot = param->destRect->bottom - preHeight - space - fontCenter;
-			const auto top = param->destRect->top + space;
 			m_brush_m->SetColor(m_fontColor);
-			m_brush_m->SetOpacity(50);
-
-			int c_width = m_viewRect.GetWidth();
-			c_width = int((float)c_width * m_viewScaleH);
-			float stepX = (float)c_width / float(m_f0data.Size(1) - 1);
-			const auto left = _scale_to(m_viewRect.left, GetRectScale().scale().cx);
-			const auto cur_x_off = CalcViewHOffset();
-			const auto data = m_f0data.Data() + curve_idx * m_f0data.Size(1);
-			const auto x_off_beg = selected_f0_begin - data;
-			const auto x_off_end = selected_f0_end - data;
-			auto m_l_x_pos = std::max(int((x_off_beg * stepX) - cur_x_off), 0) + left;
-			auto m_c_x_pos = std::max(int((x_off_end * stepX) - cur_x_off), 0) + left;
-
+			m_brush_m->SetOpacity(25);
+			
+			const auto X_POS = std::max(CalcXPosWithPtr(param, Range.begin()), m_viewRect.left);
+			const auto X_L_POS = CalcXPosWithPtr(param, Range.end());
 			param->render->FillRectangle(
-				UIRect(std::min(m_c_x_pos, m_l_x_pos), top,
-					std::abs(m_c_x_pos - m_l_x_pos), bot - top),
+				UIRect(X_POS, top, X_L_POS - X_POS, bot - top),
 				m_brush_m
 			);
+		}
+
+		auto Rect = UINodeBase::m_data.Frame;
+		Rect.left += m_viewRect.left;
+		UIPoint CursorPoint;
+		if (GetCursorPos((LPPOINT)&CursorPoint) && ScreenToClient((HWND)GetParentWin()->GetWindowHandle(), (LPPOINT)&CursorPoint) &&
+			Helper::M_IsPtInRect(Rect, CursorPoint))
+		{
+			m_brush_m->SetColor(m_fontColor);
+			m_brush_m->SetOpacity(255);
+			const auto x = std::max(0, CursorPoint.x - UINodeBase::m_data.Frame.left);
+			param->render->FillRectangle(
+				UIRect(x, top, _scale_to(2, scale.cx), bot - top),
+				m_brush_m
+			);
+			if (m_f0data.HasValue())
+			{
+				m_font->SetText(std::to_wstring(GetXOffset(x - m_viewRect.left)));
+				param->render->DrawTextLayout(
+					m_font,
+					UIRect(x + space, top, m_font->GetMetrics().GetWidth(), fontHeight),
+					m_brush_m,
+					TextAlign_Left
+				);
+			}
 		}
 
 		DrawLabel(scale, param);
@@ -362,24 +388,6 @@ namespace Mui::Ctrl
 		if (Helper::M_IsPtInRect(barFrame, point))
 			return true;
 
-		const auto& attrib = UIScroll::GetAttribute();
-
-		int viewWidth = m_viewRect.GetWidth();
-		int fullWidth = int((float)viewWidth * m_viewScaleH);
-
-		auto getXoffset = [&](int index)
-			{
-				//x offset
-				float offsetX = 0.f;
-				if (attrib.dragValue.width != 0)
-					offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
-				offsetX = (float)(fullWidth - viewWidth) * (offsetX);
-				offsetX = ((float)(index)+offsetX) / (float)fullWidth;
-				offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
-
-				return  size_t(offsetX * (float)m_f0data.Size(1));
-			};
-
 		const UIPoint pt = {
 			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
 			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
@@ -389,8 +397,8 @@ namespace Mui::Ctrl
 		{
 			auto x = pt.x - m_viewRect.left;
 			x -= m_viewRect.left;
-			if (x < 0) x = 0;
-			auto xoff = getXoffset(x);
+			x = std::max(0, x);
+			auto xoff = GetXOffset(x);
 			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
@@ -423,8 +431,7 @@ namespace Mui::Ctrl
 			if (step == 0) step = 1;
 			const int curval = GetDragValue(true);
 			int val = curval + int(-delta_ * float(step));
-			if (val > range) val = range;
-			if (val < 0) val = 0;
+			val = std::clamp(val, 0, range);
 			SetDragValue(true, val);
 		}
 		else
@@ -434,8 +441,7 @@ namespace Mui::Ctrl
 			if (step == 0) step = 1;
 			const int curval = m_sidebar->GetDragValue(false);
 			int val = curval + int(-delta_ * float(step));
-			if (val > range) val = range;
-			if (val < 0) val = 0;
+			val = std::clamp(val, 0, range);
 			m_sidebar->SetDragValue(false, val);
 			SetDragValue(false, 0);
 		}
@@ -448,24 +454,6 @@ namespace Mui::Ctrl
 		if (UIScroll::OnMouseMove(flag, point))
 			return true;
 
-		const auto& attrib = UIScroll::GetAttribute();
-
-		const int viewWidth = m_viewRect.GetWidth();
-		const int fullWidth = int((float)viewWidth * m_viewScaleH);
-
-		auto getXoffset = [&](int index)
-			{
-				//x offset
-				float offsetX = 0.f;
-				if (attrib.dragValue.width != 0)
-					offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
-				offsetX = (float)(fullWidth - viewWidth) * (offsetX);
-				offsetX = ((float)(index)+offsetX) / (float)fullWidth;
-				offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
-
-				return size_t(offsetX * (float)m_f0data.Size(1));
-			};
-
 		const UIPoint pt = {
 			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
 			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
@@ -477,16 +465,16 @@ namespace Mui::Ctrl
 		if (time_in_sel && m_f0data.HasValue())
 		{
 			const auto x = pt.x - m_viewRect.left;
-			auto xof = getXoffset(x);
-			xof = xof * WndControls::GetPcmSize() / m_f0data.Size(1);
+			auto xof = GetXOffset(x);
+			xof = xof * WndControls::GetPcmSize() / (m_f0data.Size(1) - 1);
 			WndControls::SetPlayerPos(xof);
 		}
 
 		if (m_insel)
 		{
 			auto x = pt.x - m_viewRect.left;
-			if (x < 0) x = 0;
-			auto xoff = getXoffset(x);
+			x = std::max(0, x);
+			auto xoff = GetXOffset(x);
 			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
@@ -528,16 +516,16 @@ namespace Mui::Ctrl
 				value = Helper::M_Clamp(0.f, 1.f, 1.f - value) * MaxFreq;
 
 			x -= m_viewRect.left;
-			if (x < 0) x = 0;
-			if (m_lastPos.x < 0) m_lastPos.x = 0;
+			x = std::max(0, x);
+			m_lastPos.x = std::max(0, m_lastPos.x);
 			int begin = m_lastPos.x < x ? m_lastPos.x : x;
 			int end = x > m_lastPos.x ? x : m_lastPos.x;
 
 			if (end <= begin)
 				end = begin + 3;
 
-			auto xbegin = getXoffset(begin);
-			auto xend = getXoffset(end);
+			auto xbegin = GetXOffset(begin);
+			auto xend = GetXOffset(end);
 			const auto m_f0data_data = m_f0data.Data() + curve_idx * m_f0data.Size(1);
 			auto count = xend - xbegin;
 
@@ -548,15 +536,13 @@ namespace Mui::Ctrl
 					if (auto cur_data_ptr = &m_f0data_data[xbegin + i]; range_sel.Contains(cur_data_ptr))
 						*cur_data_ptr = value;
 
-			if (count == 0 && xbegin < static_cast<size_t>(m_f0data.Size(1)))
+			if (count == 0 && std::cmp_less(xbegin, m_f0data.Size(1)))
 				if (auto cur_data_ptr = &m_f0data_data[xbegin]; range_sel.Contains(cur_data_ptr))
 					*cur_data_ptr = value;
 
 			m_lastPos = { x, y };
 		}
-		m_cacheUpdate = true;
-		UpdateDisplay();
-
+		UpDate();
 		return false;
 	}
 
@@ -570,7 +556,7 @@ namespace Mui::Ctrl
 			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
 		};
 
-		if (Helper::M_IsPtInRect(m_viewRect, pt))
+		if (m_f0data.HasValue() && Helper::M_IsPtInRect(m_viewRect, pt))
 		{
 			WndControls::AppendUndo();
 			m_isdown = true;
@@ -581,11 +567,7 @@ namespace Mui::Ctrl
 
 	bool CurveEditor::OnRButtonUp(_m_uint flag, const UIPoint& point)
 	{
-		if(m_isdown && m_f0data.HasValue())
-		{
-			WndControls::CheckUnchanged();
-			m_isdown = false;
-		}
+		UPRButton();
 
 		return UIScroll::OnRButtonUp(flag, point);
 	}
@@ -599,24 +581,6 @@ namespace Mui::Ctrl
 			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
 			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
 		};
-
-		const auto& attrib = UIScroll::GetAttribute();
-
-		const int viewWidth = m_viewRect.GetWidth();
-		const int fullWidth = int((float)viewWidth * m_viewScaleH);
-
-		auto getXoffset = [&](int index)
-			{
-				//x offset
-				float offsetX = 0.f;
-				if (attrib.dragValue.width != 0)
-					offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
-				offsetX = (float)(fullWidth - viewWidth) * (offsetX);
-				offsetX = ((float)(index)+offsetX) / (float)fullWidth;
-				offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
-
-				return  size_t(offsetX * (float)m_f0data.Size(1));
-			};
 
 		if (GetKeyState(VK_TAB) & 0x8000)
 		{
@@ -636,8 +600,8 @@ namespace Mui::Ctrl
 				m_insel = true;
 				auto x = pt.x;
 				x -= m_viewRect.left;
-				if (x < 0) x = 0;
-				auto xoff = getXoffset(x);
+				x = std::max(0, x);
+				auto xoff = GetXOffset(x);
 				selected_f0_begin = selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 			}
 			return true;
@@ -654,23 +618,6 @@ namespace Mui::Ctrl
 
 	bool CurveEditor::OnLButtonUp(_m_uint flag, const UIPoint& point)
 	{
-		const auto& attrib = UIScroll::GetAttribute();
-		int viewWidth = m_viewRect.GetWidth();
-		int fullWidth = int((float)viewWidth * m_viewScaleH);
-
-		auto getXoffset = [&](int index)
-			{
-				//x offset
-				float offsetX = 0.f;
-				if (attrib.dragValue.width != 0)
-					offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
-				offsetX = (float)(fullWidth - viewWidth) * (offsetX);
-				offsetX = ((float)(index)+offsetX) / (float)fullWidth;
-				offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
-
-				return  size_t(offsetX * (float)m_f0data.Size(1));
-			};
-
 		if (m_f0data.HasValue())
 		{
 			if (m_insel && selected_f0_begin == selected_f0_end)
@@ -680,8 +627,8 @@ namespace Mui::Ctrl
 				auto x = point.x;
 				x -= UINodeBase::m_data.Frame.left;
 				x -= m_viewRect.left;
-				auto xof = getXoffset(x);
-				xof = xof * WndControls::GetPcmSize() / m_f0data.Size(1);
+				auto xof = GetXOffset(x);
+				xof = xof * WndControls::GetPcmSize() / (m_f0data.Size(1) - 1);
 				WndControls::SetPlayerPos(xof);
 			}
 		}
@@ -722,7 +669,7 @@ namespace Mui::Ctrl
 		return UIScroll::OnLButtonDoubleClicked(flag, point);
 	}
 
-	char VK_Nums[]{ L'1',L'2',L'3',L'4',L'5',L'6',L'7',L'8',L'9' };
+	static char VK_Nums[]{ L'1',L'2',L'3',L'4',L'5',L'6',L'7',L'8',L'9' };
 
 	bool CurveEditor::OnWindowMessage(MEventCodeEnum code, _m_param wParam, _m_param lParam)
 	{
@@ -736,7 +683,6 @@ namespace Mui::Ctrl
 				{
 					if (Exec)
 						Write2Clipboard(Range);
-					return true;
 				}
 				else if (GetKeyState('X') & 0x8000)
 				{
@@ -748,7 +694,6 @@ namespace Mui::Ctrl
 							i = 0.f;
 						WndControls::ApplyAppendUndo();
 					}
-					return true;
 				}
 				else if (GetKeyState('V') & 0x8000)
 				{
@@ -790,7 +735,6 @@ namespace Mui::Ctrl
 							WndControls::CheckUnchanged();
 						}
 					}
-					return true;
 				}
 				else if (GetKeyState('W') & 0x8000)
 				{
@@ -800,7 +744,6 @@ namespace Mui::Ctrl
 						WndControls::ApplyPitchShift(GetSelectedRange());
 						WndControls::CheckUnchanged();
 					}
-					return true;
 				}
 				else if (GetKeyState('E') & 0x8000)
 				{
@@ -810,20 +753,36 @@ namespace Mui::Ctrl
 						WndControls::ApplyCalc(GetSelectedRange());
 						WndControls::CheckUnchanged();
 					}
-					return true;
 				}
 				else if (GetKeyState('A') & 0x8000)
 				{
 					selected_f0_begin = m_f0data.Data() + curve_idx * m_f0data.Size(1);
 					selected_f0_end = m_f0data.Data() + (curve_idx + 1) * m_f0data.Size(1);
-					return true;
 				}
+				else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Z') & 0x8000)
+					WndControls::MoeVSUndo();
+				else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Y') & 0x8000)
+					WndControls::MoeVSRedo();
+				else if (GetKeyState(VK_SPACE) & 0x8000)
+					WndControls::PlayPause();
+				else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('S') & 0x8000)
+					WndControls::SaveData();
 				else if (GetKeyState('0') & 0x8000)
 					SetCurveIndex(9);
 				else
-					for (auto k : VK_Nums)
-						if (GetKeyState(k) & 0x8000)
-							SetCurveIndex(k - '1');
+				{
+					return std::ranges::any_of(
+						VK_Nums,
+						[&](char k) {
+							if (GetKeyState(k) & 0x8000)
+							{
+								SetCurveIndex(k - '1');
+								return true;
+							}
+							return false;
+						}
+					);
+				}
 			}
 			else if (GetKeyState(VK_DELETE) & 0x8000)
 			{
@@ -834,10 +793,16 @@ namespace Mui::Ctrl
 						i = 0.f;
 					WndControls::ApplyAppendUndo();
 				}
-				return true;
 			}
+			else
+			{
+				goto EndLabel;
+			}
+			UpDate();
+			return true;
 		}
 
+		EndLabel:
 		return UIScroll::OnWindowMessage(code, wParam, lParam);
 	}
 
@@ -850,11 +815,7 @@ namespace Mui::Ctrl
 		m_insel = false;
 		time_in_sel = false;
 
-		if (m_isdown && m_f0data.HasValue())
-		{
-			WndControls::CheckUnchanged();
-			m_isdown = false;
-		}
+		UPRButton();
 
 		in_move = false;
 		return false;
@@ -1013,16 +974,21 @@ namespace Mui::Ctrl
 
 		//y轴线
 		m_brush_m->SetColor(m_lineColor);
-		dst.top = param->destRect->top + space;
+		dst.top = param->destRect->top + space + fontHeight - 1;
 		dst.bottom = param->destRect->bottom - preHeight - space - fontCenter;
 		dst.left += space + fontWidth;
 		//const int dstl = dst.left;
 		dst.right = dst.left + lineHeight;
 		param->render->FillRectangle(dst, m_brush_m);
 		//x轴线
-		dst.top = param->destRect->bottom - preHeight - space - fontCenter;
+		dst.top = param->destRect->top + space + fontHeight - 1;
 		dst.bottom = dst.top + lineHeight;
 		dst.right = param->destRect->right - space - sidebarWidth;
+		param->render->FillRectangle(dst, m_brush_m);
+
+		dst.top = param->destRect->bottom - preHeight - space - fontCenter;
+		dst.bottom = dst.top + lineHeight;
+		
 		param->render->FillRectangle(dst, m_brush_m);
 		DrawXLabel(scale, param);
 	}
@@ -1203,7 +1169,7 @@ namespace Mui::Ctrl
 
 				sink->Close();
 				auto AlphaRes = m_brush_m->GetOpacity();
-				if (AlphaRes < 2) AlphaRes = 2;
+				AlphaRes = std::max(2ui8, AlphaRes);
 				m_brush_m->SetOpacity(AlphaRes / 2);
 
 				ID2D1StrokeStyle* dashed_style;
@@ -1227,7 +1193,7 @@ namespace Mui::Ctrl
 		for (int64_t curveIdx = Batch - 1; curveIdx >= 0; --curveIdx)
 		{
 			ID2D1StrokeStyle* Style = curveIdx == curve_idx ? nullptr : MinorStyle;
-			float LineWidth = curveIdx == curve_idx ? 1.f : 0.5;
+			float LineWidth = curveIdx == curve_idx ? 1.f : 0.5f;
 			const float* CurvePointer = DataPointer + curveIdx * Frames;
 			const float* CurveEnd = CurvePointer + Frames;
 			auto SelectedRange = GetSelectedRange().RawConst();
@@ -1294,7 +1260,7 @@ namespace Mui::Ctrl
 				for (float curIndex = 0.f, size = float(Frames); int(curIndex) < int(size); curIndex += stride)
 				{
 					const auto i = PreViewData[int(curIndex)];
-					if (i > max_val) max_val = i;
+					max_val = std::max(max_val, i);
 					if (i < min_val && i > 0.001f) min_val = i;
 				}
 				if (m_showPitch)
@@ -1348,7 +1314,7 @@ namespace Mui::Ctrl
 			return;
 
 		int fullWidth = int((float)m_viewRect.GetWidth() * m_viewScaleH);
-		float offset = (float)m_plineOffset / (float)m_f0data.Size(1);
+		float offset = (float)m_plineOffset / (float)(m_f0data.Size(1) - 1);
 		offset = offset * (float)fullWidth;
 		UIRect rc = m_viewRect;
 		rc.left += (int)offset;
@@ -1374,7 +1340,7 @@ namespace Mui::Ctrl
 		m_brush_m->SetColor(m_lineColor);
 
 		//预览图指针
-		offset = (float)m_plineOffset / (float)m_f0data.Size(1);
+		offset = (float)m_plineOffset / (float)(m_f0data.Size(1) - 1);
 		offset = offset * (float)param->destRect->GetWidth();
 		rc = *param->destRect;
 		rc.top = rc.bottom - _scale_to(m_preHeight, scale.cy);
@@ -1432,8 +1398,7 @@ namespace Mui::Ctrl
 		const int range = _scale_to(width, m_viewScaleH);
 		int drag = int((int64_t)attrib.dragValue.width * (int64_t)range / (int64_t)attrib.range.width);
 		if (delta > 0) drag += (LWidth - width / 2) / 2;
-		if (drag < 0) drag = 0;
-		if (drag > range) drag = range;
+		drag = std::clamp(drag, 0, range);
 
 		UIScroll::SetAttributeSrc(L"rangeH", range, false);
 		UIScroll::SetAttributeSrc(L"dragValueH", drag, true);
@@ -1525,5 +1490,37 @@ namespace Mui::Ctrl
 				Pitch += 0.1f;
 			}
 		}
+	}
+
+	int CurveEditor::CalcXPosWithPtr(MPCPaintParam param, const float* Ptr)
+	{
+		int fullWidth = int((float)m_viewRect.GetWidth() * m_viewScaleH);
+		float offset = (float)(Ptr - m_f0data.Data() + curve_idx * m_f0data.Size(1)) / (float)(m_f0data.Size(1) - 1);
+		offset = offset * (float)fullWidth;
+		const auto result = m_viewRect.left + int(offset) + param->destRect->left;
+
+		auto attribX = UIScroll::GetAttribute();
+		offset = 0.f;
+		if (attribX.dragValue.width != 0)
+			offset = (float)attribX.dragValue.width / (float)attribX.range.width;
+		offset = (float)(fullWidth - m_viewRect.GetWidth()) * offset;
+		return result - (int)offset;
+	}
+
+	size_t CurveEditor::GetXOffset(int PointX)
+	{
+		const auto& attrib = UIScroll::GetAttribute();
+
+		float viewWidth = (float)m_viewRect.GetWidth();
+		float fullWidth = viewWidth * float(m_viewScaleH);
+
+		float offsetX = 0.f;
+		if (attrib.dragValue.width != 0)
+			offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
+		offsetX = (fullWidth - viewWidth) * (offsetX);
+		offsetX = ((float)PointX + offsetX) / fullWidth;
+		offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
+
+		return  size_t(round(offsetX * (float)(m_f0data.Size(1) - 1)));
 	}
 }

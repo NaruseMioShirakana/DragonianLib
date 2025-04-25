@@ -14,12 +14,6 @@
 
 #define MoeGetHwnd (HWND)this->m_parent->GetParentWin()->GetWindowHandle()
 
-std::wstring MoeGetOpenFile(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt = TEXT("wav"));
-
-std::wstring MoeGetSaveFile(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt = TEXT("wav"));
-
-std::vector<std::wstring> MoeGetOpenFiles(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt = TEXT("wav"));
-
 std::wstring GetLocalizationString(const std::wstring_view& _Str);
 
 namespace WndControls
@@ -63,11 +57,15 @@ namespace WndControls
 
 	void DeleteAudio(int idx);
 
+	void PlayPause();
+
 	void MoeVSUndo();
 
 	void MoeVSRedo();
 
-	void SaveData();
+	void SaveAll();
+
+	void SaveData(int CurSel = -1);
 
 	void SineGen();
 

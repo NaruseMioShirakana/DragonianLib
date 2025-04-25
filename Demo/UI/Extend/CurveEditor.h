@@ -41,6 +41,8 @@ namespace Mui::Ctrl
 
 		DragonianLib::TemplateLibrary::MutableRanges<float> GetSelectedRange() const;
 
+		void UPRButton();
+
 	protected:
 		void OnScale(_m_scale scale) override;
 		void OnLoadResource(MRenderCmd* render, bool recreate) override;
@@ -82,6 +84,10 @@ namespace Mui::Ctrl
 		std::mutex mx;
 
 		void ArrangeRect(const UIRect& rect, std::vector<UIRect>& dst) const;
+
+		int CalcXPosWithPtr(MPCPaintParam param, const float* Ptr);
+
+		size_t GetXOffset(int PointX);
 
 		MBrush* m_brush_m = nullptr;
 		MPen* m_pen = nullptr;
