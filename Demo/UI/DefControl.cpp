@@ -60,7 +60,6 @@ namespace WndControls
 		{
 			if (gdiplusToken)
 				Gdiplus::GdiplusShutdown(gdiplusToken);
-
 		}
 	};
 

@@ -630,7 +630,7 @@ namespace AvCodec
 			auto ErrorMessage = Future.get();
 
 			if (!ErrorMessage.empty())
-				_D_Dragonian_Lib_Throw_Raw_Exception(ErrorMessage.c_str());
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage.c_str());
 
 			const auto MBufSize = static_cast<SizeType>(MyBuf[0].Size());
 
@@ -833,7 +833,7 @@ namespace AvCodec
 			auto ErrorMessage = Future.get();
 
 			if (!ErrorMessage.empty())
-				_D_Dragonian_Lib_Throw_Raw_Exception(ErrorMessage.c_str());
+				_D_Dragonian_Lib_Throw_Exception(ErrorMessage.c_str());
 
 			Close();
 		}

@@ -2,21 +2,22 @@
 
 namespace App
 {
-	Mui::MiaoUI m_engine;
-	auto constexpr m_reskey = L"12345678";
+    constexpr auto m_reskey = L"12345678";
 
-	bool Application(std::wstring& errinfo, std::vector<std::wstring> cmdList)
+	static bool Application(std::wstring& errinfo, std::vector<std::wstring> cmdList)
 	{
-		if (!m_engine.InitEngine(errinfo))
+        static auto m_engine = Mui::MiaoUI::CreateInstance();
+
+		if (!m_engine->InitEngine(errinfo))
 			return false;
 
-		if(!m_engine.AddResourcePath(std::wstring(DragonianLib::GetCurrentFolder() + L"\\MVSResource.dmres"), m_reskey))
+		if(!m_engine->AddResource(std::wstring(DragonianLib::GetCurrentFolder() + L"\\MVSResource.dmres"), m_reskey))
 		{
 			errinfo = L"资源文件加载失败!";
 			return false;
 		}
 
-		if(!UI::CreateMainWindow(m_engine, std::move(cmdList)))
+		if(!UI::CreateMainWindow(*m_engine, std::move(cmdList)))
 		{
 			errinfo = L"初始化窗口失败!";
 			return false;
@@ -34,7 +35,8 @@ namespace App
 #pragma comment(lib, "dbghelp.lib")
 #include <fstream>
 
-void DumpStackTrace(EXCEPTION_POINTERS* pExceptionPointers)
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+static void DumpStackTrace(EXCEPTION_POINTERS* pExceptionPointers)
 {
     HANDLE hProcess = GetCurrentProcess();
     HANDLE hThread = GetCurrentThread();
@@ -96,7 +98,8 @@ void DumpStackTrace(EXCEPTION_POINTERS* pExceptionPointers)
     SymCleanup(hProcess);
 }
 
-static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* pExceptionPointers)
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+static LONG WINAPI ExceptionHandler([[jetbrains::has_side_effects]] EXCEPTION_POINTERS* pExceptionPointers)
 {
     DumpStackTrace(pExceptionPointers);
     return EXCEPTION_EXECUTE_HANDLER;

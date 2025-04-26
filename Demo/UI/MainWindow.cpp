@@ -13,8 +13,6 @@
 
 namespace UI
 {
-	using namespace Mui;
-
 	const UISize m_wndSize = { 1280, 768 };
 	const std::wstring m_wndTitle = L"Label";
 	Render::MAudioPlayer* m_player = nullptr;
@@ -24,12 +22,12 @@ namespace UI
 	std::vector<Menu*> m_menuList;
 	Menu* m_curShowMenu = nullptr;
 
-	bool CreateMainWindow(MiaoUI& engine, std::vector<std::wstring> cmdList)
+	bool CreateMainWindow(Mui::MiaoUI& engine, const std::vector<std::wstring>& cmdList)
 	{
 		if (m_window)
 			return true;
 
-		const auto ctx = engine.CreateWindowCtx({ 0, 0, m_wndSize.width, m_wndSize.height }, NoTitleBar, m_wndTitle + L" - " + App::m_version, true, true);
+		const auto ctx = engine.CreateWindowCtx({ 0, 0, m_wndSize.width, m_wndSize.height }, Window::MWindowType::NoTitleBar, m_wndTitle + L" - " + App::m_version, true, true);
 		if (!ctx)
 			return false;
 

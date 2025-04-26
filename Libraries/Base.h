@@ -183,33 +183,78 @@ public:
 	void Reserve(size_t _Size);
 };
 
-template <typename _FunTy>
+class UniqueScopeExit
+{
+public:
+	UniqueScopeExit() = default;
+
+	template <typename _FunTy, typename... _Args>
+	UniqueScopeExit(
+		_FunTy&& _Function,
+		_Args&&... _Arguments
+	) requires (std::is_invocable_v<_FunTy, _Args...>) :
+		_MyFun(
+			std::bind(
+				std::forward<_FunTy>(_Function),
+				std::forward<_Args>(_Arguments)...
+			)
+		)
+	{
+
+	}
+
+	~UniqueScopeExit() { if (_MyFun) _MyFun(); }
+	UniqueScopeExit(UniqueScopeExit&&) noexcept = default;
+	UniqueScopeExit(const UniqueScopeExit&) = delete;
+	UniqueScopeExit& operator=(UniqueScopeExit&&) noexcept = default;
+	UniqueScopeExit& operator=(const UniqueScopeExit&) = delete;
+
+private:
+	std::function<void()> _MyFun;
+};
+
 class SharedScopeExit
 {
 public:
-	static_assert(std::is_invocable_v<_FunTy>, "_FunTy is not invocable!");
+	SharedScopeExit() = default;
+	template <typename _FunTy, typename... _Args>
+	SharedScopeExit(
+		_FunTy&& _Function,
+		_Args&&... _Arguments
+	) requires (std::is_invocable_v<_FunTy, _Args...>) :
+		_MyFun(
+			std::make_shared<UniqueScopeExit>(
+				std::forward<_FunTy>(_Function),
+				std::forward<_Args>(_Arguments)...
+			)
+		)
+	{
 
-	SharedScopeExit() = delete;
-	SharedScopeExit(_FunTy _Fn) : _MyFun(std::move(_Fn)) {}
-	~SharedScopeExit() { if (_MyFun) _MyFun(); }
-	SharedScopeExit(SharedScopeExit&&) noexcept = default;
-	SharedScopeExit(const SharedScopeExit&) = default;
-	SharedScopeExit& operator=(SharedScopeExit&&) noexcept = default;
-	SharedScopeExit& operator=(const SharedScopeExit&) = default;
+	}
+
+	operator UniqueScopeExit() const
+	{
+		return std::move(*_MyFun);
+	}
 
 private:
-	_FunTy _MyFun;
+	std::shared_ptr<UniqueScopeExit> _MyFun;
 };
 
-template <typename _FunTy>
-class OnStartUP
+class OnConstruct
 {
 public:
-	static_assert(std::is_invocable_v<_FunTy>, "_FunTy is not invocable!");
-
-	OnStartUP() = delete;
-	OnStartUP(_FunTy _Fn) { if (_Fn) _Fn(); }
+	template <typename _FunTy, typename... _Args>
+	OnConstruct(
+		_FunTy&& _Function,
+		_Args&&... _Arguments
+	) requires (std::is_invocable_v<_FunTy, _Args...>)
+	{
+		std::forward<_FunTy>(_Function)(std::forward<_Args>(_Arguments)...);
+	}
 };
+
+using OnDeConstruct = UniqueScopeExit;
 
 _D_Dragonian_Lib_Space_End
 

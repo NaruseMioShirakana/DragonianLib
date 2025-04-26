@@ -1786,6 +1786,7 @@ namespace AvCodec
 		if (!Stream)
 			_D_Dragonian_Lib_Throw_Exception("Could not create stream");
 
+
 		Stream->time_base = { 1, static_cast<Int32>(_OutputSamplingRate) };
 		Stream->codecpar->codec_id = CodecId;
 		Stream->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;

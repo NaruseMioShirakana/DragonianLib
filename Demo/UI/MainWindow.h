@@ -1,16 +1,8 @@
 ﻿#pragma once
-#include "framework.h"
+#include "Framework.h"
 #include "Extend/Waveform.h"
-#include "Extend/IconButton.h"
 #include "Extend/CurveEditor.h"
 #include <Render/Sound/Mui_SoundDef.h>
-
-#define M_DEF_MENU(a, b) static constexpr auto MenuBarBtnName = a; \
-virtual std::wstring GetBtnName() override { return MenuBarBtnName; } \
-static constexpr auto MenuName = b; \
-virtual std::wstring GetMenuName() override { return MenuName; }
-
-#define _MNAME(x) (control->GetName() == (x))
 
 namespace UI
 {
@@ -18,11 +10,11 @@ namespace UI
 	extern const std::wstring m_wndTitle;
 	extern Mui::Render::MAudioPlayer* m_player;
 
-	extern bool CreateMainWindow(Mui::MiaoUI& engine, std::vector<std::wstring> cmdList);
+	extern bool CreateMainWindow(Mui::MiaoUI& engine, const std::vector<std::wstring>& cmdList);
 
 	extern void MainEventLoop();
 
-	class Page
+	class Page  // NOLINT(cppcoreguidelines-special-member-functions)
 	{
 	public:
 		Page(Mui::Ctrl::UIControl* parent, Mui::XML::MuiXML* ui)
@@ -35,7 +27,7 @@ namespace UI
 			delete m_page;
 		}
 
-		virtual bool EventProc(Mui::UINotifyEvent event, Mui::Ctrl::UIControl* control, Mui::_m_param param) = 0;
+		virtual bool EventProc(Mui::MEventCodeEnum event, Mui::Ctrl::UIControl* control, Mui::_m_param param) = 0;
 
 	protected:
 		Mui::Ctrl::UIControl* m_parent = nullptr;
@@ -51,7 +43,7 @@ namespace UI
 
 	extern Page* FindPage(std::wstring_view name);
 
-	class Menu
+	class Menu  // NOLINT(cppcoreguidelines-special-member-functions)
 	{
 	public:
 		Menu(Mui::Ctrl::UIControl* parent, Mui::XML::MuiXML* ui)
@@ -87,7 +79,7 @@ namespace UI
 		friend class MainWindow;
 	};
 
-	class MainWindow
+	class MainWindow  // NOLINT(cppcoreguidelines-special-member-functions)
 	{
 	public:
 		MainWindow(Mui::MWindowCtx* ctx) : m_window(ctx) {}
@@ -108,7 +100,7 @@ namespace UI
 		Mui::MWindowCtx* m_window = nullptr;
 		std::vector<std::wstring> m_cmdList;
 
-		friend bool CreateMainWindow(Mui::MiaoUI&, std::vector<std::wstring>);
+		friend bool CreateMainWindow(Mui::MiaoUI&, const std::vector<std::wstring>&);
 		friend void MainEventLoop();
 	};
 }

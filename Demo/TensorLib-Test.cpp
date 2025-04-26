@@ -518,6 +518,5 @@ int main()
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
-
-	TestStft();
+	//TestStft();
 }
