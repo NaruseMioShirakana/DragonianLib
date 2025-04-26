@@ -212,3 +212,8 @@ public:
 };
 
 _D_Dragonian_Lib_Space_End
+
+namespace Dlib
+{
+	using namespace ::_D_Dragonian_Lib;
+}

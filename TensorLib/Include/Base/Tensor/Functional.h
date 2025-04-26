@@ -64,8 +64,12 @@ namespace Functional
 	{
 	public:
 		FunctionalImpl() = delete;
-		template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>>>
-		static decltype(auto) Max(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+		template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice>
+		static decltype(auto) Max(
+			const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA,
+			const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB
+		)
+		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>)
 		{
 			_TensorA.WaitingAsArgument();
 			_TensorB.WaitingAsArgument();
@@ -87,8 +91,12 @@ namespace Functional
 			return Ret;
 		}
 
-		template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>>>
-		static decltype(auto) Min(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+		template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice>
+		static decltype(auto) Min(
+			const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA,
+			const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB
+		)
+		requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>)
 		{
 			_TensorA.WaitingAsArgument();
 			_TensorB.WaitingAsArgument();
@@ -110,10 +118,7 @@ namespace Functional
 			return Ret;
 		}
 
-		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)&&
-			(_NRank >= 2)
-			>>
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 			static decltype(auto) Matmul(
 				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -122,6 +127,7 @@ namespace Functional
 				const _MyValueType& AlphaBias = _MyValueType(1),
 				bool _Conj = false
 			)
+		requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 		{
 			const auto Comm = InFeature.Size(-2);
 			const auto IDim = InFeature.Size(-1);
@@ -159,10 +165,7 @@ namespace Functional
 			return Ret;
 		}
 
-		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
-			(_NRank >= 2)
-			>>
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 			static decltype(auto) MatmulIT(
 				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -171,6 +174,7 @@ namespace Functional
 				const _MyValueType& AlphaBias = _MyValueType(1),
 				bool _Conj = false
 			)
+		requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 		{
 			const auto Comm = InFeature.Size(-1);
 			const auto IDim = InFeature.Size(-2);
@@ -208,10 +212,7 @@ namespace Functional
 			return Ret;
 		}
 
-		template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-			(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
-			(_NRank >= 2)
-			>>
+		template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 			static decltype(auto) MatmulWT(
 				const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 				const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -220,6 +221,7 @@ namespace Functional
 				const _MyValueType& AlphaBias = _MyValueType(1),
 				bool _Conj = false
 			)
+		requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 		{
 			const auto Comm = InFeature.Size(-2);
 			const auto IDim = InFeature.Size(-1);
@@ -424,7 +426,7 @@ namespace Functional
 		for (auto& Value : GraphData)
 			Value = std::round((Value - MinValue) / (MaxValue - MinValue) * (_GraphHeight - 1));
 
-		for (size_t x = 0; x < _GraphWidth + 2; ++x)
+		for (size_t x = 0; std::cmp_less(x, _GraphWidth + 2); ++x)
 			_Stream << "-";
 		_Stream << "\n";
 		for (int y = _GraphHeight - 1; y >= 0; --y) {
@@ -437,7 +439,7 @@ namespace Functional
 			}
 			_Stream << "|\n";
 		}
-		for (size_t x = 0; x < _GraphWidth + 2; ++x)
+		for (size_t x = 0; std::cmp_equal(x, _GraphWidth + 2); ++x)
 			_Stream << "-";
 		_Stream << "\n";
 	}
@@ -511,11 +513,12 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_MyValueType> || std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Empty(
 		const Dimensions<_NRank>& MyShape,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (std::is_trivially_copy_assignable_v<_MyValueType> || std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::New(MyShape, Allocator);
 	}
@@ -524,8 +527,9 @@ namespace Functional
 	 * @brief Create an empty new tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) EmptyTensor()
+	requires (std::is_trivially_copy_assignable_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::New();
 	}
@@ -536,11 +540,12 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(1)>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Ones(
 		const Dimensions<_NRank>& _Shape,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(1)>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::Ones(_Shape, Allocator);
 	}
@@ -551,11 +556,12 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(0)>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Zeros(
 		const Dimensions<_NRank>& _Shape,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(0)>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::Zeros(_Shape, Allocator);
 	}
@@ -567,12 +573,13 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ConstantOf(
 		const Dimensions<_NRank>& _Shape,
 		const _MyValueType& _Val,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::ConstantOf(_Shape, _Val, Allocator);
 	}
@@ -585,13 +592,14 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Rand(
 		const Dimensions<_NRank>& _Shape,
 		const _MyValueType& Min,
 		const _MyValueType& Max,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::Rand(_Shape, Min, Max, Allocator);
 	}
@@ -604,29 +612,31 @@ namespace Functional
 	 * @param Allocator The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Randn(
 		const Dimensions<_NRank>& _Shape,
 		double _Mean = 0.,
 		double _Sigma = 1.,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, _NRank, _MyDevice>::Randn(_Shape, _Mean, _Sigma, Allocator);
 	}
 
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, typename = std::enable_if_t<Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Arange(
 		_MyValueType _Begin,
 		_MyValueType _End,
 		_MyValueType _Step = _MyValueType(1),
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, 1, _MyDevice>::Arange(_Begin, _End, _Step, Allocator);
 	}
 
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, typename = std::enable_if_t<Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Linspace(
 		_MyValueType _Begin,
 		_MyValueType _End,
@@ -634,6 +644,7 @@ namespace Functional
 		bool _EndPoint = false,
 		TemplateLibrary::GetAllocatorType<_MyDevice> Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>()
 	)
+	requires (Operators::BinaryOperators::AddBinary::HasOperatorValue<_MyValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_MyValueType>&& std::is_move_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Tensor<_MyValueType, 1, _MyDevice>::Linspace(_Begin, _End, _Count, _EndPoint, Allocator);
 	}
@@ -643,10 +654,11 @@ namespace Functional
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_trivially_copy_assignable_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) EmptyLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
+	requires (std::is_trivially_copy_assignable_v<_MyValueType>)
 	{
 		return Empty<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
@@ -656,10 +668,11 @@ namespace Functional
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(1)>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) OnesLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(1)>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Ones<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
@@ -669,10 +682,11 @@ namespace Functional
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(0)>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ZerosLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_constructible_v<_MyValueType, decltype(0)>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Zeros<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
 	}
@@ -683,11 +697,12 @@ namespace Functional
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ConstantLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
 		const _MyValueType& _Val
 	)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return ConstantOf<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Val, _ShapeReference.GetAllocator());
 	}
@@ -699,12 +714,13 @@ namespace Functional
 	 * @param Max The maximum value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) RandLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
 		const _MyValueType& Min,
 		const _MyValueType& Max
 	)
+	requires (TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Rand<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), Min, Max, _ShapeReference.GetAllocator());
 	}
@@ -716,36 +732,41 @@ namespace Functional
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank, typename = std::enable_if_t<TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType = Float32, Device _MyDevice = Device::CPU, size_t _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) RandnLike(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _ShapeReference,
 		double _Mean = 0.,
 		double _Sigma = 1.
 	)
+	requires (TypeTraits::IsArithmeticValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return Randn<_MyValueType, _MyDevice, _NRank>(_ShapeReference.Shape(), _Mean, _Sigma, _ShapeReference.GetAllocator());
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Copy(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return _Tensor.Clone();
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Clone(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return _Tensor.Clone();
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) MakeContinuous(Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return _Tensor.MakeContinuous();
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Continuous(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	requires (std::is_copy_assignable_v<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return _Tensor.Continuous();
 	}
@@ -786,11 +807,12 @@ namespace Functional
 		return _Tensor.Squeeze(_Axis);
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<(_NRank > 1)>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) Transpose(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
 			SizeType _Axis1 = -1, SizeType _Axis2 = -2
 		)
+	requires (_NRank > 1)
 	{
 		return _Tensor.Transpose(_Axis1, _Axis2);
 	}
@@ -804,66 +826,73 @@ namespace Functional
 		return _Tensor.Permute(_PremuteOrder);
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename... _Args, typename = std::enable_if_t<sizeof...(_Args) == _NRank>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename... _Args>
 	decltype(auto) Permute(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
 		_Args... _PremuteOrder
 	)
+	requires (sizeof...(_Args) == _NRank)
 	{
 		return _Tensor.Permute(_PremuteOrder...);
 	}
 
-	template <typename _Type, typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<TypeTraits::CouldBeConvertedFromValue<_Type, _MyValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>>>
+	template <typename _Type, typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Cast(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
+	requires (TypeTraits::CouldBeConvertedFromValue<_Type, _MyValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>)
 	{
 		return _Tensor.template Cast<_Type>();
 	}
 
-	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<_TRank <= _NRank && std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Padding(
 		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
 		const VRanges<_TRank>& _Padding,
 		PaddingType _PaddingType = PaddingType::Zero,
 		std::optional<ValueType> _ConstantValue = std::nullopt
 	)
+	requires (_TRank <= _NRank && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		return _Tensor.Padding(_Padding, _PaddingType, std::move(_ConstantValue));
 	}
 
-	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<_TRank <= _NRank && std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <size_t _TRank, typename ValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Pad(
 		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
 		const VRanges<_TRank>& _Padding,
 		PaddingType _PaddingType = PaddingType::Zero,
 		std::optional<ValueType> _ConstantValue = std::nullopt
 	)
+	requires (_TRank <= _NRank && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		return _Tensor.Pad(_Padding, _PaddingType, std::move(_ConstantValue));
 	}
 
-	template <typename ValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <typename ValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Repeat(
 		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
 		const IDLArray<SizeType, _NRank>& _Repeats
 	)
+	requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return _Tensor.Repeat(_Repeats);
 	}
 
-	template <typename ValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>>>
+	template <typename ValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) Repeat(
 		const Tensor<ValueType, _NRank, _MyDevice>& _Tensor,
 		SizeType _Axis,
 		SizeType _Repeat
 	)
+	requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return _Tensor.Repeat(_Axis, _Repeat);
 	}
 
-	template <typename ..._ArgTypes, typename = std::enable_if_t<FunctionalTraits::StackCatTraits<_ArgTypes...>::_Enabled>>
+	template <typename ..._ArgTypes>
 	decltype(auto) Stack(
 		_ArgTypes&& ..._Args
 	)
+	requires (FunctionalTraits::StackCatTraits<_ArgTypes...>::_Enabled)
 	{
 		using _MyTraits = FunctionalTraits::StackCatTraits<_ArgTypes...>;
 		using _MyTensorType = TypeTraits::RemoveARPCVType<typename _MyTraits::_MyFirstTensorArgumentType>;
@@ -903,10 +932,11 @@ namespace Functional
 		}
 	}
 
-	template <typename ..._ArgTypes, typename = std::enable_if_t<FunctionalTraits::StackCatTraits<_ArgTypes...>::_Enabled>>
+	template <typename ..._ArgTypes>
 	decltype(auto) Cat(
 		_ArgTypes&& ..._Args
 	)
+	requires (FunctionalTraits::StackCatTraits<_ArgTypes...>::_Enabled)
 	{
 		using _MyTraits = FunctionalTraits::StackCatTraits<_ArgTypes...>;
 		using _MyTensorType = TypeTraits::RemoveARPCVType<typename _MyTraits::_MyFirstTensorArgumentType>;
@@ -955,8 +985,12 @@ namespace Functional
 		}
 	}
 
-	template <typename _Container, typename = std::enable_if_t<FunctionalTraits::IsTensorContainer<_Container>>>
-	decltype(auto) IStack(_Container&& _Cont, SizeType _Axis = 0)
+	template <typename _Container>
+	decltype(auto) IStack(
+		_Container&& _Cont,
+		SizeType _Axis = 0
+	)
+	requires (FunctionalTraits::IsTensorContainer<_Container>)
 	{
 		auto Begin = TemplateLibrary::Begin(std::forward<_Container>(_Cont));
 		auto End = TemplateLibrary::End(std::forward<_Container>(_Cont));
@@ -994,8 +1028,12 @@ namespace Functional
 		return Ret;
 	}
 
-	template <typename _Container, typename = std::enable_if_t<FunctionalTraits::IsTensorContainer<_Container>>>
-	decltype(auto) ICat(_Container&& _Cont, SizeType _Axis = 0)
+	template <typename _Container>
+	decltype(auto) ICat(
+		_Container&& _Cont,
+		SizeType _Axis = 0
+	)
+	requires (FunctionalTraits::IsTensorContainer<_Container>)
 	{
 		auto Begin = TemplateLibrary::Begin(std::forward<_Container>(_Cont));
 		auto End = TemplateLibrary::End(std::forward<_Container>(_Cont));
@@ -1038,22 +1076,27 @@ namespace Functional
 		return Ret;
 	}
 
-	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
-	decltype(auto) Max(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice>
+	decltype(auto) Max(
+		const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA,
+		const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB
+	)
+	requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return FunctionalImpl::Max(_TensorA, _TensorB);
 	}
 
-	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice, typename = std::enable_if_t<Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>>>
-	decltype(auto) Min(const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA, const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB)
+	template <typename _MyValueType, size_t _NRankA, size_t _NRankB, Device _MyDevice>
+	decltype(auto) Min(
+		const Tensor<_MyValueType, _NRankA, _MyDevice>& _TensorA,
+		const Tensor<_MyValueType, _NRankB, _MyDevice>& _TensorB
+	)
+	requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<_MyValueType>&& std::is_default_constructible_v<_MyValueType>)
 	{
 		return FunctionalImpl::Min(_TensorA, _TensorB);
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
-		(_NRank >= 2)
-		>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) Matmul(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -1062,14 +1105,12 @@ namespace Functional
 			const _MyValueType& AlphaBias = _MyValueType(1),
 			bool _Conj = false
 		)
+	requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 	{
 		return FunctionalImpl::Matmul(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
-		(_NRank >= 2)
-		>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) MatmulIT(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -1078,14 +1119,12 @@ namespace Functional
 			const _MyValueType& AlphaBias = _MyValueType(1),
 			bool _Conj = false
 		)
+	requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 	{
 		return FunctionalImpl::MatmulIT(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) &&
-		(_NRank >= 2)
-		>>
+	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) MatmulWT(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& InFeature,
 			const Tensor<_MyValueType, _NRank, _MyDevice>& Weight,
@@ -1094,21 +1133,19 @@ namespace Functional
 			const _MyValueType& AlphaBias = _MyValueType(1),
 			bool _Conj = false
 		)
+	requires ((TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>) && (_NRank >= 2))
 	{
 		return FunctionalImpl::MatmulWT(InFeature, Weight, Alpha, std::move(Bias), AlphaBias, _Conj);
 	}
 
-	enum class InnerOuterType {
+	enum class InnerOuterType : UInt8 {
 		ADD, SUB, MUL, DIV
 	};
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)
-		>>
+	template <InnerOuterType _Type = InnerOuterType::MUL, typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) Inner(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB,
-			InnerOuterType _Type = InnerOuterType::MUL
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
 		)
 	{
 		auto A = _TensorA.UnSqueeze(-2);
@@ -1124,13 +1161,10 @@ namespace Functional
 		_D_Dragonian_Lib_Throw_Exception("Invalid InnerOuterType.");
 	}
 
-	template <typename _MyValueType, size_t _NRank, Device _MyDevice, typename = std::enable_if_t<
-		(TypeTraits::IsStandardFloatingPointValue<_MyValueType> || TypeTraits::IsComplexValue<_MyValueType>)
-		>>
+	template <InnerOuterType _Type = InnerOuterType::MUL, typename _MyValueType, size_t _NRank, Device _MyDevice>
 		decltype(auto) Outer(
 			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorA,
-			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB,
-			InnerOuterType _Type = InnerOuterType::MUL
+			const Tensor<_MyValueType, _NRank, _MyDevice>& _TensorB
 		)
 	{
 		auto A = _TensorA.UnSqueeze(-1);
@@ -1147,7 +1181,10 @@ namespace Functional
 	}
 
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
-	decltype(auto) MinMaxNormalize(const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor, SizeType _Axis)
+	decltype(auto) MinMaxNormalize(
+		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
+		SizeType _Axis
+	)
 	{
 		auto Min = _Tensor.template ReduceMin<true>(_Axis);
 		auto Max = _Tensor.template ReduceMax<true>(_Axis);

@@ -451,10 +451,9 @@ namespace FunctionTransform
 			POINT = (float)Mel2HZ((double)POINT);
 		FFT_FREQS *= VAl;
 		auto F_DIFF = MEL_F.Diff(0).Evaluate();
-		auto RAMPS = Functional::Outer(
+		auto RAMPS = Functional::Outer<Functional::InnerOuterType::SUB>(
 			MEL_F,
-			FFT_FREQS,
-			Functional::InnerOuterType::SUB
+			FFT_FREQS
 		).Evaluate();
 		for (auto i : TemplateLibrary::Ranges(MEL_BINS))
 		{

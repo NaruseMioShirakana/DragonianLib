@@ -86,7 +86,7 @@ namespace UI
 		base->SetMinimSize(m_wndSize);
 		base->SetResMode(true);
 		base->CenterWindow();
-		//base->ShowDebugRect(true);
+		base->ShowDebugRect(true);
 		base->ShowWindow(true);
 		return true;
 	}

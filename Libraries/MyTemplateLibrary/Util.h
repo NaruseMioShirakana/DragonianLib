@@ -419,6 +419,122 @@ decltype(auto) End(_Type&& _Container)
 		return CEnd(std::forward<_Type>(_Container));
 }
 
+template <typename>
+struct NEpsilonImpl
+{
+	using _EpsilonTy = std::nullopt_t;
+	static constexpr _EpsilonTy Epsilon = std::nullopt;
+};
+
+template <>
+struct NEpsilonImpl<float>
+{
+	using _EpsilonTy = float;
+	static constexpr _EpsilonTy Epsilon = std::numeric_limits<float>::epsilon();
+};
+
+template <>
+struct NEpsilonImpl<double>
+{
+	using _EpsilonTy = double;
+	static constexpr _EpsilonTy Epsilon = std::numeric_limits<double>::epsilon();
+};
+
+template <>
+struct NEpsilonImpl<long double>
+{
+	using _EpsilonTy = long double;
+	static constexpr _EpsilonTy Epsilon = std::numeric_limits<long double>::epsilon();
+};
+
+template <typename _Type>
+using EpsilonImpl = NEpsilonImpl<TypeTraits::RemoveConstType<TypeTraits::RemoveVolatileType<TypeTraits::RemoveReferenceType<_Type>>>>;
+
+
+class CCmpEqual
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return std::abs(_Left - _Right) < _Epsilon;
+		else
+			return std::equal(_Left, _Right);
+	}
+};
+constexpr CCmpEqual CmpEqual{};
+
+class CCmpNotEqual
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return std::abs(_Left - _Right) > _Epsilon;
+		else
+			return !std::equal(_Left, _Right);
+	}
+};
+constexpr CCmpNotEqual CmpNotEqual{};
+
+class CCmpLess
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return (_Left < _Right) && CmpNotEqual(_Left, _Right);
+		else
+			return std::less<_Type>()(_Left, _Right);
+	}
+};
+constexpr CCmpLess CmpLess{};
+
+class CCmpLessEqual
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return (_Left < _Right) || CmpEqual(_Left, _Right);
+		else
+			return std::less_equal<_Type>()(_Left, _Right);
+	}
+};
+constexpr CCmpLessEqual CmpLessEqual{};
+
+class CCmpGreater
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return (_Left > _Right) && CmpNotEqual(_Left, _Right);
+		else
+			return std::greater<_Type>()(_Left, _Right);
+	}
+};
+constexpr CCmpGreater CmpGreater{};
+
+class CCmpGreaterEqual
+{
+public:
+	template <typename _Type, typename _EpsilonTy = typename EpsilonImpl<_Type>::_EpsilonTy, _EpsilonTy _Epsilon = EpsilonImpl<_Type>::Epsilon>
+	constexpr static bool operator()(const _Type& _Left, const _Type& _Right)
+	{
+		if constexpr (TypeTraits::IsFloatingPointValue<_Type>)
+			return (_Left > _Right) || CmpEqual(_Left, _Right);
+		else
+			return std::greater_equal<_Type>()(_Left, _Right);
+	}
+};
+constexpr CCmpGreaterEqual CmpGreaterEqual{};
+
 template <typename _IteratorTypeBeg, typename _IteratorTypeEnd, typename = std::enable_if_t<
 	TypeTraits::IsSameIterator<_IteratorTypeBeg, _IteratorTypeEnd>>>
 	class RangesWrp
@@ -754,6 +870,11 @@ enum class Device : UInt8
 };
 
 static inline size_t NopID = size_t(-1);
+
+namespace Dtl
+{
+	using namespace _D_Dragonian_Lib_Namespace TemplateLibrary;
+}
 
 namespace DragonianLibSTL
 {

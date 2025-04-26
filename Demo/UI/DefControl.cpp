@@ -284,7 +284,7 @@ namespace WndControls
 			const auto OffPtr = std::ranges::find(AudioPaths, AudioCaches.front().first);
 			if (OffPtr != AudioPaths.end())
 			{
-				const auto Offset = std::distance(AudioPaths.begin(), OffPtr);
+				const auto Offset = static_cast<int>(std::distance(AudioPaths.begin(), OffPtr));
 				if (AudioCaches.front().second.ModifyCount)
 					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorOrigin);
 				else
@@ -306,7 +306,7 @@ namespace WndControls
 			const auto OffPtr = std::ranges::find(AudioPaths, Iter->first);
 			if (OffPtr != AudioPaths.end())
 			{
-				const auto Offset = std::distance(AudioPaths.begin(), OffPtr);
+				const auto Offset = static_cast<int>(std::distance(AudioPaths.begin(), OffPtr));
 				if (Iter->second.ModifyCount)
 					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorOrigin);
 				else

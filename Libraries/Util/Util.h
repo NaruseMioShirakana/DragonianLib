@@ -32,10 +32,12 @@
 #define UNUSED(...) (void)(__VA_ARGS__)
 #endif
 
-#define _D_Dragonian_Lib_Namespace ::DragonianLib::
+#define _D_Dragonian_Lib DragonianLib
+
+#define _D_Dragonian_Lib_Namespace _D_Dragonian_Lib::
 
 // Define namespace macros
-#define _D_Dragonian_Lib_Space_Begin namespace DragonianLib {
+#define _D_Dragonian_Lib_Space_Begin namespace _D_Dragonian_Lib {
 
 // Define namespace end macro
 #define _D_Dragonian_Lib_Space_End }
