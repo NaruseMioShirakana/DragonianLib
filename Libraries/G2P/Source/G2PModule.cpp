@@ -1,5 +1,5 @@
-﻿#include "../G2PModule.hpp"
-#include "../CppPinYin.hpp"
+﻿#include "Libraries/G2P/G2PModule.hpp"
+#include "Libraries/G2P/CppPinYin.hpp"
 
 _D_Dragonian_Lib_G2P_Header
 

@@ -8,12 +8,16 @@
 #pragma comment(lib, "gdiplus.lib")
 
 #include <numbers>
+#include <User/Mui_GlobalStorage.h>
+
 #include "Page/SidePage.h"
 
 namespace WndControls
 {
-	const auto MaxFreq = Mui::Ctrl::PitchLabel::PitchToF0(119.9f);
-	const auto MinFreq = Mui::Ctrl::PitchLabel::PitchToF0(0);
+	using namespace SimpleF0Labeler;
+
+	const auto MaxFreq = SimpleF0Labeler::PitchLabel::PitchToF0(119.9f);
+	const auto MinFreq = SimpleF0Labeler::PitchLabel::PitchToF0(0);
 
 	constexpr auto ColorRed = Mui::Color::M_RED;
 	const auto ColorOrigin = Mui::Color::M_RGBA(255, 140, 0, 255);
@@ -22,21 +26,21 @@ namespace WndControls
 
 	static inline Mui::_m_color __SpecColorMap[]{
 		Mui::Color::M_RGB(int(0.0f * 255), int(0.0f * 255),int(0.0f * 255)),       // black
-		Mui::Color::M_RGB(int(0.251f * 255), int(0.0f * 255),int(0.f * 255)),     // dark blue
-		Mui::Color::M_RGB(int(0.502f * 255), int(0.0f * 255),int(0.f * 255)),     // blue
-		Mui::Color::M_RGB(int(0.502f * 255), int(0.0f * 255),int(0.251f * 255)),   // purple-blue
+		Mui::Color::M_RGB(int(0.f * 255), int(0.0f * 255),int(0.251f * 255)),     // dark blue
+		Mui::Color::M_RGB(int(0.f * 255), int(0.0f * 255),int(0.502f * 255)),     // blue
+		Mui::Color::M_RGB(int(0.251f * 255), int(0.0f * 255),int(0.502f * 255)),   // purple-blue
 		Mui::Color::M_RGB(int(0.502f * 255),int(0.0f * 255),int(0.502f * 255)),   // purple
-		Mui::Color::M_RGB(int(0.502f * 255),int(0.0f * 255),int(0.753f * 255)),   // magenta
-		Mui::Color::M_RGB(int(0.0f * 255),int(0.0f * 255),int(1.0f * 255)),       // red
-		Mui::Color::M_RGB(int(0.0f * 255),int(0.502f * 255),int(1.0f * 255)),     // orange
-		Mui::Color::M_RGB(int(0.0f * 255),int(1.0f * 255),int(1.0f * 255)),       // yellow
-		Mui::Color::M_RGB(int(0.502f * 255),int(1.0f * 255),int(1.0f * 255)),     // light yellow
+		Mui::Color::M_RGB(int(0.753f * 255),int(0.0f * 255),int(0.502f * 255)),   // magenta
+		Mui::Color::M_RGB(int(1.0f * 255),int(0.0f * 255),int(0.0f * 255)),       // red
+		Mui::Color::M_RGB(int(1.0f * 255),int(0.502f * 255),int(0.0f * 255)),     // orange
+		Mui::Color::M_RGB(int(1.0f * 255),int(1.0f * 255),int(0.0f * 255)),       // yellow
+		Mui::Color::M_RGB(int(1.0f * 255),int(1.0f * 255),int(0.502f * 255)),     // light yellow
 	};
 
-	static inline Mui::_m_color SpecColorMap[40];
+	static inline Mui::_m_color SpecColorMap[256];
 
 	static inline std::vector<std::wstring> AudioPaths;
-	static inline std::deque<std::pair<std::wstring, MyAudioData>> AudioCaches;
+	static inline std::deque<std::pair<std::wstring, SimpleF0Labeler::MyAudioData>> AudioCaches;
 	constexpr size_t MaxCacheCount = 10;
 
 	static inline std::mutex UndoMutex;
@@ -48,7 +52,7 @@ namespace WndControls
 	static inline Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 	static inline ULONG_PTR gdiplusToken;
 
-	[[maybe_unused]] static inline DragonianLib::OnStartUP StartUPLabel{
+	[[maybe_unused]] static inline DragonianLib::OnConstruct StartUPLabel{
 		[]
 		{
 			GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
@@ -143,14 +147,11 @@ namespace WndControls
 		return MelKernel;
 	}
 
-	static std::pair<ImageTensor, ImageTensor> Write2Bmp(
-		const std::wstring& Path,
+	static ImageTensor CvtSpec2ColorMap(
 		const FloatTensor2D& Spec
 	)
 	{
 		const auto [Frames, Bins] = Spec.Size().RawArray();
-
-		Gdiplus::Bitmap bitmap(static_cast<INT>(Frames), static_cast<INT>(Bins), PixelFormat24bppRGB);
 
 		const auto SpecFlat = (Spec.View(-1) + 1e-5f).Log10();
 
@@ -159,53 +160,38 @@ namespace WndControls
 		const auto Min = SpecFlat.ReduceMin(0);
 		const auto SpecMin = Min.Evaluate().Item();
 		const auto SpecMax = Max.Evaluate().Item();
-		const auto SpecMaxPitch = Mui::Ctrl::PitchLabel::F0ToPitch(static_cast<float>(GetMelFn().GetMaxFreq()));
-		const auto SpecMinPitch = Mui::Ctrl::PitchLabel::F0ToPitch(static_cast<float>(GetMelFn().GetFreqPerBin()));
-		const auto SpecStep = static_cast<float>(GetMelFn().GetFreqPerBin());
 		
 		const auto SpecData = SpecFlat.Data();
+		ImageTensor Image = DragonianLib::Functional::Empty<int>(
+			DragonianLib::Dimensions{ Bins, Frames }
+		);
+		const auto ImageData = Image.Data();
 		
 		for (INT x = 0; x < static_cast<INT>(Frames); ++x)
 		{
-			int Bottom = 0;
 			for (INT y = 0; y < static_cast<INT>(Bins); ++y)
 			{
 				float Value = (*(SpecData + x * Bins + y) - SpecMin) / (SpecMax - SpecMin);
 				Value = std::clamp(Value, 0.001f, 0.999f);
 
-				const auto Off = std::min(
-					int((Mui::Ctrl::PitchLabel::F0ToPitch(SpecStep * float(y + 1))
-						- SpecMinPitch) / (SpecMaxPitch - SpecMinPitch) * float(Bins - 1)),
-					int(Bins - 1)
-				);
-				const auto Color = SpecColorMap[int(Value * 39.f)];
-
-				for (auto px = Bottom; px < Off; ++px)
-					bitmap.SetPixel(x, int(Bins - px), Color);
-				Bottom = Off;
+				const auto Color = __SpecColorMap[int(Value * 9.f)];
+				ImageData[(Bins - y - 1) * Frames + x] = Color;
 			}
 		}
 
-		CLSID pngClsid;
-		CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &pngClsid); // PNG CLSID
-		bitmap.Save(Path.c_str(), &pngClsid, nullptr);
-
-		return {};
+		return Image;
 	}
 
 	void InitCtrl(
 		Mui::Ctrl::UIListBox* AudioList,
-		Mui::Ctrl::CurveEditor* CurveEditor,
-		Mui::Ctrl::Waveform* CurvePlayer
+		CurveEditor* CurveEditor,
+		Waveform* CurvePlayer
 	)
 	{
 		LabelControls.AudioList = AudioList;
 		LabelControls.CurveEditor = CurveEditor;
 		LabelControls.CurvePlayer = CurvePlayer;
 		GetMelFn();
-		DragonianLib::TemplateLibrary::Resample(__SpecColorMap, 3, SpecColorMap, 12);
-		DragonianLib::TemplateLibrary::Resample(__SpecColorMap + 3, 3, SpecColorMap + 12, 12);
-		DragonianLib::TemplateLibrary::Resample(__SpecColorMap + 6, 4, SpecColorMap + 24, 16);
 	}
 
 	class ListItemC : public Mui::Ctrl::ListItem
@@ -214,6 +200,10 @@ namespace WndControls
 		void SetColor(Mui::_m_color color)
 		{
 			m_color = color;
+		}
+		void SetParent(Mui::Ctrl::UIListBox* Parent)
+		{
+			m_parent = Parent;
 		}
 	};
 
@@ -285,9 +275,9 @@ namespace WndControls
 			{
 				const auto Offset = static_cast<int>(std::distance(AudioPaths.begin(), OffPtr));
 				if (AudioCaches.front().second.ModifyCount)
-					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorOrigin);
+					dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[Offset].get())->SetColor(ColorOrigin);
 				else
-					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorWhite);
+					dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[Offset].get())->SetColor(ColorWhite);
 			}
 			AudioCaches.pop_front();
 		}
@@ -307,9 +297,9 @@ namespace WndControls
 			{
 				const auto Offset = static_cast<int>(std::distance(AudioPaths.begin(), OffPtr));
 				if (Iter->second.ModifyCount)
-					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorOrigin);
+					dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[Offset].get())->SetColor(ColorOrigin);
 				else
-					dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(Offset))->SetColor(ColorWhite);
+					dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[Offset].get())->SetColor(ColorWhite);
 			}
 			AudioCaches.erase(Iter);
 		}
@@ -325,7 +315,8 @@ namespace WndControls
 			return Iter->second;
 		auto AudioPath = GetAudioPath(Path);
 		auto F0Path = GetF0Path(Path);
-		FloatTensor2D Audio, F0, Spec, Mel;
+		FloatTensor2D Audio, F0;
+		ImageTensor Spec, Mel;
 		if (std::filesystem::exists(AudioPath))
 			Audio = DragonianLib::AvCodec::OpenInputStream(
 				AudioPath
@@ -380,12 +371,14 @@ namespace WndControls
 			DragonianLib::IScale(48000. / double(SamplingRate))
 		).Evaluate().UnSqueeze(-1);
 
-		/*Spec = GetMelFn().GetStftKernel()(
+		Spec = CvtSpec2ColorMap(GetMelFn().GetStftKernel()(
 			Audio.View(1, 1, Audio.Size(0)).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
 				DragonianLib::IDim(-1),
 				DragonianLib::IScale(double(SpecSamplingRate) / 48000.)
 			)
-			).Squeeze(0).Squeeze(0);
+			).Squeeze(0).Squeeze(0));
+
+		/*;
 
 		Mel = GetMelFn()(
 		   Spec.View(1, 1, Spec.Size(0), Spec.Size(1))
@@ -395,9 +388,9 @@ namespace WndControls
 			EraseFront();
 
 		if (Modified)
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(idx))->SetColor(ColorRed);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[idx].get())->SetColor(ColorRed);
 		else
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(idx))->SetColor(ColorSkyBlue);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[idx].get())->SetColor(ColorSkyBlue);
 
 		return AudioCaches.emplace_back(
 			Path,
@@ -415,6 +408,8 @@ namespace WndControls
 
 	static ptrdiff_t GetOffset(int idx)
 	{
+		if (idx < 0 || std::cmp_greater_equal(idx, AudioPaths.size()))
+			return -1;
 		const auto& Path = AudioPaths[idx];
 		auto Iter = std::ranges::find_if(
 			AudioCaches, [&](const auto& pair) { return pair.first == Path; }
@@ -424,25 +419,25 @@ namespace WndControls
 		return -1;
 	}
 
-	static void IncModifyCount(auto CurSel, auto Offset)
+	static void IncModifyCount(const auto& CurSel, auto Offset)
 	{
 		const auto Prev = AudioCaches[Offset].second.ModifyCount;
 		++AudioCaches[Offset].second.ModifyCount;
 		if (Prev && !AudioCaches[Offset].second.ModifyCount)
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(ColorSkyBlue);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorSkyBlue);
 		else if (!Prev && AudioCaches[Offset].second.ModifyCount)
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(ColorRed);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorRed);
 		LabelControls.AudioList->UpdateLayout();
 	}
 
-	static void DecModifyCount(auto CurSel, auto Offset)
+	static void DecModifyCount(const auto& CurSel, auto Offset)
 	{
 		const auto Prev = AudioCaches[Offset].second.ModifyCount;
 		--AudioCaches[Offset].second.ModifyCount;
 		if (Prev && !AudioCaches[Offset].second.ModifyCount)
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(ColorSkyBlue);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorSkyBlue);
 		else if (!Prev && AudioCaches[Offset].second.ModifyCount)
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(ColorRed);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorRed);
 		LabelControls.AudioList->UpdateLayout();
 	}
 
@@ -457,7 +452,7 @@ namespace WndControls
 	void AppendUndo()
 	{
 		std::lock_guard lg(UndoMutex);
-		const auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		const auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		const auto CacheIdx = GetOffset(CurSel);
 		if (CacheIdx == -1 || std::cmp_greater_equal(CacheIdx, AudioCaches.size()))
 			return;
@@ -468,7 +463,7 @@ namespace WndControls
 
 	void CheckUnchanged()
 	{
-		const auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		const auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		const auto CacheIdx = GetOffset(CurSel);
 		if (CacheIdx == -1 || std::cmp_greater_equal(CacheIdx, AudioCaches.size()))
 			return;
@@ -490,7 +485,7 @@ namespace WndControls
 
 	void ApplyAppendUndo()
 	{
-		const auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		const auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		const auto CacheIdx = GetOffset(CurSel);
 		if (CacheIdx == -1 || std::cmp_greater_equal(CacheIdx, AudioCaches.size()))
 			return;
@@ -503,7 +498,7 @@ namespace WndControls
 
 	void ApplyPitchShift(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges)
 	{
-		const auto Pitch = dynamic_cast<UI::SidePage*>(UI::FindPage(L"sidepage"))->GetPitch();
+		const auto Pitch = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetPitch();
 		if (abs(Pitch) > 1e-5)
 			for (auto& i : Ranges)
 			{
@@ -515,8 +510,8 @@ namespace WndControls
 
 	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges)
 	{
-		const auto Alpha = dynamic_cast<UI::SidePage*>(UI::FindPage(L"sidepage"))->GetAlpha();
-		const auto Beta = dynamic_cast<UI::SidePage*>(UI::FindPage(L"sidepage"))->GetBeta();
+		const auto Alpha = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetAlpha();
+		const auto Beta = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetBeta();
 		if (abs(Alpha - 1.f) > 1e-6 || abs(Beta) > 1e-6)
 			for (auto& i : Ranges)
 			{
@@ -549,7 +544,7 @@ namespace WndControls
 			return;
 		auto FileName = StdPath.stem().wstring();
 		FileName = (L"    " + FileName).substr(0, 50);
-		auto Item = new ListItemC;
+		auto Item = std::make_shared<ListItemC>();
 		Item->SetText(std::move(FileName));
 
 		if (exists(std::filesystem::path(GetF0Path(Path) + L".cache")))
@@ -557,8 +552,9 @@ namespace WndControls
 		else
 			Item->SetColor(ColorWhite);
 
+		Item->SetParent(LabelControls.AudioList);
 		AudioPaths.emplace_back(std::move(Path));
-		LabelControls.AudioList->AddItem(Item, -1, true);
+		LabelControls.AudioList->Items.Add(Item);
 	}
 
 	void SetLanguageXML(Mui::XML::MuiXML* xml)
@@ -581,8 +577,8 @@ namespace WndControls
 		LabelControls.CurveEditor->SetPlayLinePos(0);
 		LabelControls.CurveEditor->SetCurveData(std::nullopt, std::nullopt);
 		LabelControls.CurvePlayer->Clear();
-		LabelControls.AudioList->DeleteItem(idx);
-		LabelControls.AudioList->SetCurSelItem(-1);
+		LabelControls.AudioList->Items.Remove(LabelControls.AudioList->Items[idx]);
+		LabelControls.AudioList->SelectedItemIndex = -1;
 
 		AudioPaths.erase(AudioPaths.begin() + idx);
 		EraseCache(idx);
@@ -622,7 +618,7 @@ namespace WndControls
 
 	void MoeVSUndo()
 	{
-		auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || std::cmp_greater_equal(Offset, AudioCaches.size()))
 			return;
@@ -632,7 +628,7 @@ namespace WndControls
 
 	void MoeVSRedo()
 	{
-		auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || std::cmp_greater_equal(Offset, AudioCaches.size()))
 			return;
@@ -649,13 +645,26 @@ namespace WndControls
 	void SaveData(int CurSel)
 	{
 		if (CurSel < 0)
-			CurSel = LabelControls.AudioList->GetCurSelItem();
+			CurSel = LabelControls.AudioList->SelectedItemIndex;
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || std::cmp_greater_equal(Offset, AudioCaches.size()))
+		{
+			auto F0Path = GetF0Path(AudioPaths[CurSel]);
+			std::filesystem::path CachePath = F0Path + L".cache";
+			if (exists(CachePath))
+			{
+				auto F0 = DragonianLib::Functional::NumpyLoad<DragonianLib::Float32, 2>(
+					F0Path + L".cache"
+				);
+				SaveWithHistory(F0Path, F0);
+				remove(CachePath);
+				reinterpret_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorWhite);
+			}
 			return;
+		}
 		if (AudioCaches[Offset].second.ModifyCount)
 		{
-			dynamic_cast<ListItemC*>(LabelControls.AudioList->GetItem(CurSel))->SetColor(ColorSkyBlue);
+			dynamic_cast<ListItemC*>(LabelControls.AudioList->Items[CurSel].get())->SetColor(ColorSkyBlue);
 			LabelControls.AudioList->UpdateLayout();
 			AudioCaches[Offset].second.ModifyCount = 0;
 			SaveWithHistory(
@@ -676,7 +685,7 @@ namespace WndControls
 
 	void SineGen()
 	{
-		auto CurSel = LabelControls.AudioList->GetCurSelItem();
+		auto CurSel = LabelControls.AudioList->SelectedItemIndex;
 		auto Offset = GetOffset(CurSel);
 		if (Offset == -1 || std::cmp_greater_equal(Offset, AudioCaches.size()))
 			return;
@@ -724,7 +733,7 @@ namespace WndControls
 				auto F0Tensor = DragonianLib::Functional::NumpyLoad<DragonianLib::Float64, 2>(
 					Path
 				).Cast<DragonianLib::Float32>().Evaluate();
-				Mui::Ctrl::Write2Clipboard(
+				Write2Clipboard(
 					F0Tensor.GetRng()
 				);
 			}
@@ -741,12 +750,12 @@ std::wstring GetLocalizationString(const std::wstring_view& _Str)
 	return WndControls::LanguageXml->GetStringValue(_Str);
 }
 
-MyAudioData::~MyAudioData()
+SimpleF0Labeler::MyAudioData::~MyAudioData()
 {
 	SaveCache();
 }
 
-void MyAudioData::SaveCache() const
+void SimpleF0Labeler::MyAudioData::SaveCache() const
 {
 	if (!F0Path.empty() && ModifyCount)
 	{

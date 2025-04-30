@@ -1,9 +1,6 @@
 ﻿#pragma once
 #include <Mui.h>
 #include <numbers>
-#include <Windows.h>
-#include <User/Mui_Engine.h>
-
 #include "Libraries/AvCodec/AvCodec.h"
 
 namespace SimpleF0Labeler
@@ -16,26 +13,26 @@ namespace SimpleF0Labeler
 	class PitchLabel
 	{
 	public:
-		static std::wstring PitchToLabel(float pitch_val)
+		static std::wstring PitchToLabel(float PitchValue)
 		{
-			auto pitch = int(round(pitch_val));
-			if (pitch < 0 || pitch > 1200)
+			auto Pitch = int(round(PitchValue));
+			if (Pitch < 0 || Pitch > 1200)
 				return L"Null";
-			const int realPitch = pitch / 10;
-			pitch = pitch % 10;
-			if (pitch == 0)
-				return Labels[realPitch % 12] + std::to_wstring(realPitch / 12);
-			return Labels[realPitch % 12] + std::to_wstring(realPitch / 12) + L',' + std::to_wstring(pitch * 10) + L'\'';
+			const int Keys = Pitch / 10;
+			Pitch = Pitch % 10;
+			if (Pitch == 0)
+				return Labels[Keys % 12] + std::to_wstring(Keys / 12);
+			return Labels[Keys % 12] + std::to_wstring(Keys / 12) + L',' + std::to_wstring(Pitch * 10) + L'\'';
 		}
 
-		static float F0ToPitch(float f0_val)
+		static float F0ToPitch(float Freq)
 		{
-			return (12 * log(float(f0_val) / CenterC) / std::numbers::ln2_v<float>) + CenterCPitch;
+			return (12 * log(float(Freq) / CenterC) / std::numbers::ln2_v<float>) + CenterCPitch;
 		}
 
-		static float PitchToF0(float pitch_val)
+		static float PitchToF0(float PitchValue)
 		{
-			return (powf(2.f, (pitch_val - CenterCPitch) / 12.f)) * CenterC;
+			return (powf(2.f, (PitchValue - CenterCPitch) / 12.f)) * CenterC;
 		}
 
 	private:
@@ -53,10 +50,10 @@ namespace SimpleF0Labeler
 			DragonianLib::Int64 _SamplingRate,
 			FloatTensor2D _Audio,
 			FloatTensor2D _F0,
-			FloatTensor2D _Spec,
-			FloatTensor2D _Mel,
+			ImageTensor _Spec,
+			ImageTensor _Mel,
 			std::wstring _F0Path,
-			bool Modified
+			bool _Modified
 		) :
 			SamplingRate(_SamplingRate),
 			Audio(std::move(_Audio)),
@@ -65,15 +62,15 @@ namespace SimpleF0Labeler
 			Mel(std::move(_Mel)),
 			F0Path(std::move(_F0Path))
 		{
-			if (Modified)
+			if (_Modified)
 				ModifyCount = 1;
 		}
 
 		DragonianLib::Int64 SamplingRate;
 		FloatTensor2D Audio;
 		FloatTensor2D F0;
-		FloatTensor2D Spec;
-		FloatTensor2D Mel;
+		ImageTensor Spec;
+		ImageTensor Mel;
 		std::wstring F0Path;
 		int64_t ModifyCount = 0;
 		std::deque<FloatTensor2D> UndoList, RedoList;

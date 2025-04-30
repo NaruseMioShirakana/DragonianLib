@@ -1,4 +1,5 @@
-﻿#include "../DioF0Extractor.hpp"
+﻿#include "Libraries/F0Extractor/DioF0Extractor.hpp"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 #include "world/dio.h"
 #include "world/stonemask.h"
 

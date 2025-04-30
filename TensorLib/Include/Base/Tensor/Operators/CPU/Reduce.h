@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "CPU.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/CPU.h"
 
 _D_Dragonian_Lib_Operator_Space_Begin
 
@@ -42,7 +42,7 @@ template <
 	_FunctionTypeMid ReduceMidOperator,
 	_FunctionTypeMidVec ReduceMidOperatorVec,
 	_FunctionTypeEnd ReducePostOperator
-) requires (IsCallableValue<_FunctionTypeMid>)
+) requires (IsInvocableValue<decltype(ReduceMidOperator), const _Type&, const _Type&>)
 {
 	constexpr size_t _ReduceDim = _NRank - 1;
 	const auto _SrcShape = _SrcInfo.Shape[_ReduceDim];
@@ -55,11 +55,11 @@ template <
 			for (SizeType i = 0; i < _SrcShape; ++i)
 			{
 				auto ValueTemp = *(_SrcBegin + i * _SrcStride);
-				if constexpr (IsCallableValue<decltype(ReducePreOperator)>)
+				if constexpr (IsInvocableValue<decltype(ReducePreOperator), const _Type&, const _Type&>)
 					ValueTemp = ReducePreOperator(ValueTemp);
 				Val = ReduceMidOperator(Val, ValueTemp);
 			}
-			if constexpr (IsCallableValue<decltype(ReducePostOperator)>)
+			if constexpr (IsInvocableValue<decltype(ReducePostOperator), const _Type&, const _Type&>)
 				Val = ReducePostOperator(Val);
 			*(_Dest + _IndexA) = Val;
 		};
@@ -73,23 +73,29 @@ template <
 				RedeceFn
 			);
 		};
-
-	if (TypeTraits::IsAvx256SupportedValue<_Type>)
+	
+	if constexpr (
+		TypeTraits::IsAvx256SupportedValue<_Type> &&
+		!(IsInvocableValue<decltype(ReducePreOperator), const _Type&, const _Type&> xor
+			IsInvocableValue<decltype(ReducePreOperatorVec), const Vectorized<_Type>&, const Vectorized<_Type>&>) &&
+		!(IsInvocableValue<decltype(ReduceMidOperator), const _Type&, const _Type&> xor
+			IsInvocableValue<decltype(ReduceMidOperatorVec), const Vectorized<_Type>&, const Vectorized<_Type>&>)
+		)
 	{
 		auto ContRedeceFn = [=](_Type* _DestBegin, const _Type* _SrcBegin, SizeType BatchCount, const std::shared_ptr<int>&)
-		{
-			const auto _DestEnd = _DestBegin + BatchCount;
-			while (_DestBegin < _DestEnd)
 			{
-				*_DestBegin++ = ReduceFunction<Throughput>(
-					_SrcBegin, _SrcShape, ReduceInitValue,
-					ReducePreOperator, ReducePreOperatorVec,
-					ReduceMidOperator, ReduceMidOperatorVec,
-					ReducePostOperator
-				);
-				_SrcBegin += _SrcShape;
-			}
-		};
+				const auto _DestEnd = _DestBegin + BatchCount;
+				while (_DestBegin < _DestEnd)
+				{
+					*_DestBegin++ = ReduceFunction<Throughput>(
+						_SrcBegin, _SrcShape, ReduceInitValue,
+						ReducePreOperator, ReducePreOperatorVec,
+						ReduceMidOperator, ReduceMidOperatorVec,
+						ReducePostOperator
+					);
+					_SrcBegin += _SrcShape;
+				}
+			};
 
 		ImplMultiThreadCaller<2, _NRank, 1, _Type>(
 			_Dest,
@@ -114,11 +120,11 @@ template <
 					for (SizeType j = 0; j < _SrcShape; ++j)
 					{
 						auto ValueTemp = *_SrcBegin++;
-						if constexpr (IsCallableValue<decltype(ReducePreOperator)>)
+						if constexpr (IsInvocableValue<decltype(ReducePreOperator), const _Type&, const _Type&>)
 							ValueTemp = ReducePreOperator(ValueTemp);
 						Val = ReduceMidOperator(Val, ValueTemp);
 					}
-					if constexpr (IsCallableValue<decltype(ReducePostOperator)>)
+					if constexpr (IsInvocableValue<decltype(ReducePostOperator), const _Type&, const _Type&>)
 						Val = ReducePostOperator(Val);
 					*_DestBegin++ = Val;
 				}

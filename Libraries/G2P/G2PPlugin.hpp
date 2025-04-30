@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "G2PBase.hpp"
+#include "Libraries/G2P/G2PBase.hpp"
 #include "Libraries/PluginBase/PluginBase.h"
 
 _D_Dragonian_Lib_G2P_Header

@@ -1,6 +1,6 @@
-﻿#include "../MJson.h"
-#include "yyjson.h"
+﻿#include "yyjson.h"
 #include "Libraries/Util/StringPreprocess.h"
+#include "Libraries/MJson/MJson.h"
 
 _D_Dragonian_Lib_MJson_Namespace_Begin
 

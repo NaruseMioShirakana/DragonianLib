@@ -1,11 +1,8 @@
-﻿#include "../AvCodec.h"
+﻿#include "Libraries/AvCodec/AvCodec.h"
 #include "Libraries/Base.h"
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
 #include "libremidi/writer.hpp"
-#ifdef _WIN32
-#include <Windows.h>
-#endif
 extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
@@ -19,17 +16,6 @@ _D_Dragonian_Lib_Space_Begin
 namespace AvCodec
 {
 	static inline Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
-
-	bool RunWithComMultiThread()
-	{
-		HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-		return SUCCEEDED(hr);
-	}
-
-	void ComUninitialize()
-	{
-		CoUninitialize();
-	}
 
 	static void* DefaultAlloc(size_t Size)
 	{

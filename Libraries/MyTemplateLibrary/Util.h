@@ -670,9 +670,9 @@ public:
 		return (_MyBegin == nullptr) || (_MyEnd == nullptr);
 	}
 
-	bool Contains(const MyIterTypeBeg& _Pointer) const
+	bool Contains(const MyIterTypeBeg& _Pointer, bool _End = false) const
 	{
-		return (_Pointer >= _MyBegin) && (_Pointer < _MyEnd);
+		return (_Pointer >= _MyBegin) && (_End ? (_Pointer <= _MyEnd) : (_Pointer < _MyEnd));
 	}
 
 	bool IsSubRangeOf(const RangesWrp& _Right) const

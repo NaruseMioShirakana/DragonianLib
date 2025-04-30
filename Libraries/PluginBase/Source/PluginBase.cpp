@@ -1,4 +1,4 @@
-﻿#include "../PluginBase.h"
+﻿#include "Libraries/PluginBase/PluginBase.h"
 #include "Libraries/Util/StringPreprocess.h"
 #ifdef _WIN32
 #include <Windows.h>

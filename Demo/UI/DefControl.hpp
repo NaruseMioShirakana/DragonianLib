@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <Mui.h>
+#include "Extend/Waveform.h"
+#include "Extend/CurveEditor.h"
 #include "MainWindow.h"
 
 #define MoeMessageBox(title, text, cap, hwnd) MessageBoxW(hwnd, GetLocalizationString(text).c_str(), GetLocalizationString(title).c_str(), (cap))
@@ -23,14 +25,14 @@ namespace WndControls
 	struct MyControls
 	{
 		Mui::Ctrl::UIListBox* AudioList = nullptr;
-		Mui::Ctrl::CurveEditor* CurveEditor = nullptr;
-		Mui::Ctrl::Waveform* CurvePlayer = nullptr;
+		SimpleF0Labeler::CurveEditor* CurveEditor = nullptr;
+		SimpleF0Labeler::Waveform* CurvePlayer = nullptr;
 	};
 
 	void InitCtrl(
 		Mui::Ctrl::UIListBox* AudioList = nullptr,
-		Mui::Ctrl::CurveEditor* CurveEditor = nullptr,
-		Mui::Ctrl::Waveform* CurvePlayer = nullptr
+		SimpleF0Labeler::CurveEditor* CurveEditor = nullptr,
+		SimpleF0Labeler::Waveform* CurvePlayer = nullptr
 	);
 
 	void AppendUndo();

@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Tensor.h"
+#include "TensorLib/Include/Base/Tensor/Tensor.h"
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
 #include <ostream>
 
@@ -1189,6 +1189,63 @@ namespace Functional
 		auto Min = _Tensor.template ReduceMin<true>(_Axis);
 		auto Max = _Tensor.template ReduceMax<true>(_Axis);
 		return (_Tensor - Min) / (Max - Min);
+	}
+
+	template <
+		bool KeepDim = false, Int64 Throughput = 2,
+		typename _FunctionTypeMid, typename _FunctionTypePre = nullptr_t, typename _FunctionTypeEnd = nullptr_t,
+		typename _FunctionTypeMidVec = nullptr_t, typename _FunctionTypePreVec = nullptr_t,
+		typename _MyValueType, size_t _NRank
+	> decltype(auto) ReduceOp(
+		const Tensor<_MyValueType, _NRank, Device::CPU>& _Tensor,
+		_MyValueType _ReduceInitValue,
+		_FunctionTypeMid _FunctionMid,
+		SizeType _Axis,
+		_FunctionTypeMidVec _FunctionMidVec = _FunctionTypeMidVec(),
+		_FunctionTypePre _FunctionPre = _FunctionTypePre(),
+		_FunctionTypePreVec _FunctionPreVec = _FunctionTypePreVec(),
+		_FunctionTypeEnd _FunctionEnd = _FunctionTypeEnd()
+	) requires (TypeTraits::IsInvocableReturnValue<_MyValueType, _FunctionTypeMid, const _MyValueType&, const _MyValueType&>)
+	{
+		if constexpr (_NRank == 1)
+			return ReduceOp<false, Throughput>(
+				UnSqueeze(_Tensor, 0),
+				std::move(_ReduceInitValue),
+				std::move(_FunctionMid),
+				-1,
+				std::move(_FunctionMidVec),
+				std::move(_FunctionPre),
+				std::move(_FunctionPreVec),
+				std::move(_FunctionEnd)
+			).Squeeze(0);
+		else
+		{
+			_Axis = _Tensor.CalcIndex(_Axis, _Tensor.Rank());
+			auto TensorTmp = _Tensor.AxisFromTo(_Axis, -1);
+			TensorTmp.WaitingAsArgument();
+			Dimensions<_NRank - 1> OutShape;
+			OutShape.Assign(TensorTmp.Shape().Data());
+			auto Ret = Tensor<_MyValueType, _NRank - 1, Device::CPU>::New(OutShape, _Tensor.GetAllocator());
+			Ret.WaitingAsResult();
+			auto RetView = Ret.UnSqueeze(-1);
+			Operators::ImplReduceOperators<Throughput>(
+				RetView.Data(),
+				RetView.GetDefaultOperatorParameter(),
+				TensorTmp.Data(),
+				TensorTmp.GetDefaultOperatorParameter(),
+				RetView.IsContinuous() && TensorTmp.IsContinuous(),
+				std::move(_ReduceInitValue),
+				std::move(_FunctionPre),
+				std::move(_FunctionPreVec),
+				std::move(_FunctionMid),
+				std::move(_FunctionMidVec),
+				std::move(_FunctionEnd)
+			);
+			if constexpr (KeepDim)
+				return RetView;
+			else
+				return Ret;
+		}
 	}
 }
 

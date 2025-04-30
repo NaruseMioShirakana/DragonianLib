@@ -1,10 +1,9 @@
 ﻿#include "Libraries/F0Extractor/F0ExtractorManager.hpp"
-#include <functional>
 #include "Libraries/F0Extractor/DioF0Extractor.hpp"
 #include "Libraries/F0Extractor/HarvestF0Extractor.hpp"
-#include "Libraries/F0Extractor/NetF0Predictors.hpp"
 #include "Libraries/F0Extractor/PluginBasedF0Extractor.hpp"
 #include "Libraries/Base.h"
+#include <functional>
 
 _D_Dragonian_Lib_F0_Extractor_Header
 

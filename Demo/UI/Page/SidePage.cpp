@@ -1,145 +1,167 @@
 ﻿#include "SidePage.h"
 #include "../DefControl.hpp"
 
-namespace UI
+namespace SimpleF0Labeler
 {
-	SidePage::SidePage(Ctrl::UIControl* parent, XML::MuiXML* ui) : Page(parent, ui)
+	void SidePage::Show()
 	{
-		const std::wstring xml = LR"(
-		<PropGroup id="sidecombox" fontSize="12" style="comboxDark" textAlign="5" fontColor="#textColor"
-		listStyle="listDark" itemStyle="comitemDark" itemHeight="25" autoSize="false" menuHeight="200"
-		iFontColor="#textColor" iTextAlign="5" styleV="scrollDark" button="false" barWidth="6" inset="1,1,1,1"
-		dropIcon="icon_drop_light" size="243,26" />
-		<PropGroup id="sideicobtn" fontSize="12" style="buttonDark" textAlign="5" fontColor="#textColor"
-		autoSize="false" offset="0,0,5,5" iconSize="16,16" frame="11,5,243,26" />
-		<PropGroup id="sidepm_l1" frame="0,5,265,20" align="LinearH" autoSize="false" />
-		<PropGroup id="sidepm_l2" size="133,100%" align="LinearH" autoSize="false" />
-		<PropGroup id="side_edit" inset="2,2,2,2" frame="11,0,110,20" />
-		<PropGroup id="side_check" inset="2,2,2,2" frame="11,5,110,110" />
+		if (_IsAnimation)
+			return;
 
-		<UIControl autoSize="false" bgColor="#menuframe" frame="0,11,100%,1" />
+		bool show = !_IsShow;
 
-		<UILabel fontSize="16" text="参数" pos="11,11" />
-		<UIControl autoSize="false" frame="0,10,265,100%" align="LinearH">
-			<UIControl autoSize="false" size="100%,100%" align="LinearV">
-				<PropGroup id="side_edit" inset="2,2,2,2" size="100,20" />
-				<UIControl prop="sidepm_l1"><UIControl prop="sidepm_l2">
-					<UILabel pos="11,2" text="采样率" /></UIControl>
-				<UIEditBox prop="side_edit" text="48000" name="side_sampling_rate" number="true" /></UIControl>
-				<UIControl prop="sidepm_l1"><UIControl prop="sidepm_l2">
-					<UILabel pos="11,2" text="使用对数视图" /></UIControl>
-				<UICheckBox prop="side_check" name="side_use_log_view" isSel="true" /></UIControl>
+		if (show)
+			_MyPageContent->SetPos(-265, 0, false);
+		else
+			_MyPageContent->SetPos(265, 0, false);
 
-				<UIControl autoSize="false" bgColor="#menuframe" frame="0,11,100%,1" />
-				<UILabel pos="11,11" text="使用公式 f0 = (α * f0) + β 计算" />
+		_MyPageContent->SetVisible(true);
 
-				<UIControl prop="sidepm_l1"><UIControl prop="sidepm_l2">
-					<UILabel pos="11,2" text="α" /></UIControl>
-				<UIEditBox prop="side_edit" text="1.000000" name="side_alpha_value" /></UIControl>
-				<UIControl prop="sidepm_l1"><UIControl prop="sidepm_l2">
-					<UILabel pos="11,2" text="β" /></UIControl>
-				<UIEditBox prop="side_edit" text="0.000000" name="side_beta_value" /></UIControl>
+		//设置播放器的动画状态 在动画过程中不要重采样视图 不然会造成卡顿
+		auto Player = (Waveform*)_MyPageContent->GetParent()->FindChildren(L"EditorPlayer");
+		Player->SetAniFlag(true);
 
-				<UIControl autoSize="false" bgColor="#menuframe" frame="0,11,100%,1" />
-				<UILabel pos="11,11" text="使用音高偏移公式计算" />
-				<UIControl prop="sidepm_l1"><UIControl prop="sidepm_l2">
-					<UILabel pos="11,2" text="音高偏移" /></UIControl>
-				<UIEditBox prop="side_edit" text="0.000000" name="side_pitch_value" /></UIControl>
+		_IsAnimation = true;
+		_MyAnimation->CreateTask(
+			[this, show, Player](const Mui::MAnimation::Calculator* calc, float percent)
+			{
+				const int x = calc->calc(Mui::MAnimation::Quintic_Out, show ? -265 : 0, show ? 0 : -265);
+				_MyPageContent->SetPos(x, 0);
+				_MyPageContent->GetParent()->UpdateLayout();
+				if (percent == 100.f)
+				{
+					if (!show)
+						_MyPageContent->SetVisible(false);
+					_IsAnimation = false;
+					Player->SetAniFlag(false);
+				}
+				return _IsAnimation;
+			},
+			300
+		);
 
-				<UIControl autoSize="false" bgColor="#menuframe" frame="0,11,100%,1" />
-			</UIControl>
-		</UIControl>
-
-		)";
-		m_page = parent->Child(L"sidepage");
-		if (!ui->CreateUIFromXML(m_page, xml))
-		{
-			__debugbreak();
-		}
-
-		m_anicls = new MAnimation(parent->GetParentWin());
-		m_alpha = m_page->FindChildren<Ctrl::UIEditBox>(L"side_alpha_value");
-		m_beta = m_page->FindChildren<Ctrl::UIEditBox>(L"side_beta_value");
-		m_pitch = m_page->FindChildren<Ctrl::UIEditBox>(L"side_pitch_value");
+		_IsShow = show;
 	}
 
-	std::vector<std::wstring> VitsSpeakerName, DiffSpeakerName;
-
-	bool SidePage::EventProc(UINotifyEvent event, Ctrl::UIControl* control, _m_param param)
+	bool SidePage::EventProc(
+		Mui::XML::PropName event,
+		Mui::Ctrl::UIControl* control,
+		std::any param
+	)
 	{
 		const auto Name = control->GetName();
-		
-		if ((event == Event_Focus_False || (event == Event_Key_Down && GetKeyState(VK_RETURN) & 0x8000)))
+
+		if (event == Mui::Ctrl::Events::Control_LostFocus.Event() ||
+			(event == Mui::Ctrl::Events::Key_Down.Event() && GetKeyState(VK_RETURN) & 0x8000))
 		{
-			if (Name == L"side_sampling_rate")
+			if (Name == L"SidePageSamplingRate")
 			{
-				auto ctrl = dynamic_cast<Ctrl::UIEditBox*>(control);
-				const auto val = _wcstoi64(ctrl->GetCurText().c_str(), nullptr, 10);
-				if (val < 8000)ctrl->SetCurText(L"8000");
-				if (val > 96000)ctrl->SetCurText(L"96000");
+				auto Control = dynamic_cast<Mui::Ctrl::UIEditBox*>(control);
+				const auto val = _wcstoi64(Control->Text.Get().cstr(), nullptr, 10);
+				if (val < 8000) Control->Text.Set(L"8000");
+				if (val > 96000) Control->Text.Set(L"96000");
 				return true;
 			}
-			if (Name == L"side_alpha_value" || Name == L"side_beta_value" || Name == L"side_pitch_value")
+			if (Name == L"SidePageAlpha" || Name == L"SidePageBeta" || Name == L"SidePagePitchShift")
 			{
-				auto ctrl = dynamic_cast<Ctrl::UIEditBox*>(control);
-				auto text = ctrl->GetCurText();
-				if (text.back() == L'.')
-					text += L"0";
-				const auto val = wcstof(ctrl->GetCurText().c_str(), nullptr);
-				ctrl->SetCurText(std::to_wstring(val));
+				auto Control = dynamic_cast<Mui::Ctrl::UIEditBox*>(control);
+				std::wstring CurText = Control->Text.Get().cstr();
+				if (CurText.back() == L'.') CurText += L"0";
+				Control->Text.Set(std::to_wstring(wcstof(CurText.c_str(), nullptr)));
 			}
 		}
 
 		return false;
 	}
 
-	void SidePage::Show(bool show)
+	Mui::Ctrl::UIControl* SidePage::OnLoadPageContent(
+		Mui::Ctrl::UIControl* parent,
+		Mui::XML::MuiXML* ui
+	)
 	{
-		if (m_isani)
-			return;
+		const std::wstring xml = LR"(
+			<PropGroup ID="SidePageLineI" Frame="0,5,265,20" Align="LinearH" AutoSize="false" />
+			<PropGroup ID="SidePageLineII" Size="133,100%" Align="LinearH" AutoSize="false" />
+			<PropGroup ID="SizePageEditBox" Inset="2,2,2,2" Size="100,20" />
+			<PropGroup ID="SizePageCheckBox" Inset="2,2,2,2" Frame="11,5,110,110" />
 
-		if (show)
-			m_page->SetPos(-265, 0, false);
-		else
-			m_page->SetPos(265, 0, false);
+			<UIControl Name="_SidePage" Size="100%,100%">
+				<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
 
-		m_page->SetVisible(true);
+				<UILabel FontSize="16" Text="#SidePageParameters" Pos="11,11" />
+				<UIControl AutoSize="false" Frame="0,10,265,100%" Align="LinearH">
+					<UIControl AutoSize="false" Size="100%,100%" Align="LinearV">
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="#SidePageSamplingRate" /></UIControl>
+							<UIEditBox Prop="SizePageEditBox" Text="48000" Name="SidePageSamplingRate" Number="true" />
+						</UIControl>
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="#SidePageUseLogView" /></UIControl>
+							<UICheckBox Prop="SizePageCheckBox" Name="SidePageUseLogView" Selected="true" />
+						</UIControl>
 
-		//设置播放器的动画状态 在动画过程中不要重采样视图 不然会造成卡顿
-		auto curve_player = (Ctrl::Waveform*)m_page->GetParent()->FindChildren(L"curve_player");
-		curve_player->SetAniFlag(true);
+						<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
+						<UILabel Pos="11,11" Text="#SidePageArgAlphaBeta" />
 
-		auto effect = MAnimation::Quintic_Out;
-		auto anifun = [effect, this, show, curve_player](const MAnimation::MathsCalc* calc, float percent)
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="α" /></UIControl>
+							<UIEditBox Prop="SizePageEditBox" Text="1.000000" Name="SidePageAlpha" />
+						</UIControl>
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="β" /></UIControl>
+							<UIEditBox Prop="SizePageEditBox" Text="0.000000" Name="SidePageBeta" />
+						</UIControl>
+
+						<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
+						<UILabel Pos="11,11" Text="#SidePageArgPitchShift" />
+
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="#SidePagePitchShift" /></UIControl>
+							<UIEditBox Prop="SizePageEditBox" Text="0.000000" Name="SidePagePitchShift" />
+						</UIControl>
+
+						<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
+					</UIControl>
+				</UIControl>
+			</UIControl>
+		)";
+		_MyPageContent = parent->Child(L"SidePage");
+		if (!ui->CreateUIFromXML(_MyPageContent, xml))
 		{
-			const int x = calc->calc(effect, show ? -265 : 0, show ? 0 : -265);
-			m_page->SetPos(x, 0);
-			m_page->GetParent()->UpdateLayout();
-			if (percent == 100.f)
-			{
-				if(!show)
-					m_page->SetVisible(false);
-				m_isani = false;
-				curve_player->SetAniFlag(false);
-			}
-			return m_isani;
-		};
-		m_isani = true;
-		m_anicls->CreateTask(anifun, 300);
+			__debugbreak();
+		}
+		_MySamplingRateEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageSamplingRate");
+		_MyLogViewCheckBox = _MyPageContent->FindChildren<Mui::Ctrl::UICheckBox>(L"SidePageUseLogView");
+		_MyAlphaEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageAlpha");
+		_MyBetaEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageBeta");
+		_MyPitchEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePagePitchShift");
+
+		return _MyPageContent->Child(L"_SidePage");
 	}
 
 	float SidePage::GetAlpha() const
 	{
-		return wcstof(m_alpha->GetCurText().c_str(), nullptr);
+		return wcstof(_MyAlphaEditBox->Text.Get().cstr(), nullptr);
 	}
 
 	float SidePage::GetBeta() const
 	{
-		return wcstof(m_beta->GetCurText().c_str(), nullptr);
+		return wcstof(_MyBetaEditBox->Text.Get().cstr(), nullptr);
 	}
 
 	float SidePage::GetPitch() const
 	{
-		return wcstof(m_pitch->GetCurText().c_str(), nullptr);
+		return wcstof(_MyPitchEditBox->Text.Get().cstr(), nullptr);
 	}
+
+	int64_t SidePage::GetSamplingRate() const
+	{
+		return _wcstoi64(_MySamplingRateEditBox->Text.Get().cstr(), nullptr, 10);
+	}
+
+	bool SidePage::IsUsingLogView() const
+	{
+		return _MyLogViewCheckBox->Selected;
+	}
+
 }

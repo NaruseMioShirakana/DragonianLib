@@ -1,4 +1,4 @@
-﻿#include "../Vits.hpp"
+﻿#include "OnnxLibrary/TextToSpeech/Models/Vits.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Lib_Text_To_Speech_Header

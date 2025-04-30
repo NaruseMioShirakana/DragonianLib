@@ -16,12 +16,20 @@ jump_discontinuity.emplace_back(\
 		)\
 );}while(0)
 
-namespace Mui::Ctrl
+namespace SimpleF0Labeler
 {
+	using namespace Mui;
+
+	static bool IsInRect(const UIRect& Rect, const UIPoint& Point)
+	{
+		return Point.x >= Rect.left && Point.x <= Rect.right &&
+			Point.y >= Rect.top && Point.y <= Rect.bottom;
+	}
+
 	const auto MaxFreq = PitchLabel::PitchToF0(119.9f);
 	const auto MinFreq = PitchLabel::PitchToF0(0);
 
-	class MD2DBrush final : MBrush_D2D
+	class MD2DBrush final : Render::MBrush_D2D
 	{
 	public:
 		static ID2D1SolidColorBrush* GetBrush(MBrush* brush)
@@ -32,43 +40,31 @@ namespace Mui::Ctrl
 
 	void CurveEditor::Register()
 	{
-		static auto method = [](UIControl* parent)
-		{
-			return new CurveEditor(parent);
-		};
-		M_REGISTER_CTRL(method);
+		Mui::XML::RegisterControl(
+			ClassName,
+			[](UIControl* parent) { return new CurveEditor(parent); }
+		);
 	}
 
-	CurveEditor::CurveEditor(UIControl* parent) : UIScroll(Attribute())
+	CurveEditor::CurveEditor(UIControl* parent)
 	{
 		parent->AddChildren(this);
-		m_anicls = new MAnimation(UIControl::GetParentWin());
+		m_anicls = std::make_shared<MAnimation>(UIControl::GetParentWin());
 
-		ScrollCallBack callback = [this](auto&& PH1, auto&& PH2, auto&& PH3)
-		{
-			OnScrollView(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2),
-				std::forward<decltype(PH3)>(PH3));
-		};
-		SetCallback(callback);
-		UIScroll::SetAttributeSrc(L"horizontal", true, false);
-		SetAttributeSrc(L"barWidth", m_preHeight, false);
+		Horizontal = true;
+		BarWidth = m_preHeight;
 
-		auto attrib = Attribute();
-		attrib.callback = [this](auto&& PH1, auto&& PH2, auto&& PH3)
-		{
-			OnScrollView(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2),
-				std::forward<decltype(PH3)>(PH3));
-		};
-		attrib.barWidth = m_barWidth;
-		attrib.vertical = true;
-		attrib.button = false;
-		m_sidebar = new UIScroll(this, attrib);
-		static_cast<CurveEditor*>(m_sidebar)->m_ALLWheel = false;
+		m_sidebar = new UIScroll(this);
+		m_sidebar->Vertical = true;
+		m_sidebar->Button = false;
+		m_sidebar->BarWidth = m_barWidth;
+		m_sidebar->SetVisible(true, true);
+
 		m_sidebar->AutoSize(false, false);
 		PosSizeUnit uint;
 		uint.x_w = Percentage;
 		uint.y_h = FillMinus;
-		m_sidebar->SetSizeUint(uint, false);
+		m_sidebar->SetSizeUnit(uint, false);
 		m_sidebar->SetSize(100, m_preHeight, false);
 		m_sidebar->SetMsgFilter(true);
 		HMIDIOUT MidioutH;
@@ -81,33 +77,33 @@ namespace Mui::Ctrl
 
 	CurveEditor::~CurveEditor()
 	{
-		MSafeRelease(m_font);
-		MSafeRelease(m_brush_m);
-		MSafeRelease(m_pen);
 		if(MidiOutOpen && MidiOutHandle)
 		{
 			midiOutClose(HMIDIOUT(MidiOutHandle));
 			MidiOutOpen = false;
 		}
+		selected_f0_begin = selected_f0_end = nullptr;
+		SetCurveData(std::nullopt, std::nullopt);
 	}
 
-	void CurveEditor::SetCurveData(const FloatTensor2D& data, const FloatTensor2D& spec)
+	void CurveEditor::SetCurveData(const FloatTensor2D& data, const ImageTensor& spec)
 	{
-		std::lock_guard lock(mx);
-		curve_idx = 0;
-		if (data.HasValue())
-			m_f0data = data.View();
-		else
-			m_f0data = std::nullopt;
-		if (spec.HasValue())
-			m_specData = spec.View();
-		else
-			m_specData = std::nullopt;
-		selected_f0_begin = selected_f0_end = nullptr;
+		{
+			std::lock_guard lock(mx);
+			curve_idx = 0;
+			if (data.HasValue())
+				m_f0data = data.View();
+			else
+				m_f0data = std::nullopt;
+			if (spec.HasValue())
+				m_specData = spec.View();
+			else
+				m_specData = std::nullopt;
+			selected_f0_begin = selected_f0_end = nullptr;
+		}
 		m_viewScaleH = 1.f;
 		CalcRangeViewH();
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		UpDate();
 	}
 
 	void CurveEditor::ReSetCurveData(const FloatTensor2D& data, int64_t idx)
@@ -143,27 +139,29 @@ namespace Mui::Ctrl
 
 	void CurveEditor::SetCurveIndex(int64_t idx)
 	{
-		std::lock_guard lock(mx);
-		if (idx != curve_idx)
 		{
-			curve_idx = idx;
-			selected_f0_begin = selected_f0_end = nullptr;
-			UpDate();
+			std::lock_guard lock(mx);
+			if (idx != curve_idx)
+			{
+				curve_idx = idx;
+				selected_f0_begin = selected_f0_end = nullptr;
+			}
 		}
+		UpDate();
 	}
 
 	void CurveEditor::SetShowPitch(bool show)
 	{
 		m_showPitch = show;
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		UpDate();
 	}
 
 	void CurveEditor::SetPlayLinePos(_m_size offset)
 	{
+		if (m_f0data.HasValue())
+			offset = std::min(offset, static_cast<size_t>(m_f0data.Size(1) - 1));
 		m_plineOffset = offset;
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		UpDate();
 	}
 
 	void CurveEditor::UpDate()
@@ -188,30 +186,30 @@ namespace Mui::Ctrl
 		}
 	}
 
-	void CurveEditor::SetAttribute(std::wstring_view attribName, std::wstring_view attrib, bool draw)
+	bool CurveEditor::SetAttribute(Mui::XML::PropName attribName, std::wstring_view attrib, bool draw)
 	{
-		if (attribName == L"fontColor")
+		if (attribName == L"FontColor")
 		{
 			m_fontColor = Helper::M_GetAttribValueColor(attrib);
 		}
-		else if (attribName == L"lineColor")
+		else if (attribName == L"LineColor")
 		{
 			m_lineColor = Helper::M_GetAttribValueColor(attrib);
 		}
-		else if (attribName == L"curveColor")
+		else if (attribName == L"CurveColor")
 		{
 			m_curveColor = Helper::M_GetAttribValueColor(attrib);
 		}
-		else if (attribName == L"preHeight")
+		else if (attribName == L"PreHeight")
 		{
 			m_preHeight = Helper::M_StoInt(attrib);
-			UIScroll::SetAttributeSrc(L"barWidth", m_preHeight);
+			BarWidth = m_preHeight;
 		}
-		else if(attribName == L"fontName")
+		else if (attribName == L"FontName")
 		{
 			m_font->SetFontName({ attrib.data(), attrib.size() });
 		}
-		else if(attribName == L"fontSize")
+		else if (attribName == L"FontSize")
 		{
 			_m_scale scale = GetRectScale().scale();
 			std::wstring attrstr = { attrib.data(), attrib.size() };
@@ -221,30 +219,28 @@ namespace Mui::Ctrl
 		}
 		else
 		{
-			if (attribName == L"styleV")
-				m_sidebar->SetAttribute(attribName, attrib, false);
-			if(attribName != L"styleV")
-				UIScroll::SetAttribute(attribName, attrib, draw);
-			return;
+			if (attribName == L"StyleV")
+				return m_sidebar->SetAttribute(attribName, attrib, false);
+			return UIScroll::SetAttribute(attribName, attrib, draw);
 		}
-		m_cacheUpdate = true;
 		if (draw)
-			UpdateDisplay();
+			UpDate();
+		return true;
 	}
 
-	std::wstring CurveEditor::GetAttribute(std::wstring_view attribName)
+	std::wstring CurveEditor::GetAttribute(Mui::XML::PropName attribName)
 	{
-		if(attribName == L"fontColor")
+		if (attribName == L"FontColor")
 			return Color::M_RGBA_STR(m_fontColor);
-		if (attribName == L"lineColor")
+		if (attribName == L"LineColor")
 			return Color::M_RGBA_STR(m_lineColor);
-		if (attribName == L"curveColor")
+		if (attribName == L"CurveColor")
 			return Color::M_RGBA_STR(m_curveColor);
-		if (attribName == L"preHeight")
+		if (attribName == L"PreHeight")
 			return std::to_wstring(m_preHeight);
-		if (attribName == L"fontName")
+		if (attribName == L"FontName")
 			return m_fontName;
-		if (attribName == L"fontSize")
+		if (attribName == L"FontSize")
 			return std::to_wstring(m_fontSize);
 		return UIScroll::GetAttribute(attribName);
 	}
@@ -256,14 +252,10 @@ namespace Mui::Ctrl
 		m_font->SetFontSize((_m_uint)fontSize, std::make_pair(0u, (_m_uint)m_font->GetText().length()));
 	}
 
-	void CurveEditor::OnLoadResource(MRenderCmd* render, bool recreate)
+	void CurveEditor::OnLoadResource(Render::MRenderCmd* render, bool recreate)
 	{
 		UIScroll::OnLoadResource(render, recreate);
 
-		MSafeRelease(m_pen);
-		MSafeRelease(m_brush_m);
-		MSafeRelease(m_font);
-		m_pen = render->CreatePen(1, m_lineColor);
 		m_brush_m = render->CreateBrush(m_fontColor);
 
 		_m_scale scale = GetRectScale().scale();
@@ -276,8 +268,7 @@ namespace Mui::Ctrl
 		if (MidiOutOpen && MidiOutHandle && m_showPitch)
 		{
 			UIPoint pt = point;
-			pt.y -= UINodeBase::m_data.Frame.top;
-			const auto attribY = m_sidebar->GetAttribute();
+			pt.y -= static_cast<int>(UINodeBase::m_data.Frame.top);
 			//视图偏移位置Y
 			const auto scale = GetRectScale().scale();
 			const int space = _scale_to(5, scale.cy);
@@ -285,10 +276,10 @@ namespace Mui::Ctrl
 			const int fontHeight = m_font->GetMetrics().bottom;
 			const int fullHeight = int((float)viewHeight * m_viewScaleV);
 			float offsetY = 0.f;
-			if (attribY.dragValue.height != 0)
-				offsetY = (float)attribY.dragValue.height / (float)attribY.range.height;
+			if (m_sidebar->DragValue.Get().y != 0)
+				offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
 			offsetY = (float)(fullHeight - viewHeight) * (offsetY);
-			if (attribY.range.height == m_sidebar->Frame().GetHeight())
+			if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
 				offsetY = 0.f;
 			float value = ((float)(pt.y - space - fontHeight) + offsetY) / (float)fullHeight;
 			value = Helper::M_Clamp(0.f, 120.f, 119.9f - value * 120.f);
@@ -330,39 +321,103 @@ namespace Mui::Ctrl
 		const auto bot = param->destRect->bottom - preHeight - space - fontCenter;
 		const auto top = param->destRect->top + space;
 
-		const auto Range = GetSelectedRange();
-		if (!Range.Null() && Range.Size())
+		if (m_specData.HasValue())
+			DrawSpec(scale, param);
+		
+		if (const auto Range = GetSelectedRange(); !Range.Null() && Range.Size())
 		{
 			m_brush_m->SetColor(m_fontColor);
 			m_brush_m->SetOpacity(25);
 			
 			const auto X_POS = std::max(CalcXPosWithPtr(param, Range.begin()), m_viewRect.left);
-			const auto X_L_POS = CalcXPosWithPtr(param, Range.end());
-			param->render->FillRectangle(
-				UIRect(X_POS, top, X_L_POS - X_POS, bot - top),
-				m_brush_m
-			);
+			const auto X_L_POS = std::max(CalcXPosWithPtr(param, Range.end()), m_viewRect.left);
+			if (X_POS < X_L_POS)
+				param->render->FillRectangle(
+					UIRect{ X_POS, top, X_L_POS - X_POS, bot - top }.ToRect(),
+					m_brush_m
+				);
 		}
 
-		auto Rect = UINodeBase::m_data.Frame;
+		auto Rect = UINodeBase::m_data.Frame.ToRectT<int>();
 		Rect.left += m_viewRect.left;
 		UIPoint CursorPoint;
 		if (GetCursorPos((LPPOINT)&CursorPoint) && ScreenToClient((HWND)GetParentWin()->GetWindowHandle(), (LPPOINT)&CursorPoint) &&
-			Helper::M_IsPtInRect(Rect, CursorPoint))
+			IsInRect(Rect, CursorPoint))
 		{
+			CursorPoint.x -= static_cast<int>(UINodeBase::m_data.Frame.left);
+			CursorPoint.y -= static_cast<int>(UINodeBase::m_data.Frame.top);
 			m_brush_m->SetColor(m_fontColor);
 			m_brush_m->SetOpacity(255);
-			const auto x = std::max(0, CursorPoint.x - UINodeBase::m_data.Frame.left);
+			const auto x = std::max(0, CursorPoint.x);
 			param->render->FillRectangle(
-				UIRect(x, top, _scale_to(2, scale.cx), bot - top),
+				UIRect{ x, top, _scale_to(2, scale.cx), bot - top }.ToRect(),
 				m_brush_m
 			);
 			if (m_f0data.HasValue())
 			{
-				m_font->SetText(std::to_wstring(GetXOffset(x - m_viewRect.left)));
+				const auto xFpOff = GetFpOffset(static_cast<float>(x - m_viewRect.left));
+				const auto xOff = (size_t)std::round(xFpOff);
+				const auto xOffCeil = (size_t)std::ceil(xFpOff);
+				const auto xOffFloor = (size_t)std::floor(xFpOff);
+				const auto xOffCeilVal = m_f0data.Data() + xOffCeil + curve_idx * m_f0data.Size(1);
+				const auto xOffFloorVal = m_f0data.Data() + xOffFloor + curve_idx * m_f0data.Size(1);
+				//interp
+				const auto yVal = (*xOffCeilVal - *xOffFloorVal) * (xFpOff - static_cast<float>(xOffFloor)) + *xOffFloorVal;
+				m_font->SetText(std::to_wstring(xOff));
 				param->render->DrawTextLayout(
 					m_font,
-					UIRect(x + space, top, m_font->GetMetrics().GetWidth(), fontHeight),
+					UIRect{
+						x - _scale_to(3, scale.cx) - m_font->GetMetrics().GetWidth(),
+						top,
+						m_font->GetMetrics().GetWidth(),
+						fontHeight
+					}.ToRect(),
+					m_brush_m,
+					TextAlign_Right
+				);
+				m_font->SetText(std::to_wstring(yVal).substr(0, 7) + L"HZ");
+				param->render->DrawTextLayout(
+					m_font,
+					UIRect{
+						x + space,
+						top,
+						m_font->GetMetrics().GetWidth(),
+						fontHeight
+					}.ToRect(),
+					m_brush_m,
+					TextAlign_Left
+				);
+
+				int viewHeight = m_viewRect.GetHeight();
+				int fullHeight = int((float)viewHeight * m_viewScaleV);
+				float offsetY = 0.f;
+				if (m_sidebar->DragValue.Get().y != 0)
+					offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
+				offsetY = (float)(fullHeight - viewHeight) * (offsetY);
+				if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
+					offsetY = 0.f;
+				float value = ((float)(CursorPoint.y - space - fontHeight) + offsetY) / (float)fullHeight;
+
+				if (m_showPitch)
+				{
+					value = Helper::M_Clamp(0.f, 120.f, 120.f - value * 120.f) - .1f;
+					if (value < .0f)
+						value = 0.f;
+					else
+						value = PitchLabel::PitchToF0(value);
+				}
+				else
+					value = Helper::M_Clamp(0.f, 1.f, 1.f - value) * MaxFreq;
+
+				m_font->SetText(std::to_wstring(value).substr(0, 7) + L"HZ");
+				param->render->DrawTextLayout(
+					m_font,
+					UIRect{
+						x + space,
+						bot - fontHeight,
+						m_font->GetMetrics().GetWidth(),
+						fontHeight
+					}.ToRect(),
 					m_brush_m,
 					TextAlign_Left
 				);
@@ -371,8 +426,8 @@ namespace Mui::Ctrl
 
 		DrawLabel(scale, param);
 
-		if(m_f0data.HasValue())
-			DrawCurve(scale, param, m_f0data);
+		if (m_f0data.HasValue())
+			DrawCurve(scale, param);
 
 		DrawPlayeLine(scale, param);
 
@@ -385,12 +440,12 @@ namespace Mui::Ctrl
 			return true;
 		UIRect barFrame = m_sidebar->Frame();
 		barFrame.left = barFrame.right - _scale_to(m_barWidth, GetRectScale().scale().cx);
-		if (Helper::M_IsPtInRect(barFrame, point))
+		if (IsInRect(barFrame, point))
 			return true;
 
 		const UIPoint pt = {
-			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
-			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
+			std::max(point.x - static_cast<int>(UINodeBase::m_data.Frame.left), 0),
+			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
 
 		if (m_insel)
@@ -398,7 +453,7 @@ namespace Mui::Ctrl
 			auto x = pt.x - m_viewRect.left;
 			x -= m_viewRect.left;
 			x = std::max(0, x);
-			auto xoff = GetXOffset(x);
+			auto xoff = GetXOffset(static_cast<float>(x));
 			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
@@ -414,7 +469,6 @@ namespace Mui::Ctrl
 			const auto max_ScaleH = float(m_f0data.Size(1)) / 10.f;
 			const auto ScaleH = m_viewScaleH * powf(4.2f, delta_ * 0.1f);
 			m_viewScaleH = Helper::M_MAX(Helper::M_MIN(max_ScaleH, ScaleH) * 1.f, 1.f); //最大20000%最小100%
-			std::lock_guard lock(mx);
 			if (m_viewScaleH >= max_ScaleH || m_viewScaleH <= 1.f) CalcRangeViewH();
 			else CalcRangeViewH(point, delta);
 		}
@@ -426,26 +480,25 @@ namespace Mui::Ctrl
 		}
 		else if (GetKeyState(VK_LSHIFT) & 0x8000)
 		{
-			const int range = GetRange(true);
+			const int range = Range.Get().width;
 			int step = int(float(range) / (m_viewScaleH * 3));
 			if (step == 0) step = 1;
-			const int curval = GetDragValue(true);
+			const int curval = DragValue.Get().x;
 			int val = curval + int(-delta_ * float(step));
 			val = std::clamp(val, 0, range);
-			SetDragValue(true, val);
+			DragValue.Set().value->x = val;
 		}
 		else
 		{
-			const int range = m_sidebar->GetRange(false);
+			const int range = m_sidebar->Range.Get().height;
 			int step = int(float(range) / (3 * m_viewScaleV));
 			if (step == 0) step = 1;
-			const int curval = m_sidebar->GetDragValue(false);
+			const int curval = m_sidebar->DragValue.Get().y;
 			int val = curval + int(-delta_ * float(step));
 			val = std::clamp(val, 0, range);
-			m_sidebar->SetDragValue(false, val);
-			SetDragValue(false, 0);
+			m_sidebar->DragValue.Set().value->y = val;
 		}
-
+		UpDate();
 		return false;
 	}
 
@@ -455,8 +508,8 @@ namespace Mui::Ctrl
 			return true;
 
 		const UIPoint pt = {
-			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
-			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
+			std::max(point.x - static_cast<int>(UINodeBase::m_data.Frame.left), 0),
+			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
 
 		if (m_lisdown && GetKeyState(VK_TAB) & 0x8000)
@@ -465,7 +518,7 @@ namespace Mui::Ctrl
 		if (time_in_sel && m_f0data.HasValue())
 		{
 			const auto x = pt.x - m_viewRect.left;
-			auto xof = GetXOffset(x);
+			auto xof = GetXOffset(static_cast<float>(x));
 			xof = xof * WndControls::GetPcmSize() / (m_f0data.Size(1) - 1);
 			WndControls::SetPlayerPos(xof);
 		}
@@ -474,7 +527,7 @@ namespace Mui::Ctrl
 		{
 			auto x = pt.x - m_viewRect.left;
 			x = std::max(0, x);
-			auto xoff = GetXOffset(x);
+			auto xoff = GetXOffset(static_cast<float>(x));
 			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
@@ -487,7 +540,6 @@ namespace Mui::Ctrl
 				y = m_lastPos.y;
 #endif
 
-			auto attribY = m_sidebar->GetAttribute();
 			//视图偏移位置Y
 			auto scale = GetRectScale().scale();
 			int space = _scale_to(5, scale.cy);
@@ -496,10 +548,10 @@ namespace Mui::Ctrl
 			int fullHeight = int((float)viewHeight * m_viewScaleV);
 
 			float offsetY = 0.f;
-			if (attribY.dragValue.height != 0)
-				offsetY = (float)attribY.dragValue.height / (float)attribY.range.height;
+			if (m_sidebar->DragValue.Get().y != 0)
+				offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
 			offsetY = (float)(fullHeight - viewHeight) * (offsetY);
-			if (attribY.range.height == m_sidebar->Frame().GetHeight())
+			if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
 				offsetY = 0.f;
 
 			float value = ((float)(y - space - fontHeight) + offsetY) / (float)fullHeight;
@@ -524,8 +576,8 @@ namespace Mui::Ctrl
 			if (end <= begin)
 				end = begin + 3;
 
-			auto xbegin = GetXOffset(begin);
-			auto xend = GetXOffset(end);
+			auto xbegin = GetXOffset(static_cast<float>(begin));
+			auto xend = GetXOffset(static_cast<float>(end));
 			const auto m_f0data_data = m_f0data.Data() + curve_idx * m_f0data.Size(1);
 			auto count = xend - xbegin;
 
@@ -533,11 +585,11 @@ namespace Mui::Ctrl
 
 			for (size_t i = 0; i < count; ++i)
 				if (xbegin + i < static_cast<size_t>(m_f0data.Size(1)))
-					if (auto cur_data_ptr = &m_f0data_data[xbegin + i]; range_sel.Contains(cur_data_ptr))
+					if (auto cur_data_ptr = &m_f0data_data[xbegin + i]; range_sel.Contains(cur_data_ptr, true))
 						*cur_data_ptr = value;
 
 			if (count == 0 && std::cmp_less(xbegin, m_f0data.Size(1)))
-				if (auto cur_data_ptr = &m_f0data_data[xbegin]; range_sel.Contains(cur_data_ptr))
+				if (auto cur_data_ptr = &m_f0data_data[xbegin]; range_sel.Contains(cur_data_ptr, true))
 					*cur_data_ptr = value;
 
 			m_lastPos = { x, y };
@@ -552,11 +604,11 @@ namespace Mui::Ctrl
 			return true;
 
 		const UIPoint pt = {
-			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
-			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
+			std::max(point.x - static_cast<int>(UINodeBase::m_data.Frame.left), 0),
+			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
 
-		if (m_f0data.HasValue() && Helper::M_IsPtInRect(m_viewRect, pt))
+		if (m_f0data.HasValue() && IsInRect(m_viewRect, pt))
 		{
 			WndControls::AppendUndo();
 			m_isdown = true;
@@ -578,13 +630,13 @@ namespace Mui::Ctrl
 			return true;
 
 		const UIPoint pt = {
-			std::max(point.x - UINodeBase::m_data.Frame.left, 0),
-			std::max(point.y - UINodeBase::m_data.Frame.top, 0)
+			std::max(point.x - static_cast<int>(UINodeBase::m_data.Frame.left), 0),
+			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
 
 		if (GetKeyState(VK_TAB) & 0x8000)
 		{
-			if (Helper::M_IsPtInRect(m_viewRect, pt))
+			if (IsInRect(m_viewRect, pt))
 			{
 				m_lisdown = true;
 				m_llastPos = pt;
@@ -598,9 +650,9 @@ namespace Mui::Ctrl
 			if (m_f0data.HasValue())
 			{
 				m_insel = true;
-				auto x = pt.x;
-				x -= m_viewRect.left;
-				x = std::max(0, x);
+				auto x = static_cast<float>(pt.x);
+				x -= static_cast<float>(m_viewRect.left);
+				x = std::max(0.f, x);
 				auto xoff = GetXOffset(x);
 				selected_f0_begin = selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 			}
@@ -624,9 +676,9 @@ namespace Mui::Ctrl
 				selected_f0_begin = selected_f0_end = nullptr;
 			if (time_in_sel)
 			{
-				auto x = point.x;
+				auto x = static_cast<float>(point.x);
 				x -= UINodeBase::m_data.Frame.left;
-				x -= m_viewRect.left;
+				x -= static_cast<float>(m_viewRect.left);
 				auto xof = GetXOffset(x);
 				xof = xof * WndControls::GetPcmSize() / (m_f0data.Size(1) - 1);
 				WndControls::SetPlayerPos(xof);
@@ -639,9 +691,7 @@ namespace Mui::Ctrl
 		constexpr DWORD MIDOOUT_MIDIKEYRELEASE = (0XFF << 8) + 0x90;
 		midiOutShortMsg(HMIDIOUT(MidiOutHandle), MIDOOUT_MIDIKEYRELEASE);
 		LastMidiPitch = 256;
-		m_cacheUpdate = true;
-		UpdateDisplay();
-
+		UpDate();
 		return UIScroll::OnLButtonUp(flag, point);
 	}
 
@@ -821,12 +871,6 @@ namespace Mui::Ctrl
 		return false;
 	}
 
-	void CurveEditor::OnScrollView(UIScroll*, int dragValue, bool horizontal)
-	{
-		m_cacheUpdate = true;
-		UpdateDisplay();
-	}
-
 	void CurveEditor::DrawLabel(_m_scale scale, MPCPaintParam param)
 	{
 		m_font->SetText(L"C0");
@@ -862,11 +906,10 @@ namespace Mui::Ctrl
 
 		//计算视图偏移位置
 		float offsetY = 0.f;
-		const auto& attribY = m_sidebar->GetAttribute();
-		if (attribY.dragValue.height != 0)
-			offsetY = (float)attribY.dragValue.height / (float)attribY.range.height;
+		if (m_sidebar->DragValue.Get().y != 0)
+			offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
 		offsetY = (float)(fullHeight - viewHeight) * (offsetY);
-		if (attribY.range.height == m_sidebar->Frame().GetHeight())
+		if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
 			offsetY = 0.f;
 
 		int gHeight = fullHeight / 11;
@@ -927,7 +970,7 @@ namespace Mui::Ctrl
 				_rc.bottom = rc.bottom + 1;
 				_rc.top = _rc.bottom - 3;
 				if (_rc.bottom < other_baseLineY && _rc.top >ppreHeight)
-					param->render->FillRectangle(_rc, m_brush_m);
+					param->render->FillRectangle(_rc.ToRect(), m_brush_m);
 			}
 
 			if (draw)
@@ -941,7 +984,7 @@ namespace Mui::Ctrl
 				{
 					m_brush_m->SetColor(Color::M_RGBA(Color::M_GetRValue(m_lineColor), Color::M_GetGValue(m_lineColor),
 						Color::M_GetBValue(m_lineColor), (i - 1) % 10 ? 40 : 100));
-					param->render->FillRectangle(_rc, m_brush_m);
+					param->render->FillRectangle(_rc.ToRect(), m_brush_m);
 				}
 			}
 
@@ -966,7 +1009,7 @@ namespace Mui::Ctrl
 						else
 							m_font->SetText(std::to_wstring(PitchLabel::PitchToF0((pitch - 1.f) / 10.f)).substr(0, 5) + L"HZ");
 					}
-					param->render->DrawTextLayout(m_font, _rc, m_brush_m, TextAlign_Right);
+					param->render->DrawTextLayout(m_font, _rc.ToRect(), m_brush_m, TextAlign_Right);
 				}
 			}
 			pitch += 1.f;
@@ -979,28 +1022,98 @@ namespace Mui::Ctrl
 		dst.left += space + fontWidth;
 		//const int dstl = dst.left;
 		dst.right = dst.left + lineHeight;
-		param->render->FillRectangle(dst, m_brush_m);
+		param->render->FillRectangle(dst.ToRect(), m_brush_m);
 		//x轴线
 		dst.top = param->destRect->top + space + fontHeight - 1;
 		dst.bottom = dst.top + lineHeight;
 		dst.right = param->destRect->right - space - sidebarWidth;
-		param->render->FillRectangle(dst, m_brush_m);
+		param->render->FillRectangle(dst.ToRect(), m_brush_m);
 
 		dst.top = param->destRect->bottom - preHeight - space - fontCenter;
 		dst.bottom = dst.top + lineHeight;
 		
-		param->render->FillRectangle(dst, m_brush_m);
-		DrawXLabel(scale, param);
+		param->render->FillRectangle(dst.ToRect(), m_brush_m);
 	}
 
-	void CurveEditor::DrawXLabel(_m_scale scale, MPCPaintParam param)
+	void CurveEditor::DrawSpec(_m_scale scale, MPCPaintParam param)
 	{
-		
+		if (!m_specData.HasValue())
+			return;
+		if (m_showPitch)
+		{
+			
+		}
+		else
+		{
+			constexpr float MaxSpec = 8000.f;
+			const auto F0Frames = m_f0data.Size(1);
+			const auto SpecFrames = m_specData.Size(1);
+			const auto SpecBins = m_specData.Size(0);
+			const auto FreqPerBin = MaxSpec / static_cast<float>(SpecBins);
+			const auto FrameScale = static_cast<float>(SpecFrames) / static_cast<float>(F0Frames);
+
+			int space = _scale_to(5, scale.cy);
+			int viewHeight = m_viewRect.GetHeight();
+			int fontHeight = m_font->GetMetrics().bottom;
+			int fullHeight = int((float)viewHeight * m_viewScaleV);
+			int fontWidth = 60;
+			int preHeight = _scale_to(m_preHeight, scale.cy);
+			int sidebarWidth = _scale_to(m_barWidth, scale.cx);
+			int fontCenter = fontHeight / 2;
+
+			float offsetY = 0.f;
+			if (m_sidebar->DragValue.Get().y != 0)
+				offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
+			offsetY = (float)(fullHeight - viewHeight) * (offsetY);
+			if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
+				offsetY = 0.f;
+
+			const float curMaxFreq = MaxFreq * (1.f - offsetY / (float)fullHeight);
+			const float curMinFreq = MaxFreq * (1.f - (offsetY + float(viewHeight)) / (float)fullHeight);
+			const float curMinFrame = floor(GetFpOffset(0.f));
+			const float curMaxFrame = ceil(GetFpOffset(static_cast<float>(m_viewRect.GetWidth())) + 1.f);
+			const auto curMinBin = SpecBins - (int64_t)(std::min(curMaxFreq, MaxSpec) / FreqPerBin);
+			const auto curMaxBin = SpecBins - (int64_t)(std::max(0.f, curMinFreq) / FreqPerBin);
+			const auto curMaxFrameBin = (int64_t)std::min(curMaxFrame * FrameScale, static_cast<float>(SpecFrames));
+			const auto curMinFrameBin = (int64_t)std::max(curMinFrame * FrameScale, 0.f);
+
+			const auto FreqPerPix = (curMaxFreq - curMinFreq) / float(viewHeight);
+
+			auto SpecData = m_specData.Slice(
+				{
+					DragonianLib::Range{curMinBin, curMaxBin},
+					DragonianLib::Range{curMinFrameBin, curMaxFrameBin}
+				}
+			).Contiguous().Evaluate();
+
+			const auto [NewBins, NewFrames] = SpecData.Size().RawArray();
+			
+			Render::MBitmapPtr bitmap = param->render->CreateBitmap(
+				static_cast<_m_uint>(NewFrames),
+				static_cast<_m_uint>(NewBins),
+				SpecData.Data(),
+				static_cast<_m_uint>(SpecData.ElementCount()) * 4,
+				static_cast<_m_uint>(NewFrames) * 4
+				);
+
+			UIRect dst = *param->destRect;
+			dst.left += fontWidth + space;
+			dst.right -= sidebarWidth + space;
+			dst.top += space + fontHeight;
+			if (curMaxFreq > MaxSpec)
+				dst.top += int((curMaxFreq - MaxSpec) / FreqPerPix);
+			dst.bottom -= (preHeight + space + fontCenter - int(FreqPerBin / 2 / FreqPerPix));
+			param->render->DrawBitmap(
+				bitmap,
+				255,
+				dst.ToRect()
+			);
+		}
 	}
 
-	void CurveEditor::DrawCurve(_m_scale scale, MPCPaintParam param, const FloatTensor2D& data)
+	void CurveEditor::DrawCurve(_m_scale scale, MPCPaintParam param)
 	{
-		if (!data.HasValue())
+		if (!m_f0data.HasValue())
 			return;
 
 		UIRect viewRect = m_viewRect;
@@ -1009,12 +1122,11 @@ namespace Mui::Ctrl
 		int viewWidth = viewRect.GetWidth();
 		int fullHeight = int((float)viewHeight * m_viewScaleV);
 
-		//重设裁剪区
 		param->render->PopClipRect();
-		param->render->PushClipRect(viewRect);
+		param->render->PushClipRect(viewRect.ToRect());
 
 #ifdef _WIN32
-		auto render = param->render->GetBase<MRender_D2D>();
+		auto render = param->render->GetBase<Render::MRender_D2D>();
 
 		auto context = static_cast<ID2D1DeviceContext*>(render->Get());
 
@@ -1032,26 +1144,20 @@ namespace Mui::Ctrl
 		int width = viewRect.GetWidth();
 		width = int((float)width * m_viewScaleH);
 
-		auto attribY = m_sidebar->GetAttribute();
-		//视图偏移位置Y
 		float offsetY = 0.f;
-		if (attribY.dragValue.height != 0)
-			offsetY = (float)attribY.dragValue.height / (float)attribY.range.height;
+		if (m_sidebar->DragValue.Get().y != 0)
+			offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
 		offsetY = (float)(fullHeight - viewHeight) * (offsetY);
-		if (attribY.range.height == m_sidebar->Frame().GetHeight())
+		if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
 			offsetY = 0.f;
 
-		//计算偏移index
-		auto attribX = UIScroll::GetAttribute();
 		float offsetX = CalcViewHOffset();
-
-		//视图偏移位置X
-		if (attribX.dragValue.width != 0)
-			offsetX = (float)attribX.dragValue.width / (float)attribX.range.width;
+		if (DragValue.Get().x != 0)
+			offsetX = (float)DragValue.Get().x / (float)Range.Get().width;
 		offsetX = (float)(width - viewWidth) * (offsetX);
 
-		const auto DataPointer = data.Data();
-		const auto [Batch, Frames] = data.Size().RawArray();
+		const auto DataPointer = m_f0data.Data();
+		const auto [Batch, Frames] = m_f0data.Size().RawArray();
 
 		float stepX = (float)width / float(Frames - 1);
 		float rStepX = 1.f / stepX;
@@ -1141,7 +1247,6 @@ namespace Mui::Ctrl
 					else
 						sink->AddLine(D2D1::Point2F(x, y));
 
-					//如果绘制内容已超出视图区域 结束绘制
 					if (x > (float)viewRect.right)
 						break;
 					x_prev = x;
@@ -1151,12 +1256,11 @@ namespace Mui::Ctrl
 					sink->EndFigure(D2D1_FIGURE_END_OPEN);
 				sink->Close();
 
-				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m), _scale_to(LineWidth, Helper::M_MIN(scale.cx, scale.cy)), pt_style);
+				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m.get()), _scale_to(LineWidth, Helper::M_MIN(scale.cx, scale.cy)), pt_style);
 
 				sink->Release();
 				geometry->Release();
 
-				//绘制跳变区域
 				factory->CreatePathGeometry(&geometry);
 				geometry->Open(&sink);
 
@@ -1176,7 +1280,7 @@ namespace Mui::Ctrl
 				D2D1_STROKE_STYLE_PROPERTIES dashed_properties = D2D1::StrokeStyleProperties();
 				dashed_properties.dashStyle = D2D1_DASH_STYLE_DASH;
 				factory->CreateStrokeStyle(dashed_properties, nullptr, 0, &dashed_style);
-				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m), _scale_to(LineWidth, Helper::M_MIN(scale.cx, scale.cy)), dashed_style);
+				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m.get()), _scale_to(LineWidth, Helper::M_MIN(scale.cx, scale.cy)), dashed_style);
 				m_brush_m->SetOpacity(AlphaRes);
 
 				dashed_style->Release();
@@ -1222,7 +1326,7 @@ namespace Mui::Ctrl
 					LineWidth + 1.5f, x, Style
 				);
 			if (!Ranges[2].Null() && Ranges[2].Size())
-				x = drawPart(
+				drawPart(
 					Ranges[2].begin(),
 					Ranges[2].end(),
 					LineWidth, x, Style
@@ -1299,7 +1403,7 @@ namespace Mui::Ctrl
 
 				sink->EndFigure(D2D1_FIGURE_END_OPEN);
 				sink->Close();
-				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m), (float)_scale_to(0.5, scale.cx));
+				context->DrawGeometry(geometry, MD2DBrush::GetBrush(m_brush_m.get()), (float)_scale_to(0.5, scale.cx));
 
 				sink->Release();
 				geometry->Release();
@@ -1308,9 +1412,9 @@ namespace Mui::Ctrl
 #endif
 	}
 
-	void CurveEditor::DrawPlayeLine(_m_scale scale, MPCPaintParam param)
+	void CurveEditor::DrawPlayeLine(_m_scale scale, MPCPaintParam param) const
 	{
-		if (m_plineOffset == 0)
+		if (m_f0data.Null())
 			return;
 
 		int fullWidth = int((float)m_viewRect.GetWidth() * m_viewScaleH);
@@ -1321,20 +1425,52 @@ namespace Mui::Ctrl
 		rc.right = rc.left + _scale_to(2, scale.cx);
 		rc.Offset(param->destRect->left, param->destRect->top);
 
-		//视图偏移位置X
-		auto attribX = UIScroll::GetAttribute();
 		offset = 0.f;
-		if (attribX.dragValue.width != 0)
-			offset = (float)attribX.dragValue.width / (float)attribX.range.width;
+		if (DragValue.Get().x != 0)
+			offset = (float)DragValue.Get().x / (float)Range.Get().width;
 		offset = (float)(fullWidth - m_viewRect.GetWidth()) * offset;
 		rc.Offset((int)-offset, 0);
 
 		UIRect viewRect = m_viewRect;
 		viewRect.Offset(param->destRect->left, param->destRect->top);
-		if(Helper::M_IsRectCross(viewRect, rc))
+		if (rc.right > viewRect.left && rc.left < viewRect.right)
 		{
 			m_brush_m->SetColor(Color::M_RED);
-			param->render->FillRectangle(rc, m_brush_m);
+			param->render->FillRectangle(rc.ToRect(), m_brush_m);
+
+			m_font->SetText(std::to_wstring(m_plineOffset));
+			const auto fontHeight = m_font->GetMetrics().bottom;
+			const int space = _scale_to(5, scale.cy);
+			const int preHeight = _scale_to(m_preHeight, scale.cy);
+			const int fontCenter = fontHeight / 2;
+			const auto bot = param->destRect->bottom - preHeight - space - fontCenter;
+			param->render->DrawTextLayout(
+				m_font,
+				UIRect{
+					rc.left - _scale_to(2, scale.cx) - m_font->GetMetrics().GetWidth(),
+					bot,
+					m_font->GetMetrics().GetWidth(),
+					fontHeight
+				}.ToRect(),
+				m_brush_m,
+				TextAlign_Right
+			);
+			m_font->SetText(
+				std::to_wstring(
+					(m_f0data.Data() + m_f0data.Size(1) * curve_idx)[m_plineOffset]
+				).substr(0, 7) + L"HZ"
+			);
+			param->render->DrawTextLayout(
+				m_font,
+				UIRect{
+					rc.right + _scale_to(2, scale.cx),
+					bot,
+					m_font->GetMetrics().GetWidth(),
+					fontHeight
+				}.ToRect(),
+				m_brush_m,
+				TextAlign_Left
+			);
 		}
 
 		m_brush_m->SetColor(m_lineColor);
@@ -1346,65 +1482,50 @@ namespace Mui::Ctrl
 		rc.top = rc.bottom - _scale_to(m_preHeight, scale.cy);
 		rc.left += (int)offset;
 		rc.right = rc.left + _scale_to(2, scale.cx);
-		param->render->FillRectangle(rc, m_brush_m);
+		param->render->FillRectangle(rc.ToRect(), m_brush_m);
 	}
 
-	void CurveEditor::CalcRangeViewV()
+	void CurveEditor::CalcRangeViewV() const
 	{
-		int height = m_sidebar->Frame().GetHeight();
-
-		const auto& attrib = m_sidebar->GetAttribute();
-
-		int range = _scale_to(height, m_viewScaleV);
-		int drag = 0;
-		if (attrib.dragValue.height != 0)
-			drag = int((float)attrib.dragValue.height / (float)attrib.range.height * (float)range);
-
-		if (m_viewScaleV == 1.f)
+		float height = static_cast<float>(m_sidebar->Frame().GetHeight());
+		float range = _scale_to(height, m_viewScaleV);
+		float drag = 0;
+		if (m_sidebar->DragValue.Get().y != 0) 
+			drag = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height * range;
+		if (m_viewScaleV == 1.f) 
 			drag = 0;
+		drag = std::clamp(drag, 0.f, range);
 
-		m_sidebar->SetAttributeSrc(L"rangeV", range, false);
-		m_sidebar->SetAttributeSrc(L"dragValueV", drag, false);
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		m_sidebar->Range.Set().value->height = (int)round(range);
+		m_sidebar->DragValue.Set().value->y = (int)round(drag);
 	}
 
 	void CurveEditor::CalcRangeViewH()
 	{
-		int width = UINodeBase::m_data.Frame.GetWidth();
+		float width = UINodeBase::m_data.Frame.GetWidth();
 
-		const auto& attrib = UIScroll::GetAttribute();
+		float range = _scale_to(width, m_viewScaleH);
+		float drag = 0;
+		if (DragValue.Get().x != 0) drag = (float)DragValue.Get().x / (float)Range.Get().width * range;
+		if (m_viewScaleH == 1.f) drag = 0.f;
+		drag = std::clamp(drag, 0.f, range);
 
-		int range = _scale_to(width, m_viewScaleH);
-		int drag = 0;
-		if (attrib.dragValue.width != 0)
-			drag = int((float)attrib.dragValue.width / (float)attrib.range.width * (float)range);
-
-		if (m_viewScaleH == 1.f)
-			drag = 0;
-
-		UIScroll::SetAttributeSrc(L"rangeH", range, false);
-		UIScroll::SetAttributeSrc(L"dragValueH", drag, true);
-
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		Range.Set().value->width = (int)round(range);
+		DragValue.Set().value->x = (int)round(drag);
 	}
 
 	void CurveEditor::CalcRangeViewH(const UIPoint& point, short delta)
 	{
-		const int width = UINodeBase::m_data.Frame.GetWidth();
-		const int LWidth = point.x - UINodeBase::m_data.Frame.left;
-		const auto& attrib = UIScroll::GetAttribute();
-		const int range = _scale_to(width, m_viewScaleH);
-		int drag = int((int64_t)attrib.dragValue.width * (int64_t)range / (int64_t)attrib.range.width);
+		const float width = UINodeBase::m_data.Frame.GetWidth();
+		const float LWidth = (float)point.x - UINodeBase::m_data.Frame.left;
+
+		const float range = _scale_to(width, m_viewScaleH);
+		float drag = (float)DragValue.Get().x * range / (float)Range.Get().width;
 		if (delta > 0) drag += (LWidth - width / 2) / 2;
-		drag = std::clamp(drag, 0, range);
+		drag = std::clamp(drag, 0.f, range);
 
-		UIScroll::SetAttributeSrc(L"rangeH", range, false);
-		UIScroll::SetAttributeSrc(L"dragValueH", drag, true);
-
-		m_cacheUpdate = true;
-		UpdateDisplay();
+		Range.Set().value->width = (int)round(range);
+		DragValue.Set().value->x = (int)round(drag);
 	}
 
 	void CurveEditor::CalcViewRect()
@@ -1412,38 +1533,37 @@ namespace Mui::Ctrl
 		m_font->SetText(L"C0");
 
 		const auto [cx, cy] = GetRectScale().scale();
-		const int height = UINodeBase::m_data.Frame.GetHeight();
-		const int space = _scale_to(5, cy);
-		const int preHeight = _scale_to(m_preHeight, cy);
-		const int sidebarWidth = _scale_to(m_barWidth, cx);
-		const int fontHeight = m_font->GetMetrics().bottom;
-		const int fontCenter = fontHeight / 2;
-		constexpr int fontWidth = 60;
+		const float height = UINodeBase::m_data.Frame.GetHeight();
+		const float space = _scale_to(5.f, cy);
+		const float preHeight = _scale_to(static_cast<float>(m_preHeight), cy);
+		const float sidebarWidth = _scale_to(static_cast<float>(m_barWidth), cx);
+		const float fontHeight = (float)m_font->GetMetrics().bottom;
+		const float fontCenter = fontHeight / 2.f;
+		constexpr float fontWidth = 60.f;
 		//曲线视图高度
 		UIRect viewRect = 
 		{
-			fontWidth + space,
-			space + fontHeight,
+			(int)round(fontWidth + space),
+			(int)round(space + fontHeight),
 			0,
-			height - preHeight - space - fontCenter - space - fontHeight
+			(int)round(height - preHeight - space - fontCenter - space - fontHeight)
 		};
-		viewRect.right = UINodeBase::m_data.Frame.GetWidth() - sidebarWidth - space;
+		viewRect.right = (int)round(UINodeBase::m_data.Frame.GetWidth() - sidebarWidth - space);
 		m_viewRect = viewRect;
 	}
 
-	float CurveEditor::CalcViewHOffset(int drag)
+	float CurveEditor::CalcViewHOffset(int drag) const
 	{
 		int viewWidth = m_viewRect.GetWidth();
-		const auto& attrib = UIScroll::GetAttribute();
 
-		if (attrib.dragValue.width == 0 && drag == 0)
+		if (DragValue.Get().x == 0 && drag == 0)
 			return 0.f;
 
 		if (drag == 0)
-			drag = attrib.dragValue.width;
+			drag = DragValue.Get().x;
 
 		float newRange = (float)viewWidth * m_viewScaleH;
-		float newDrag = (float)drag / (float)attrib.range.width * newRange;
+		float newDrag = (float)drag / (float)Range.Get().width * newRange;
 
 		float percentage = newDrag / newRange;
 		float value = (newRange - (float)viewWidth) * percentage;
@@ -1499,28 +1619,41 @@ namespace Mui::Ctrl
 		offset = offset * (float)fullWidth;
 		const auto result = m_viewRect.left + int(offset) + param->destRect->left;
 
-		auto attribX = UIScroll::GetAttribute();
 		offset = 0.f;
-		if (attribX.dragValue.width != 0)
-			offset = (float)attribX.dragValue.width / (float)attribX.range.width;
+		if (DragValue.Get().x != 0)
+			offset = (float)DragValue.Get().x / (float)Range.Get().width;
 		offset = (float)(fullWidth - m_viewRect.GetWidth()) * offset;
 		return result - (int)offset;
 	}
 
-	size_t CurveEditor::GetXOffset(int PointX)
+	size_t CurveEditor::GetXOffset(float PointX) const
 	{
-		const auto& attrib = UIScroll::GetAttribute();
-
 		float viewWidth = (float)m_viewRect.GetWidth();
 		float fullWidth = viewWidth * float(m_viewScaleH);
 
 		float offsetX = 0.f;
-		if (attrib.dragValue.width != 0)
-			offsetX = (float)attrib.dragValue.width / (float)attrib.range.width;
+		if (DragValue.Get().x != 0)
+			offsetX = (float)DragValue.Get().x / (float)Range.Get().width;
 		offsetX = (fullWidth - viewWidth) * (offsetX);
-		offsetX = ((float)PointX + offsetX) / fullWidth;
+		offsetX = (PointX + offsetX) / fullWidth;
 		offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
 
-		return  size_t(round(offsetX * (float)(m_f0data.Size(1) - 1)));
+		return size_t(round(offsetX * (float)(m_f0data.Size(1) - 1)));
 	}
+
+	float CurveEditor::GetFpOffset(float PointX) const
+	{
+		float viewWidth = (float)m_viewRect.GetWidth();
+		float fullWidth = viewWidth * float(m_viewScaleH);
+
+		float offsetX = 0.f;
+		if (DragValue.Get().x != 0)
+			offsetX = (float)DragValue.Get().x / (float)Range.Get().width;
+		offsetX = (fullWidth - viewWidth) * (offsetX);
+		offsetX = (PointX + offsetX) / fullWidth;
+		offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
+
+		return offsetX * (float)(m_f0data.Size(1) - 1);
+	}
+
 }

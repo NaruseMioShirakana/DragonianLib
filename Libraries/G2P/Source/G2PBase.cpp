@@ -1,4 +1,4 @@
-﻿#include "../G2PBase.hpp"
+﻿#include "Libraries/G2P/G2PBase.hpp"
 
 _D_Dragonian_Lib_G2P_Header
 

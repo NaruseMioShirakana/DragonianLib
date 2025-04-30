@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "../OperatorBase.h"
+#include "TensorLib/Include/Base/Tensor/Operators/OperatorBase.h"
 
 _D_Dragonian_Lib_Operator_Space_Begin
 

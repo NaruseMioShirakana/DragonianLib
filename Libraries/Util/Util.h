@@ -22,7 +22,6 @@
  */
 
 #pragma once
-
 #include <stacktrace>
 #include <string>
 #include <filesystem>
@@ -263,5 +262,25 @@ public:
 private:
 	std::string _MyMessage;
 };
+
+enum class ComInitializeFlag : uint8_t
+{
+	COINIT_APARTMENTTHREADED,
+	COINIT_MULTITHREADED,
+	COINIT_DISABLE_OLE1DDE,
+	COINIT_SPEED_OVER_MEMORY,
+};
+
+struct HResult
+{
+	int64_t Value;
+	operator bool() const;
+};
+
+uint32_t Cvt2tagCOINIT(ComInitializeFlag _Flag);
+
+HResult ComInitialize(uint32_t _Flag = Cvt2tagCOINIT(ComInitializeFlag::COINIT_MULTITHREADED));
+
+void ComUninitialize();
 
 _D_Dragonian_Lib_Space_End

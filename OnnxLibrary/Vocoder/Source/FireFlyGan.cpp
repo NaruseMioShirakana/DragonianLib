@@ -1,4 +1,4 @@
-#include "../FireFlyGan.hpp"
+﻿#include "OnnxLibrary/Vocoder/FireFlyGan.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header

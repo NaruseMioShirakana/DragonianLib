@@ -1,7 +1,6 @@
-﻿#include <omp.h>
-#include "cblas.h"
+﻿#include "cblas.h"
 #include "fftw3.h"
-#include "../stft.hpp"
+#include "Libraries/Stft/Stft.hpp"
 #include "TensorLib/Include/Base/Tensor/Functional.h"
 
 _D_Dragonian_Lib_Space_Begin

@@ -26,11 +26,11 @@
 #include <random>
 #include <deque>
 
-#include "OperatorMarco.h"
-#include "Libraries/Util/Logger.h"
+#include "TensorLib/Include/Base/Tensor/Operators/OperatorMarco.h"
+#include "TensorLib/Include/Base/Tensor/TensorBase.h"
 #include "Libraries/Util/StringPreprocess.h"
+#include "Libraries/Util/Logger.h"
 
-#include "../TensorBase.h"
 
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End

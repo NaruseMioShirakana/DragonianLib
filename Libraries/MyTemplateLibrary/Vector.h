@@ -22,8 +22,8 @@
  */
 
 #pragma once
-#include "Alloc.h"
-#include "Iterator.h"
+#include "Libraries/MyTemplateLibrary/Alloc.h"
+#include "Libraries/MyTemplateLibrary/Iterator.h"
 #include <initializer_list>
 #include <algorithm>
 
@@ -1279,3 +1279,33 @@ _D_Dragonian_Lib_Constexpr_Force_Inline Vector<T> InterpFunc(
 }
 
 _D_Dragonian_Lib_Template_Library_Space_End
+
+_D_Dragonian_Lib_Space_Begin
+
+std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::string>& vector);
+
+std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::wstring>& vector);
+
+template <typename T>
+std::wstring SerializeVector(const DragonianLibSTL::Vector<T>& vector)
+{
+    std::wstring vecstr = L"[";
+    for (const auto& it : vector)
+    {
+        std::wstring TmpStr = std::to_wstring(it);
+        if ((std::is_same_v<T, float> || std::is_same_v<T, double>) && TmpStr.find(L'.') != std::string::npos)
+        {
+            while (TmpStr.back() == L'0')
+                TmpStr.pop_back();
+            if (TmpStr.back() == L'.')
+                TmpStr += L"0";
+        }
+        vecstr += TmpStr + L", ";
+    }
+    if (vecstr.length() > 2)
+        vecstr = vecstr.substr(0, vecstr.length() - 2);
+    vecstr += L']';
+    return vecstr;
+}
+
+_D_Dragonian_Lib_Space_End

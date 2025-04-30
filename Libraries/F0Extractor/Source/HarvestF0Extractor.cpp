@@ -1,4 +1,5 @@
-﻿#include "../HarvestF0Extractor.hpp"
+﻿#include "Libraries/F0Extractor/HarvestF0Extractor.hpp"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 #include "world/harvest.h"
 #include "world/stonemask.h"
 

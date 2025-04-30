@@ -103,6 +103,7 @@ static void Impl##_Function##Unary( \
 template <typename _CurValueType = ValueType> \
 decltype(auto) _Function##Inplace() requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&&(std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
 	if (IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	WaitingAsResult(); \
@@ -121,6 +122,7 @@ decltype(auto) _Function##Inplace() requires (TypeTraits::IsSameTypeValue<_CurVa
 template <typename _CurValueType = ValueType> \
 decltype(auto) _Function() const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
 	auto Ret = Tensor::New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
@@ -138,6 +140,8 @@ decltype(auto) _Function() const requires (TypeTraits::IsSameTypeValue<_CurValue
 template <typename _CurValueType = ValueType, size_t _BufferRank> \
 decltype(auto) _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_BufferRank >= _NRank)) \
 { \
+	ThrowOnNotEnabled(); \
+	_Buffer.ThrowOnNotEnabled(); \
 	if (_Buffer.IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	_Buffer.WaitingAsResult(); \
@@ -160,6 +164,7 @@ struct _D_Dragonian_Lib_Unary##_Function##_Defined_Tag
 template <typename _CurValueType = ValueType> \
 decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
 	auto Ret = New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
@@ -177,6 +182,7 @@ decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::Is
 template <typename _CurValueType = ValueType> \
 decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
 	auto Ret = New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
@@ -194,6 +200,7 @@ decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits
 template <typename _CurValueType = ValueType> \
 decltype(auto) _Function##Inplace(const ValueType& _Right) requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
 	if (IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	WaitingAsResult(); \
@@ -212,6 +219,8 @@ decltype(auto) _Function##Inplace(const ValueType& _Right) requires (TypeTraits:
 template <typename _CurValueType = ValueType, size_t _MyOpRank> \
 decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_MyOpRank >= _NRank)) \
 { \
+	ThrowOnNotEnabled(); \
+	_Buffer.ThrowOnNotEnabled(); \
 	if (_Buffer.IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	_Buffer.WaitingAsResult(); \
@@ -231,6 +240,8 @@ decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _
 template <typename _CurValueType = ValueType, size_t _MyOpRank> \
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
 { \
+	ThrowOnNotEnabled(); \
+	_Right.ThrowOnNotEnabled(); \
 	auto BroadCasted = BroadCast(*this, _Right); \
 	auto Ret = Tensor<ValueType, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
 	Ret.WaitingAsResult(); \
@@ -252,6 +263,8 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) 
 template <typename _CurValueType = ValueType, size_t _MyOpRank> \
 decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)&& (_NRank >= _MyOpRank)) \
 { \
+ 	ThrowOnNotEnabled(); \
+ 	_Right.ThrowOnNotEnabled(); \
 	if (IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	WaitingAsResult(); \
@@ -273,6 +286,9 @@ decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>&
 template <typename _CurValueType = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<ValueType, _MyOpRank2, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
 { \
+	ThrowOnNotEnabled(); \
+ 	_Buffer.ThrowOnNotEnabled(); \
+	_Right.ThrowOnNotEnabled(); \
 	if (_Buffer.IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	_Buffer.WaitingAsResult(); \
@@ -300,6 +316,7 @@ struct _D_Dragonian_Lib_Binary##_Function##_Defined_Tag
 template <typename _CurValueType = ValueType> \
 decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
 { \
+	ThrowOnNotEnabled(); \
 	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
@@ -317,6 +334,7 @@ decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::Is
 template <typename _CurValueType = ValueType> \
 decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
 { \
+	ThrowOnNotEnabled(); \
 	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
 	Ret.WaitingAsResult(); \
 	WaitingAsArgument(); \
@@ -334,6 +352,8 @@ decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits
 template <typename _CurValueType = ValueType, size_t _MyOpRank> \
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
 { \
+	ThrowOnNotEnabled(); \
+	_Right.ThrowOnNotEnabled(); \
 	auto BroadCasted = BroadCast(*this, _Right); \
 	auto Ret = Tensor<bool, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
 	Ret.WaitingAsResult(); \
@@ -355,6 +375,8 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) 
 template <typename _CurValueType = ValueType, size_t _MyOpRank> \
 decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType> && (_MyOpRank >= _NRank)) \
 { \
+	ThrowOnNotEnabled(); \
+	_Buffer.ThrowOnNotEnabled(); \
 	if (_Buffer.IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	_Buffer.WaitingAsResult(); \
@@ -373,6 +395,9 @@ decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDev
 template <typename _CurValueType = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
 decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<bool, _MyOpRank2, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType> && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
 { \
+	ThrowOnNotEnabled(); \
+	_Right.ThrowOnNotEnabled(); \
+	_Buffer.ThrowOnNotEnabled(); \
 	if (_Buffer.IsBroadCasted()) \
 		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
 	_Buffer.WaitingAsResult(); \
@@ -450,6 +475,7 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Reduce_Function_Body(_FunctionName, _Function) \
 { \
+	ThrowOnNotEnabled(); \
 	if constexpr (_NRank == 1) \
 		return UnSqueeze(0).template _FunctionName##<false>(-1).Squeeze(0); \
 	else \
@@ -481,6 +507,7 @@ struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Reduce_Function_Body_T(_FunctionName, _Function, _RetType) \
 { \
+	ThrowOnNotEnabled(); \
 	if constexpr (_NRank == 1) \
 		return UnSqueeze(0).template _FunctionName##<false>(-1).Squeeze(0); \
 	else \
@@ -512,6 +539,7 @@ struct _D_Dragonian_Lib_Reduce##_Function##_Defined_Tag
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Cumulate_Function_Body(_Function) \
 { \
+	ThrowOnNotEnabled(); \
 	if constexpr (_NRank == 1) \
 		return UnSqueeze(0)._Function##(-1).Squeeze(0); \
 	else \

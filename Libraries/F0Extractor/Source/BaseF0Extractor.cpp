@@ -1,4 +1,4 @@
-﻿#include "../BaseF0Extractor.hpp"
+﻿#include "Libraries/F0Extractor/BaseF0Extractor.hpp"
 
 _D_Dragonian_Lib_F0_Extractor_Header
 

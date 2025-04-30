@@ -1,28 +1,48 @@
 ﻿#pragma once
 #include "../MainWindow.h"
 
-namespace UI
+namespace SimpleF0Labeler
 {
-	using namespace Mui;
-
-	//参数侧边栏
-	class SidePage : public Page
+	class SidePage : public Mui::UIPage  // NOLINT(cppcoreguidelines-special-member-functions)
 	{
 	public:
-		SidePage(Ctrl::UIControl* parent, XML::MuiXML* ui);
-		~SidePage() override { delete m_anicls; m_page = nullptr; }
-		bool EventProc(UINotifyEvent event, Ctrl::UIControl* control, _m_param param) override;
-		void Show(bool show);
+		SidePage(
+			Mui::UIPage* parent
+		) : UIPage(parent), _MyAnimation(std::make_shared<Mui::MAnimation>())
+		{
 
+		}
+
+		void Show();
 		float GetAlpha() const;
 		float GetBeta() const;
 		float GetPitch() const;
+		int64_t GetSamplingRate() const;
+		bool IsUsingLogView() const;
+
+	protected:
+		friend class MainWindow;
+		bool EventProc(
+			Mui::XML::PropName event,
+			Mui::Ctrl::UIControl* control,
+			std::any param
+		) override;
 
 	private:
-		MAnimation* m_anicls = nullptr;
-		bool m_isani = false;
-		Ctrl::UIEditBox* m_alpha = nullptr;
-		Ctrl::UIEditBox* m_beta = nullptr;
-		Ctrl::UIEditBox* m_pitch = nullptr;
+		Mui::Ctrl::UIControl* OnLoadPageContent(
+			Mui::Ctrl::UIControl* parent,
+			Mui::XML::MuiXML* ui
+		) override;
+
+	protected:
+		bool _IsAnimation = false;
+		std::shared_ptr<Mui::MAnimation> _MyAnimation = nullptr;
+		Mui::Ctrl::UIControl* _MyPageContent = nullptr;
+		Mui::Ctrl::UIEditBox* _MySamplingRateEditBox = nullptr;
+		Mui::Ctrl::UICheckBox* _MyLogViewCheckBox = nullptr;
+		Mui::Ctrl::UIEditBox* _MyAlphaEditBox = nullptr;
+		Mui::Ctrl::UIEditBox* _MyBetaEditBox = nullptr;
+		Mui::Ctrl::UIEditBox* _MyPitchEditBox = nullptr;
+		bool _IsShow = true;
 	};
 }

@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Vocoder.hpp"
+#include "OnnxLibrary/Vocoder/Vocoder.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 

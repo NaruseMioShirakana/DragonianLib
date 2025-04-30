@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "BaseF0Extractor.hpp"
+#include "Libraries/F0Extractor/BaseF0Extractor.hpp"
 #include <memory>
 #include <string>
 #include <vector>

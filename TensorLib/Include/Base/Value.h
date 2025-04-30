@@ -24,6 +24,7 @@
 #pragma once
 #include "Libraries/Base.h"
 #include "Libraries/MyTemplateLibrary/Array.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Space_Begin
 

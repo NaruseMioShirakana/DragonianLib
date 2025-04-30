@@ -1,4 +1,4 @@
-﻿#include "../Vits-Svc.hpp"
+﻿#include "OnnxLibrary/SingingVoiceConversion/Model/Vits-Svc.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header

@@ -1,5 +1,5 @@
-﻿#include "../Register.hpp"
-#include "../TTA2X.hpp"
+﻿#include "OnnxLibrary/UnitsEncoder/Register.hpp"
+#include "OnnxLibrary/UnitsEncoder/TTA2X.hpp"
 #include "Libraries/PluginBase/PluginBase.h"
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header

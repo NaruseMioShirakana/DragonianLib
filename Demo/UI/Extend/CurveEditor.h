@@ -1,22 +1,20 @@
 ﻿#pragma once
 #include "../framework.h"
-#include "../DataStruct.h"
 #include <Render/Sound/Mui_SoundDef.h>
 
-namespace Mui::Ctrl
+namespace SimpleF0Labeler
 {
-	//曲线编辑器
-	class CurveEditor : public UIScroll
+	class CurveEditor : public Mui::Ctrl::UIScroll  // NOLINT(cppcoreguidelines-special-member-functions)
 	{
 	public:
-		M_DEF_CTRL(L"CurveEditor")
-		UIScroll::M_PTRATTRIB
-		M_DEF_CTRL_END
+		static constexpr Mui::XML::PropName ClassName{ L"CurveEditor" };
+		Mui::XML::PropName GetClsName() const override { return ClassName; }
+		static void Register();
 
 		CurveEditor(UIControl* parent);
 		~CurveEditor() override;
 
-		void SetCurveData(const FloatTensor2D& data, const FloatTensor2D& spec);
+		void SetCurveData(const FloatTensor2D& data, const ImageTensor& spec);
 
 		void ReSetCurveData(const FloatTensor2D& data, int64_t idx);
 
@@ -26,16 +24,16 @@ namespace Mui::Ctrl
 
 		void SetShowPitch(bool show);
 
-		void SetPlayLinePos(_m_size offset);
+		void SetPlayLinePos(Mui::_m_size offset);
 
-		_m_size GetPlayLinePos() const
+		Mui::_m_size GetPlayLinePos() const
 		{
 			return m_plineOffset;
 		}
 
-		void SetAttribute(std::wstring_view attribName, std::wstring_view attrib, bool draw = true) override;
+		bool SetAttribute(Mui::XML::PropName attribName, std::wstring_view attrib, bool draw) override;
 
-		std::wstring GetAttribute(std::wstring_view attribName) override;
+		std::wstring GetAttribute(Mui::XML::PropName attribName) override;
 
 		void UpDate();
 
@@ -44,62 +42,61 @@ namespace Mui::Ctrl
 		void UPRButton();
 
 	protected:
-		void OnScale(_m_scale scale) override;
-		void OnLoadResource(MRenderCmd* render, bool recreate) override;
+		void OnScale(Mui::_m_scale scale) override;
+		void OnLoadResource(Mui::Render::MRenderCmd* render, bool recreate) override;
 		void OnPaintProc(MPCPaintParam param) override;
 
-		bool OnMouseWheel(_m_uint flag, short delta, const UIPoint& point) override;
-		bool OnMouseMove(_m_uint flag, const UIPoint& point) override;
-		bool OnRButtonDown(_m_uint flag, const UIPoint& point) override;
-		bool OnRButtonUp(_m_uint flag, const UIPoint& point) override;
-		bool OnMouseExited(_m_uint flag, const UIPoint& point) override;
-		bool OnLButtonDown(_m_uint flag, const UIPoint& point) override;
-		bool OnLButtonUp(_m_uint flag, const UIPoint& point) override;
-		bool OnLButtonDoubleClicked(_m_uint flag, const UIPoint& point) override;
-		bool OnWindowMessage(MEventCodeEnum code, _m_param wParam, _m_param lParam) override;
+		bool OnMouseWheel(Mui::_m_uint flag, short delta, const Mui::UIPoint& point) override;
+		bool OnMouseMove(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnRButtonDown(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnRButtonUp(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnMouseExited(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnLButtonDown(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnLButtonUp(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnLButtonDoubleClicked(Mui::_m_uint flag, const Mui::UIPoint& point) override;
+		bool OnWindowMessage(Mui::MEventCodeEnum code, Mui::_m_param wParam, Mui::_m_param lParam) override;
 
 	private:
-		void OnScrollView(UIScroll*, int dragValue, bool horizontal);
+		void DrawLabel(Mui::_m_scale scale, MPCPaintParam param);
 
-		void DrawLabel(_m_scale scale, MPCPaintParam param);
+		void DrawSpec(Mui::_m_scale scale, MPCPaintParam param);
 
-		void DrawXLabel(_m_scale scale, MPCPaintParam param);
+		void DrawCurve(Mui::_m_scale scale, MPCPaintParam param);
 
-		void DrawCurve(_m_scale scale, MPCPaintParam param, const FloatTensor2D& data);
+		void DrawPlayeLine(Mui::_m_scale scale, MPCPaintParam param) const;
 
-		void DrawPlayeLine(_m_scale scale, MPCPaintParam param);
+		void CalcRangeViewV() const;
 
-		void CalcRangeViewV();
-
-		void CalcRangeViewH(const UIPoint& point, short delta);
+		void CalcRangeViewH(const Mui::UIPoint& point, short delta);
 
 		void CalcRangeViewH();
 
 		void CalcViewRect();
 
-		float CalcViewHOffset(int drag = 0);
+		float CalcViewHOffset(int drag = 0) const;
 
-		void PlaySoundPitch(const UIPoint& point);
+		void PlaySoundPitch(const Mui::UIPoint& point);
 
-		std::mutex mx;
-
-		void ArrangeRect(const UIRect& rect, std::vector<UIRect>& dst) const;
+		void ArrangeRect(const Mui::UIRect& rect, std::vector<Mui::UIRect>& dst) const;
 
 		int CalcXPosWithPtr(MPCPaintParam param, const float* Ptr);
 
-		size_t GetXOffset(int PointX);
+		size_t GetXOffset(float PointX) const;
 
-		MBrush* m_brush_m = nullptr;
-		MPen* m_pen = nullptr;
-		MFont* m_font = nullptr;
+		float GetFpOffset(float PointX) const;
 
-		_m_color m_lineColor = Color::M_White;
-		_m_color m_curveColor = Color::M_RGBA(86, 179, 231, 255);
-		_m_color m_fontColor = Color::M_Black;
-		_m_uint m_fontSize = 12;
-		std::wstring m_fontName = M_DEF_SYSTEM_FONTNAME;
+		std::mutex mx;
 
-		UISize m_size;
+		Mui::Render::MBrushPtr m_brush_m = nullptr;
+		Mui::Render::MFontPtr m_font = nullptr;
+
+		Mui::_m_color m_lineColor = Mui::Color::M_White;
+		Mui::_m_color m_curveColor = Mui::Color::M_RGBA(86, 179, 231, 255);
+		Mui::_m_color m_fontColor = Mui::Color::M_Black;
+		Mui::_m_uint m_fontSize = 12;
+		std::wstring m_fontName = Mui::M_DEF_SYSTEM_FONTNAME;
+
+		Mui::UISize m_size;
 
 		void* MidiOutHandle = nullptr;
 		bool MidiOutOpen = false;
@@ -112,27 +109,27 @@ namespace Mui::Ctrl
 
 		float m_viewScaleV = 1.f;
 		float m_viewScaleH = 1.f;
-		float m_viewScaleV_last = 0.f;
-		float m_viewScaleH_last = 0.f;
-		UIRect m_viewRect;
+		//float m_viewScaleV_last = 0.f;
+		//float m_viewScaleH_last = 0.f;
+		Mui::UIRect m_viewRect;
 
-		int m_dragValueV_last = -114;
-		int m_dragValueH_last = -514;
+		//int m_dragValueV_last = -114;
+		//int m_dragValueH_last = -514;
 
-		UIPoint m_lastPos;
+		Mui::UIPoint m_lastPos;
 		bool m_isdown = false;
 
 		//int m_l_x_pos, m_c_x_pos;
 		bool m_insel = false;
 		//float last_x_offset = 0.f;
 
-		_m_size m_plineOffset = 0;
+		Mui::_m_size m_plineOffset = 0;
 
 		FloatTensor2D m_f0data;
-		FloatTensor2D m_specData;
+		ImageTensor m_specData;
 
 		bool m_lisdown = false;
-		UIPoint m_llastPos;
+		Mui::UIPoint m_llastPos;
 
 		UIScroll* m_sidebar = nullptr;
 
@@ -140,7 +137,7 @@ namespace Mui::Ctrl
 
 		bool time_in_sel = false;
 		bool in_move = false;
-		UIPoint m_llast_movePos;
+		Mui::UIPoint m_llast_movePos;
 
 		float* selected_f0_begin = nullptr;
 		float* selected_f0_end = nullptr;

@@ -1,63 +1,50 @@
-﻿#include "Label.h"
-#include "DefUIStyle.h"
+﻿#include "DefUIStyle.h"
 #include "MainWindow.h"
 #include "DefControl.hpp"
 #include "Libraries/MJson/MJson.h"
 #include "Libraries/Util/StringPreprocess.h"
 
-namespace UI
+namespace SimpleF0Labeler
 {
+	std::wstring WindowTitle = L"SimpleLabeler";
+
 	void CreateDefaultStyle(Mui::XML::MuiXML* xmlUI)
 	{
-		auto mgr = xmlUI->Mgr();
-		//加载样式列表
+		xmlUI->LoadDefaultStyle(true);
 		xmlUI->Mgr()->LoadStyleList();
+		xmlUI->AddStringList(L"MainWindowTitle", WindowTitle);
+		auto mgr = xmlUI->Mgr();
 
-		//添加文本列表
-		std::vector<std::pair<std::wstring_view, std::wstring>> strList =
-		{
-			{ L"app_title", m_wndTitle + L" - " + App::m_version },
-			{ L"side_pm1_v", L"0.3000" }, { L"side_pm2_v", L"0.8000" }, { L"side_pm3_v", L"0.0000" }, { L"side_pm4_v", L"0.0000" },
-			{ L"side_pm5_v", L"52608" },{ L"side_pm6_v", L"0.0" }, { L"side_pm7_v", L"2" },{ L"side_pm8_v", L"1" },{ L"side_pm9_v", L"100" }, { L"side_pm10_v", L"44100" }, { L"side_pm11_v", L"320" }, { L"side_pm12_v", L"2" },
-			{ L"settpage_title1_t2", L"30.00" }, { L"settpage_title1_t4", L"3.0" }, { L"settpage_title1_t6", L"2048" },
-			{ L"settpage_title1_t8", L"512" },
-			{ L"settpage_title4_t1",  m_wndTitle + L" v" + App::m_version },
-			{ L"settpage_title4_t2",  m_wndTitle + L"Core v" + App::m_versionCore }, { L"settpage_title4_t3", L"Developer: 纳鲁塞-缪-希娜卡纳 (MoeVSCore)"},
-			{ L"settpage_title4_t4", std::wstring(L"MiaoUI ") + Mui::MInfo::MuiEngineVer }, { L"settpage_title4_t5", L"Developer: Maplespe (MiaoUI)"},
-			{ L"settpage_title4_l", L"本软件是免费开源软件 使用即代表你同意《用户协议》和《免责声明》" }
-		};
-		for (auto& str : strList)
-			xmlUI->AddStringList(str.first, str.second);
-
-		const auto LanguageJson = DragonianLib::MJson::MJsonDocument(
-			DragonianLib::WideStringToUTF8(DragonianLib::GetCurrentFolder() + L"/lang.json").c_str()
+		const auto LocalizationDocument = DragonianLib::MJson::MJsonDocument(
+			DragonianLib::WideStringToUTF8(
+				DragonianLib::GetCurrentFolder() +
+				L"/localization.json"
+			).c_str()
 		);
-		const auto LanguageDict = LanguageJson.GetMemberArray();
-		for (auto& lang_member : LanguageDict)
+		const auto LocalizationDict = LocalizationDocument.GetMemberArray();
+		for (auto& [Key, Value] : LocalizationDict)
 		{
-			if (lang_member.first.empty() || !lang_member.second.IsString() || lang_member.second.Empty())
+			if (Key.empty() || !Value.IsString() || Value.Empty())
 				continue;
-			xmlUI->AddStringList(DragonianLib::UTF8ToWideString(lang_member.first), DragonianLib::UTF8ToWideString(lang_member.second.GetString()));
+			xmlUI->AddStringList(
+				DragonianLib::UTF8ToWideString(Key),
+				DragonianLib::UTF8ToWideString(Value.GetString())
+			);
 		}
-
-		//添加默认字体样式
-		Mui::Ctrl::UILabel::Attribute fontstyle;
-		fontstyle.fontColor = Mui::Helper::M_GetAttribValueColor(xmlUI->GetStringValue(L"textColor"));
-		xmlUI->AddFontStyle(L"fontstyle", fontstyle);
 
 		//全局控件的默认样式
 		std::wstring xml = LR"(
-		<DefPropGroup control="UILabel" fontColor="#textColor" />
-		<DefPropGroup control="UIButton" style="buttonDark" fontColor="#textColor" autoSize="false" textAlign="5" prop="ani" />
-		<DefPropGroup control="UIListBox" style="listDark" itemStyle="itemDark" autoSize="false" iFontColor="#textColor"
-		iTextAlign="4" styleV="scroll" button="false" barWidth="6" inset="2,2,2,2" lineSpace="2" />
-		<DefPropGroup control="UICheckBox" style="checkboxDark" prop="ani" />
-		<DefPropGroup control="UISlider" trackInset="0,5,0,5" autoSize="false" style="strack" btnStyle="sbutton" />
-		<DefPropGroup control="UIEditBox" autoSize="false" style="editDark" inset="5,5,5,5" caretColor="#textColor" fontStyle="fontstyle" />
-		<DefPropGroup control="UIProgBar" autoSize="false" style="progressDark" />
+		<DefPropGroup Control="UILabel" FontColor="#TextColor" />
+		<DefPropGroup Control="UIButton" Style="buttonDark" FontColor="#TextColor" AutoSize="false" TextAlign="5" Prop="ani" />
+		<DefPropGroup Control="UIListBox" Style="listDark" ItemStyle="itemDark" AutoSize="false" IFontColor="#TextColor"
+		ITextAlign="4" StyleV="scroll" Button="false" BarWidth="6" Inset="2,2,2,2" LineSpace="2" />
+		<DefPropGroup Control="UICheckBox" Style="checkboxDark" Prop="ani" />
+		<DefPropGroup Control="UISlider" TrackInset="0,5,0,5" AutoSize="false" Style="strack" BtnStyle="sbutton" />
+		<DefPropGroup Control="UIEditBox" AutoSize="false" Style="editDark" Inset="5,5,5,5" CaretColor="#TextColor" fontStyle="fontstyle" />
+		<DefPropGroup Control="UIProgBar" AutoSize="false" Style="progressDark" />
 		)";
 
-		xmlUI->AddDefPropGroup(xml);
+		xmlUI->AddDefPropGroup(xml, true);
 
 		//菜单栏按钮样式
 		xml = LR"(
@@ -670,6 +657,7 @@ namespace UI
 		</part>
 		)";
 		mgr->AddGeometryStyle(L"progressDark", xml);
+
 		WndControls::SetLanguageXML(xmlUI);
 	}
 }

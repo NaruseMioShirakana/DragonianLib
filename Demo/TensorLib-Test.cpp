@@ -1,16 +1,19 @@
 ﻿#include <chrono>
 #include <iostream>
 
+#include "Libraries/AvCodec/AvCodec.h"
+#include "OnnxLibrary/G2P/G2PW.hpp"
+#include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
+#include "OnnxLibrary/Demix/Demix.hpp"
 #include "OnnxLibrary/BertClap/Context.hpp"
 #include "OnnxLibrary/TextToSpeech/Models/GPT-SoVits.hpp"
 #include "OnnxLibrary/UnitsEncoder/Register.hpp"
 #include "OnnxLibrary/Vocoder/Register.hpp"
-#include "OnnxLibrary/SingingVoiceConversion/Model/DDSP-Svc.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
 
-auto MyLastTime = std::chrono::high_resolution_clock::now();
-int64_t TotalStep = 0;
-void ShowProgressBar(int64_t progress) {
+static auto MyLastTime = std::chrono::high_resolution_clock::now();
+static int64_t TotalStep = 0;
+[[maybe_unused]] static void ShowProgressBar(int64_t progress) {
 	int barWidth = 70;
 	float progressRatio = static_cast<float>(progress) / float(TotalStep);
 	int pos = static_cast<int>(float(barWidth) * progressRatio);
@@ -30,7 +33,7 @@ void ShowProgressBar(int64_t progress) {
 	MyLastTime = std::chrono::high_resolution_clock::now();
 }
 
-void ProgressCb(bool a, int64_t b)
+[[maybe_unused]] static void ProgressCb(bool a, int64_t b)
 {
 	if (a)
 		TotalStep = b;
@@ -39,7 +42,7 @@ void ProgressCb(bool a, int64_t b)
 }
 
 template <typename Fn>
-void WithTimer(const Fn& fn)
+[[maybe_unused]] static void WithTimer(const Fn& fn)
 {
 	auto start = std::chrono::high_resolution_clock::now();
 	fn();
@@ -47,15 +50,7 @@ void WithTimer(const Fn& fn)
 	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 
-#include "Libraries/AvCodec/AvCodec.h"
-#include "Libraries/F0Extractor/DioF0Extractor.hpp"
-#include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
-#include "OnnxLibrary/G2P/G2PW.hpp"
-#include "OnnxLibrary/Demix/CascadedNet.hpp"
-#include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
-#include "OnnxLibrary/Demix/Demix.hpp"
-
-void TestUVR()
+[[maybe_unused]] static void TestUVR()
 {
 	using namespace DragonianLib;
 	const auto Env = OnnxRuntime::CreateEnvironment({Device::CUDA,});
@@ -87,7 +82,7 @@ void TestUVR()
 	OutputStream.EncodeAll(Results[1].GetCRng(), 44100, 2, true);
 }
 
-auto TestG2PW(const std::wstring& Text)
+[[maybe_unused]] static auto TestG2PW(const std::wstring& Text)
 {
 	using namespace DragonianLib;
 	const auto Env = OnnxRuntime::CreateEnvironment({ Device::CPU, 0 });
@@ -127,7 +122,7 @@ auto TestG2PW(const std::wstring& Text)
 	return PinYinNew;
 }
 
-void TestGptSoVits()
+[[maybe_unused]] static void TestGptSoVits()
 {
 	using namespace DragonianLib;
 	G2P::RegisterG2PModules(LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\G2P)");
@@ -270,7 +265,7 @@ void TestGptSoVits()
 	AudioOutStream.EncodeAll(Res.GetCRng(), 32000);
 }
 
-void TestStft()
+[[maybe_unused]] static void TestStft()
 {
 	using namespace DragonianLib;
 
@@ -298,7 +293,7 @@ void TestStft()
 	);
 }
 
-void TestSvc()
+[[maybe_unused]] static void TestSvc()
 {
 	
 	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
@@ -459,7 +454,7 @@ void TestSvc()
 	);
 }
 
-void TestVocoder()
+[[maybe_unused]] static void TestVocoder()
 {
 	DragonianLib::OnnxRuntime::OnnxEnvironmentOptions Options{
 		DragonianLib::Device::CUDA,
@@ -511,6 +506,22 @@ void TestVocoder()
 	);
 }
 
+class AddObj
+{
+public:
+	template <typename T>
+	explicit AddObj(std::shared_ptr<T> ptr)
+	{
+		std::cout << typeid(std::shared_ptr<T>).name() << std::endl;
+		std::cout << typeid(T).name() << std::endl;
+	}
+	template <typename T>
+	explicit AddObj(T Object)
+	{
+		std::cout << typeid(T).name() << std::endl;
+	}
+};
+
 int main()
 {
 	using namespace DragonianLib;
@@ -518,5 +529,6 @@ int main()
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
+
 	//TestStft();
 }

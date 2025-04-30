@@ -13,7 +13,7 @@ Logger::Logger(std::wstring _LoggerId, LogLevel _LogLevel, LoggerFunction _LogFu
 Logger::Logger(const Logger& _Parent, const std::wstring& _NameSpace) noexcept
 	: _MyLoggerFn(_Parent._MyLoggerFn), _MyId(_Parent._MyId + L"::" + _NameSpace), _MyLevel(_Parent._MyLevel)
 {
-		
+	_Parent._MyChildLoggers.emplace_back(this);
 }
 
 void Logger::Log(const std::wstring& _Message, LogLevel _Level, const wchar_t* _NameSpace) noexcept
@@ -34,6 +34,29 @@ void Logger::Log(const std::wstring& _Message, LogLevel _Level, const wchar_t* _
 		Prefix += L"]: "; Prefix += _Message;
 		wprintf(L"%ls\n", Prefix.c_str());
 	}
+}
+
+
+
+void Logger::SetLoggerId(const std::wstring& Id) noexcept
+{
+	_MyId = Id;
+}
+
+void Logger::SetLoggerLevel(LogLevel Level, bool WithChild) noexcept
+{
+	_MyLevel = Level;
+	if (WithChild)
+		for (auto& Child : _MyChildLoggers)
+			Child->SetLoggerLevel(Level);
+}
+
+void Logger::SetLoggerFunction(LoggerFunction Function, bool WithChild) noexcept
+{
+	_MyLoggerFn = Function;
+	if (WithChild)
+		for (auto& Child : _MyChildLoggers)
+			Child->SetLoggerFunction(Function);
 }
 
 DLogger& GetDefaultLogger() noexcept

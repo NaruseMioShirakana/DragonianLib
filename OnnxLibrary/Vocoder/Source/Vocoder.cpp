@@ -1,4 +1,4 @@
-﻿#include "../Vocoder.hpp"
+﻿#include "OnnxLibrary/Vocoder/Vocoder.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header

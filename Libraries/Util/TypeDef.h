@@ -24,7 +24,8 @@
 #pragma once
 #include <cstdint>
 #include <complex>
-#include "Util.h"
+
+#include "Libraries/Util/Util.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -39,7 +40,8 @@ using Float64 = double; ///< 64-bit floating point
 using Double = double; ///< Double
 using Byte = unsigned char; ///< Byte
 using LPVoid = void*; ///< Pointer to void
-using CPVoid = const void*; ///< Constant pointer to void
+using LPCVoid = const void*; ///< Pointer to Constant void
+using LCPVoid = const LPVoid; ///< Constant pointer to void
 using UInt8 = uint8_t; ///< 8-bit unsigned integer
 using UInt16 = uint16_t; ///< 16-bit unsigned integer
 using UInt32 = uint32_t; ///< 32-bit unsigned integer
@@ -47,12 +49,17 @@ using UInt64 = uint64_t; ///< 64-bit unsigned integer
 using Complex32 = std::complex<float>; ///< 32-bit complex
 using Complex64 = std::complex<double>; ///< 64-bit complex
 using Int = int; ///< Int
+using UInt = unsigned int; ///< Unsigned int
 using Long = long; ///< Long
 using ULong = unsigned long; ///< Unsigned long
 using LongLong = long long; ///< Int64
 using ULongLong = unsigned long long; ///< Unsigned Int64
 using Short = short; ///< Short
 using UShort = unsigned short; ///< Unsigned short
+using PtrDiff = ptrdiff_t; ///< Pointer difference type
+using StdSize = std::size_t; ///< Size type
+using IPointer = Int64; ///< Integer pointer type
+using UPointer = UInt64; ///< Unsigned integer pointer type
 
 namespace TypeDef
 {

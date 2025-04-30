@@ -1,4 +1,4 @@
-﻿#include "../Context.hpp"
+﻿#include "OnnxLibrary/BertClap/Context.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Lib_Bert_Clap_Header

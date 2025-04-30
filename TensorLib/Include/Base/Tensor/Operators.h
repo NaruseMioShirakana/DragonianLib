@@ -22,13 +22,13 @@
  */
 
 #pragma once
-#include "Operators/User/Unary.h"
-#include "Operators/User/Binary.h"
-#include "Operators/CPU/Unary.h"
-#include "Operators/CPU/Binary.h"
-#include "Operators/CPU/Comparison.h"
-#include "Operators/CPU/Assign.h"
-#include "Operators/CPU/Interpolate.h"
-#include "Operators/CPU/Reduce.h"
-#include "Operators/CPU/Cumulate.h"
-#include "Operators/CPU/Linear.h"
+#include "TensorLib/Include/Base/Tensor/Operators/User/Unary.h"
+#include "TensorLib/Include/Base/Tensor/Operators/User/Binary.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Unary.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Binary.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Comparison.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Assign.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Interpolate.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Reduce.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Cumulate.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Linear.h"

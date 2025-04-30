@@ -1,6 +1,6 @@
-﻿#include "../IndexCluster.hpp"
+﻿#include "Libraries/Cluster/IndexCluster.hpp"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 #include <filesystem>
-#include "Libraries/Base.h"
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/index_io.h>
 

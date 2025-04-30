@@ -1,4 +1,4 @@
-﻿#include "../TypeDef.h"
+﻿#include "Libraries/Util/TypeDef.h"
 
 _D_Dragonian_Lib_Space_Begin
 

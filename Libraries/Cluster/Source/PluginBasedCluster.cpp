@@ -1,4 +1,5 @@
-﻿#include "../PluginBasedCluster.hpp"
+﻿#include "Libraries/Cluster/PluginBasedCluster.hpp"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 

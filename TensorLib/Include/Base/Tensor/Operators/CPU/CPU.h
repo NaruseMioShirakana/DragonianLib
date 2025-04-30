@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Simd.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/Simd.h"
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/ThreadPool.h"
 #include "Libraries/Util/StringPreprocess.h"

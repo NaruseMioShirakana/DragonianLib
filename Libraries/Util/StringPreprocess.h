@@ -22,8 +22,9 @@
  */
 
 #pragma once
-#include "Libraries/MyTemplateLibrary/Vector.h"
 #include <regex>
+
+#include "Libraries/Util/TypeTraits.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -89,45 +90,19 @@ std::string UnicodeToAnsi(const std::wstring& input);
 std::wstring UTF8ToWideString(const std::wstring& input);
 std::wstring UTF8ToWideString(const std::string& input);
 
-std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::string>& vector);
-
-std::wstring SerializeStringVector(const DragonianLibSTL::Vector<std::wstring>& vector);
-
-template <typename T>
-std::wstring SerializeVector(const DragonianLibSTL::Vector<T>& vector)
-{
-	std::wstring vecstr = L"[";
-	for (const auto& it : vector)
-	{
-		std::wstring TmpStr = std::to_wstring(it);
-		if ((std::is_same_v<T, float> || std::is_same_v<T, double>) && TmpStr.find(L'.') != std::string::npos)
-		{
-			while (TmpStr.back() == L'0')
-				TmpStr.pop_back();
-			if (TmpStr.back() == L'.')
-				TmpStr += L"0";
-		}
-		vecstr += TmpStr + L", ";
-	}
-	if (vecstr.length() > 2)
-		vecstr = vecstr.substr(0, vecstr.length() - 2);
-	vecstr += L']';
-	return vecstr;
-}
-
 template <typename _Type>
 decltype(auto) CvtToString(const _Type& _Value)
 {
 	if constexpr (TypeTraits::IsComplexValue<_Type>)
 		return std::to_string(_Value.real()) + " + " + std::to_string(_Value.imag()) + "i";
-	else if constexpr (requires(const _Type & _Tmp) { { std::string(_Tmp) }; })
-		return std::string(_Value);
 	else if constexpr (requires(const _Type & _Tmp) { { std::to_string(_Tmp) }; })
 		return std::to_string(_Value);
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.to_string() } -> TypeTraits::IsType<std::string>; })
 		return _Value.to_string();
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.to_string() } -> TypeTraits::IsType<const char*>; })
 		return std::string(_Value.to_string());
+	else if constexpr (requires(const _Type & _Tmp) { { std::string(_Tmp) }; })
+		return std::string(_Value);
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.c_str() } -> TypeTraits::IsType<const char*>; })
 		return std::string(_Value.c_str());
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.str() } -> TypeTraits::IsType<std::string>; })
@@ -140,12 +115,12 @@ decltype(auto) CvtToString(const _Type& _Value)
 		return std::string(_Value.string());
 	else if constexpr (requires(const _Type & _Tmp) { { std::to_wstring(_Tmp) }; })
 		return WideStringToUTF8(std::to_wstring(_Value));
-	else if constexpr (requires(const _Type & _Tmp) { { std::wstring(_Tmp) }; })
-		return WideStringToUTF8(std::wstring(_Value));
-	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.to_wstring() } -> TypeTraits::IsType<std::wstring>; })
-		return WideStringToUTF8(_Value.to_wstring());
+	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.to_string() } -> TypeTraits::IsType<std::wstring>; })
+		return WideStringToUTF8(_Value.to_string());  // NOLINT(bugprone-branch-clone)
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.to_string() } -> TypeTraits::IsType<const wchar_t*>; })
 		return WideStringToUTF8(_Value.to_string());
+	else if constexpr (requires(const _Type & _Tmp) { { std::wstring(_Tmp) }; })
+		return WideStringToUTF8(std::wstring(_Value));
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.c_str() } -> TypeTraits::IsType<const wchar_t*>; })
 		return WideStringToUTF8(_Value.c_str());
 	else if constexpr (requires(const _Type & _Tmp) { { _Tmp.str() } -> TypeTraits::IsType<std::wstring>; } || requires(const _Type & _Tmp) { { _Tmp.str() } -> TypeTraits::IsType<const wchar_t*>; })

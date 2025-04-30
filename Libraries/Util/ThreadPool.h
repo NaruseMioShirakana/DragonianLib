@@ -22,13 +22,14 @@
  */
 
 #pragma once
-#include "Libraries/Util/TypeDef.h"
 #include <thread>
 #include <queue>
 #include <future>
 #include <mutex>
 #include <random>
 #include <semaphore>
+
+#include "Libraries/Util/TypeDef.h"
 
 _D_Dragonian_Lib_Space_Begin
 

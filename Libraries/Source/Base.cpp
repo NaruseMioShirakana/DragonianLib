@@ -1,11 +1,13 @@
-﻿#include "Libraries/Base.h"
-#ifdef _WIN32
+﻿#ifdef _WIN32
 #include "Windows.h"
 #endif
 
+#include "Libraries/Base.h"
+#include "Libraries/Util/StringPreprocess.h"
+
 _D_Dragonian_Lib_Space_Begin
 
-std::wstring GlobalEnvDir;
+static inline std::wstring GlobalEnvDir;
 
 std::wstring GetCurrentFolder()
 {
@@ -14,13 +16,13 @@ std::wstring GetCurrentFolder()
 
 	wchar_t path[1024];
 #ifdef _WIN32
-	GetModuleFileName(nullptr, path, 1024);
+	GetModuleFileNameW(nullptr, path, 1024);
 	std::wstring _curPath = path;
 	_curPath = _curPath.substr(0, _curPath.rfind(L'\\'));
 	return _curPath;
 #else
 	if (GlobalEnvDir.empty())
-		DragonianLibThrow("GlobalEnvDir Is Empty!");
+		_D_Dragonian_Lib_Throw_Exception("GlobalEnvDir Is Empty!");
 #endif
 }
 
@@ -29,281 +31,445 @@ void SetGlobalEnvDir(const std::wstring& _Folder)
 	GlobalEnvDir = _Folder;
 }
 
-FileGuard::FileGuard(const std::wstring& _Path, const std::wstring& _Mode)
+void SharedMutex::lock() const
 {
-	Open(_Path, _Mode);
+	return _MyMutex->lock();
 }
 
-FileGuard::FileGuard(const std::wstring& _Path, const wchar_t* _Mode)
+bool SharedMutex::try_lock() const noexcept
 {
-	Open(_Path, _Mode);
+	return _MyMutex->try_lock();
 }
 
-FileGuard::FileGuard(const wchar_t* _Path, const wchar_t* _Mode)
+void SharedMutex::unlock() const noexcept
 {
-	Open(_Path, _Mode);
+	_MyMutex->unlock();
 }
 
-FileGuard::~FileGuard()
+bool ByteStream::WriteString(const std::string& _Str)
 {
-	Close();
+	return WriteString(_Str.c_str());
 }
 
-FileGuard::FileGuard(FileGuard&& _Right) noexcept
+bool ByteStream::WriteString(const std::wstring& _Str)
 {
-	file_ = _Right.file_;
-	_Right.file_ = nullptr;
+	return WriteString(_Str.c_str());
 }
 
-FileGuard& FileGuard::operator=(FileGuard&& _Right) noexcept
+bool ByteStream::WriteStr(const std::string& _Str)
 {
-	file_ = _Right.file_;
-	_Right.file_ = nullptr;
-	return *this;
+	return WriteString(_Str);
 }
 
-void FileGuard::Open(const std::wstring& _Path, const std::wstring& _Mode)
+std::string ByteStream::FindNextNumber() const
 {
-	Close();
-#ifdef _WIN32
-	_wfopen_s(&file_, _Path.c_str(), _Mode.c_str());
-#else
-	file_ = _wfopen(_Path.c_str(), _Mode.c_str());
-#endif
-}
-
-void FileGuard::Open(const std::wstring& _Path, const wchar_t* _Mode)
-{
-	Close();
-#ifdef _WIN32
-	_wfopen_s(&file_, _Path.c_str(), _Mode);
-#else
-	file_ = _wfopen(_Path.c_str(), _Mode);
-#endif
-}
-
-void FileGuard::Open(const wchar_t* _Path, const wchar_t* _Mode)
-{
-	Close();
-#ifdef _WIN32
-	_wfopen_s(&file_, _Path, _Mode);
-#else
-	file_ = _wfopen(_Path, _Mode);
-#endif
-}
-
-FileGuard::operator FILE* () const
-{
-	return file_;
-}
-
-bool FileGuard::Enabled() const
-{
-	return file_;
-}
-
-void FileGuard::Close()
-{
-	if (file_)
-		fclose(file_);
-	file_ = nullptr;
-}
-
-void FileGuard::Seek(long _Offset, int _Origin) const
-{
-	if (file_)
-		fseek(file_, _Offset, _Origin);
-}
-
-size_t FileGuard::Tell() const
-{
-	if (file_)
-		return ftell(file_);
-	return 0;
-}
-
-size_t FileGuard::Read(void* _Buffer, size_t _BufferSize, size_t _ElementSize, size_t _Count) const
-{
-	if (file_)
-		return fread_s(_Buffer, _BufferSize, _ElementSize, _Count, file_);
-	return 0;
-}
-
-size_t FileGuard::Write(const void* _Buffer, size_t _ElementSize, size_t _Count) const
-{
-	if (file_)
-		return fwrite(_Buffer, _ElementSize, _Count, file_);
-	return 0;
-}
-
-FileGuard& FileGuard::operator<<(char _Ch)
-{
-	if (file_)
-		fputc(_Ch, file_);
-	return *this;
-}
-
-FileGuard& FileGuard::operator<<(const char* _Str)
-{
-	if (file_)
-		fputs(_Str, file_);
-	return *this;
-}
-
-FileGuard& FileGuard::operator<<(const std::string& _Str)
-{
-	if (file_)
-		fputs(_Str.c_str(), file_);
-	return *this;
-}
-
-FileGuard& FileGuard::operator<<(wchar_t _Ch)
-{
-	if (file_)
-		fputwc(_Ch, file_);
-	return *this;
-}
-
-FileGuard& FileGuard::operator<<(const wchar_t* _Str)
-{
-	if (file_)
-		fputws(_Str, file_);
-	return *this;
-}
-
-FileGuard& FileGuard::operator<<(const std::wstring& _Str)
-{
-	if (file_)
-		fputws(_Str.c_str(), file_);
-	return *this;
-}
-
-FILE* FileGuard::Release()
-{
-	auto _File = file_;
-	file_ = nullptr;
-	return _File;
-}
-
-IOStream::~IOStream()
-{
-	_Tidy();
-}
-
-IOStream::IOStream(IOStream&& _Right) noexcept
-{
-	_MyFile = _Right._MyFile;
-	_MyBuffer = _Right._MyBuffer;
-	_MyBufferEnd = _Right._MyBufferEnd;
-	_MyIter = _Right._MyIter;
-	_Right._MyFile = nullptr;
-	_Right._MyBuffer = nullptr;
-	_Right._MyBufferEnd = nullptr;
-	_Right._MyIter = nullptr;
-}
-
-IOStream& IOStream::operator=(IOStream&& _Right) noexcept
-{
-	_MyFile = _Right._MyFile;
-	_MyBuffer = _Right._MyBuffer;
-	_MyBufferEnd = _Right._MyBufferEnd;
-	_MyIter = _Right._MyIter;
-	_Right._MyFile = nullptr;
-	_Right._MyBuffer = nullptr;
-	_Right._MyBufferEnd = nullptr;
-	_Right._MyIter = nullptr;
-	return *this;
-}
-
-void IOStream::_Tidy()
-{
-	if (_MyFile)
-		fclose(_MyFile);
-	delete[] _MyBuffer;
-
-	_MyFile = nullptr;
-	_MyBuffer = nullptr;
-	_MyBufferEnd = nullptr;
-	_MyIter = nullptr;
-}
-
-IOStream::IOStream(const std::wstring& _Path, const std::wstring& _Mode)
-{
-#ifdef _WIN32
-	if (_wfopen_s(&_MyFile, _Path.c_str(), _Mode.c_str()))
-		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
-#else
-	_MyFile = _wfopen(_Path.c_str(), _Mode.c_str());
-	if (!_MyFile)
-		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
-#endif
-}
-
-IOStream::IOStream(FILE* _FileStream) : _MyFile(_FileStream) {}
-
-IOStream::IOStream(size_t _BufferSize)
-{
-	_MyBuffer = new Byte[_BufferSize];
-	_MyBufferEnd = _MyBuffer + _BufferSize;
-	_MyIter = _MyBuffer;
-}
-
-FILE* IOStream::ReleaseFile() noexcept
-{
-	auto _File = _MyFile;
-	_MyFile = nullptr;
-	return _File;
-}
-
-Byte* IOStream::ReleaseBuffer() noexcept
-{
-	auto _Buffer = _MyBuffer;
-	_MyBuffer = nullptr;
-	_MyBufferEnd = nullptr;
-	_MyIter = nullptr;
-	return _Buffer;
-}
-
-size_t IOStream::Tell() const noexcept
-{
-	if (_MyFile)
-		return ftell(_MyFile);
-	return Capacity();
-}
-
-void IOStream::Seek(long _Offset, int _Origin) noexcept
-{
-	if (_MyFile)
-		fseek(_MyFile, _Offset, _Origin);
-	else
+	std::string _Str;
+	char Ch = 0;
+	bool Real = true;
+	while (true)
 	{
-		auto Temp = _MyIter;
-		if (_Origin == SEEK_SET)
-			_MyIter = _MyBuffer + _Offset;
-		else if (_Origin == SEEK_CUR)
-			_MyIter += _Offset;
-		else if (_Origin == SEEK_END)
-			_MyIter = _MyBufferEnd + _Offset;
-		if (_MyIter < _MyBuffer || _MyIter > _MyBufferEnd)
-			_MyIter = Temp;
+		if (Read(&Ch, sizeof(char), 1) == 0)
+			break;
+		if ((Ch >= '0' && Ch <= '9') || (Ch == '-' && _Str.empty()))
+			_Str += Ch;  // NOLINT(bugprone-branch-clone)
+		else if (Real && Ch == '.')
+		{
+			Real = false;
+			if (_Str.empty() || _Str.back() == '-')
+				_Str += '0';
+			_Str += '.';
+		}
+		else
+			break;
 	}
+	if (_Str.back() == '.' || _Str.back() == '-')
+		_Str += '0';
+	if (_Str.empty())
+		_D_Dragonian_Lib_Throw_Exception("Error when get number!");
+	return _Str;
 }
 
-void IOStream::Reserve(size_t _Size)
+void FileStream::ReOpen(const wchar_t* _Path, const wchar_t* _Mode)
+{
+	std::lock_guard lg(_MyMutex);
+	FILE* MFile = nullptr;
+#if _MSC_VER
+	_wfopen_s(&MFile, _Path, _Mode);
+#else
+	MFile = _wfopen(_Path, _Mode);
+#endif
+	if (!MFile)
+		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
+
+	_MyFile = std::shared_ptr<FILE>(
+		MFile,
+		fclose
+	);
+	const auto Len = wcslen(_Mode);
+	if (std::ranges::find(_Mode, _Mode + Len, L'b'))
+		_IsByteMode = true;
+}
+
+void FileStream::Open(const std::wstring& _Path, const std::wstring& _Mode)
+{
+	ReOpen(_Path.c_str(), _Mode.c_str());
+}
+
+void FileStream::Open(const std::wstring& _Path, const wchar_t* _Mode)
+{
+	ReOpen(_Path.c_str(), _Mode);
+}
+
+void FileStream::Open(const wchar_t* _Path, const wchar_t* _Mode)
+{
+	ReOpen(_Path, _Mode);
+}
+
+FileStream::FileStream(const std::wstring& _Path, const std::wstring& _Mode)
+{
+	ReOpen(_Path.c_str(), _Mode.c_str());
+}
+
+FileStream::FileStream(const std::wstring& _Path, const wchar_t* _Mode)
+{
+	ReOpen(_Path.c_str(), _Mode);
+}
+
+FileStream::FileStream(const wchar_t* _Path, const std::wstring& _Mode)
+{
+	ReOpen(_Path, _Mode.c_str());
+}
+
+FileStream::FileStream(const wchar_t* _Path, const wchar_t* _Mode)
+{
+	ReOpen(_Path, _Mode);
+}
+
+FileStream::FileStream(const std::string& _Path, const std::string& _Mode)
+{
+	Open(UTF8ToWideString(_Path), UTF8ToWideString(_Mode));
+}
+
+FileStream::FileStream(const std::string& _Path, const char* _Mode)
+{
+	Open(UTF8ToWideString(_Path), UTF8ToWideString(_Mode));
+}
+
+FileStream::FileStream(const char* _Path, const std::string& _Mode)
+{
+	Open(UTF8ToWideString(_Path), UTF8ToWideString(_Mode));
+}
+
+FileStream::FileStream(const char* _Path, const char* _Mode)
+{
+	Open(UTF8ToWideString(_Path), UTF8ToWideString(_Mode));
+}
+
+void FileStream::Open()
+{
+	if (!Enabled())
+		_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+}
+
+void FileStream::Close()
+{
+	_MyFile.reset();
+}
+
+Int FileStream::Seek(Int64 _Offset, Int _Origin) const
+{
+	if (!Enabled())
+		_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+#if _MSC_VER
+	return _fseeki64(_MyFile.get(), _Offset, _Origin);
+#else
+	return fseeko64(_MyFile.get(), _Offset, _Origin);
+#endif
+}
+
+StdSize FileStream::Tell() const
+{
+	if (!Enabled())
+		_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+#if _MSC_VER
+	return _ftelli64(_MyFile.get());
+#else
+	return ftello64(_MyFile.get());
+#endif
+}
+
+StdSize FileStream::Read(void* _Buffer, StdSize _BufferSize, StdSize _ElementSize, StdSize _Count) const
+{
+	if (!Enabled())
+		_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+#if _MSC_VER
+	return fread_s(_Buffer, _BufferSize, _ElementSize, _Count, _MyFile.get());
+#else
+	return fread(_Buffer, _ElementSize, _Count, _MyFile.get());
+#endif
+}
+
+StdSize FileStream::Write(const void* _Buffer, StdSize _ElementSize, StdSize _Count)
+{
+	if (!Enabled())
+		_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+	return fwrite(_Buffer, _ElementSize, _Count, _MyFile.get());
+}
+
+void* FileStream::GetHandle()
+{
+	return _MyFile.get();
+}
+
+const void* FileStream::GetHandle() const
+{
+	return _MyFile.get();
+}
+
+void* FileStream::ReleaseHandle()
+{
+	return _MyFile.get();
+}
+
+std::string FileStream::ReadLine() const
 {
 	if (Enabled())
-		_D_Dragonian_Lib_Throw_Exception("IOStream is enabled.");
-
-	if (IsBuffer() && Capacity() != _Size)
 	{
-		auto Tmp = new Byte[_Size];
-		auto Offset = static_cast<size_t>(_MyIter - _MyBuffer);
-		memcpy(Tmp, _MyBuffer, std::min(Capacity(), _Size));
-		delete[] _MyBuffer;
-		_MyBuffer = Tmp;
-		_MyBufferEnd = _MyBuffer + _Size;
-		_MyIter = _MyBuffer + std::min(Offset, _Size);
+		std::string Ret;
+		char Ch = 0;
+		while (Ch != '\n' && Ch != '\r')
+		{
+			if (Read(&Ch, sizeof(char), 1) == 0)
+				break;
+			if (Ch != '\n' && Ch != '\r')
+				Ret += Ch;
+		}
+		return Ret;
 	}
+	_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+}
+
+std::wstring FileStream::ReadLineW() const
+{
+	if (Enabled())
+	{
+		std::wstring Ret;
+		wchar_t Ch = 0;
+		while (Ch != L'\n' && Ch != '\r')
+		{
+			if (Read(&Ch, sizeof(wchar_t), 1) == 0)
+				break;
+			if (Ch != L'\n' && Ch != '\r')
+				Ret += Ch;
+		}
+		return Ret;
+	}
+	_D_Dragonian_Lib_Throw_Exception("File not enabled!");
+}
+
+bool FileStream::WriteString(const char* _Str)
+{
+	if (!_Str)
+		return false;
+	const auto StrLen = strlen(_Str);
+	if (StrLen == 0)
+		return false;
+	if (Enabled() && Write(_Str, sizeof(char), StrLen) == StrLen)
+		return true;
+	return false;
+}
+
+bool FileStream::WriteString(const wchar_t* _Str)
+{
+	if (!_Str)
+		return false;
+	const auto StrLen = wcslen(_Str);
+	if (StrLen == 0)
+		return false;
+	if (Enabled() && Write(_Str, sizeof(wchar_t), StrLen) == StrLen)
+		return true;
+	return false;
+}
+
+StdSize ByteIO::RemainderCapacity() const
+{
+	return _MyBuffer.End() - _MyLast;
+}
+
+StdSize ByteIO::RemainderSize() const
+{
+	return _MyBuffer.End() - _MyCur;
+}
+
+StdSize ByteIO::Remainder() const
+{
+	return _MyLast - _MyCur;
+}
+
+StdSize ByteIO::Size() const
+{
+	return _MyLast - _MyCur;
+}
+
+StdSize ByteIO::Capacity() const
+{
+	return _MyBuffer.Size();
+}
+
+void ByteIO::Open()
+{
+	if (!_MyBuffer)
+		_MyBuffer = { 65535 };
+	_IsOpen = true;
+	_MyCur = _MyLast = _MyBuffer.Begin();
+}
+
+void ByteIO::Close()
+{
+	_IsOpen = false;
+	_MyCur = _MyLast = nullptr;
+}
+
+Int ByteIO::Seek(Int64 _Offset, Int _Origin) const
+{
+	Byte* NewCur;
+	if (_Origin == SEEK_SET)
+		NewCur = _MyBuffer.Begin() + _Offset;
+	else if (_Origin == SEEK_CUR)
+		NewCur = _MyCur + _Offset;
+	else if (_Origin == SEEK_END)
+		NewCur = _MyLast + _Offset;
+	else
+		return -1;
+
+	_MyCur = std::clamp(NewCur, _MyBuffer.Begin(), _MyLast);
+	return static_cast<Int>(_MyCur - _MyBuffer.Begin());
+}
+
+StdSize ByteIO::Tell() const
+{
+	return _MyCur - _MyBuffer.Begin();
+}
+
+void* ByteIO::GetHandle()
+{
+	return _MyBuffer.Get();
+}
+
+const void* ByteIO::GetHandle() const
+{
+	return _MyBuffer.Get();
+}
+
+void* ByteIO::ReleaseHandle()
+{
+	_MyCur = _MyLast = nullptr;
+	return _MyBuffer.Release();
+}
+
+StdSize ByteIO::Read(void* _Buffer, StdSize _BufferSize, StdSize _ElementSize, StdSize _Count) const
+{
+	if (Enabled())
+	{
+		const auto _BufferCount = _BufferSize / _ElementSize;
+		const auto _RemainderCount = Remainder() / _ElementSize;
+		_Count = std::min(_BufferCount, _Count);
+		_Count = std::min(_RemainderCount, _Count);
+		const auto _TgrSize = _ElementSize * _Count;
+		if (_TgrSize == 0)
+			return 0;
+#if _MSC_VER
+		memcpy_s(_Buffer, _TgrSize, _MyCur, _TgrSize);
+#else
+		memcpy(_Buffer, _MyCur, _TgrSize);
+#endif
+		_MyCur += _TgrSize;
+		return _TgrSize / _ElementSize;
+	}
+	_D_Dragonian_Lib_Throw_Exception("ByteIO not enabled!");
+}
+
+StdSize ByteIO::Write(const void* _Buffer, StdSize _ElementSize, StdSize _Count)
+{
+	if (Enabled())
+	{
+		const auto _RemainderCapacity = RemainderSize();
+		const auto _TgrSize = _ElementSize * _Count;
+		if (_TgrSize == 0)
+			return 0;
+		if (_RemainderCapacity < _TgrSize)
+			_MyBuffer.Reallocate((Tell() + _TgrSize) << 1);
+#if _MSC_VER
+		memcpy_s(_MyCur, _TgrSize, _Buffer, _TgrSize);
+#else
+		memcpy(_MyCur, _Buffer, _TgrSize);
+#endif
+		_MyCur += _TgrSize;
+		_MyLast = std::max(_MyCur, _MyLast);
+
+		return _Count;
+	}
+	_D_Dragonian_Lib_Throw_Exception("ByteIO not enabled!");
+}
+
+std::string ByteIO::ReadLine() const
+{
+	if (Enabled())
+	{
+		std::string Ret;
+		char Ch = 0;
+		while (Ch != '\n')
+		{
+			if (Read(&Ch, sizeof(char), 1) == 0)
+				break;
+			if (Ch != '\n')
+				Ret += Ch;
+		}
+		return Ret;
+	}
+	_D_Dragonian_Lib_Throw_Exception("ByteIO not enabled!");
+}
+
+std::wstring ByteIO::ReadLineW() const
+{
+	if (Enabled())
+	{
+		std::wstring Ret;
+		wchar_t Ch = 0;
+		while (Ch != L'\n' && Ch != '\r')
+		{
+			if (Read(&Ch, sizeof(wchar_t), 1) == 0)
+				break;
+			if (Ch != L'\n' && Ch != '\r')
+				Ret += Ch;
+		}
+		return Ret;
+	}
+	_D_Dragonian_Lib_Throw_Exception("ByteIO not enabled!");
+}
+
+bool ByteIO::WriteString(const char* _Str)
+{
+	if (!_Str)
+		return false;
+	const auto StrLen = strlen(_Str);
+	if (StrLen == 0)
+		return false;
+	if (Enabled() && Write(_Str, sizeof(char), StrLen) == StrLen)
+		return true;
+	return false;
+}
+
+bool ByteIO::WriteString(const wchar_t* _Str)
+{
+	if (!_Str)
+		return false;
+	const auto StrLen = wcslen(_Str);
+	if (StrLen == 0)
+		return false;
+	if (Enabled() && Write(_Str, sizeof(wchar_t), StrLen) == StrLen)
+		return true;
+	return false;
 }
 
 _D_Dragonian_Lib_Space_End

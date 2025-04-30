@@ -1,8 +1,8 @@
-﻿#include "../Register.hpp"
-#include "../Vocoder.hpp"
-#include "../WaveGlow.hpp"
-#include "../Hifigan.hpp"
-#include "../Nsf-Hifigan.hpp"
+﻿#include "OnnxLibrary/Vocoder/Register.hpp"
+#include "OnnxLibrary/Vocoder/Vocoder.hpp"
+#include "OnnxLibrary/Vocoder/WaveGlow.hpp"
+#include "OnnxLibrary/Vocoder/Hifigan.hpp"
+#include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
 #include "Libraries/PluginBase/PluginBase.h"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header

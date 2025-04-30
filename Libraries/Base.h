@@ -22,11 +22,19 @@
  */
 
 #pragma once
-#include <unordered_map>
 #include <functional>
-#include "Util/TypeTraits.h"
+#include <mutex>
+
+#include "Libraries/Util/StringPreprocess.h"
 
 _D_Dragonian_Lib_Space_Begin
+
+enum class FloatPrecision : UInt8
+{
+	BFloat16,
+	Float16,
+	Float32
+};
 
 /**
  * @brief Get global enviroment folder
@@ -39,80 +47,6 @@ std::wstring GetCurrentFolder();
  * @param _Folder Folder to set
  */
 void SetGlobalEnvDir(const std::wstring& _Folder);
-
-/**
- * @class FileGuard
- * @brief RAII File
- */
-class FileGuard
-{
-public:
-	FileGuard() = default;
-	FileGuard(FILE* _FileStream) : file_(_FileStream) {}
-	~FileGuard();
-	FileGuard(const std::wstring& _Path, const std::wstring& _Mode);
-	FileGuard(const std::wstring& _Path, const wchar_t* _Mode);
-	FileGuard(const wchar_t* _Path, const wchar_t* _Mode);
-	FileGuard(const FileGuard& _Left) = delete;
-	FileGuard& operator=(const FileGuard& _Left) = delete;
-	FileGuard(FileGuard&& _Right) noexcept;
-	FileGuard& operator=(FileGuard&& _Right) noexcept;
-
-	/**
-	 * @brief Open file
-	 * @param _Path file path
-	 * @param _Mode file mode
-	 */
-	void Open(const std::wstring& _Path, const std::wstring& _Mode);
-
-	/**
-	 * @brief Open file
-	 * @param _Path file path
-	 * @param _Mode file mode
-	 */
-	void Open(const std::wstring& _Path, const wchar_t* _Mode);
-
-	/**
-	 * @brief Open file
-	 * @param _Path file path
-	 * @param _Mode file mode
-	 */
-	void Open(const wchar_t* _Path, const wchar_t* _Mode);
-
-	/**
-	 * @brief Close file
-	 */
-	void Close();
-
-	/**
-	 * @brief Get file pointer
-	 * @return file pointer
-	 */
-	operator FILE* () const;
-
-	/**
-	 * @brief Check if file is enabled
-	 * @return true if file is enabled
-	 */
-	_D_Dragonian_Lib_No_Discard bool Enabled() const;
-
-	void Seek(long _Offset, int _Origin) const;
-	size_t Tell() const;
-
-	size_t Read(void* _Buffer, size_t _BufferSize, size_t _ElementSize, size_t _Count = 1) const;
-	size_t Write(const void* _Buffer, size_t _ElementSize, size_t _Count = 1) const;
-
-	FileGuard& operator<<(const std::string& _Str);
-	FileGuard& operator<<(const std::wstring& _Str);
-	FileGuard& operator<<(const char* _Str);
-	FileGuard& operator<<(const wchar_t* _Str);
-	FileGuard& operator<<(char _Ch);
-	FileGuard& operator<<(wchar_t _Ch);
-
-	FILE* Release();
-private:
-	FILE* file_ = nullptr;
-};
 
 template <typename _Func>
 struct TidyGuard
@@ -128,59 +62,334 @@ private:
 	TidyGuard& operator=(TidyGuard&&) = delete;
 };
 
-enum class FloatPrecision : UInt8
+class SharedMutex
 {
-	BFloat16,
-	Float16,
-	Float32
+public:
+	SharedMutex() : _MyMutex(std::make_shared<std::mutex>()) {}
+
+	void lock() const;
+	void Lock() const { lock(); }
+	bool try_lock() const noexcept;
+	bool TryLock() const noexcept { return try_lock(); }
+	void unlock() const noexcept;
+	void Unlock() const noexcept { unlock(); }
+
+	std::mutex* get() const noexcept { return _MyMutex.get(); }
+	std::mutex* Get() const noexcept { return _MyMutex.get(); }
+	std::mutex* operator->() const noexcept { return _MyMutex.get(); }
+private:
+	std::shared_ptr<std::mutex> _MyMutex;
 };
 
-class IOStream
+class ByteBuffer
 {
 public:
-	IOStream() = delete;
-	~IOStream();
-	IOStream(const IOStream&) = delete;
-	IOStream(IOStream&& _Right) noexcept;
-	IOStream& operator=(const IOStream&) = delete;
-	IOStream& operator=(IOStream&& _Right) noexcept;
-	void _Tidy();
+	ByteBuffer() = default;
+	ByteBuffer(StdSize _Size) : _MyBuffer(new Byte[_Size]), _MySize(_Size) {}
+	~ByteBuffer() = default;
+	ByteBuffer(const ByteBuffer&) = delete;
+	ByteBuffer(ByteBuffer&& _Right) noexcept = default;
+	ByteBuffer& operator=(const ByteBuffer&) = delete;
+	ByteBuffer& operator=(ByteBuffer&& _Right) noexcept = default;
+
+	void Reallocate(StdSize _Size)
+	{
+		if (_MyBuffer)
+		{
+			auto OldBuffer = std::move(_MyBuffer);
+			_MyBuffer = std::make_unique<Byte[]>(_Size);
+			const auto Overlap = std::min(_Size, _MySize);
+			memcpy(_MyBuffer.get(), OldBuffer.get(), Overlap);
+			_MySize = _Size;
+		}
+		else
+			_MyBuffer = std::make_unique<Byte[]>(_Size);
+	}
+
+	const Byte* CBegin() const noexcept { return _MyBuffer.get(); }
+	const Byte* CEnd() const noexcept { return _MyBuffer.get() + _MySize; }
+	Byte* Begin() const noexcept { return _MyBuffer.get(); }
+	Byte* End() const noexcept { return _MyBuffer.get() + _MySize; }
+	Byte* Data() const noexcept { return _MyBuffer.get(); }
+	Byte* Get() const noexcept { return _MyBuffer.get(); }
+
+	const Byte* cbegin() const noexcept { return _MyBuffer.get(); }
+	const Byte* cend() const noexcept { return _MyBuffer.get() + _MySize; }
+	Byte* begin() const noexcept { return _MyBuffer.get(); }
+	Byte* end() const noexcept { return _MyBuffer.get() + _MySize; }
+	Byte* data() const noexcept { return _MyBuffer.get(); }
+	Byte* get() const noexcept { return _MyBuffer.get(); }
+
+	StdSize Size() const noexcept { return _MySize; }
+
+	Byte* Release() noexcept { _MySize = 0; return _MyBuffer.release(); }
+	
+	Byte& operator[](StdSize _Index)
+	{
+#ifdef _DEBUG
+		if (_Index >= _MySize)
+			_D_Dragonian_Lib_Throw_Exception("Index out of range");
+#endif
+		return _MyBuffer[_Index];
+	}
+	const Byte& operator[](StdSize _Index) const
+	{
+#ifdef _DEBUG
+		if (_Index >= _MySize)
+			_D_Dragonian_Lib_Throw_Exception("Index out of range");
+#endif
+		return _MyBuffer[_Index];
+	}
+
+	operator bool() const noexcept { return _MyBuffer != nullptr; }
 
 private:
-	FILE* _MyFile = nullptr;
-	Byte* _MyBuffer = nullptr;
-	Byte* _MyBufferEnd = nullptr;
-	Byte* _MyIter = nullptr;
+	std::unique_ptr<Byte[]> _MyBuffer = nullptr;
+	StdSize _MySize = 0;
+};
 
+template <typename _StreamType, typename _ValTy>
+bool ReadInstanceFromStream(_StreamType&& _Stream, _ValTy& _Val)
+	requires(TypeTraits::IsArithmeticValue<_ValTy>)
+{
+	if constexpr (TypeTraits::IsFloatingPointValue<_ValTy>)
+		_Val = _ValTy(std::stod(std::forward<_StreamType>(_Stream).FindNextNumber()));
+	else if constexpr (TypeTraits::IsIntegerValue<_ValTy>)
+		_Val = _ValTy(std::stoll(std::forward<_StreamType>(_Stream).FindNextNumber()));
+	else if constexpr (TypeTraits::IsComplexValue<_ValTy>)
+		_Val = _ValTy(std::stod(std::forward<_StreamType>(_Stream).FindNextNumber()),
+			std::stod(std::forward<_StreamType>(_Stream).FindNextNumber()));
+	return true;
+}
+
+class ByteStream
+{
 public:
-	IOStream(const std::wstring& _Path, const std::wstring& _Mode);
-	IOStream(FILE* _FileStream);
-	IOStream(size_t _BufferSize);
+	ByteStream() = default;
+	virtual ~ByteStream() = default;
+	ByteStream(const ByteStream&) = default;
+	ByteStream(ByteStream&&) = default;
+	ByteStream& operator=(const ByteStream&) = default;
+	ByteStream& operator=(ByteStream&&) = default;
 
-	bool IsFile() const noexcept { return _MyFile; }
-	bool IsBuffer() const noexcept { return _MyBuffer; }
+	virtual void Open() = 0;
+	virtual void Close() = 0;
 
-	FILE* ReleaseFile() noexcept;
-	Byte* ReleaseBuffer() noexcept;
-
-	FILE* GetFile() const noexcept { return _MyFile; }
-	Byte* Data() const noexcept { return _MyBuffer; }
-
-	size_t Size() const noexcept { return _MyIter - _MyBuffer; }
-	size_t Capacity() const noexcept { return _MyBufferEnd - _MyBuffer; }
-
-	Byte* Begin() const noexcept { return _MyBuffer; }
-	Byte* End() const noexcept { return _MyIter; }
+	virtual bool Enabled() const = 0;
+	virtual bool IsFile() const = 0;
+	virtual bool IsByteBuffer() const = 0;
 	
-	Byte* begin() const noexcept { return _MyBuffer; }
-	Byte* end() const noexcept { return _MyIter; }
+	virtual Int Seek(Int64 _Offset, Int _Origin) const = 0;
+	virtual StdSize Tell() const = 0;
 
-	bool Enabled() const noexcept { return IsFile() xor IsBuffer(); }
+	virtual StdSize Read(void* _Buffer, StdSize _BufferSize, StdSize _ElementSize, StdSize _Count = 1) const = 0;
+	virtual StdSize Write(const void* _Buffer, StdSize _ElementSize, StdSize _Count = 1) = 0;
 
-	void Seek(long _Offset, int _Origin) noexcept;
-	size_t Tell() const noexcept;
+	virtual void* GetHandle() = 0;
+	virtual const void* GetHandle() const = 0;
+	virtual void* ReleaseHandle() = 0;
 
-	void Reserve(size_t _Size);
+	virtual std::string ReadLine() const = 0;
+	virtual std::wstring ReadLineW() const = 0;
+	virtual bool WriteString(const char* _Str) = 0;
+	virtual bool WriteString(const wchar_t* _Str) = 0;
+
+	bool WriteString(const std::string& _Str);
+	bool WriteString(const std::wstring& _Str);
+	bool WriteStr(const std::string& _Str);
+
+	template <typename _ThisType>
+	decltype(auto) operator<<(this _ThisType&& _Self, const char* _Str)
+	{
+		if (std::forward<_ThisType>(_Self).WriteString(_Str))
+			return std::forward<_ThisType>(_Self);
+		_D_Dragonian_Lib_Throw_Exception("Error when write string to file");
+	}
+
+	template <typename _ThisType>
+	decltype(auto) operator<<(this _ThisType&& _Self, const wchar_t* _Str)
+	{
+		if (std::forward<_ThisType>(_Self).WriteString(_Str))
+			return std::forward<_ThisType>(_Self);
+		_D_Dragonian_Lib_Throw_Exception("Error when write string to file");
+	}
+
+	template <typename _ThisType>
+	decltype(auto) operator<<(this _ThisType&& _Self, const std::string& _Str)
+	{
+		if (std::forward<_ThisType>(_Self).WriteString(_Str))
+			return std::forward<_ThisType>(_Self);
+		_D_Dragonian_Lib_Throw_Exception("Error when write string to file");
+	}
+
+	template <typename _ThisType>
+	decltype(auto) operator<<(this _ThisType&& _Self, const std::wstring& _Str)
+	{
+		if (std::forward<_ThisType>(_Self).WriteString(_Str))
+			return std::forward<_ThisType>(_Self);
+		_D_Dragonian_Lib_Throw_Exception("Error when write string to file");
+	}
+
+	template <typename _ThisType>
+	decltype(auto) operator>>(this _ThisType&& _Self, std::string& _Str)
+	{
+		_Str = std::forward<_ThisType>(_Self).ReadLine();
+		return std::forward<_ThisType>(_Self);
+	}
+
+	template <typename _ThisType>
+	decltype(auto) operator>>(this _ThisType&& _Self, std::wstring& _Str)
+	{
+		_Str = std::forward<_ThisType>(_Self).ReadLineW();
+		return std::forward<_ThisType>(_Self);
+	}
+
+	template <typename _ThisType, typename _Type>
+	decltype(auto) operator<<(this _ThisType&& _Self, const _Type& _Value)
+		requires (!TypeTraits::IsStringValue<_Type>)
+	{
+		if constexpr (std::is_trivially_copy_assignable_v<_Type>)
+		{
+			if (_Self._IsByteMode)
+			{
+				if (_Self.Write(&_Value, sizeof(_Type), 1) != 1)
+					_D_Dragonian_Lib_Throw_Exception("Failed to write data to stream");
+				return std::forward<_ThisType>(_Self);
+			}
+		}
+		if (!_Self.WriteStr(CvtToString(_Value)))
+			_D_Dragonian_Lib_Throw_Exception("Failed to write data to stream");
+		return std::forward<_ThisType>(_Self);
+	}
+
+	template <typename _ThisType, typename _Type>
+	decltype(auto) operator>>(this _ThisType&& _Self, _Type& _Value)
+	{
+		if constexpr (std::is_trivially_copy_assignable_v<_Type>)
+		{
+			if (std::forward<_ThisType>(_Self)._IsByteMode)
+			{
+				if (std::forward<_ThisType>(_Self).Read(&_Value, sizeof(_Type), sizeof(_Type), 1) != 1)
+					_D_Dragonian_Lib_Throw_Exception("Failed to read data from stream");
+				return std::forward<_ThisType>(_Self);
+			}
+		}
+		if (!ReadInstanceFromStream(std::forward<_ThisType>(_Self), _Value))
+			_D_Dragonian_Lib_Throw_Exception("Failed to read data from stream");
+		return std::forward<_ThisType>(_Self);
+	}
+
+	std::string FindNextNumber() const;
+
+protected:
+	bool _IsByteMode = false;
+};
+
+class FileStream final : public ByteStream
+{
+public:
+	FileStream() = default;
+
+	explicit FileStream(const std::wstring& _Path, const std::wstring& _Mode);
+	explicit FileStream(const std::string& _Path, const std::string& _Mode);
+
+	explicit FileStream(const std::wstring& _Path, const wchar_t* _Mode);
+	explicit FileStream(const std::string& _Path, const char* _Mode);
+
+	explicit FileStream(const wchar_t* _Path, const std::wstring& _Mode);
+	explicit FileStream(const char* _Path, const std::string& _Mode);
+
+	explicit FileStream(const wchar_t* _Path, const wchar_t* _Mode);
+	explicit FileStream(const char* _Path, const char* _Mode);
+
+	void Open(const std::wstring& _Path, const std::wstring& _Mode);
+	void Open(const std::wstring& _Path, const wchar_t* _Mode);
+	void Open(const wchar_t* _Path, const wchar_t* _Mode);
+
+	void Open() override;
+	void Close() override;
+
+	bool Enabled() const override { return _MyFile.get(); }
+	bool IsFile() const override { return true; }
+	bool IsByteBuffer() const override { return false; }
+
+	Int Seek(Int64 _Offset, Int _Origin) const override;
+	StdSize Tell() const override;
+
+	StdSize Read(void* _Buffer, StdSize _BufferSize, StdSize _ElementSize, StdSize _Count = 1) const override;
+	StdSize Write(const void* _Buffer, StdSize _ElementSize, StdSize _Count = 1) override;
+
+	void* GetHandle() override;
+	const void* GetHandle() const override;
+	void* ReleaseHandle() override;
+
+	std::string ReadLine() const override;
+	std::wstring ReadLineW() const override;
+	bool WriteString(const char* _Str) override;
+	bool WriteString(const wchar_t* _Str) override;
+
+	operator FILE* () const { return _MyFile.get(); }
+	FILE* Release() const { return _MyFile.get(); }
+
+private:
+	void ReOpen(const wchar_t* _Path, const wchar_t* _Mode);
+	std::shared_ptr<FILE> _MyFile = nullptr;
+	SharedMutex _MyMutex;
+};
+using FileGuard = FileStream;
+
+class ByteIO final : public ByteStream
+{
+public:
+	ByteIO(bool _Byte = true) { _MyCur = _MyLast = _MyBuffer.Get(); _IsByteMode = _Byte; }
+
+	StdSize RemainderCapacity() const;
+	StdSize RemainderSize() const;
+	StdSize Remainder() const;
+	StdSize Size() const;
+	StdSize Capacity() const;
+
+	Byte* End() const { return _MyLast; }
+	Byte* Begin() const { return _MyCur; }
+	Byte* end() const { return _MyLast; }
+	Byte* begin() const { return _MyCur; }
+	const Byte* CEnd() const { return _MyLast; }
+	const Byte* CBegin() const { return _MyCur; }
+	const Byte* cend() const { return _MyLast; }
+	const Byte* cbegin() const { return _MyCur; }
+	Byte* Data() const { return _MyBuffer.Data(); }
+	Byte* data() const { return _MyBuffer.Data(); }
+	Byte* Get() const { return _MyBuffer.Get(); }
+	Byte* get() const { return _MyBuffer.Get(); }
+
+	void Open() override;
+	void Close() override;
+
+	bool Enabled() const override { return _IsOpen; }
+	bool IsFile() const override { return true; }
+	bool IsByteBuffer() const override { return false; }
+
+	Int Seek(Int64 _Offset, Int _Origin) const override;
+	StdSize Tell() const override;
+
+	StdSize Read(void* _Buffer, StdSize _BufferSize, StdSize _ElementSize, StdSize _Count = 1) const override;
+	StdSize Write(const void* _Buffer, StdSize _ElementSize, StdSize _Count = 1) override;
+
+	void* GetHandle() override;
+	const void* GetHandle() const override;
+	void* ReleaseHandle() override;
+
+	std::string ReadLine() const override;
+	std::wstring ReadLineW() const override;
+	bool WriteString(const char* _Str) override;
+	bool WriteString(const wchar_t* _Str) override;
+
+private:
+	bool _IsOpen = true;
+	SharedMutex _MyMutex;
+	ByteBuffer _MyBuffer{ 65535 };
+	Byte* _MyLast = nullptr;
+	mutable Byte* _MyCur = nullptr;
 };
 
 class UniqueScopeExit

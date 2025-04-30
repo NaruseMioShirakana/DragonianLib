@@ -68,6 +68,8 @@ namespace NumpyFileFormat
 
 	std::pair<Vector<int64_t>, Vector<Byte>> LoadNumpyFile(const std::wstring& _Path);
 
+	std::pair<Vector<int64_t>, Vector<Byte>> LoadRawTextFile(const std::wstring& _Path);
+
 	template <typename ValueType, size_t Rank>
 	void SaveNumpyFile(const std::wstring& _Path, const TemplateLibrary::Array<int64_t, Rank>& _Shape, const Vector<ValueType>& _Data)
 	{
@@ -121,6 +123,8 @@ namespace NumpyFileFormat
 		if (_MyFile.Write(_Buffer, sizeof(ValueType), _ElementCount) != _ElementCount)
 			_D_Dragonian_Lib_Throw_Exception("Failed to write data");
 	}
+
+
 
 }
 

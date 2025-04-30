@@ -1,5 +1,4 @@
-﻿#include "../GPT-SoVits.hpp"
-
+﻿#include "OnnxLibrary/TextToSpeech/Models/GPT-SoVits.hpp"
 #include "Libraries/Util/Logger.h"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 

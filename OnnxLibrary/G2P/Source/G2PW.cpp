@@ -1,4 +1,4 @@
-﻿#include "../G2PW.hpp"
+﻿#include "OnnxLibrary/G2P/G2PW.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 

@@ -7,7 +7,20 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-DLogger& GetThreadLogger(Int64 ThreadId) noexcept
+class ThreadLogger : public Logger
+{
+	ThreadLogger(const ThreadLogger&) = delete;
+	ThreadLogger(ThreadLogger&&) = delete;
+	ThreadLogger& operator=(const ThreadLogger&) = delete;
+	ThreadLogger& operator=(ThreadLogger&&) = delete;
+    ThreadLogger() : Logger(*_D_Dragonian_Lib_Namespace GetDefaultLogger(), L"Thread")
+    {
+	    
+    }
+
+};
+
+static DLogger& GetThreadLogger(Int64 ThreadId) noexcept
 {
 	static DLogger _MyLogger = std::make_shared<Logger>(
         *_D_Dragonian_Lib_Namespace GetDefaultLogger(),
@@ -41,7 +54,7 @@ void ThreadPool::Init(Int64 _ThreadCount) {
 
 void ThreadPool::Run() {
     auto Start = std::chrono::high_resolution_clock::now();
-    while (!Stoped_) {
+    while (!Stoped_ || !Tasks_.empty()) {
         Task task;
         {
             Condition_.acquire();
@@ -67,9 +80,9 @@ void ThreadPool::Run() {
 void ThreadPool::Join()
 {
     Stoped_ = true;
-    Condition_.release((ptrdiff_t)Threads_.size());
+    Condition_.release((ptrdiff_t)std::max(Tasks_.size(), Threads_.size()));
     for (auto& CurTask : Threads_) if (CurTask.joinable()) CurTask.join();
-	while (Condition_.try_acquire()) {}
+    while (Condition_.try_acquire()) {}
     if (LogTime_) GetThreadLogger(std::this_thread::get_id()._Get_underlying_id())->LogInfo(L"All Task Finished!");
 }
 

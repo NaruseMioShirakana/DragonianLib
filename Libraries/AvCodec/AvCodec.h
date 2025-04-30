@@ -23,6 +23,7 @@
 
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Tensor.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -32,10 +33,6 @@ namespace AvCodec
 	double CalculateDB(double rms);
 	double CalculateDB(const float* Begin, const float* End);
 	UInt64 GetAVTimeBase();
-
-	bool RunWithComMultiThread();
-
-	void ComUninitialize();
 
 	struct SlicerSettings
 	{
@@ -557,7 +554,7 @@ namespace AvCodec
 
 			auto Task = [&] -> std::string
 				{
-					if (!RunWithComMultiThread())
+					if (!ComInitialize())
 						return "Error when decode!";
 
 					SharedScopeExit OnExit(ComUninitialize);
@@ -730,7 +727,7 @@ namespace AvCodec
 
 			const auto Task = [&] -> std::string
 				{
-					if (!RunWithComMultiThread())
+					if (!ComInitialize())
 						return "Error when encode!";
 
 					SharedScopeExit OnExit(ComUninitialize);

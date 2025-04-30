@@ -1,4 +1,4 @@
-﻿#include "../Dict.hpp"
+﻿#include "Libraries/Dict/Dict.hpp"
 #include "Libraries/Util/StringPreprocess.h"
 #include "Libraries/MJson/MJson.h"
 

@@ -1,4 +1,4 @@
-﻿#include "../NumpyFileFormat.h"
+﻿#include "Libraries/NumpySupport/NumpyFileFormat.h"
 
 #include <numeric>
 #include <regex>
@@ -67,6 +67,20 @@ namespace NumpyFileFormat
 		if (!_MyFile.Read(Data.Data(), Data.Size(), Data.Size()))
 			_D_Dragonian_Lib_Throw_Exception("Failed to read data");
 		return { std::move(ShapeVec), std::move(Data) };
+	}
+
+	std::pair<Vector<int64_t>, Vector<Byte>> LoadRawTextFile(const std::wstring& _Path)
+	{
+		FileGuard _MyFile(_Path, L"r");
+		if (!_MyFile.Enabled())
+			_D_Dragonian_Lib_Throw_Exception("Failed to open file");
+		Vector<int64_t> ShapeVec;
+		Vector<Byte> Data;
+		std::wstring Line;
+		for (;;)
+		{
+			
+		}
 	}
 }
 

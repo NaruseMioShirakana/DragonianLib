@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "TypeDef.h"
+#include "Libraries/Util/TypeDef.h"
 
 #define _D_Dragonian_Lib_Type_Traits_Namespace_Begin _D_Dragonian_Lib_Space_Begin namespace TypeTraits {
 #define _D_Dragonian_Lib_Type_Traits_Namespace_End } _D_Dragonian_Lib_Space_End
@@ -367,6 +367,8 @@ ExtractCallableInfo<Objt>::_ArgumentTypes;
 
 template<typename FunType, typename ...ArgTypes>
 concept IsInvocableValue = std::is_invocable_v<FunType, ArgTypes...>;
+template<typename ReturnType, typename FunType, typename ...ArgTypes>
+concept IsInvocableReturnValue = std::is_invocable_v<FunType, ArgTypes...>&& std::is_convertible_v<std::invoke_result_t<FunType, ArgTypes...>, ReturnType>;
 
 template <int64_t Idx, int64_t Range>
 struct CalculateIndex

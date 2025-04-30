@@ -1,4 +1,4 @@
-﻿#include "../Nsf-Hifigan.hpp"
+﻿#include "OnnxLibrary/Vocoder/Nsf-Hifigan.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 

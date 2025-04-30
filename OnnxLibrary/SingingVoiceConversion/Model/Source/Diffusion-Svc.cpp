@@ -1,4 +1,4 @@
-﻿#include "../Diffusion-Svc.hpp"
+﻿#include "OnnxLibrary/SingingVoiceConversion/Model/Diffusion-Svc.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 #include "OnnxLibrary/SingingVoiceConversion/Model/Samplers.hpp"
 

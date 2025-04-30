@@ -1,4 +1,4 @@
-﻿#include "../Alloc.h"
+﻿#include "Libraries/MyTemplateLibrary/Alloc.h"
 #include <exception>
 #include <memory>
 #ifdef DRAGONIANLIB_ENABLECUDA

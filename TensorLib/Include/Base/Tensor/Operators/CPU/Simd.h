@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "../OperatorBase.h"
+#include "TensorLib/Include/Base/Tensor/Operators/OperatorBase.h"
 #include <immintrin.h>
 #define _D_Dragonian_Lib_Simd_Not_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(0)))
 #define _D_Dragonian_Lib_Simd_Complement_Mask(_Type) (::DragonianLib::Operators::Vectorized<_Type>((_Type)(-1)))

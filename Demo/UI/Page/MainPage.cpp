@@ -1,13 +1,15 @@
 ﻿#include "MainPage.h"
+
+#include <User/Mui_GlobalStorage.h>
+
 #include "SidePage.h"
-#include "SettingsPage.h"
 #include "../MainWindow.h"
 #include "../DefControl.hpp"
 #include "Libraries/F0Extractor/F0ExtractorManager.hpp"
 
-namespace UI
+namespace SimpleF0Labeler
 {
-	static std::wstring formatTime(float time)
+	static std::wstring FormatTime(float time)
 	{
 		const auto minutes = int(time) / 60;
 		const auto seconds = int(time) % 60;
@@ -16,127 +18,30 @@ namespace UI
 		return oss.str();
 	}
 
-	MainPage::MainPage(Ctrl::UIControl* parent, XML::MuiXML* ui) : Page(parent, ui)
+	bool MainPage::EventProc(
+		Mui::XML::PropName event,
+		Mui::Ctrl::UIControl* control,
+		std::any param
+	)
 	{
-		const std::wstring xml = LR"(
-		<PropGroup id="menubtn" autoSize="false" style="menubtnDark" frame="5,0,40,20" textAlign="5" />
-		<PropGroup id="combox" fontSize="12" style="comboxDark" textAlign="5" fontColor="#textColor"
-		listStyle="listDark" itemStyle="comitemDark" itemHeight="25" autoSize="false" menuHeight="200"
-		iFontColor="#textColor" iTextAlign="5" styleV="scrollDark" button="false" barWidth="6" inset="1,1,1,1"
-		dropIcon="icon_drop_light" />
-
-		<UIControl autoSize="false" size="100%,100%" name="mainPage" align="Absolute">
-			<UIControl autoSize="false" size="100%,20" align="LinearH">
-				<UIButton frame="5,0,60,20" text="导入文件" name="import_file" />
-				<UIButton frame="5,0,60,20" text="导入F0" name="import_f0" />
-				<UIButton frame="5,0,60,20" text="保存所有" name="save_all" />
-			</UIControl>
-			<UIControl autoSize="false" frame="0,25,100%,1" bgColor="#menuline" />
-			<UIControl autoSize="false" frame="0,25,100%,40" align="LinearHL">
-				<IconButton style="menubtn" icon="icon_more_light" autoSize="false" frame="9,9,25,25"
-				iconSize="20,20" offset="0,0,2,2" prop="ani" name="slidebar_show" />
-			</UIControl>
-			<UIControl autoSize="false" frame="162,70,100%,100%" align="Absolute">
-				<UIControl autoSize="false" size="100%,101%" align="LinearHL" pos="0,0">
-					<UIControl autoSize="false" frame="0,0,265,101%" bgColor="#windbgColor" frameWidth="1"
-					frameColor="#menuframe" name="sidepage" align="LinearV" visible="true" />
-					<UIControl autoSize="false" align="LinearVR" size="100%,100%">
-						<UIControl autoSize="false" frame="8,5,8f,135f" align="Absolute">
-		                    <UIControl autoSize="false" frame="0,0,100%,100%" align="LinearVBR">
-		                        <UIImgBox name="curve_background" alpha="70" autoSize="false" frame="0,0,100%,100%" imgStyle="2"  />
-		                    </UIControl>
-		                    <CurveEditor frameColor="#menuframe" frameWidth="1" autoSize="false" frame="0,0,100%,100%" fontColor="#textColor"
-		                    styleH="scrollWavDark" styleV="scrollDark" button="false" name="curve_editor" />
-						</UIControl>
-						<UIProgBar frame="8,1,8f,6" value="30" name="infer_prog" visible="false" />
-						<Waveform frame="8,1,8f,43f" frameColor="#menuframe" frameWidth="1" frameRound="2.f" autoSize="false"
-						name="test" preHeight="0" showLine="false" name="curve_player" />
-						<UIControl autoSize="false" size="100%,100%" align="LinearHL">
-							<UISlider frame="10,8,130,15" value="80" name="editor_vol" />
-							<UIImgBox autoSize="false" frame="10,8,17,17" img="icon_audio_light" />
-							<UIControl autoSize="false" size="100%,100%">
-								<UILabel pos="8,8" text="00:00\00:00" name="editor_time" />
-							</UIControl>
-						</UIControl>
-					</UIControl>
-				</UIControl>
-				<UINavBar autoSize="false" frame="40,15,200,25" name="navbar_editor" fontHoverColor="#textColor" barColor="0,0,0,0" fontSize="14"
-				barAnitime="0" />
-			</UIControl>
-
-			<UIImgBox pos="6,40" size="20,20" img="icon_list_dark" autoSize="false" />
-			<UILabel text="#voicelist" fontSize="14" pos="35,41" fontColor="196,158,166,255" />
-
-			<UIListBox frame="6,70,150,6f" name="audio_list" />
-			<UIControl frame="162,25,1,100%" bgColor="#menuframe" autoSize="false" />
-			<UIControl frame="162,70,100%,1" bgColor="#menuframe" autoSize="false" />
-			<UINavBar pos="180,38" fontHoverColor="#textColor" barColor="92,183,255,255" fontSize="14" name="editernav" />
-		</UIControl>
-		)";
-
-		if(!ui->CreateUIFromXML(parent, xml))
-		{
-			__debugbreak();
-		}
-
-		m_editor = parent->Child<Ctrl::CurveEditor>(L"curve_editor");
-		m_wave = parent->Child<Ctrl::Waveform>(L"curve_player");
-		auto timelabel = parent->Child<Ctrl::UILabel>(L"editor_time");
-		auto callback = [this, timelabel](float pre, float tm)
-		{
-			_m_size ps = 0;
-			if (const auto& data = m_editor->GetCurveData(); !data.Null())
-				ps = size_t(round((float)data.Size(1) * pre));
-			m_editor->SetPlayLinePos(ps);
-			const std::wstring str = formatTime(tm) + L"\\" + formatTime(m_wave->GetDataDuration());
-			timelabel->SetAttribute(L"text", str);
-		};
-		m_wave->SetAudioPlayer(m_player);
-		m_wave->SetPlayCallback(callback);
-		m_list = parent->Child<Ctrl::UIListBox>(L"audio_list");
-		m_page = parent->Child(L"mainPage");
-		m_sidepage = m_page->Child(L"sidepage");
-
-		WndControls::InitCtrl(
-			m_list,
-			m_editor,
-			m_wave
-		);
-
-		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/F0/"); !exists(Directory))
-			create_directories(Directory);
-		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Audio/"); !exists(Directory))
-			create_directories(Directory);
-		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Spec/"); !exists(Directory))
-			create_directories(Directory);
-		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Mel/"); !exists(Directory))
-			create_directories(Directory);
-		//m_editor->SetShowPitch(false);
-	}
-
-	bool MainPage::EventProc(UINotifyEvent event, Ctrl::UIControl* control, _m_param param)
-	{
-		if (MUIEVENT(Event_Mouse_LClick, L"slidebar_show"))
-			dynamic_cast<SidePage*>(FindPage(L"sidepage"))->Show(!m_sidepage->IsVisible());
-		else if (MUIEVENT(Event_Mouse_LClick, L"import_file"))
-			WndControls::LoadFiles(MoeGetHwnd);
-		else if (MUIEVENT(Event_Mouse_LClick, L"import_f0"))
-			WndControls::LoadF0(MoeGetHwnd);
-		else if (MUIEVENT(Event_Mouse_LClick, L"save_all"))
+		if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Clicked.Event(), L"ShowSideBar"))
+			Mui::MObjStorage::GetObjInstance<SidePage*>()->Show();
+		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Clicked.Event(), L"ImportAudio"))
+			WndControls::LoadFiles((HWND)Parent()->UI()->GetOwnerWnd()->GetWindowHandle());
+		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Clicked.Event(), L"ImportF0"))
+			WndControls::LoadF0((HWND)Parent()->UI()->GetOwnerWnd()->GetWindowHandle());
+		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Clicked.Event(), L"SaveAll"))
 			WndControls::SaveAll();
-		else if (MUIEVENT(Event_Slider_Change, L"editor_vol"))
-			m_wave->SetVolume((_m_byte)param);
-		else if (MUIEVENT(Event_ListBox_ItemChanged, L"audio_list"))
+		else if (MUIEVENT(Mui::Ctrl::Events::Slider_Changed.Event(), L"EditorVolume"))
+			m_wave->SetVolume(static_cast<Mui::_m_byte>(std::any_cast<int>(param)));
+		else if (MUIEVENT(Mui::Ctrl::Events::ListBox_ItemChanged.Event(), L"AudioList"))
 			WndControls::SetCurveEditorDataIdx(
-				m_list->GetCurSelItem(),
-				(unsigned)_wcstoi64(
-					m_sidepage->FindChildren<Ctrl::UIEditBox>(L"side_sampling_rate")->GetCurText().c_str(),
-					nullptr, 10
-				)
+				m_list->SelectedItemIndex,
+				static_cast<unsigned>(Mui::MObjStorage::GetObjInstance<SidePage*>()->GetSamplingRate())
 			);
-		else if (MUIEVENT(Event_Mouse_LUp, L"side_use_log_view"))
-			m_editor->SetShowPitch(dynamic_cast<Ctrl::UICheckBox*>(control)->GetSel());
-		else if (event == Event_Key_Down)
+		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Up.Event(), L"SidePageUseLogView"))
+			m_editor->SetShowPitch(dynamic_cast<Mui::Ctrl::UICheckBox*>(control)->Selected);
+		else if (event == Mui::Ctrl::Events::Key_Down.Event())
 		{
 			if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Z') & 0x8000)
 				WndControls::MoeVSUndo();
@@ -153,4 +58,79 @@ namespace UI
 			return false;
 		return true;
 	}
+
+	Mui::Ctrl::UIControl* MainPage::OnLoadPageContent(Mui::Ctrl::UIControl* parent, Mui::XML::MuiXML* ui)
+	{
+		const std::wstring MainPageXml = LR"(
+		<UIControl AutoSize="false" Size="100%,100%" Name="mainPage" Align="Absolute">
+			<UIControl AutoSize="false" Frame="0,0,100%,1" BgColor="#Menuline" />
+			<UIControl AutoSize="false" Frame="0,0,100%,31" Align="LinearHL">
+				<UIIconBtn AutoSize="false" Frame="3,3,23,23" IconSize="20,20" IconOffset="0,0,2,2" Prop="ani" Name="ShowSideBar" />
+			</UIControl>
+			<UIControl AutoSize="false" Frame="162,30,100%,100%" Align="Absolute">
+				<UIControl AutoSize="false" Size="100%,101%" Align="LinearHL" Pos="0,0">
+					<UIControl AutoSize="false" Frame="0,0,265,101%" BgColor="#WindowBackGroundColor" FrameWidth="1" FrameColor="#MenuFrame" Name="SidePage" Align="LinearV" Visible="true" />
+					<UIControl AutoSize="false" Align="LinearVR" Size="100%,100%">
+						<UIControl AutoSize="false" Frame="8,5,8f,135f" Align="Absolute">
+		                    <CurveEditor FrameColor="#MenuFrame" FrameWidth="1" AutoSize="false" Frame="0,0,100%,100%" FontColor="#TextColor" Button="false" Name="F0Editor" />
+						</UIControl>
+						<Waveform Frame="8,1,8f,43f" FrameColor="#MenuFrame" FrameWidth="1" FrameRound="2.f" AutoSize="false" PreHeight="0" ShowLine="false" Name="EditorPlayer" />
+						<UIControl AutoSize="false" Size="100%,100%" Align="LinearHL">
+							<UISlider Frame="10,8,130,15" Value="80" Name="EditorVolume" />
+							<UIImgBox AutoSize="false" Frame="10,8,17,17" />
+							<UIControl AutoSize="false" Size="100%,100%">
+								<UILabel Pos="8,8" Text="00:00\00:00" Name="EditorTime" />
+							</UIControl>
+						</UIControl>
+					</UIControl>
+				</UIControl>
+			</UIControl>
+
+			<UIImgBox Pos="6,5" Size="20,20" AutoSize="false" />
+			<UILabel Text="#AudioList" FontSize="14" Pos="35,6" FontColor="196,158,166,255" />
+
+			<UIListBox Frame="6,30,150,6f" Name="AudioList" />
+			<UIControl Frame="162,0,1,100%" BgColor="#MenuFrame" AutoSize="false" />
+			<UIControl Frame="162,30,100%,1" BgColor="#MenuFrame" AutoSize="false" />
+		
+		</UIControl>
+		)";
+
+		if (!ui->CreateUIFromXML(parent, MainPageXml))
+			__debugbreak();
+
+		m_editor = parent->Child<CurveEditor>(L"F0Editor");
+		m_wave = parent->Child<Waveform>(L"EditorPlayer");
+		auto timelabel = parent->Child<Mui::Ctrl::UILabel>(L"EditorTime");
+		auto callback = [this, timelabel](float pre, float tm)
+			{
+				Mui::_m_size ps = 0;
+				if (const auto& data = m_editor->GetCurveData(); !data.Null())
+					ps = size_t(round((float)data.Size(1) * pre));
+				m_editor->SetPlayLinePos(ps);
+				const std::wstring str = FormatTime(tm) + L"\\" + FormatTime(m_wave->GetDataDuration());
+				timelabel->SetAttribute(L"text", str);
+			};
+		m_wave->SetAudioPlayer(Mui::MObjStorage::GetObj<Mui::Render::MDS_AudioPlayer>().get());
+		m_wave->SetPlayCallback(callback);
+		m_list = parent->Child<Mui::Ctrl::UIListBox>(L"AudioList");
+
+		WndControls::InitCtrl(
+			m_list,
+			m_editor,
+			m_wave
+		);
+
+		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/F0/"); !exists(Directory))
+			create_directories(Directory);
+		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Audio/"); !exists(Directory))
+			create_directories(Directory);
+		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Spec/"); !exists(Directory))
+			create_directories(Directory);
+		if (auto Directory = std::filesystem::path(DragonianLib::GetCurrentFolder() + L"/User/Mel/"); !exists(Directory))
+			create_directories(Directory);
+		//m_editor->SetShowPitch(false);
+		return parent->Child(L"mainPage");
+	}
+
 }

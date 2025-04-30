@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "BaseCluster.hpp"
+#include "Libraries/Cluster/BaseCluster.hpp"
 #include "Libraries/PluginBase/PluginBase.h"
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin

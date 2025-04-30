@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "CPU.h"
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/CPU.h"
 
 _D_Dragonian_Lib_Operator_Space_Begin
 

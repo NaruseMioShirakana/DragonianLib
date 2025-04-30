@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Util.h"
+#include "Libraries/Util/Util.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -35,7 +35,7 @@ public:
 	virtual ~Logger() noexcept;
 	virtual void Log(const std::wstring& _Message, LogLevel _Level = LogLevel::Info, const wchar_t* _NameSpace = nullptr) noexcept;
 
-private:
+protected:
 	LoggerFunction _MyLoggerFn;
 	std::wstring _MyId = L"DragonianLib";
 	LogLevel _MyLevel = LogLevel::Info;
@@ -48,9 +48,9 @@ public:
 	Logger& operator=(const Logger&) = default;
 	Logger& operator=(Logger&&) = default;
 
-	void SetLoggerId(const std::wstring& Id) noexcept { _MyId = Id; }
-	void SetLoggerLevel(LogLevel Level) noexcept { _MyLevel = Level; }
-	void SetLoggerFunction(LoggerFunction Function) noexcept { _MyLoggerFn = Function; }
+	void SetLoggerId(const std::wstring& Id) noexcept;
+	void SetLoggerLevel(LogLevel Level, bool WithChild = false) noexcept;
+	void SetLoggerFunction(LoggerFunction Function, bool WithChild = false) noexcept;
 
 	template <typename _ThisType>
 	decltype(auto) GetLoggerId(this _ThisType&& _Self) noexcept
@@ -64,6 +64,9 @@ public:
 	void LogMessage(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Info, _NameSpace); }
 	void LogInfo(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Info, _NameSpace); }
 	void LogError(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Error, _NameSpace); }
+
+private:
+	mutable std::vector<Logger*> _MyChildLoggers;
 };
 
 using DLogger = std::shared_ptr<Logger>;

@@ -1,4 +1,4 @@
-﻿#include "../WaveGlow.hpp"
+﻿#include "OnnxLibrary/Vocoder/WaveGlow.hpp"
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 

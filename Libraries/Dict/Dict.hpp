@@ -23,6 +23,7 @@
 
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Tensor.h"
+#include "Libraries/MyTemplateLibrary/Vector.h"
 
 #define _D_Dragonian_Lib_Dict_Header _D_Dragonian_Lib_Space_Begin namespace Dict {
 #define _D_Dragonian_Lib_Dict_End _D_Dragonian_Lib_Space_End }

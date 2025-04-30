@@ -1,18 +1,38 @@
 ﻿#pragma once
 #include "../MainWindow.h"
+#include "../Extend/Waveform.h"
+#include "../Extend/CurveEditor.h"
 
-namespace UI
+namespace SimpleF0Labeler
 {
-	using namespace Mui;
-
 	//UI主页面
-	class MainPage : public Page
+	class MainPage : public Mui::UIPage
 	{
 	public:
-		MainPage(Ctrl::UIControl* parent, XML::MuiXML* ui);
+		MainPage(
+			Mui::UIPage* root
+		) : UIPage(root)
+		{
 
-		bool EventProc(UINotifyEvent event, Ctrl::UIControl* control, _m_param param) override;
+		}
+
+	protected:
+		friend class MainWindow;
+		bool EventProc(
+			Mui::XML::PropName event,
+			Mui::Ctrl::UIControl* control,
+			std::any param
+		) override;
+
 	private:
-		Ctrl::UIControl* m_sidepage = nullptr;
+		Mui::Ctrl::UIControl* OnLoadPageContent(
+			Mui::Ctrl::UIControl* parent,
+			Mui::XML::MuiXML* ui
+		) override;
+
+	protected:
+		Waveform* m_wave = nullptr;
+		CurveEditor* m_editor = nullptr;
+		Mui::Ctrl::UIListBox* m_list = nullptr;
 	};
 }

@@ -1,4 +1,4 @@
-﻿#include "../Demix.hpp"
+﻿#include "OnnxLibrary/Demix/Demix.hpp"
 #include "OnnxLibrary/Base/Source/OrtDlib.hpp"
 
 _D_Dragonian_Lib_Onnx_Demix_Header
@@ -42,7 +42,7 @@ TemplateLibrary::Vector<SignalTensor> Demix::Forward(
 		Spec.Size(3),
 		2
 	);
-	
+
 	auto Rest = Spec.Size(2);
 	SizeType Offset = 0;
 	const auto HopLength = Params.SegmentSize / 2;
