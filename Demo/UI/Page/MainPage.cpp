@@ -37,10 +37,11 @@ namespace SimpleF0Labeler
 		else if (MUIEVENT(Mui::Ctrl::Events::ListBox_ItemChanged.Event(), L"AudioList"))
 			WndControls::SetCurveEditorDataIdx(
 				m_list->SelectedItemIndex,
-				static_cast<unsigned>(Mui::MObjStorage::GetObjInstance<SidePage*>()->GetSamplingRate())
+				static_cast<unsigned>(Mui::MObjStorage::GetObjInstance<SidePage*>()->GetSamplingRate()),
+				Mui::MObjStorage::GetObjInstance<SidePage*>()->IsUsingLogSpec()
 			);
 		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Up.Event(), L"SidePageUseLogView"))
-			m_editor->SetShowPitch(dynamic_cast<Mui::Ctrl::UICheckBox*>(control)->Selected);
+			m_editor->SetShowPitch(Mui::MObjStorage::GetObjInstance<SidePage*>()->IsUsingLogView());
 		else if (event == Mui::Ctrl::Events::Key_Down.Event())
 		{
 			if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Z') & 0x8000)
@@ -72,7 +73,7 @@ namespace SimpleF0Labeler
 					<UIControl AutoSize="false" Frame="0,0,265,101%" BgColor="#WindowBackGroundColor" FrameWidth="1" FrameColor="#MenuFrame" Name="SidePage" Align="LinearV" Visible="true" />
 					<UIControl AutoSize="false" Align="LinearVR" Size="100%,100%">
 						<UIControl AutoSize="false" Frame="8,5,8f,135f" Align="Absolute">
-		                    <CurveEditor FrameColor="#MenuFrame" FrameWidth="1" AutoSize="false" Frame="0,0,100%,100%" FontColor="#TextColor" Button="false" Name="F0Editor" />
+		                    <CurveEditor FrameColor="#MenuFrame" FrameWidth="1" AutoSize="false" Frame="0,0,100%,100%" FontColor="#TextColor" Button="false" Name="F0Editor"/>
 						</UIControl>
 						<Waveform Frame="8,1,8f,43f" FrameColor="#MenuFrame" FrameWidth="1" FrameRound="2.f" AutoSize="false" PreHeight="0" ShowLine="false" Name="EditorPlayer" />
 						<UIControl AutoSize="false" Size="100%,100%" Align="LinearHL">

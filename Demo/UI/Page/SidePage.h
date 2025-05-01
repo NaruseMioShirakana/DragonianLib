@@ -19,6 +19,7 @@ namespace SimpleF0Labeler
 		float GetPitch() const;
 		int64_t GetSamplingRate() const;
 		bool IsUsingLogView() const;
+		bool IsUsingLogSpec() const;
 
 	protected:
 		friend class MainWindow;
@@ -39,7 +40,8 @@ namespace SimpleF0Labeler
 		std::shared_ptr<Mui::MAnimation> _MyAnimation = nullptr;
 		Mui::Ctrl::UIControl* _MyPageContent = nullptr;
 		Mui::Ctrl::UIEditBox* _MySamplingRateEditBox = nullptr;
-		Mui::Ctrl::UICheckBox* _MyLogViewCheckBox = nullptr;
+		Mui::Ctrl::UISwitch* _MyLogViewCheckBox = nullptr;
+		Mui::Ctrl::UISwitch* _MyLogSpecCheckBox = nullptr;
 		Mui::Ctrl::UIEditBox* _MyAlphaEditBox = nullptr;
 		Mui::Ctrl::UIEditBox* _MyBetaEditBox = nullptr;
 		Mui::Ctrl::UIEditBox* _MyPitchEditBox = nullptr;

@@ -6,18 +6,6 @@
 
 #define MoeMessageBox(title, text, cap, hwnd) MessageBoxW(hwnd, GetLocalizationString(text).c_str(), GetLocalizationString(title).c_str(), (cap))
 
-#define MoeMessageBoxQ(title, text, cap, hwnd) MessageBoxW(hwnd, (text), (title), (cap))
-
-#define MoeMessageBoxC(title, text, cap) MoeMessageBox(title, text, cap, hwnd)
-
-#define MoeMessageBoxAskC(title, text) MoeMessageBox(title, text, MB_YESNO | MB_ICONASTERISK, hwnd)
-
-#define MoeMessageBoxAsk(title, text, hwnd) MoeMessageBox(title, text, MB_YESNO | MB_ICONASTERISK, (hwnd))
-
-#define MoeGetHwnd (HWND)this->m_parent->GetParentWin()->GetWindowHandle()
-
-std::wstring GetLocalizationString(const std::wstring_view& _Str);
-
 namespace WndControls
 {
 	constexpr DragonianLib::Int64 SpecSamplingRate = 16000;
@@ -34,6 +22,8 @@ namespace WndControls
 		SimpleF0Labeler::CurveEditor* CurveEditor = nullptr,
 		SimpleF0Labeler::Waveform* CurvePlayer = nullptr
 	);
+
+	std::wstring Localization(const std::wstring_view& _Str);
 
 	void AppendUndo();
 
@@ -55,7 +45,7 @@ namespace WndControls
 
 	void SetLanguageXML(Mui::XML::MuiXML* xml);
 
-	void SetCurveEditorDataIdx(int AudioIdx, unsigned SamplingRate);
+	void SetCurveEditorDataIdx(int AudioIdx, unsigned SamplingRate, bool UseLogSpec);
 
 	void DeleteAudio(int idx);
 

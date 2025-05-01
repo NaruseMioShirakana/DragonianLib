@@ -146,9 +146,11 @@ namespace SimpleF0Labeler
 			if (control->GetName() == L"MainClose")
 			{
 				const HWND& hwnd = hWnd;
-				const int ret = MoeMessageBoxAskC(
-					L"MainClose::Title",
-					L"MainClose::Desc"
+				const int ret = MessageBoxW(
+					hwnd,
+					WndControls::Localization(L"MainClose::Desc").c_str(),
+					WndControls::Localization(L"MainClose::Title").c_str(),
+					MB_YESNO | MB_ICONASTERISK
 				);
 				if (ret == IDNO)
 					return true;
@@ -220,18 +222,22 @@ namespace SimpleF0Labeler
 					<!--ButtonStyle="StyleMinimumButton"-->
 					<UIButton Name="MainMinSize" Size="33,30" />
 				</UIControl>
-				<UIControl AutoSize="false" Size="50%,30" Align="LinearH">
+				<UIControl AutoSize="true" Size="50%,30" Align="LinearH">
 					<UIButton Frame="0,0,100,30" Text="#ImportAudio" Name="ImportAudio" />
 					<UIButton Frame="0,0,100,30" Text="#ImportF0" Name="ImportF0" />
 					<UIButton Frame="0,0,100,30" Text="#SaveAll" Name="SaveAll" />
 				</UIControl>
-				
 			</UIControl>
 		)";
 
 		if (!ui->CreateUIFromXML(parent, xml))
 			__debugbreak();
-
+		auto ImportAudio = parent->FindChildren<Mui::Ctrl::UIButton>(L"ImportAudio");
+		auto ImportF0 = parent->FindChildren<Mui::Ctrl::UIButton>(L"ImportF0");
+		auto SaveAll = parent->FindChildren<Mui::Ctrl::UIButton>(L"SaveAll");
+		ImportAudio->SetSize(ImportAudio->GetTextMetric().width, ImportAudio->GetSize().height, true);
+		ImportF0->SetSize(ImportF0->GetTextMetric().width, ImportF0->GetSize().height, true);
+		SaveAll->SetSize(SaveAll->GetTextMetric().width, SaveAll->GetSize().height, true);
 		_MyRoot = parent->Child(L"MyMainPage");
 		return _MyRoot;
 	}

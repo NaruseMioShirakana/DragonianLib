@@ -2,11 +2,11 @@
 
 _D_Dragonian_Lib_Operator_Space_Begin
 
-ThreadPool _Valdef_My_Thread_Pool{ 1 };
-ThreadPool _Valdef_My_Task_Pool{ 1 };
-SizeType _Valdef_Global_Max_Task_Count_Per_Operator = 1;
-bool _Flag_Instant_Run = true;
-std::atomic_uint64_t _Valdef_Global_Random_Device_Id = 0;
+static inline ThreadPool _Valdef_My_Thread_Pool{ 1 };
+static inline ThreadPool _Valdef_My_Task_Pool{ 1, L"[DragonianLib]", L"Worker of user defined operators" };
+static inline SizeType _Valdef_Global_Max_Task_Count_Per_Operator = 1;
+static inline bool _Flag_Instant_Run = true;
+static inline std::atomic_uint64_t _Valdef_Global_Random_Device_Id = 0;
 
 ThreadPool& GetThreadPool()
 {

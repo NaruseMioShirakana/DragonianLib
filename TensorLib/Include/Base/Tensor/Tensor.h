@@ -2078,8 +2078,11 @@ public:
 			return false;
 
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
-		for (SizeType i = 1; i < _NRank; ++i)
-			if (_MyViewStride[i - 1] % _MyShape[i] || _MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
+		for (SizeType i = 1; std::cmp_less(i, _NRank); ++i)
+			if (_MyViewStride[i - 1] <= 0 ||
+				_MyViewStride[i - 1] % _MyShape[i] ||
+				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
+				Diff % _MyShape[i])
 				return false;
 		return true;
 	}
@@ -2102,9 +2105,15 @@ public:
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcIterator(_End, Rank());
 
+		if (_MyViewStride[_End - 1] != 1)
+			return false;
+
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
-		for (SizeType i = _Begin; i < _End; ++i)
-			if (_MyViewStride[i - 1] % _MyShape[i] || _MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] || Diff % _MyShape[i])
+		for (SizeType i = _Begin + 1; i < _End; ++i)
+			if (_MyViewStride[i - 1] <= 0 ||
+				_MyViewStride[i - 1] % _MyShape[i] ||
+				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
+				Diff % _MyShape[i])
 				return false;
 		return true;
 	}

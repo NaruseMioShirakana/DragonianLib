@@ -14,7 +14,7 @@ namespace SimpleF0Labeler
 		CurveEditor(UIControl* parent);
 		~CurveEditor() override;
 
-		void SetCurveData(const FloatTensor2D& data, const ImageTensor& spec);
+		void SetCurveData(const FloatTensor2D& data, const ImageTensor& spec, const ImageTensor& spec_logview);
 
 		void ReSetCurveData(const FloatTensor2D& data, int64_t idx);
 
@@ -65,7 +65,7 @@ namespace SimpleF0Labeler
 
 		void DrawPlayeLine(Mui::_m_scale scale, MPCPaintParam param) const;
 
-		void CalcRangeViewV() const;
+		void CalcRangeViewV();
 
 		void CalcRangeViewH(const Mui::UIPoint& point, short delta);
 
@@ -85,14 +85,17 @@ namespace SimpleF0Labeler
 
 		float GetFpOffset(float PointX) const;
 
+		void OnScrollView(UIScroll*, int dragValue, bool horizontal);
+
 		std::mutex mx;
 
 		Mui::Render::MBrushPtr m_brush_m = nullptr;
 		Mui::Render::MFontPtr m_font = nullptr;
 
 		Mui::_m_color m_lineColor = Mui::Color::M_White;
-		Mui::_m_color m_curveColor = Mui::Color::M_RGBA(86, 179, 231, 255);
+		Mui::_m_color m_curveColor[10];
 		Mui::_m_color m_fontColor = Mui::Color::M_Black;
+		Mui::_m_color m_backColor = Mui::Color::M_Black;
 		Mui::_m_uint m_fontSize = 12;
 		std::wstring m_fontName = Mui::M_DEF_SYSTEM_FONTNAME;
 
@@ -127,6 +130,7 @@ namespace SimpleF0Labeler
 
 		FloatTensor2D m_f0data;
 		ImageTensor m_specData;
+		ImageTensor m_specLogView;
 
 		bool m_lisdown = false;
 		Mui::UIPoint m_llastPos;

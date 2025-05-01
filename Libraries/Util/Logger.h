@@ -22,7 +22,7 @@
  */
 
 #pragma once
-#include "Libraries/Util/Util.h"
+#include "Libraries/Base.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -43,9 +43,9 @@ protected:
 public:
 	Logger(std::wstring _LoggerId = L"DragonianLib", LogLevel _LogLevel = LogLevel::Info, LoggerFunction _LogFunction = nullptr) noexcept;
 	Logger(const Logger& _Parent, const std::wstring& _NameSpace) noexcept;
-	Logger(const Logger&) = default;
+	Logger(const Logger&) = delete;
+	Logger& operator=(const Logger&) = delete;
 	Logger(Logger&&) = default;
-	Logger& operator=(const Logger&) = default;
 	Logger& operator=(Logger&&) = default;
 
 	void SetLoggerId(const std::wstring& Id) noexcept;
@@ -65,8 +65,11 @@ public:
 	void LogInfo(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Info, _NameSpace); }
 	void LogError(const std::wstring& _Message, const wchar_t* _NameSpace = nullptr) noexcept { Log(_Message, LogLevel::Error, _NameSpace); }
 
+	void EmplaceChild(Logger* _Child) const;
+
 private:
 	mutable std::vector<Logger*> _MyChildLoggers;
+	SharedMutex _MyMutex;
 };
 
 using DLogger = std::shared_ptr<Logger>;

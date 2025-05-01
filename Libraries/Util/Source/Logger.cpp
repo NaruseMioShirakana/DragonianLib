@@ -13,7 +13,7 @@ Logger::Logger(std::wstring _LoggerId, LogLevel _LogLevel, LoggerFunction _LogFu
 Logger::Logger(const Logger& _Parent, const std::wstring& _NameSpace) noexcept
 	: _MyLoggerFn(_Parent._MyLoggerFn), _MyId(_Parent._MyId + L"::" + _NameSpace), _MyLevel(_Parent._MyLevel)
 {
-	_Parent._MyChildLoggers.emplace_back(this);
+	_Parent.EmplaceChild(this);
 }
 
 void Logger::Log(const std::wstring& _Message, LogLevel _Level, const wchar_t* _NameSpace) noexcept
@@ -36,8 +36,6 @@ void Logger::Log(const std::wstring& _Message, LogLevel _Level, const wchar_t* _
 	}
 }
 
-
-
 void Logger::SetLoggerId(const std::wstring& Id) noexcept
 {
 	_MyId = Id;
@@ -45,6 +43,7 @@ void Logger::SetLoggerId(const std::wstring& Id) noexcept
 
 void Logger::SetLoggerLevel(LogLevel Level, bool WithChild) noexcept
 {
+	std::lock_guard lg(_MyMutex);
 	_MyLevel = Level;
 	if (WithChild)
 		for (auto& Child : _MyChildLoggers)
@@ -53,6 +52,7 @@ void Logger::SetLoggerLevel(LogLevel Level, bool WithChild) noexcept
 
 void Logger::SetLoggerFunction(LoggerFunction Function, bool WithChild) noexcept
 {
+	std::lock_guard lg(_MyMutex);
 	_MyLoggerFn = Function;
 	if (WithChild)
 		for (auto& Child : _MyChildLoggers)
@@ -63,6 +63,14 @@ DLogger& GetDefaultLogger() noexcept
 {
 	static std::shared_ptr<Logger> DefaultLogger = std::make_shared<Logger>();
 	return DefaultLogger;
+}
+
+void Logger::EmplaceChild(Logger* _Child) const
+{
+	if (_Child == this)
+		return;
+	std::lock_guard lg(_MyMutex);
+	_MyChildLoggers.emplace_back(_Child);
 }
 
 _D_Dragonian_Lib_Space_End

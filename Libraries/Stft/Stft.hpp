@@ -163,7 +163,7 @@ namespace FunctionTransform
 
 		auto GetFreqPerBin(Int64 SamplingRate) const
 		{
-			return double(SamplingRate) / 2. / double(FFT_BINS);
+			return double(SamplingRate) / 2. / double(FFT_BINS - 1);
 		}
 
 		void SetHopSize(int HopSize)

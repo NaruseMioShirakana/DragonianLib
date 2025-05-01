@@ -69,18 +69,12 @@ namespace NumpyFileFormat
 		return { std::move(ShapeVec), std::move(Data) };
 	}
 
-	std::pair<Vector<int64_t>, Vector<Byte>> LoadRawTextFile(const std::wstring& _Path)
+	Vector<int64_t> LoadRawTextFile(const std::wstring& _Path)
 	{
 		FileGuard _MyFile(_Path, L"r");
 		if (!_MyFile.Enabled())
 			_D_Dragonian_Lib_Throw_Exception("Failed to open file");
-		Vector<int64_t> ShapeVec;
-		Vector<Byte> Data;
-		std::wstring Line;
-		for (;;)
-		{
-			
-		}
+		return {};
 	}
 }
 

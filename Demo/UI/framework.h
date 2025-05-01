@@ -50,27 +50,35 @@ namespace SimpleF0Labeler
 			DragonianLib::Int64 _SamplingRate,
 			FloatTensor2D _Audio,
 			FloatTensor2D _F0,
-			ImageTensor _Spec,
-			ImageTensor _Mel,
+			FloatTensor2D _RawSpec,
+			FloatTensor2D _RawMel,
 			std::wstring _F0Path,
+			bool _UseLogSpec,
 			bool _Modified
 		) :
 			SamplingRate(_SamplingRate),
 			Audio(std::move(_Audio)),
 			F0(std::move(_F0)),
-			Spec(std::move(_Spec)),
-			Mel(std::move(_Mel)),
+			RawSpec(std::move(_RawSpec)),
+			RawMel(std::move(_RawMel)),
 			F0Path(std::move(_F0Path))
 		{
 			if (_Modified)
 				ModifyCount = 1;
+			CalcSpec(_UseLogSpec);
 		}
+
+		void CalcSpec(bool _UseLogSpec);
 
 		DragonianLib::Int64 SamplingRate;
 		FloatTensor2D Audio;
 		FloatTensor2D F0;
+		FloatTensor2D RawSpec;
+		FloatTensor2D RawMel;
 		ImageTensor Spec;
 		ImageTensor Mel;
+		ImageTensor LogSpec;
+		ImageTensor LogMel;
 		std::wstring F0Path;
 		int64_t ModifyCount = 0;
 		std::deque<FloatTensor2D> UndoList, RedoList;

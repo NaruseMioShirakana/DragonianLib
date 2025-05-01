@@ -44,7 +44,11 @@ class ThreadPool {
 public:
     using Task = std::function<void()>;
 
-    ThreadPool(Int64 _ThreadCount = 0);
+    ThreadPool(
+        Int64 _ThreadCount = 0,
+        std::wstring _Name = L"[DragonianLib]",
+        std::wstring _Desc = L"Worker of cpu operators"
+    );
     ~ThreadPool();
 
     template <typename _FunTy, typename... _ArgsTy>
@@ -114,6 +118,9 @@ private:
     Int64 ThreadCount_ = 0;
     bool LogTime_ = false;
     bool InstantRun_ = true;
+
+    std::wstring Name_;
+    std::wstring Desc_;
 
     void Run();
 	ThreadPool(const ThreadPool&) = delete;

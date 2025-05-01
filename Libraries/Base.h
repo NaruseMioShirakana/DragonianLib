@@ -81,6 +81,18 @@ private:
 	std::shared_ptr<std::mutex> _MyMutex;
 };
 
+template <typename _Type>
+class Atomic
+{
+public:
+	Atomic() = delete;
+
+
+protected:
+	std::shared_ptr<_Type> _MyVal;
+	SharedMutex _MyMutex;
+};
+
 class ByteBuffer
 {
 public:

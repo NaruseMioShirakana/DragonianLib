@@ -1,6 +1,7 @@
 ﻿#include "CurveEditor.h"
 #include <random>
 #include "../DefControl.hpp"
+#include "TensorLib/Include/Base/Tensor/Functional.h"
 
 #define append_jump_discontinuity do{ \
 jump_discontinuity.emplace_back(\
@@ -38,6 +39,21 @@ namespace SimpleF0Labeler
 		}
 	};
 
+	static _m_color GetColor(const std::wstring& Symbol)
+	{
+		const auto Color = WndControls::Localization(Symbol);
+		static const std::wregex Reg(LR"([ ]?([0-9]+)[ ]?,[ ]?([0-9]+)[ ]?,[ ]?([0-9]+)[ ]?,[ ]?([0-9]+)[ ]?)");
+		std::wsmatch Mat;
+		if (std::regex_match(Color, Mat, Reg))
+			return Color::M_RGBA(
+				(_m_byte)std::wcstol(Mat[1].str().c_str(), nullptr, 10),
+				(_m_byte)std::wcstol(Mat[2].str().c_str(), nullptr, 10),
+				(_m_byte)std::wcstol(Mat[3].str().c_str(), nullptr, 10),
+				(_m_byte)std::wcstol(Mat[4].str().c_str(), nullptr, 10)
+			);
+		throw MError("Illegal color text!");
+	}
+
 	void CurveEditor::Register()
 	{
 		Mui::XML::RegisterControl(
@@ -53,6 +69,8 @@ namespace SimpleF0Labeler
 
 		Horizontal = true;
 		BarWidth = m_preHeight;
+
+		Callback = [this](UIScroll* PH1, int PH2, bool PH3) {OnScrollView(PH1, PH2, PH3); };
 
 		m_sidebar = new UIScroll(this);
 		m_sidebar->Vertical = true;
@@ -73,6 +91,9 @@ namespace SimpleF0Labeler
 			MidiOutHandle = MidioutH;
 		else
 			MidiOutHandle = nullptr;
+		m_backColor = GetColor(L"WindowBackGroundColor");
+		for (int i = 0; i < 10; ++i)
+			m_curveColor[i] = GetColor(L"CurveColor" + std::to_wstring(i));
 	}
 
 	CurveEditor::~CurveEditor()
@@ -83,10 +104,10 @@ namespace SimpleF0Labeler
 			MidiOutOpen = false;
 		}
 		selected_f0_begin = selected_f0_end = nullptr;
-		SetCurveData(std::nullopt, std::nullopt);
+		SetCurveData(std::nullopt, std::nullopt, std::nullopt);
 	}
 
-	void CurveEditor::SetCurveData(const FloatTensor2D& data, const ImageTensor& spec)
+	void CurveEditor::SetCurveData(const FloatTensor2D& data, const ImageTensor& spec, const ImageTensor& spec_logview)
 	{
 		{
 			std::lock_guard lock(mx);
@@ -99,6 +120,10 @@ namespace SimpleF0Labeler
 				m_specData = spec.View();
 			else
 				m_specData = std::nullopt;
+			if (spec_logview.HasValue())
+				m_specLogView = spec_logview.View();
+			else
+				m_specLogView = std::nullopt;
 			selected_f0_begin = selected_f0_end = nullptr;
 		}
 		m_viewScaleH = 1.f;
@@ -196,10 +221,6 @@ namespace SimpleF0Labeler
 		{
 			m_lineColor = Helper::M_GetAttribValueColor(attrib);
 		}
-		else if (attribName == L"CurveColor")
-		{
-			m_curveColor = Helper::M_GetAttribValueColor(attrib);
-		}
 		else if (attribName == L"PreHeight")
 		{
 			m_preHeight = Helper::M_StoInt(attrib);
@@ -234,8 +255,6 @@ namespace SimpleF0Labeler
 			return Color::M_RGBA_STR(m_fontColor);
 		if (attribName == L"LineColor")
 			return Color::M_RGBA_STR(m_lineColor);
-		if (attribName == L"CurveColor")
-			return Color::M_RGBA_STR(m_curveColor);
 		if (attribName == L"PreHeight")
 			return std::to_wstring(m_preHeight);
 		if (attribName == L"FontName")
@@ -466,7 +485,7 @@ namespace SimpleF0Labeler
 		{
 			if (!m_f0data.HasValue())
 				return false;
-			const auto max_ScaleH = float(m_f0data.Size(1)) / 10.f;
+			const auto max_ScaleH = float(m_f0data.Size(1)) / 50.f;
 			const auto ScaleH = m_viewScaleH * powf(4.2f, delta_ * 0.1f);
 			m_viewScaleH = Helper::M_MAX(Helper::M_MIN(max_ScaleH, ScaleH) * 1.f, 1.f); //最大20000%最小100%
 			if (m_viewScaleH >= max_ScaleH || m_viewScaleH <= 1.f) CalcRangeViewH();
@@ -475,7 +494,7 @@ namespace SimpleF0Labeler
 		else if(GetKeyState(VK_LMENU) & 0x8000)
 		{
 			m_viewScaleV *= powf(2.2f, delta_ * 0.1f);
-			m_viewScaleV = Helper::M_MAX(Helper::M_MIN(200.f, m_viewScaleV) * 1.f, 1.f); //最大1000%最小100%
+			m_viewScaleV = Helper::M_MAX(Helper::M_MIN(50.f, m_viewScaleV) * 1.f, 1.f); //最大1000%最小100%
 			CalcRangeViewV();
 		}
 		else if (GetKeyState(VK_LSHIFT) & 0x8000)
@@ -497,6 +516,7 @@ namespace SimpleF0Labeler
 			int val = curval + int(-delta_ * float(step));
 			val = std::clamp(val, 0, range);
 			m_sidebar->DragValue.Set().value->y = val;
+			DragValue.Set().value->y = val;
 		}
 		UpDate();
 		return false;
@@ -884,7 +904,7 @@ namespace SimpleF0Labeler
 		}
 
 		int space = _scale_to(5, scale.cy);
-		int fontWidth = 60;
+		int fontWidth = _scale_to(60, scale.cx);
 		int fontHeight = m_font->GetMetrics().bottom;
 		int preHeight = _scale_to(m_preHeight, scale.cy);
 		int sidebarWidth = _scale_to(m_barWidth, scale.cx);
@@ -923,7 +943,7 @@ namespace SimpleF0Labeler
 		std::vector<UIRect> rootRect(gridCount);
 		ArrangeRect({ 0,0, fontWidth, fullHeight }, rootRect);
 
-		gridCount++;
+		++gridCount;
 		float pitch = 0.f;
 		const auto ppreHeight = preHeight / 4;
 		const auto label_baseLineY = baseLineY + 3 - fontCenter;
@@ -1037,57 +1057,73 @@ namespace SimpleF0Labeler
 
 	void CurveEditor::DrawSpec(_m_scale scale, MPCPaintParam param)
 	{
+		constexpr float MaxSpec = 8000.f;
+		const auto F0Frames = m_f0data.Size(1);
+		const auto SpecFrames = m_specData.Size(1);
+		const auto SpecBins = m_specData.Size(0);
+		const auto FreqPerBin = MaxSpec / static_cast<float>(SpecBins - 1);
+		const auto FrameScale = static_cast<float>(SpecFrames) / static_cast<float>(F0Frames);
+
+		const auto space = _scale_to(5, scale.cy);
+		const auto viewWidth = m_viewRect.GetWidth();
+		const auto viewHeight = m_viewRect.GetHeight();
+		const auto fontHeight = m_font->GetMetrics().bottom;
+		const auto fullHeight = int((float)viewHeight * m_viewScaleV);
+		const auto fontWidth = _scale_to(60, scale.cx);
+		const auto preHeight = _scale_to(m_preHeight, scale.cy);
+		const auto sidebarWidth = _scale_to(m_barWidth, scale.cx);
+		const auto fontCenter = fontHeight / 2;
+
+		const auto curMinFrameFp = GetFpOffset(0.f) * FrameScale;
+		const auto curMaxFrameFp = GetFpOffset(float(viewWidth)) * FrameScale;
+		const auto curPixPerFrame = float(viewWidth) / (curMaxFrameFp - curMinFrameFp);
+		const auto curCenterFactorX = abs(curMinFrameFp) < 1.f ? 0 : int(0.5f * curPixPerFrame);
+
+		const auto curMinFrameBin = curMinFrameFp;
+		const auto curMaxFrameBin = std::min(curMaxFrameFp + (curCenterFactorX ? 1.f : 0.f), float(SpecFrames));
+
+		const auto curMinBinFactorX = int((curMinFrameBin - floor(curMinFrameBin)) * curPixPerFrame);
+		const auto curMaxBinFactorX = int((ceil(curMaxFrameBin) - curMaxFrameBin + (curCenterFactorX ? 1.f : 0.f)) * curPixPerFrame);
+
+		float offsetY = 0.f;
+		if (m_sidebar->DragValue.Get().y != 0)
+			offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
+		offsetY = (float)(fullHeight - viewHeight) * (offsetY);
+		if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
+			offsetY = 0.f;
+
 		if (!m_specData.HasValue())
 			return;
 		if (m_showPitch)
 		{
 			
+
 		}
 		else
 		{
-			constexpr float MaxSpec = 8000.f;
-			const auto F0Frames = m_f0data.Size(1);
-			const auto SpecFrames = m_specData.Size(1);
-			const auto SpecBins = m_specData.Size(0);
-			const auto FreqPerBin = MaxSpec / static_cast<float>(SpecBins);
-			const auto FrameScale = static_cast<float>(SpecFrames) / static_cast<float>(F0Frames);
+			const auto curMaxFreq = MaxFreq * (1.f - offsetY / (float)fullHeight);
+			const auto curMinFreq = MaxFreq * (1.f - (offsetY + float(viewHeight)) / (float)fullHeight);
+			const auto curPixPerFreq = float(viewHeight) / (curMaxFreq - curMinFreq);
 
-			int space = _scale_to(5, scale.cy);
-			int viewHeight = m_viewRect.GetHeight();
-			int fontHeight = m_font->GetMetrics().bottom;
-			int fullHeight = int((float)viewHeight * m_viewScaleV);
-			int fontWidth = 60;
-			int preHeight = _scale_to(m_preHeight, scale.cy);
-			int sidebarWidth = _scale_to(m_barWidth, scale.cx);
-			int fontCenter = fontHeight / 2;
+			if (curMinFreq > MaxSpec) return;
+			const auto curMinBinFp = std::min(curMaxFreq, MaxSpec) / FreqPerBin;
+			const auto curMaxBinFp = std::max(0.f, curMinFreq) / FreqPerBin;
+			const auto curPixPerBin = float(viewHeight) / (curMinBinFp - curMaxBinFp);
+			const auto curCenterFactorY = int(FreqPerBin / 2 * curPixPerFreq);
 
-			float offsetY = 0.f;
-			if (m_sidebar->DragValue.Get().y != 0)
-				offsetY = (float)m_sidebar->DragValue.Get().y / (float)m_sidebar->Range.Get().height;
-			offsetY = (float)(fullHeight - viewHeight) * (offsetY);
-			if (m_sidebar->Range.Get().height == m_sidebar->Frame().GetHeight())
-				offsetY = 0.f;
+			const auto curMinBin = (float)SpecBins - curMinBinFp - (curCenterFactorY ? 1.f : 0.f);
+			const auto curMaxBin = (float)SpecBins - curMaxBinFp;
 
-			const float curMaxFreq = MaxFreq * (1.f - offsetY / (float)fullHeight);
-			const float curMinFreq = MaxFreq * (1.f - (offsetY + float(viewHeight)) / (float)fullHeight);
-			const float curMinFrame = floor(GetFpOffset(0.f));
-			const float curMaxFrame = ceil(GetFpOffset(static_cast<float>(m_viewRect.GetWidth())) + 1.f);
-			const auto curMinBin = SpecBins - (int64_t)(std::min(curMaxFreq, MaxSpec) / FreqPerBin);
-			const auto curMaxBin = SpecBins - (int64_t)(std::max(0.f, curMinFreq) / FreqPerBin);
-			const auto curMaxFrameBin = (int64_t)std::min(curMaxFrame * FrameScale, static_cast<float>(SpecFrames));
-			const auto curMinFrameBin = (int64_t)std::max(curMinFrame * FrameScale, 0.f);
-
-			const auto FreqPerPix = (curMaxFreq - curMinFreq) / float(viewHeight);
+			const auto curMinBinFactorY = int((curMinBin - floor(curMinBin) + (curCenterFactorY ? 1.f : 0.f)) * curPixPerBin);
+			const auto curMaxBinFactorY = int((ceil(curMaxBin) - curMaxBin) * curPixPerBin);
 
 			auto SpecData = m_specData.Slice(
 				{
-					DragonianLib::Range{curMinBin, curMaxBin},
-					DragonianLib::Range{curMinFrameBin, curMaxFrameBin}
+					DragonianLib::Range{ (int64_t)floor(curMinBin), (int64_t)ceil(curMaxBin) },
+					DragonianLib::Range{ (int64_t)floor(curMinFrameBin), (int64_t)ceil(curMaxFrameBin) }
 				}
 			).Contiguous().Evaluate();
-
 			const auto [NewBins, NewFrames] = SpecData.Size().RawArray();
-			
 			Render::MBitmapPtr bitmap = param->render->CreateBitmap(
 				static_cast<_m_uint>(NewFrames),
 				static_cast<_m_uint>(NewBins),
@@ -1096,19 +1132,62 @@ namespace SimpleF0Labeler
 				static_cast<_m_uint>(NewFrames) * 4
 				);
 
+			//计算绘制区域
 			UIRect dst = *param->destRect;
 			dst.left += fontWidth + space;
 			dst.right -= sidebarWidth + space;
 			dst.top += space + fontHeight;
-			if (curMaxFreq > MaxSpec)
-				dst.top += int((curMaxFreq - MaxSpec) / FreqPerPix);
-			dst.bottom -= (preHeight + space + fontCenter - int(FreqPerBin / 2 / FreqPerPix));
+			dst.bottom -= preHeight + space + fontCenter;
+
+			//频谱的频率上限为8000hz，但是编辑器上限为C10对应的频率，对齐频谱和编辑器的频率
+			if (curMaxFreq > MaxSpec) dst.top += int((curMaxFreq - MaxSpec) * curPixPerFreq);
+
+			//对由于缩放导致的频谱区域前后存在的小于1Bin的空隙进行处理
+			dst.top -= curMinBinFactorY;
+			dst.bottom += curMaxBinFactorY;
+			dst.left -= curMinBinFactorX;
+			dst.right += curMaxBinFactorX;
+
+			//确保每一个Bin的数据都在中心点
+			dst.top += curCenterFactorY;
+			dst.bottom += curCenterFactorY;
+			dst.left -= curCenterFactorX;
+			dst.right -= curCenterFactorX;
+
 			param->render->DrawBitmap(
 				bitmap,
 				255,
 				dst.ToRect()
 			);
 		}
+		m_brush_m->SetColor(m_backColor);
+		UIRect dst = *param->destRect;
+		dst.right = dst.left + fontWidth + space;
+		param->render->FillRectangle(
+			dst.ToRect(),
+			m_brush_m
+		);
+
+		dst = *param->destRect;
+		dst.left = dst.right - sidebarWidth - space;
+		param->render->FillRectangle(
+			dst.ToRect(),
+			m_brush_m
+		);
+
+		dst = *param->destRect;
+		dst.bottom = dst.top + space + fontHeight;
+		param->render->FillRectangle(
+			dst.ToRect(),
+			m_brush_m
+		);
+
+		dst = *param->destRect;
+		dst.top = dst.bottom - (preHeight + space + fontCenter);
+		param->render->FillRectangle(
+			dst.ToRect(),
+			m_brush_m
+		);
 	}
 
 	void CurveEditor::DrawCurve(_m_scale scale, MPCPaintParam param)
@@ -1167,8 +1246,6 @@ namespace SimpleF0Labeler
 		const float DrawRangeRight = (float)viewRect.right + PointRange;
 
 		constexpr float jump_dis_val = 0.1f;
-
-		m_brush_m->SetColor(m_curveColor);
 
 		auto drawPart = [&factory, this, rStepX, &viewRect, fullHeight, offsetY, DrawRangeLeft, DrawRangeRight, context, &scale](const float* BeginPos, const float* EndPos, float LineWidth, float PosX, ID2D1StrokeStyle* pt_style = nullptr)
 			{
@@ -1296,6 +1373,7 @@ namespace SimpleF0Labeler
 		factory->CreateStrokeStyle(MinroProperties, nullptr, 0, &MinorStyle);
 		for (int64_t curveIdx = Batch - 1; curveIdx >= 0; --curveIdx)
 		{
+			m_brush_m->SetColor(m_curveColor[curveIdx]);
 			ID2D1StrokeStyle* Style = curveIdx == curve_idx ? nullptr : MinorStyle;
 			float LineWidth = curveIdx == curve_idx ? 1.f : 0.5f;
 			const float* CurvePointer = DataPointer + curveIdx * Frames;
@@ -1485,7 +1563,7 @@ namespace SimpleF0Labeler
 		param->render->FillRectangle(rc.ToRect(), m_brush_m);
 	}
 
-	void CurveEditor::CalcRangeViewV() const
+	void CurveEditor::CalcRangeViewV()
 	{
 		float height = static_cast<float>(m_sidebar->Frame().GetHeight());
 		float range = _scale_to(height, m_viewScaleV);
@@ -1497,7 +1575,9 @@ namespace SimpleF0Labeler
 		drag = std::clamp(drag, 0.f, range);
 
 		m_sidebar->Range.Set().value->height = (int)round(range);
+		Range.Set().value->height = (int)round(range);
 		m_sidebar->DragValue.Set().value->y = (int)round(drag);
+		DragValue.Set().value->y = (int)round(drag);
 	}
 
 	void CurveEditor::CalcRangeViewH()
@@ -1539,7 +1619,7 @@ namespace SimpleF0Labeler
 		const float sidebarWidth = _scale_to(static_cast<float>(m_barWidth), cx);
 		const float fontHeight = (float)m_font->GetMetrics().bottom;
 		const float fontCenter = fontHeight / 2.f;
-		constexpr float fontWidth = 60.f;
+		const float fontWidth = _scale_to(60.f, cx);
 		//曲线视图高度
 		UIRect viewRect = 
 		{
@@ -1654,6 +1734,11 @@ namespace SimpleF0Labeler
 		offsetX = Helper::M_Clamp(0.f, 1.f, offsetX);
 
 		return offsetX * (float)(m_f0data.Size(1) - 1);
+	}
+
+	void CurveEditor::OnScrollView(UIScroll*, int dragValue, bool horizontal)
+	{
+		UpDate();
 	}
 
 }

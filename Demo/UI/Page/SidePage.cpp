@@ -8,39 +8,22 @@ namespace SimpleF0Labeler
 		if (_IsAnimation)
 			return;
 
-		bool show = !_IsShow;
-
-		if (show)
-			_MyPageContent->SetPos(-265, 0, false);
-		else
-			_MyPageContent->SetPos(265, 0, false);
-
-		_MyPageContent->SetVisible(true);
-
-		//设置播放器的动画状态 在动画过程中不要重采样视图 不然会造成卡顿
+		_IsAnimation = true;
 		auto Player = (Waveform*)_MyPageContent->GetParent()->FindChildren(L"EditorPlayer");
 		Player->SetAniFlag(true);
 
-		_IsAnimation = true;
-		_MyAnimation->CreateTask(
-			[this, show, Player](const Mui::MAnimation::Calculator* calc, float percent)
-			{
-				const int x = calc->calc(Mui::MAnimation::Quintic_Out, show ? -265 : 0, show ? 0 : -265);
-				_MyPageContent->SetPos(x, 0);
-				_MyPageContent->GetParent()->UpdateLayout();
-				if (percent == 100.f)
-				{
-					if (!show)
-						_MyPageContent->SetVisible(false);
-					_IsAnimation = false;
-					Player->SetAniFlag(false);
-				}
-				return _IsAnimation;
-			},
-			300
-		);
+		if (_IsShow)
+			_MyPageContent->SetPos(-265, 0, false);
+		else
+			_MyPageContent->SetPos(0, 0, false);
 
-		_IsShow = show;
+		_MyPageContent->SetVisible(!_IsShow);
+		_MyPageContent->GetParent()->UpdateLayout();
+
+		Player->SetAniFlag(false);
+		_IsAnimation = false;
+
+		_IsShow = !_IsShow;
 	}
 
 	bool SidePage::EventProc(
@@ -82,8 +65,8 @@ namespace SimpleF0Labeler
 		const std::wstring xml = LR"(
 			<PropGroup ID="SidePageLineI" Frame="0,5,265,20" Align="LinearH" AutoSize="false" />
 			<PropGroup ID="SidePageLineII" Size="133,100%" Align="LinearH" AutoSize="false" />
-			<PropGroup ID="SizePageEditBox" Inset="2,2,2,2" Size="100,20" />
-			<PropGroup ID="SizePageCheckBox" Inset="2,2,2,2" Frame="11,5,110,110" />
+			<PropGroup ID="SizePageEditBox" Inset="2,2,2,2" Frame="11,0,100,20" />
+			<PropGroup ID="SizePageCheckBox" Inset="2,2,2,2" Frame="11,2,30,2f" />
 
 			<UIControl Name="_SidePage" Size="100%,100%">
 				<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
@@ -97,7 +80,11 @@ namespace SimpleF0Labeler
 						</UIControl>
 						<UIControl Prop="SidePageLineI">
 							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="#SidePageUseLogView" /></UIControl>
-							<UICheckBox Prop="SizePageCheckBox" Name="SidePageUseLogView" Selected="true" />
+							<UISwitch Prop="SizePageCheckBox" Name="SidePageUseLogView" SwitchOn="true" />
+						</UIControl>
+						<UIControl Prop="SidePageLineI">
+							<UIControl Prop="SidePageLineII"><UILabel Pos="11,2" Text="#SidePageUseLogSpec" /></UIControl>
+							<UISwitch Prop="SizePageCheckBox" Name="SidePageUseLogSpec" SwitchOn="true" />
 						</UIControl>
 
 						<UIControl AutoSize="false" BgColor="#MenuFrame" Frame="0,11,100%,1" />
@@ -131,7 +118,8 @@ namespace SimpleF0Labeler
 			__debugbreak();
 		}
 		_MySamplingRateEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageSamplingRate");
-		_MyLogViewCheckBox = _MyPageContent->FindChildren<Mui::Ctrl::UICheckBox>(L"SidePageUseLogView");
+		_MyLogViewCheckBox = _MyPageContent->FindChildren<Mui::Ctrl::UISwitch>(L"SidePageUseLogView");
+		_MyLogSpecCheckBox = _MyPageContent->FindChildren<Mui::Ctrl::UISwitch>(L"SidePageUseLogSpec");
 		_MyAlphaEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageAlpha");
 		_MyBetaEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePageBeta");
 		_MyPitchEditBox = _MyPageContent->FindChildren<Mui::Ctrl::UIEditBox>(L"SidePagePitchShift");
@@ -161,7 +149,12 @@ namespace SimpleF0Labeler
 
 	bool SidePage::IsUsingLogView() const
 	{
-		return _MyLogViewCheckBox->Selected;
+		return _MyLogViewCheckBox->SwitchOn;
+	}
+
+	bool SidePage::IsUsingLogSpec() const
+	{
+		return _MyLogSpecCheckBox->SwitchOn;
 	}
 
 }

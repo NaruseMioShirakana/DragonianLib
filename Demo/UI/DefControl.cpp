@@ -67,6 +67,8 @@ namespace WndControls
 		}
 	};
 
+	static DragonianLib::Int64 ColorMapSize = 0;
+
 	static std::wstring OfnHelper(const TCHAR* szFilter, HWND hwndOwner, const TCHAR* lpstrDefExt = TEXT("wav"))
 	{
 		constexpr long MaxPath = 512 * 8;
@@ -147,39 +149,131 @@ namespace WndControls
 		return MelKernel;
 	}
 
-	static ImageTensor CvtSpec2ColorMap(
-		const FloatTensor2D& Spec
+	static void LoadColorMap()
+	{
+		static std::regex _Re(R"(\{[ ]?(.*)[ ]?,[ ]?(.*)[ ]?,[ ]?(.*)[ ]?\})");
+		DragonianLib::FileStream _Stream(L"color_map.txt", L"r");
+		while (ColorMapSize < 256)
+		{
+			std::string _Line = _Stream.ReadLine();
+			if (_Line.empty())
+				break;
+			std::smatch _Mat;
+			if (std::regex_match(_Line, _Mat, _Re))
+			{
+				unsigned char R = static_cast<unsigned char>(stoi(_Mat[1].str()));
+				unsigned char G = static_cast<unsigned char>(stoi(_Mat[2].str()));
+				unsigned char B = static_cast<unsigned char>(stoi(_Mat[3].str()));
+				SpecColorMap[ColorMapSize++] = Mui::Color::M_RGB(R, G, B);
+			}
+			else
+				++ColorMapSize;
+		}
+	}
+
+	static std::pair<ImageTensor, ImageTensor> CvtSpec2ColorMap(
+		const FloatTensor2D& Spec,
+		bool UseLogSpec
 	)
 	{
 		const auto [Frames, Bins] = Spec.Size().RawArray();
 
-		const auto SpecFlat = (Spec.View(-1) + 1e-5f).Log10();
+		auto SpecFlat = Spec.View(-1);
+		if (UseLogSpec)
+			SpecFlat = (SpecFlat + 1e-5f).Log10();
 
 		//Min Max Normalize
-		const auto Max = SpecFlat.ReduceMax(0);
-		const auto Min = SpecFlat.ReduceMin(0);
-		const auto SpecMin = Min.Evaluate().Item();
-		const auto SpecMax = Max.Evaluate().Item();
+		SpecFlat = DragonianLib::Functional::MinMaxNormalize(SpecFlat, 0).Evaluate();
+		const auto FreqPerBin = static_cast<float>(GetMelFn().GetFreqPerBin());
+		const auto FreqMinLog = PitchLabel::F0ToPitch(FreqPerBin);
+		const auto FreqMaxLog = PitchLabel::F0ToPitch(static_cast<float>(GetMelFn().GetMaxFreq()) + FreqPerBin);
 		
 		const auto SpecData = SpecFlat.Data();
 		ImageTensor Image = DragonianLib::Functional::Empty<int>(
 			DragonianLib::Dimensions{ Bins, Frames }
 		);
+		ImageTensor ImageLogView = DragonianLib::Functional::Empty<int>(
+			DragonianLib::Dimensions{ Bins, Frames }
+		);
 		const auto ImageData = Image.Data();
+		const auto LogViewData = ImageLogView.Data();
+
+		DragonianLib::TemplateLibrary::Vector<std::pair<std::pair<int, int>, float>> Interp(Bins);
+
+		int LastBin = 0;
+		for (INT y = 0; y < static_cast<INT>(Bins); ++y)
+		{
+			const auto CurFreq = static_cast<float>(FreqPerBin * static_cast<double>(y + 1));
+			const auto CurFreqLog = PitchLabel::F0ToPitch(CurFreq);
+			const auto CurFreqNorm = (CurFreqLog - FreqMinLog) / (FreqMaxLog - FreqMinLog);
+			const auto CurBin = int(CurFreqNorm * float(Bins - 1));
+			for (int i = LastBin; i < CurBin; ++i)
+			{
+				const auto Value = log10(float(i - LastBin) / float(CurBin - LastBin - 1) * 9.f + 1.f);
+				Interp[i] = { { CurBin, LastBin }, isnan(Value) ? 0.f : Value };
+			}
+			LastBin = CurBin;
+		}
+		Interp.Back() = { {LastBin, LastBin}, 0.f };
 		
 		for (INT x = 0; x < static_cast<INT>(Frames); ++x)
 		{
 			for (INT y = 0; y < static_cast<INT>(Bins); ++y)
 			{
-				float Value = (*(SpecData + x * Bins + y) - SpecMin) / (SpecMax - SpecMin);
-				Value = std::clamp(Value, 0.001f, 0.999f);
+				const auto& LogViewInfo = Interp[y];
+				float Value = std::clamp(*(SpecData + x * Bins + y), 0.001f, 0.999f);
+				float LogValue = std::clamp(
+					std::lerp(
+						*(SpecData + x * Bins + LogViewInfo.first.second),
+						*(SpecData + x * Bins + LogViewInfo.first.first),
+						LogViewInfo.second
+					),
+					0.001f,
+					0.999f
+				);
 
-				const auto Color = __SpecColorMap[int(Value * 9.f)];
-				ImageData[(Bins - y - 1) * Frames + x] = Color;
+				ImageData[(Bins - y - 1) * Frames + x] = SpecColorMap[int(Value * 255.f)];
+				LogViewData[(Bins - y - 1) * Frames + x] = SpecColorMap[int(LogValue * 255.f)];
 			}
 		}
 
-		return Image;
+		return {
+			Image/*.Interpolate<DragonianLib::Operators::InterpolateMode::Nearest>(
+				{0},
+				DragonianLib::IScale(2.)
+			)*/.Evaluate(),
+			ImageLogView/*.Interpolate<DragonianLib::Operators::InterpolateMode::Nearest>(
+				{0},
+				DragonianLib::IScale(2.)
+			)*/.Evaluate()
+		};
+	}
+
+	static const FloatTensor2D& GetUpSampleRates()
+	{
+		static FloatTensor2D Upp(DragonianLib::Functional::Arange(1.f, 481.f, 1.f).UnSqueeze(0).Evaluate());
+		return Upp;
+	}
+
+	[[maybe_unused]] static FloatTensor2D SineGen(const FloatTensor2D& F0)
+	{
+		const auto SineSize = F0.Size(1) * 480;
+		const auto Freq = F0[0].Clone().UnSqueeze(-1);
+		auto Audio = DragonianLib::Functional::Zeros(DragonianLib::Dimensions{ 1, SineSize }).Evaluate();
+		auto Rad = Freq / 48000.f * GetUpSampleRates();
+		auto Rad2 = (Rad[{":", "-1:"}] + 0.5f) % 1.f - 0.5f;
+		auto RadAcc = Rad2.CumSum(0) % 1.f;
+		Rad[{"1:"}] += RadAcc[{":-1"}];
+		Rad = Rad.View(1, -1);
+		Rad.Evaluate();
+		const auto F0Data = Rad.Data();
+		const auto AudioData = Audio.Data() + 1;
+		for (DragonianLib::SizeType F0Idx = 0; F0Idx < SineSize; ++F0Idx)
+		{
+			auto& SamplePoint = AudioData[F0Idx];
+			SamplePoint = short(sin(F0Data[F0Idx] * 2.f * std::numbers::pi_v<float>) * 4000.f);
+		}
+		return Audio;
 	}
 
 	void InitCtrl(
@@ -192,6 +286,7 @@ namespace WndControls
 		LabelControls.CurveEditor = CurveEditor;
 		LabelControls.CurvePlayer = CurvePlayer;
 		GetMelFn();
+		LoadColorMap();
 	}
 
 	class ListItemC : public Mui::Ctrl::ListItem
@@ -305,7 +400,7 @@ namespace WndControls
 		}
 	}
 
-	static MyAudioData& GetData(int idx, unsigned SamplingRate)
+	static MyAudioData& GetData(int idx, unsigned SamplingRate, bool UseLogSpec)
 	{
 		const auto& Path = AudioPaths[idx];
 		auto Iter = std::ranges::find_if(
@@ -315,8 +410,7 @@ namespace WndControls
 			return Iter->second;
 		auto AudioPath = GetAudioPath(Path);
 		auto F0Path = GetF0Path(Path);
-		FloatTensor2D Audio, F0;
-		ImageTensor Spec, Mel;
+		FloatTensor2D Audio, F0, Spec, Mel;
 		if (std::filesystem::exists(AudioPath))
 			Audio = DragonianLib::AvCodec::OpenInputStream(
 				AudioPath
@@ -371,12 +465,22 @@ namespace WndControls
 			DragonianLib::IScale(48000. / double(SamplingRate))
 		).Evaluate().UnSqueeze(-1);
 
-		Spec = CvtSpec2ColorMap(GetMelFn().GetStftKernel()(
+		Spec = GetMelFn().GetStftKernel()(
 			Audio.View(1, 1, Audio.Size(0)).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
 				DragonianLib::IDim(-1),
 				DragonianLib::IScale(double(SpecSamplingRate) / 48000.)
 			)
-			).Squeeze(0).Squeeze(0));
+			).Squeeze(0).Squeeze(0);
+
+		Spec = GetMelFn().GetStftKernel()(SineGen(
+			DragonianLib::Functional::ConstantOf(
+				DragonianLib::Dimensions{ 1, F0.Size(1) },
+				261.626f
+			)
+		).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+			DragonianLib::IDim(-1),
+			DragonianLib::IScale(double(SpecSamplingRate) / 48000.)
+		).UnSqueeze(0)).Squeeze(0).Squeeze(0);
 
 		/*;
 
@@ -401,6 +505,7 @@ namespace WndControls
 				std::move(Spec.Evaluate()),
 				std::move(Mel.Evaluate()),
 				std::move(F0Path),
+				UseLogSpec,
 				Modified
 			}
 		).second;
@@ -562,12 +667,12 @@ namespace WndControls
 		LanguageXml = xml;
 	}
 
-	void SetCurveEditorDataIdx(int AudioIdx, unsigned SamplingRate)
+	void SetCurveEditorDataIdx(int AudioIdx, unsigned SamplingRate, bool UseLogSpec)
 	{
-		auto& AudioAndF0 = GetData(AudioIdx, SamplingRate);
+		auto& AudioAndF0 = GetData(AudioIdx, SamplingRate, UseLogSpec);
 		std::lock_guard lg(UndoMutex);
 		LabelControls.CurveEditor->SetPlayLinePos(0);
-		LabelControls.CurveEditor->SetCurveData(AudioAndF0.F0, AudioAndF0.Spec);
+		LabelControls.CurveEditor->SetCurveData(AudioAndF0.F0, AudioAndF0.Spec, AudioAndF0.LogSpec);
 		LabelControls.CurvePlayer->SetPlayPos(0);
 		LabelControls.CurvePlayer->SetAudioData(AudioAndF0.Audio);
 	}
@@ -575,7 +680,7 @@ namespace WndControls
 	void DeleteAudio(int idx)
 	{
 		LabelControls.CurveEditor->SetPlayLinePos(0);
-		LabelControls.CurveEditor->SetCurveData(std::nullopt, std::nullopt);
+		LabelControls.CurveEditor->SetCurveData(std::nullopt, std::nullopt, std::nullopt);
 		LabelControls.CurvePlayer->Clear();
 		LabelControls.AudioList->Items.Remove(LabelControls.AudioList->Items[idx]);
 		LabelControls.AudioList->SelectedItemIndex = -1;
@@ -677,12 +782,6 @@ namespace WndControls
 		}
 	}
 
-	static const FloatTensor2D& GetUpSampleRates()
-	{
-		static FloatTensor2D Upp(DragonianLib::Functional::Arange(1.f, 481.f, 1.f).UnSqueeze(0).Evaluate());
-		return Upp;
-	}
-
 	void SineGen()
 	{
 		auto CurSel = LabelControls.AudioList->SelectedItemIndex;
@@ -743,12 +842,14 @@ namespace WndControls
 			}
 		}
 	}
+
+	std::wstring Localization(const std::wstring_view& _Str)
+	{
+		return LanguageXml->GetStringValue(_Str);
+	}
 }
 
-std::wstring GetLocalizationString(const std::wstring_view& _Str)
-{
-	return WndControls::LanguageXml->GetStringValue(_Str);
-}
+
 
 SimpleF0Labeler::MyAudioData::~MyAudioData()
 {
@@ -765,3 +866,9 @@ void SimpleF0Labeler::MyAudioData::SaveCache() const
 		);
 	}
 }
+
+void SimpleF0Labeler::MyAudioData::CalcSpec(bool _UseLogSpec)
+{
+	std::tie(Spec, LogSpec) = WndControls::CvtSpec2ColorMap(RawSpec, _UseLogSpec);
+}
+

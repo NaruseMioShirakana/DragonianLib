@@ -1188,6 +1188,12 @@ namespace Functional
 	{
 		auto Min = _Tensor.template ReduceMin<true>(_Axis);
 		auto Max = _Tensor.template ReduceMax<true>(_Axis);
+		if (Min.ElementCount() == 1 && Max.ElementCount() == 1)
+		{
+			const auto MaxVal = Max.Evaluate().Item();
+			const auto MinVal = Min.Evaluate().Item();
+			return (_Tensor - MinVal) / (MaxVal - MinVal);
+		}
 		return (_Tensor - Min) / (Max - Min);
 	}
 
