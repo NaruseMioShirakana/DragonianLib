@@ -7,7 +7,7 @@
 
 _D_Dragonian_Lib_Space_Begin
 
-static inline std::wstring GlobalEnvDir;
+std::wstring GlobalEnvDir;  // NOLINT(misc-use-internal-linkage)
 
 std::wstring GetCurrentFolder()
 {

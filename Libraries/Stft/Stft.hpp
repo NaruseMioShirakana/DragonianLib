@@ -41,7 +41,7 @@ namespace FunctionTransform
 
 		StftKernel(
 			int NumFFT, int HopSize = -1, int WindowSize = -1, const double* Window = nullptr,
-			bool Center = true, PaddingType Padding = PaddingType::Reflect
+			bool Center = true, PaddingType Padding = PaddingType::Zero
 		); ///< Parameterized constructor
 
 		~StftKernel(); ///< Destructor
@@ -196,7 +196,7 @@ namespace FunctionTransform
 		MFCCKernel(
 			int SamplingRate, int NumFFT, int HopSize = -1, int WindowSize = -1, int MelBins = 0,
 			double FreqMin = 20., double FreqMax = 11025., const double* Window = nullptr,
-			bool Center = true, PaddingType Padding = PaddingType::Reflect,
+			bool Center = true, PaddingType Padding = PaddingType::Zero,
 			DLogger _Logger = nullptr
 		);
 

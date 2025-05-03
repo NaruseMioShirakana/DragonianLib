@@ -69,6 +69,6 @@ UnitsEncoder New(
  * @brief Get a list of UnitsEncoder names
  * @return List of UnitsEncoder names
  */
-const std::vector<std::wstring>& GetUnitsEncoderList();
+std::vector<std::wstring>& GetList();
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_End

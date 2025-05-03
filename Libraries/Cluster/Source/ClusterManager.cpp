@@ -8,8 +8,17 @@
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 
-static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredCluster;
-static inline std::vector<std::wstring> _GlobalClusterList;
+static auto& GetRegister()
+{
+	static std::unordered_map<std::wstring, Constructor> Register;
+	return Register;
+}
+
+std::vector<std::wstring>& GetList()
+{
+	static std::vector<std::wstring> GlobalList;
+	return GlobalList;
+}
 
 static void RegisterPlugin(
 	const std::wstring& _PluginPath,
@@ -22,7 +31,7 @@ static void RegisterPlugin(
 		return;
 	}
 
-	if (_GlobalRegisteredCluster.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"ClusterManager");
 		return;
@@ -30,7 +39,7 @@ static void RegisterPlugin(
 	try
 	{
 		auto Plugin = std::make_shared<Plugin::MPlugin>(_PluginPath);
-		_GlobalRegisteredCluster.emplace(
+		GetRegister().emplace(
 			_PluginName,
 			[Plugin](const std::wstring& ClusterFile, Int64 ClusterDimension, Int64 ClusterSize) -> Cluster {
 				return std::make_shared<PluginCluster>(
@@ -48,7 +57,7 @@ static void RegisterPlugin(
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	_GlobalClusterList.emplace_back(_PluginName);
+	GetList().emplace_back(_PluginName);
 }
 
 void RegisterClusters(
@@ -87,13 +96,13 @@ void RegisterCluster(
 	const Constructor& _Constructor
 )
 {
-	if (_GlobalRegisteredCluster.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"ClusterManager");
 		return;
 	}
-	_GlobalRegisteredCluster.emplace(_PluginName, _Constructor);
-	_GlobalClusterList.emplace_back(_PluginName);
+	GetRegister().emplace(_PluginName, _Constructor);
+	GetList().emplace_back(_PluginName);
 }
 
 Cluster New(
@@ -103,10 +112,10 @@ Cluster New(
 	Int64 ClusterSize
 )
 {
-	const auto f_ClusterFn = _GlobalRegisteredCluster.find(ClusterName);
+	const auto f_ClusterFn = GetRegister().find(ClusterName);
 	try
 	{
-		if (f_ClusterFn != _GlobalRegisteredCluster.end())
+		if (f_ClusterFn != GetRegister().end())
 			return f_ClusterFn->second(ClusterFile, ClusterDimension, ClusterSize);
 	}
 	catch (std::exception& e)
@@ -116,17 +125,12 @@ Cluster New(
 	_D_Dragonian_Lib_Throw_Exception("Unable To Find An Available Cluster");
 }
 
-const std::vector<std::wstring>& GetClusterList()
-{
-	return _GlobalClusterList;
-}
-
-struct Init
+[[maybe_unused]] struct Init
 {
 	Init()
 	{
-		_GlobalClusterList.clear();
-		_GlobalRegisteredCluster.clear();
+		GetList().clear();
+		GetRegister().clear();
 
 		RegisterCluster(
 			L"KMeans",
@@ -142,7 +146,6 @@ struct Init
 		);
 		RegisterClusters(GetCurrentFolder() + L"/Plugins/Cluster");
 	}
-};
-[[maybe_unused]] static inline Init _Valdef_Init;
+} InitModule;  // NOLINT(misc-use-internal-linkage)
 
 _D_Dragonian_Lib_Cluster_Namespace_End

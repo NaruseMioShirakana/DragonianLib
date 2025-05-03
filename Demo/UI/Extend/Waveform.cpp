@@ -13,7 +13,6 @@ namespace SimpleF0Labeler
 		}
 	};
 
-
 	class WAVAudio : public Mui::Render::MAudio
 	{
 	public:
@@ -71,7 +70,6 @@ namespace SimpleF0Labeler
 		Int16Tensor2D Source;
 		Waveform* Control = nullptr;
 	};
-
 
 	void Waveform::Register()
 	{
@@ -152,7 +150,6 @@ namespace SimpleF0Labeler
 			_MyPlayer->SetTrackSound(_MyTrack, static_cast<Mui::Render::MAudio*>(_MyAudioData.get()));
 		Update();
 	}
-
 
 	void Waveform::Play() const
 	{
@@ -323,7 +320,7 @@ namespace SimpleF0Labeler
 
 		{
 			const float center = DestY + (float)MyHeight / 2.f;
-			float scaleY = (float)MyHeight / 32768.f;
+			float scaleY = (float)MyHeight / 65536.f;
 
 			ID2D1PathGeometry* geometry;
 			Factory->CreatePathGeometry(&geometry);

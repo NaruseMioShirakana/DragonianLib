@@ -84,7 +84,13 @@
 			</Synthetic>
 		</Expand>
 	</Type>
-
+	
+	<Type Name="DragonianLib::Rational;">
+		<DisplayString>
+			{{ {Numerator}/{Denominator} }}
+		</DisplayString>
+	</Type>
+	
 	<Type Name="DragonianLib::Tensor&lt;*,*&gt;">
 		<DisplayString>
 			{{ Shape: { _MyShape }, ValueType: { _DType }, Device: { _Device } }}

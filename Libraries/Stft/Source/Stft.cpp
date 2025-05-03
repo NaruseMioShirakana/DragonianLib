@@ -7,7 +7,11 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace FunctionTransform
 {
-	static inline std::mutex FFTW_MUTEX;
+	static auto& GetFFTWApiMutex()
+	{
+		static std::mutex FFTW_MUTEX;
+		return FFTW_MUTEX;
+	}
 
 	static double HZ2Mel(const double frequency)
 	{
@@ -114,19 +118,19 @@ namespace FunctionTransform
 
 	static fftw_plan CreateDftReal2ComplexPlan1D(int N, double* In, FFTW_COMPLEX* Out, int Flags)
 	{
-		std::lock_guard lg(FFTW_MUTEX);
+		std::lock_guard lg(GetFFTWApiMutex());
 		return fftw_plan_dft_r2c_1d(N, In, (fftw_complex*)Out, Flags);
 	}
 
 	static fftw_plan CreateDftComplex2RealPlan1D(int N, FFTW_COMPLEX* In, double* Out, int Flags)
 	{
-		std::lock_guard lg(FFTW_MUTEX);
+		std::lock_guard lg(GetFFTWApiMutex());
 		return fftw_plan_dft_c2r_1d(N, (fftw_complex*)In, Out, Flags);
 	}
 
 	static void DestoryDftPlan(fftw_plan plan)
 	{
-		std::lock_guard lg(FFTW_MUTEX);
+		std::lock_guard lg(GetFFTWApiMutex());
 		fftw_destroy_plan(plan);
 	}
 

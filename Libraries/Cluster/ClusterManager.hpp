@@ -66,6 +66,6 @@ Cluster New(
  * @brief Get a list of Cluster names
  * @return List of Cluster names
  */
-const std::vector<std::wstring>& GetClusterList();
+std::vector<std::wstring>& GetList();
 
 _D_Dragonian_Lib_Cluster_Namespace_End

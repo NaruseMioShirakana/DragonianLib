@@ -15,7 +15,14 @@ _D_Dragonian_Lib_Space_Begin
 
 namespace AvCodec
 {
-	static inline Logger AvCodecLogger{ GetDefaultLogger()->GetLoggerId() + L"::AvCodec", GetDefaultLogger()->GetLoggerLevel() };
+	static DLogger GetAvcodecLogger()
+	{
+		static DLogger AvCodecLogger = std::make_shared<Logger>(
+			*_D_Dragonian_Lib_Namespace GetDefaultLogger(),
+			L"AvCodec"
+		);
+		return AvCodecLogger;
+	}
 
 	static void* DefaultAlloc(size_t Size)
 	{
@@ -1013,7 +1020,7 @@ namespace AvCodec
 	int AudioFrame::GetSampleCount() const
 	{
 		auto Frame = (AVFrame*)_MyFrame.get();
-		if (!Frame || Frame->nb_samples == 0)
+		if (!Frame)
 			_D_Dragonian_Lib_Throw_Exception("Frame is not initialized");
 		return Frame->nb_samples;
 	}
@@ -1496,6 +1503,13 @@ namespace AvCodec
 			Ret = avcodec_receive_frame(MyContext, static_cast<AVFrame*>(FrameBuffer.Get()));
 			if (Ret == AVERROR(EAGAIN) || Ret == AVERROR_EOF)
 				break;
+			if (Ret)
+			{
+				char ErrorMessage[128];
+				av_strerror(Ret, ErrorMessage, 128);
+				GetAvcodecLogger()->LogWarn(UTF8ToWideString(ErrorMessage));
+				continue;
+			}
 			if (_NeedResample)
 				_D_Dragonian_Lib_Rethrow_Block(FrameBuffer = _MyResampler.Resample(FrameBuffer););
 			OFrames.EmplaceBack(std::move(FrameBuffer));
@@ -1754,7 +1768,9 @@ namespace AvCodec
 			}
 		if (!Found)
 		{
-			_D_Dragonian_Lib_Namespace AvCodec::AvCodecLogger.Log(L"Codec does not support the specified sample format, using the first supported format instead", Logger::LogLevel::Warn);
+			_D_Dragonian_Lib_Namespace AvCodec::GetAvcodecLogger()->LogWarn(
+				L"Codec does not support the specified sample format, using the first supported format instead"
+			);
 			_OutputDataFormat = AVSampleFormat2PCMFormat(Codec->sample_fmts[0]);
 		}
 
@@ -1984,7 +2000,7 @@ namespace AvCodec
 			MidiEvents.emplace_back(NoteEvent.OffsetTime, NoteEvent.MidiNote, 0);
 		}
 		Writer.add_event(0, 0, libremidi::meta_events::tempo(Tempo));
-		std::sort(MidiEvents.begin(), MidiEvents.end());
+		std::sort(MidiEvents.begin(), MidiEvents.end());  // NOLINT(modernize-use-ranges)
 		long PreviousTicks = Begin;
 		for (const auto& Event : MidiEvents) {
 			const long CurrentTicks = long((Event.Time - Begin) * TPS);

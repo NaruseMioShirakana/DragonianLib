@@ -455,6 +455,8 @@ constexpr auto IsCppStringValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOf
 template <typename _Type>
 constexpr auto IsCStringValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, const char*, const wchar_t*>;
 template <typename _Type>
+constexpr auto IsStringViewValue = _D_Dragonian_Lib_Type_Traits_Namespace IsAnyOfValue<RemoveCVType<_Type>, std::string_view, std::wstring_view>;
+template <typename _Type>
 constexpr auto IsStringValue = _D_Dragonian_Lib_Type_Traits_Namespace IsCppStringValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsCStringValue<_Type>;
 
 template <typename _Type>
@@ -757,6 +759,34 @@ constexpr size_t TryPlaceN2AtN1()
 
 template <typename _Type>
 constexpr size_t MemberCountOfValue = _D_Dragonian_Lib_Type_Traits_Namespace MemberCountOf<_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>, 0>();
+
+template <typename _DestType, typename _First, typename... _Types>
+struct CountType
+{
+	static constexpr size_t Count = 
+		(_D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_DestType, _First> ? 1 : 0) +
+		_D_Dragonian_Lib_Type_Traits_Namespace CountType<_DestType, _Types...>::Count;
+};
+template <typename _DestType, typename _First>
+struct CountType<_DestType, _First>
+{
+	static constexpr size_t Count = 
+		_D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_DestType, _First> ? 1 : 0;
+};
+template <typename _DestType, typename... _Types>
+struct CountType<_DestType, std::tuple<_Types...>>
+{
+	static constexpr size_t Count =
+		_D_Dragonian_Lib_Type_Traits_Namespace CountType<_DestType, _Types...>::Count;
+};
+template <typename _DestType, typename... _Types>
+struct CountType<_DestType, GeneralizedList<_Types...>>
+{
+	static constexpr size_t Count =
+		_D_Dragonian_Lib_Type_Traits_Namespace CountType<_DestType, _Types...>::Count;
+};
+template <typename _DestType, typename... _Types>
+constexpr auto CountTypeValue = _D_Dragonian_Lib_Type_Traits_Namespace CountType<_DestType, _Types...>::Count;
 
 template <typename _Type1, typename _Type2>
 concept SameImpl = _D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_Type1, _Type2>;

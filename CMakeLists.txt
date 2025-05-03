@@ -384,6 +384,7 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 else()
 	message("Build Type: \"Debug\"")
 	add_definitions(-DDRAGONIANLIB_DEBUG)
+	add_definitions(-DDRAGONIANLIB_DEBUG_MACRO)
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
 		/Zi /Gy /experimental:module /openmp:experimental /bigobj

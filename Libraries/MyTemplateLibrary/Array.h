@@ -407,4 +407,38 @@ struct ExtractAllShapesOfInitializerList<std::initializer_list<_ValueType>>
 	}
 };
 
+template <typename _Type, size_t _Rank1, size_t _Rank2>
+constexpr auto ArrayCat(const Array<_Type, _Rank1>& _Left)
+{
+	return _Left;
+}
+
+template <typename _Type, size_t _Rank1, size_t _Rank2>
+constexpr auto ArrayCat(const Array<_Type, _Rank1>& _Left, const Array<_Type, _Rank2>& _Right)
+{
+	Array<_Type, _Rank1 + _Rank2> _Ret;
+	std::copy_n(_Left.Data(), _Rank1, _Ret.Data());
+	std::copy_n(_Right.Data(), _Rank2, _Ret.Data() + _Rank1);
+	return _Ret;
+}
+
+template <typename _Type, size_t _Rank1, size_t _Rank2>
+constexpr auto ArrayCat(Array<_Type, _Rank1>&& _RLeft, Array<_Type, _Rank2>&& _RRight)
+{
+	auto _Left = std::move(_RLeft);
+	auto _Right = std::move(_RRight);
+	Array<_Type, _Rank1 + _Rank2> _Ret;
+	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
+	{
+		std::copy_n(_Left.Data(), _Rank1, _Ret.Data());
+		std::copy_n(_Right.Data(), _Rank2, _Ret.Data() + _Rank1);
+	}
+	else
+	{
+		_Impl_Dragonian_Lib_Iterator_Move(_Ret.Data(), _Left.Data(), _Rank1);
+		_Impl_Dragonian_Lib_Iterator_Move(_Ret.Data() + _Rank1, _Right.Data(), _Rank2);
+	}
+	return _Ret;
+}
+
 _D_Dragonian_Lib_Template_Library_Space_End

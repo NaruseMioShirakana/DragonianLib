@@ -90,7 +90,9 @@ namespace SimpleF0Labeler
 		Mui::XML::MuiXML* UI
 	)
 	{
-		CreateDefaultStyle(UI);
+		_D_Dragonian_Lib_Rethrow_Block(
+			CreateDefaultStyle(UI);
+		);
 
 		auto RootPage = Context->GetRootPage();
 		if (!RootPage || !Mui::MObjStorage::AddObj(RootPage, L"ROOTPAGE")) return false;

@@ -8,7 +8,7 @@ namespace SimpleF0Labeler
 	using FloatTensor1D = DragonianLib::Tensor<DragonianLib::Float32, 1, DragonianLib::Device::CPU>;
 	using FloatTensor2D = DragonianLib::Tensor<DragonianLib::Float32, 2, DragonianLib::Device::CPU>;
 	using Int16Tensor2D = DragonianLib::Tensor<DragonianLib::Int16, 2, DragonianLib::Device::CPU>;
-	using ImageTensor = DragonianLib::Tensor<DragonianLib::Int32, 2, DragonianLib::Device::CPU>;
+	using ImageTensor = DragonianLib::Tensor<DragonianLib::UInt32, 2, DragonianLib::Device::CPU>;
 
 	class PitchLabel
 	{

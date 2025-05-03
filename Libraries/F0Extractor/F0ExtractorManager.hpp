@@ -73,6 +73,6 @@ F0Extractor New(
  * @brief Get a list of F0Extractor names
  * @return List of F0Extractor names
  */
-const std::vector<std::wstring>& GetF0ExtractorList();
+std::vector<std::wstring>& GetList();
 
 _D_Dragonian_Lib_F0_Extractor_End

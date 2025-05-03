@@ -68,6 +68,6 @@ Vocoder New(
  * @brief Get a list of Vocoder names
  * @return List of Vocoder names
  */
-const std::vector<std::wstring>& GetVocoderList();
+std::vector<std::wstring>& GetList();
 
 _D_Dragonian_Lib_Onnx_Vocoder_End

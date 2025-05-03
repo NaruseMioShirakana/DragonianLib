@@ -135,6 +135,10 @@ struct Range
 	Range operator-() const { return { End, -Step, Begin }; }
 
 	static Range Idx(SizeType Idx) { return { Idx, Idx, Idx }; }
+
+private:
+	void Parse(const std::string_view& _RangeArgs);
+	void Parse(const std::wstring_view& _RangeArgs);
 };
 
 namespace TypeTraits

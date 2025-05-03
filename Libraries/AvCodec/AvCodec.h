@@ -51,6 +51,7 @@ namespace AvCodec
 		long Velocity = 0; // Velocity
 		MidiEvent(double t = 0.0, long m = 0, long v = 0) :Time(t), MidiNote(m), Velocity(v) {}
 		bool operator<(const MidiEvent& b) const { return Time < b.Time; } // Comparison operator for sorting
+		bool operator>(const MidiEvent& b) const { return Time > b.Time; } // Comparison operator for sorting
 	};
 
 	// EstPedalEvents is a struct that contains the onset time and offset time of a MIDI pedal event

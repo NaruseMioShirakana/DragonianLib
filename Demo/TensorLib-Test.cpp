@@ -10,6 +10,7 @@
 #include "OnnxLibrary/UnitsEncoder/Register.hpp"
 #include "OnnxLibrary/Vocoder/Register.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
+#include "TensorLib/Include/Base/Tensor/Einops.h"
 
 static auto MyLastTime = std::chrono::high_resolution_clock::now();
 static int64_t TotalStep = 0;
@@ -530,5 +531,11 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
 
+	Einops::Rearrange(
+		Functional::Empty(Dimensions{ 10, 50, 60 }),
+		MakeRearrangeArgs(Einops::AutoDim, "axis1"),
+		MakeRearrangeArgs(Einops::AutoDim, "axis1")
+	);
+	return 0;
 	//TestStft();
 }

@@ -359,14 +359,39 @@ struct __ImplMakeIntegerSequence<_IntegerType, 0, _Index, _Indices...>
 	using _MyType = ::DragonianLib::BuildTimeList<_IntegerType, _Indices...>;
 };
 
-template <typename _IntegerType, size_t _Size>
+template <typename _IntegerType, _IntegerType _Begin, _IntegerType _End>
 	requires(std::is_integral_v<_IntegerType>)
-using MakeIntegerSequence = typename ::DragonianLib::__ImplMakeIntegerSequence<_IntegerType, _Size, 0>::_MyType;
+using MakeIntegerSequence = typename ::DragonianLib::__ImplMakeIntegerSequence<_IntegerType, _End - _Begin, _Begin>::_MyType;
+
+template <size_t _Begin, size_t _End>
+using MakeIndexRange = ::DragonianLib::MakeIntegerSequence<size_t, _Begin, _End>;
 
 template <size_t _Size>
-using MakeIndexSequence = ::DragonianLib::MakeIntegerSequence<size_t, _Size>;
+using MakeIndexSequence = ::DragonianLib::MakeIntegerSequence<size_t, 0, _Size>;
 
 template <size_t ..._Indices>
 using IndexSequence = ::DragonianLib::BuildTimeList<size_t, _Indices...>;
+
+struct Rational
+{
+	Int64 Numerator = 0;
+	Int64 Denominator = 1;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Rational() = default;
+	_D_Dragonian_Lib_Constexpr_Force_Inline Rational(
+		Int64 _Numerator,
+		Int64 _Denominator = 1ll
+	) : Numerator(_Numerator), Denominator(_Denominator)
+	{
+
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Double Real() const
+	{
+		return double(Numerator) / double(Denominator);
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Int64 Integer() const
+	{
+		return Numerator / Denominator;
+	}
+};
 
 _D_Dragonian_Lib_Space_End

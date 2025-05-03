@@ -57,7 +57,7 @@
 
 // Define exception throwing macro
 #ifdef _MSC_VER
-#define _D_Dragonian_Lib_Function_Signature __FUNCSIG__
+#define _D_Dragonian_Lib_Function_Signature __FUNCTION__
 #elif defined(__GNUC__) || defined(__clang__)
 #define _D_Dragonian_Lib_Function_Signature __PRETTY_FUNCTION__
 #endif
@@ -66,12 +66,27 @@
 	decltype(_D_Dragonian_Lib_Namespace ConstexprString::Create<(Str)>())
 
 // Define exception throwing macro with trace
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 #define _D_Dragonian_Error_Message_With_Trace(message) \
 	_D_Dragonian_Lib_Namespace GetTraceBack<_D_Dragonian_Constexpr_String(__FILE__), (__LINE__)>().GetTraceBackString((message))
+#else
+#define _D_Dragonian_Error_Message_With_Trace(message) \
+	_D_Dragonian_Lib_Namespace TraceBack(__FILE__, __LINE__, _D_Dragonian_Lib_Function_Signature).GetTraceBackString(message)
+#endif
 
 // Define general exception throwing macro
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 #define _D_Dragonian_Lib_Throw_Exception(message) \
 	throw _D_Dragonian_Lib_Namespace ErrorCode<_D_Dragonian_Constexpr_String(__FILE__), (__LINE__)>((message))
+#else
+#define _D_Dragonian_Lib_Throw_Exception(message) \
+	throw _D_Dragonian_Lib_Namespace ErrorCode( \
+		(message), \
+		__FILE__, \
+		__LINE__, \
+		_D_Dragonian_Lib_Function_Signature \
+	)
+#endif
 
 // Define not implemented error macro
 #define _D_Dragonian_Lib_Not_Implemented_Error \
@@ -171,7 +186,12 @@ namespace ConstexprString
 	};
 
 	template <char... Chars>
-	struct Struct {};
+	struct Struct
+	{
+		static constexpr char Value[]{
+			Chars...
+		};
+	};
 
 	template <size_t Index, size_t N>
 	constexpr char Get(const char(&Arr)[N])
@@ -197,6 +217,7 @@ namespace ConstexprString
 class TraceBack
 {
 public:
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 	TraceBack(ptrdiff_t BeginPos = 1)
 	{
 		const auto Trace = std::stacktrace::current();
@@ -215,40 +236,92 @@ public:
 		}
 		_MyTraceBack += " Status Message: ";
 	}
-	std::string GetTraceBackString(std::string Message) const
+#endif
+
+	TraceBack(const char* _File, int _Line, const char* _Function)
+	{
+		_MyTraceBack += "$Error Occurred:\n";
+		std::string SourceFile = _File;
+		std::ranges::replace(SourceFile, '\\', '/');
+		if (SourceFile.starts_with(__DRAGONIANLIB_SOURCE_DIRECTORY))
+			SourceFile = SourceFile.substr(sizeof(__DRAGONIANLIB_SOURCE_DIRECTORY));
+		if (SourceFile.empty())
+			SourceFile = "Unknown";
+		_MyTraceBack += " @[SourceFile: \"" + SourceFile + "\"; " +
+			"Line: <" + std::to_string(_Line) + ">; " +
+			"Function: \"" + _Function + "\"]:\n";
+	}
+
+	std::string GetTraceBackString(
+#ifdef DRAGONIANLIB_DEBUG_MACRO
+		std::string Message
+#else
+		const std::string& Message
+#endif
+	) const
 	{
 		if (!Message.starts_with("$Error Occurred:\n"))
 			return _MyTraceBack + Message;
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 		return Message;
+#else
+		return _MyTraceBack + Message.substr(sizeof("$Error Occurred:"));
+#endif
 	}
 private:
 	std::string _MyTraceBack;
 };
 
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 template <typename, int>
 decltype(auto) GetTraceBack(ptrdiff_t BeginPos = 2)
 {
 	static TraceBack TraceBack(BeginPos);
 	return TraceBack;
 }
+#endif
 
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 template <typename _MyFile, int _MyLine>
+#endif
 class ErrorCode : public std::exception
 {
 public:
 	ErrorCode() = default;
 
-	ErrorCode(const char* _Message) : std::exception("Dragonian Lib Exception")
+	ErrorCode(
+		const char* _Message
+#ifndef DRAGONIANLIB_DEBUG_MACRO
+		, const char* _FileName
+		, int _Line
+		, const char* _Function
+#endif
+	) : std::exception("Dragonian Lib Exception")
 	{
 		_MyMessage = _Message;
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 		if (!_MyMessage.starts_with("$Error Occurred:\n"))
 			_MyMessage = GetTraceBack<_MyFile, _MyLine>(3).GetTraceBackString(_MyMessage);
+#else
+		_MyMessage = TraceBack(_FileName, _Line, _Function).GetTraceBackString(_MyMessage);
+#endif
 	}
-	ErrorCode(std::string _Message) : std::exception("Dragonian Lib Exception")
+	ErrorCode(
+		std::string _Message
+#ifndef DRAGONIANLIB_DEBUG_MACRO
+		, const char* _FileName
+		, int _Line
+		, const char* _Function
+#endif
+	) : std::exception("Dragonian Lib Exception")
 	{
 		_MyMessage = std::move(_Message);
+#ifdef DRAGONIANLIB_DEBUG_MACRO
 		if (!_MyMessage.starts_with("$Error Occurred:\n"))
 			_MyMessage = GetTraceBack<_MyFile, _MyLine>(3).GetTraceBackString(_MyMessage);
+#else
+		_MyMessage = TraceBack(_FileName, _Line, _Function).GetTraceBackString(_MyMessage);
+#endif
 	}
 	~ErrorCode() noexcept override = default;
 	const char* what() const noexcept override
@@ -270,6 +343,34 @@ enum class ComInitializeFlag : uint8_t
 	COINIT_DISABLE_OLE1DDE,
 	COINIT_SPEED_OVER_MEMORY,
 };
+
+template <bool _Fs, bool... _Rest>
+struct BoolConditionAnd
+{
+	static constexpr bool Cond = _Fs && BoolConditionAnd<_Rest...>::Cond;
+};
+template <bool _Fs>
+struct BoolConditionAnd<_Fs>
+{
+	static constexpr bool Cond = _Fs;
+};
+template <bool... _Conditions>
+constexpr bool BoolConditionAndValue = BoolConditionAnd<_Conditions...>::Cond;
+template <bool _Fs, bool... _Rest>
+struct BoolConditionOr
+{
+	static constexpr bool Cond = _Fs || BoolConditionOr<_Rest...>::Cond;
+};
+template <bool _Fs>
+struct BoolConditionOr<_Fs>
+{
+	static constexpr bool Cond = _Fs;
+};
+template <bool... _Conditions>
+constexpr bool BoolConditionOrValue = BoolConditionOr<_Conditions...>::Cond;
+
+template <typename... _Type>
+void ExpandExpression(_Type...) {}
 
 struct HResult
 {

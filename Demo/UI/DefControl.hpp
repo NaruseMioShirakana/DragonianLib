@@ -10,20 +10,13 @@ namespace WndControls
 {
 	constexpr DragonianLib::Int64 SpecSamplingRate = 16000;
 
-	struct MyControls
-	{
-		Mui::Ctrl::UIListBox* AudioList = nullptr;
-		SimpleF0Labeler::CurveEditor* CurveEditor = nullptr;
-		SimpleF0Labeler::Waveform* CurvePlayer = nullptr;
-	};
-
 	void InitCtrl(
 		Mui::Ctrl::UIListBox* AudioList = nullptr,
 		SimpleF0Labeler::CurveEditor* CurveEditor = nullptr,
 		SimpleF0Labeler::Waveform* CurvePlayer = nullptr
 	);
 
-	std::wstring Localization(const std::wstring_view& _Str);
+	std::wstring Localization(const std::wstring_view& Key);
 
 	void AppendUndo();
 
@@ -35,7 +28,7 @@ namespace WndControls
 
 	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges);
 
-	void SetPlayerPos(size_t idx);
+	void SetPlayerPos(size_t Index);
 
 	size_t GetPcmSize();
 
@@ -43,11 +36,11 @@ namespace WndControls
 
 	void InsertAudio(std::wstring Path);
 
-	void SetLanguageXML(Mui::XML::MuiXML* xml);
+	void SetLanguageXML(Mui::XML::MuiXML* XmlUI);
 
 	void SetCurveEditorDataIdx(int AudioIdx, unsigned SamplingRate, bool UseLogSpec);
 
-	void DeleteAudio(int idx);
+	void DeleteAudio(int Index);
 
 	void PlayPause();
 
@@ -64,4 +57,6 @@ namespace WndControls
 	void LoadFiles(HWND hWnd);
 
 	void LoadF0(HWND hWnd);
+
+	void ReCalcSpec(bool _Log);
 }

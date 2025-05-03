@@ -42,6 +42,8 @@ namespace SimpleF0Labeler
 			);
 		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Up.Event(), L"SidePageUseLogView"))
 			m_editor->SetShowPitch(Mui::MObjStorage::GetObjInstance<SidePage*>()->IsUsingLogView());
+		else if (MUIEVENT(Mui::Ctrl::Events::Mouse_LButton_Up.Event(), L"SidePageUseLogSpec"))
+			WndControls::ReCalcSpec(Mui::MObjStorage::GetObjInstance<SidePage*>()->IsUsingLogSpec());
 		else if (event == Mui::Ctrl::Events::Key_Down.Event())
 		{
 			if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('Z') & 0x8000)

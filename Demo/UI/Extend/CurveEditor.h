@@ -55,6 +55,7 @@ namespace SimpleF0Labeler
 		bool OnLButtonUp(Mui::_m_uint flag, const Mui::UIPoint& point) override;
 		bool OnLButtonDoubleClicked(Mui::_m_uint flag, const Mui::UIPoint& point) override;
 		bool OnWindowMessage(Mui::MEventCodeEnum code, Mui::_m_param wParam, Mui::_m_param lParam) override;
+		bool OnSetCursor(Mui::_m_param hCur, Mui::_m_param lParam) override;
 
 	private:
 		void DrawLabel(Mui::_m_scale scale, MPCPaintParam param);
@@ -123,7 +124,8 @@ namespace SimpleF0Labeler
 		bool m_isdown = false;
 
 		//int m_l_x_pos, m_c_x_pos;
-		bool m_insel = false;
+		bool m_begin_insel = false;
+		bool m_end_insel = false;
 		//float last_x_offset = 0.f;
 
 		Mui::_m_size m_plineOffset = 0;

@@ -7,8 +7,17 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-static inline std::vector<std::wstring> _GlobalF0ExtractorsList;
-static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredF0Extractors;
+static auto& GetRegister()
+{
+	static std::unordered_map<std::wstring, Constructor> Register;
+	return Register;
+}
+
+std::vector<std::wstring>& GetList()
+{
+	static std::vector<std::wstring> GlobalList;
+	return GlobalList;
+}
 
 static void RegisterPlugin(
 	const std::wstring& _PluginPath,
@@ -21,7 +30,7 @@ static void RegisterPlugin(
 		return;
 	}
 
-	if (_GlobalRegisteredF0Extractors.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"F0ExtractorManager");
 		return;
@@ -29,7 +38,7 @@ static void RegisterPlugin(
 	try
 	{
 		auto Plugin = std::make_shared<Plugin::MPlugin>(_PluginPath);
-		_GlobalRegisteredF0Extractors.emplace(
+		GetRegister().emplace(
 			_PluginName,
 			[Plugin](const void* UserParameter) -> F0Extractor {
 				return std::make_shared<PluginF0Extractor>(Plugin, UserParameter);
@@ -40,7 +49,7 @@ static void RegisterPlugin(
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	_GlobalF0ExtractorsList.emplace_back(_PluginName);
+	GetList().emplace_back(_PluginName);
 }
 
 void RegisterF0Extractors(
@@ -79,13 +88,13 @@ void RegisterF0Extractor(
 	const Constructor& _Constructor
 )
 {
-	if (_GlobalRegisteredF0Extractors.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"F0ExtractorManager");
 		return;
 	}
-	_GlobalRegisteredF0Extractors.emplace(_PluginName, _Constructor);
-	_GlobalF0ExtractorsList.emplace_back(_PluginName);
+	GetRegister().emplace(_PluginName, _Constructor);
+	GetList().emplace_back(_PluginName);
 }
 
 F0Extractor New(
@@ -93,10 +102,10 @@ F0Extractor New(
 	const void* UserParameter
 )
 {
-	const auto F0ExtractorIt = _GlobalRegisteredF0Extractors.find(Name);
+	const auto F0ExtractorIt = GetRegister().find(Name);
 	try
 	{
-		if (F0ExtractorIt != _GlobalRegisteredF0Extractors.end())
+		if (F0ExtractorIt != GetRegister().end())
 			return F0ExtractorIt->second(UserParameter);
 	}
 	catch (std::exception& e)
@@ -106,21 +115,16 @@ F0Extractor New(
 	_D_Dragonian_Lib_Throw_Exception("Unable To Find An Available F0Extractor");
 }
 
-const std::vector<std::wstring>& GetF0ExtractorList()
-{
-	return _GlobalF0ExtractorsList;
-}
-
 #ifdef DRAGONIANLIB_ONNXRT_LIB
 extern void InitNetPE();
 #endif
 
-struct Init
+[[maybe_unused]] struct Init
 {
 	Init()
 	{
-		_GlobalF0ExtractorsList.clear();
-		_GlobalRegisteredF0Extractors.clear();
+		GetList().clear();
+		GetRegister().clear();
 
 		RegisterF0Extractor(
 			L"Dio",
@@ -139,7 +143,6 @@ struct Init
 		InitNetPE();
 #endif
 	}
-};
-[[maybe_unused]] static inline Init _Valdef_Init;
+} InitModule;  // NOLINT(misc-use-internal-linkage)
 
 _D_Dragonian_Lib_F0_Extractor_End

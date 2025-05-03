@@ -3,18 +3,27 @@
 
 _D_Dragonian_Lib_G2P_Header
 
-static inline std::vector<std::wstring> _GlobalG2PModulesList;
-static inline std::unordered_map<std::wstring, Constructor> _GlobalRegisteredG2PModules;
+static auto& GetRegister()
+{
+	static std::unordered_map<std::wstring, Constructor> Register;
+	return Register;
+}
+
+std::vector<std::wstring>& GetList()
+{
+	static std::vector<std::wstring> GlobalList;
+	return GlobalList;
+}
 
 G2PModule New(
 	const std::wstring& Name,
 	const void* Parameter
 )
 {
-	const auto G2PModuleIt = _GlobalRegisteredG2PModules.find(Name);
+	const auto G2PModuleIt = GetRegister().find(Name);
 	try
 	{
-		if (G2PModuleIt != _GlobalRegisteredG2PModules.end())
+		if (G2PModuleIt != GetRegister().end())
 			return G2PModuleIt->second(Parameter);
 	}
 	catch (std::exception& e)
@@ -38,7 +47,7 @@ static void RegisterPlugin(
 	if (!exists(std::filesystem::path(_PluginPath)))
 		return;
 
-	if (_GlobalRegisteredG2PModules.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" at " + _PluginPath + L" already registered", L"G2PModules");
 		return;
@@ -46,7 +55,7 @@ static void RegisterPlugin(
 	try
 	{
 		auto Plugin = std::make_shared<Plugin::MPlugin>(_PluginPath);
-		_GlobalRegisteredG2PModules.emplace(
+		GetRegister().emplace(
 			_PluginName,
 			[Plugin](const void* UserParameter) -> G2PModule {
 				return std::make_shared<BasicG2P>(UserParameter, Plugin);
@@ -57,7 +66,7 @@ static void RegisterPlugin(
 	{
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
-	_GlobalG2PModulesList.emplace_back(_PluginName);
+	GetList().emplace_back(_PluginName);
 }
 
 void RegisterG2PModules(
@@ -96,23 +105,18 @@ void RegisterG2PModule(
 	const Constructor& _Constructor
 )
 {
-	if (_GlobalRegisteredG2PModules.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"G2PModules");
 		return;
 	}
-	_GlobalRegisteredG2PModules.emplace(_PluginName, _Constructor);
-	_GlobalG2PModulesList.emplace_back(_PluginName);
-}
-
-const std::vector<std::wstring>& GetG2PModuleList()
-{
-	return _GlobalG2PModulesList;
+	GetRegister().emplace(_PluginName, _Constructor);
+	GetList().emplace_back(_PluginName);
 }
 
 extern void RegG2PW();
 
-struct Init {
+[[maybe_unused]] struct Init {
 	Init()
 	{
 		RegisterG2PModules(GetCurrentFolder() + L"/Plugins/G2P");
@@ -130,7 +134,6 @@ struct Init {
 		);
 		RegG2PW();
 	}
-};
-[[maybe_unused]] static inline Init _Init;
+} InitModule;  // NOLINT(misc-use-internal-linkage)
 
 _D_Dragonian_Lib_G2P_End

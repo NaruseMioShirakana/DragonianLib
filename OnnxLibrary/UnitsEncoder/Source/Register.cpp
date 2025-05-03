@@ -4,21 +4,30 @@
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 
-static inline std::unordered_map<std::wstring, Constructor> _GlobalUnitsEncoders;
-static inline std::vector<std::wstring> _GlobalUnitsEncoderList;
+static auto& GetRegister()
+{
+	static std::unordered_map<std::wstring, Constructor> Register;
+	return Register;
+}
+
+std::vector<std::wstring>& GetList()
+{
+	static std::vector<std::wstring> GlobalList;
+	return GlobalList;
+}
 
 void RegisterUnitsEncoder(
 	const std::wstring& _PluginName,
 	const Constructor& _Constructor
 )
 {
-	if (_GlobalUnitsEncoders.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"UnitsEncoderManager");
 		return;
 	}
-	_GlobalUnitsEncoders[_PluginName] = _Constructor;
-	_GlobalUnitsEncoderList.push_back(_PluginName);
+	GetRegister()[_PluginName] = _Constructor;
+	GetList().push_back(_PluginName);
 }
 
 UnitsEncoder New(
@@ -30,10 +39,10 @@ UnitsEncoder New(
 	const std::shared_ptr<Logger>& _Logger
 )
 {
-	const auto fnpair = _GlobalUnitsEncoders.find(Name);
+	const auto fnpair = GetRegister().find(Name);
 	try
 	{
-		if (fnpair != _GlobalUnitsEncoders.end())
+		if (fnpair != GetRegister().end())
 			return fnpair->second(_Path, _Environment, _SamplingRate, _UnitsDims, _Logger);
 	}
 	catch (std::exception& e)
@@ -43,13 +52,7 @@ UnitsEncoder New(
 	_D_Dragonian_Lib_Throw_Exception("Unable to find UnitsEncoder");
 }
 
-
-const std::vector<std::wstring>& GetUnitsEncoderList()
-{
-	return _GlobalUnitsEncoderList;
-}
-
-class Init
+[[maybe_unused]] class Init
 {
 public:
 	Init()
@@ -139,8 +142,6 @@ public:
 			}
 		);
 	}
-};
-
-[[maybe_unused]] static inline Init _Valdef_Init;
+} InitModule;  // NOLINT(misc-use-internal-linkage)
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_End

@@ -63,6 +63,6 @@ void RegisterG2PModule(
  * @brief Get a list of G2PModule names
  * @return List of G2PModule names
  */
-const std::vector<std::wstring>& GetG2PModuleList();
+std::vector<std::wstring>& GetList();
 
 _D_Dragonian_Lib_G2P_End

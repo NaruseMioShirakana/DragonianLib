@@ -7,21 +7,30 @@
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 
-static inline std::unordered_map<std::wstring, Constructor> _GlobalVocoders;
-static inline std::vector<std::wstring> _GlobalVocoderList;
+static auto& GetRegister()
+{
+	static std::unordered_map<std::wstring, Constructor> Register;
+	return Register;
+}
+
+std::vector<std::wstring>& GetList()
+{
+	static std::vector<std::wstring> GlobalList;
+	return GlobalList;
+}
 
 void RegisterVocoder(
 	const std::wstring& _PluginName,
 	const Constructor& _Constructor
 )
 {
-	if (_GlobalVocoders.contains(_PluginName))
+	if (GetRegister().contains(_PluginName))
 	{
 		Plugin::GetDefaultLogger()->LogWarn(L"Plugin: " + _PluginName + L" already registered", L"VocoderManager");
 		return;
 	}
-	_GlobalVocoders[_PluginName] = _Constructor;
-	_GlobalVocoderList.push_back(_PluginName);
+	GetRegister()[_PluginName] = _Constructor;
+	GetList().push_back(_PluginName);
 }
 
 
@@ -34,10 +43,10 @@ Vocoder New(
 	const std::shared_ptr<Logger>& _Logger
 )
 {
-	const auto fnpair = _GlobalVocoders.find(Name);
+	const auto fnpair = GetRegister().find(Name);
 	try
 	{
-		if (fnpair != _GlobalVocoders.end())
+		if (fnpair != GetRegister().end())
 			return fnpair->second(_Path, _Environment, _SamplingRate, _MelBins, _Logger);
 	}
 	catch (std::exception& e)
@@ -47,12 +56,7 @@ Vocoder New(
 	_D_Dragonian_Lib_Throw_Exception("Unable to find Vocoder");
 }
 
-const std::vector<std::wstring>& GetVocoderList()
-{
-	return _GlobalVocoderList;
-}
-
-class Init
+[[maybe_unused]] class Init
 {
 public:
 	Init()
@@ -97,8 +101,6 @@ public:
 			}
 		);
 	}
-};
-
-[[maybe_unused]] static inline Init _Valdef_Init;
+} InitModule;  // NOLINT(misc-use-internal-linkage)
 
 _D_Dragonian_Lib_Onnx_Vocoder_End

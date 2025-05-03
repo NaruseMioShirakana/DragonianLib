@@ -2,15 +2,15 @@
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_Header
 
-static inline const char* DenoiseFnInput[] = { "noise", "time", "condition" };
-static inline const char* DenoiseFnOutput[] = { "noise_pred" };
-static inline const char* PredFnInput[] = { "noise", "noise_pred", "time", "time_prev" };
-static inline const char* PredFnOutput[] = { "noise_pred_o" };
-static inline const char* AlphaFnInput[] = { "time" };
-static inline const char* AlphaFnOutput[] = { "alphas_cumprod" };
+constexpr const char* DenoiseFnInput[] = { "noise", "time", "condition" };
+constexpr const char* DenoiseFnOutput[] = { "noise_pred" };
+constexpr const char* PredFnInput[] = { "noise", "noise_pred", "time", "time_prev" };
+constexpr const char* PredFnOutput[] = { "noise_pred_o" };
+constexpr const char* AlphaFnInput[] = { "time" };
+constexpr const char* AlphaFnOutput[] = { "alphas_cumprod" };
 
-static inline const char* VelocityFnInput[] = { "x", "t", "cond" };
-static inline const char* VelocityFnOutput[] = { "o" };
+constexpr const char* VelocityFnInput[] = { "x", "t", "cond" };
+constexpr const char* VelocityFnOutput[] = { "o" };
 
 struct NoiseList
 {
@@ -388,25 +388,29 @@ Ort::Value SampleDDim(
 	return std::move(DenoiseIn.X);
 }
 
-static inline std::unordered_map<std::wstring, DiffusionSampler> DiffusionSamplers{
-	{ L"DDim", SampleDDim },
-	{ L"Pndm", SamplePndm },
-	{ L"ddim", SampleDDim },
-	{ L"pndm", SamplePndm }
-};
+static auto& GetDiffusionSamplers()
+{
+	static std::unordered_map<std::wstring, DiffusionSampler> DiffusionSamplers{
+		{ L"DDim", SampleDDim },
+		{ L"Pndm", SamplePndm },
+		{ L"ddim", SampleDDim },
+		{ L"pndm", SamplePndm }
+	};
+	return DiffusionSamplers;
+}
 
 void RegisterDiffusionSampler(const std::wstring& _Name, DiffusionSampler _Sampler)
 {
-	if (DiffusionSamplers.contains(_Name))
+	if (GetDiffusionSamplers().contains(_Name))
 		_D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()->LogWarn(L"Diffusion sampler " + _Name + L" already exists, overwriting");
-	DiffusionSamplers[_Name] = _Sampler;
+	GetDiffusionSamplers()[_Name] = _Sampler;
 }
 
 DiffusionSampler GetDiffusionSampler(const std::wstring& _Name)
 {
-	if (!DiffusionSamplers.contains(_Name))
+	if (!GetDiffusionSamplers().contains(_Name))
 		_D_Dragonian_Lib_Throw_Exception("Diffusion sampler " + WideStringToUTF8(_Name) + " not found");
-	return DiffusionSamplers[_Name];
+	return GetDiffusionSamplers()[_Name];
 }
 
 static Ort::Value ReflowEularSampler(
@@ -1167,33 +1171,37 @@ static Ort::Value ReflowPECECESampler(
 	return std::move(VelocityIn.X);
 }
 
-static inline std::unordered_map<std::wstring, ReflowSampler> ReflowSamplers{
-	{L"Eular", ReflowEularSampler},
-	{L"Heun", ReflowHeunSampler},
-	{L"Rk2", ReflowRk2Sampler},
-	{L"Rk4", ReflowRk4Sampler},
-	{L"Rk6", ReflowRk6Sampler},
-	{L"PECECE", ReflowPECECESampler},
-	{L"eular", ReflowEularSampler},
-	{L"heun", ReflowHeunSampler},
-	{L"rk2", ReflowRk2Sampler},
-	{L"rk4", ReflowRk4Sampler},
-	{L"rk6", ReflowRk6Sampler},
-	{L"pecece", ReflowPECECESampler}
-};
+static auto& GetReflowSamplers()
+{
+	static std::unordered_map<std::wstring, ReflowSampler> ReflowSamplers{
+		{L"Eular", ReflowEularSampler},
+		{L"Heun", ReflowHeunSampler},
+		{L"Rk2", ReflowRk2Sampler},
+		{L"Rk4", ReflowRk4Sampler},
+		{L"Rk6", ReflowRk6Sampler},
+		{L"PECECE", ReflowPECECESampler},
+		{L"eular", ReflowEularSampler},
+		{L"heun", ReflowHeunSampler},
+		{L"rk2", ReflowRk2Sampler},
+		{L"rk4", ReflowRk4Sampler},
+		{L"rk6", ReflowRk6Sampler},
+		{L"pecece", ReflowPECECESampler}
+	};
+	return ReflowSamplers;
+}
 
 void RegisterReflowSampler(const std::wstring& _Name, ReflowSampler _Sampler)
 {
-	if (ReflowSamplers.contains(_Name))
+	if (GetReflowSamplers().contains(_Name))
 		_D_Dragonian_Lib_Onnx_Singing_Voice_Conversion_Space GetDefaultLogger()->LogWarn(L"Reflow sampler " + _Name + L" already exists, overwriting");
-	ReflowSamplers[_Name] = _Sampler;
+	GetReflowSamplers()[_Name] = _Sampler;
 }
 
 ReflowSampler GetReflowSampler(const std::wstring& _Name)
 {
-	if (!ReflowSamplers.contains(_Name))
+	if (!GetReflowSamplers().contains(_Name))
 		_D_Dragonian_Lib_Throw_Exception("Reflow sampler " + WideStringToUTF8(_Name) + " not found");
-	return ReflowSamplers[_Name];
+	return GetReflowSamplers()[_Name];
 }
 
 _D_Dragonian_Lib_Lib_Singing_Voice_Conversion_End

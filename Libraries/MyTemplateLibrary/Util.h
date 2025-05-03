@@ -748,7 +748,7 @@ public:
 	bool operator==(const EnumratedRangesIterator& _Right) const { return _MyIterator == _Right._MyIterator; }
 	bool operator!=(const EnumratedRangesIterator& _Right) const { return _MyIterator != _Right._MyIterator; }
 	bool operator<(const EnumratedRangesIterator& _Right) const { return _MyIterator < _Right._MyIterator; }
-	std::pair<_IntegerType, _MyReferenceType> operator*() const { return { _MyIndex, *_MyIterator }; }
+	decltype(auto) operator*() const { return std::forward_as_tuple(_MyIndex, *_MyIterator); }
 	decltype(auto) operator->() const { return _MyIterator; }
 
 private:
@@ -854,6 +854,105 @@ decltype(auto) Ranges(_Type _End)
 	requires (TypeTraits::IsArithmeticValue<_Type>)
 {
 	return NumberRanges<_Type>(_Type(0), _End, _End > _Type(0) ? _Type(1) : _Type(-1));
+}
+
+template <typename _CouldBeIndexedType, size_t... _Index>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto MakeTuple(_CouldBeIndexedType&& _Object, std::index_sequence<_Index...>)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return std::make_tuple(std::forward<_CouldBeIndexedType>(_Object)[_Index]...);
+}
+
+template <typename _CouldBeIndexedType, size_t... _Index>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto MoveAsTuple(_CouldBeIndexedType&& _Object, std::index_sequence<_Index...>)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return std::make_tuple(std::move(std::forward<_CouldBeIndexedType>(_Object)[_Index])...);
+}
+
+template <typename _CouldBeIndexedType, size_t... _Index>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto ReferenceAsTuple(_CouldBeIndexedType&& _Object, std::index_sequence<_Index...>)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return std::forward_as_tuple(std::forward<_CouldBeIndexedType>(_Object)[_Index]...);
+}
+
+template <size_t _Count, typename _CouldBeIndexedType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto MakeTuple(_CouldBeIndexedType&& _Object)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return MakeTuple(std::forward<_CouldBeIndexedType>(_Object), std::make_index_sequence<_Count>{});
+}
+
+template <size_t _Count, typename _CouldBeIndexedType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto MoveAsTuple(_CouldBeIndexedType&& _Object)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return MoveAsTuple(std::forward<_CouldBeIndexedType>(_Object), std::make_index_sequence<_Count>{});
+}
+
+template <size_t _Count, typename _CouldBeIndexedType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto ReferenceAsTuple(_CouldBeIndexedType&& _Object)
+	requires(TypeTraits::CouldIndex<_CouldBeIndexedType>)
+{
+	return ReferenceAsTuple(std::forward<_CouldBeIndexedType>(_Object), std::make_index_sequence<_Count>{});
+}
+
+template <typename _TupleType, size_t... _Index>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto SubTupleView(_TupleType&& _Tuple, IndexSequence<_Index...>)
+{
+	return std::forward_as_tuple(std::get<_Index>(std::forward<_TupleType>(_Tuple))...);
+}
+
+template <size_t _Begin = 0, size_t _End = size_t(-1), typename _TupleType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto SubTupleView(_TupleType&& _Tuple)
+	requires (_End >= _Begin && _Begin <= std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+{
+	constexpr auto MyEnd = std::min(_End, std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>);
+	if constexpr (MyEnd == _Begin || _Begin == std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+		return std::tuple();
+	else
+		return SubTupleView(std::forward<_TupleType>(_Tuple), MakeIndexRange<_Begin, MyEnd>{});
+}
+
+template <typename _TupleType, size_t... _Index>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto SubTuple(_TupleType&& _Tuple, IndexSequence<_Index...>)
+{
+	return std::make_tuple(std::get<_Index>(std::forward<_TupleType>(_Tuple))...);
+}
+
+template <size_t _Begin = 0, size_t _End = size_t(-1), typename _TupleType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto SubTuple(_TupleType&& _Tuple)
+	requires (_End >= _Begin && _Begin <= std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+{
+	constexpr auto MyEnd = std::min(_End, std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>);
+	if constexpr (MyEnd == _Begin || _Begin == std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+		return std::tuple();
+	else
+		return SubTuple(std::forward<_TupleType>(_Tuple), MakeIndexRange<_Begin, MyEnd>{});
+}
+
+template <size_t _Index, typename _TupleType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto DropElementView(_TupleType&& _Tuple)
+	requires (_Index < std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+{
+	return std::tuple_cat(
+		SubTupleView<0, _Index>(std::forward<_TupleType>(_Tuple)),
+		SubTupleView<_Index + 1, std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>>(std::forward<_TupleType>(_Tuple))
+	);
+}
+
+template <size_t _Index, typename _TupleType>
+_D_Dragonian_Lib_Constexpr_Force_Inline auto DropElement(_TupleType&& _Tuple)
+	requires (_Index < std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
+{
+	return std::make_tuple(
+		std::tuple_cat(
+			SubTuple<0, _Index>(std::forward<_TupleType>(_Tuple)),
+			SubTuple<_Index + 1, std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>>(std::forward<_TupleType>(_Tuple))
+		),
+		SubTuple<_Index, _Index + 1>(std::forward<_TupleType>(_Tuple))
+	);
 }
 
 _D_Dragonian_Lib_Template_Library_Space_End

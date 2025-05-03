@@ -333,7 +333,7 @@ void CppPinYin::LoadUserDict(
 	_MyPinYinDict.AppendTokens(_PinYinTokens);
 }
 
-static inline std::wstring ShengmuDict[]{
+constexpr const wchar_t* ShengmuDict[]{
 	L"b", L"p", L"m", L"f",
 	L"d", L"t", L"n", L"l",
 	L"g", L"k", L"h",
@@ -358,7 +358,7 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::SplitYunmu(
 			if (Cur.starts_with(Shengmu))
 			{
 				Phonemes.EmplaceBack(Shengmu);
-				Phonemes.EmplaceBack(Cur.substr(Shengmu.size()));
+				Phonemes.EmplaceBack(Cur.substr(wcslen(Shengmu)));
 				Phoneme2Word.EmplaceBack(WordIdx);
 				Phoneme2Word.EmplaceBack(WordIdx);
 				Found = true;

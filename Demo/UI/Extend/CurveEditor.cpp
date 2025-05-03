@@ -467,13 +467,16 @@ namespace SimpleF0Labeler
 			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
 
-		if (m_insel)
+		if (m_end_insel || m_begin_insel)
 		{
 			auto x = pt.x - m_viewRect.left;
 			x -= m_viewRect.left;
 			x = std::max(0, x);
 			auto xoff = GetXOffset(static_cast<float>(x));
-			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+			if (m_end_insel)
+				selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+			else if (m_begin_insel)
+				selected_f0_begin = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
 		float delta_ = (float)delta / static_cast<float>(WHEEL_DELTA);
@@ -535,6 +538,35 @@ namespace SimpleF0Labeler
 		if (m_lisdown && GetKeyState(VK_TAB) & 0x8000)
 			PlaySoundPitch(point);
 
+		
+#ifdef _WIN32
+		if (const auto Range = GetSelectedRange(); GetKeyState(VK_LSHIFT) & 0x8000 && !Range.Null() && Range.Size())
+		{
+			const auto Begin = m_f0data.Data() + curve_idx * m_f0data.Size(1);
+			const auto XPOS = static_cast<ptrdiff_t>(GetXOffset(static_cast<float>(pt.x - m_viewRect.left)));
+			const auto BeginIdx = std::distance(Begin, Range.begin());
+			const auto EndIdx = std::distance(Begin, Range.end());
+
+			const auto curMinFrameFp = GetFpOffset(0.f);
+			const auto curMaxFrameFp = GetFpOffset(float(m_viewRect.GetWidth()));
+			const auto curPixPerFrame = float(m_viewRect.GetWidth()) / (curMaxFrameFp - curMinFrameFp);
+
+			const auto FrameCount = std::max(
+				int64_t(10.f / curPixPerFrame),
+				1ll
+			);
+			if (abs(BeginIdx - XPOS) < FrameCount || abs(EndIdx - XPOS) < FrameCount)
+				SetCursor(IDC_SIZEWE);
+			else
+				goto III_ARR;
+		}
+		else
+		{
+			III_ARR:
+			SetCursor(IDC_ARROW);
+		}
+#endif
+
 		if (time_in_sel && m_f0data.HasValue())
 		{
 			const auto x = pt.x - m_viewRect.left;
@@ -543,12 +575,15 @@ namespace SimpleF0Labeler
 			WndControls::SetPlayerPos(xof);
 		}
 
-		if (m_insel)
+		if (m_end_insel || m_begin_insel)
 		{
 			auto x = pt.x - m_viewRect.left;
 			x = std::max(0, x);
 			auto xoff = GetXOffset(static_cast<float>(x));
-			selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+			if (m_end_insel)
+				selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+			else if (m_begin_insel)
+				selected_f0_begin = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
 		}
 
 		else if (m_isdown && m_f0data.HasValue())
@@ -669,12 +704,34 @@ namespace SimpleF0Labeler
 		{
 			if (m_f0data.HasValue())
 			{
-				m_insel = true;
 				auto x = static_cast<float>(pt.x);
 				x -= static_cast<float>(m_viewRect.left);
 				x = std::max(0.f, x);
-				auto xoff = GetXOffset(x);
-				selected_f0_begin = selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+				auto xoff = static_cast<ptrdiff_t>(GetXOffset(x));
+				if (const auto Range = GetSelectedRange(); !Range.Null() && Range.Size())
+				{
+					const auto begin = m_f0data.Data() + curve_idx * m_f0data.Size(1);
+					const auto beginIdx = std::distance(begin, Range.begin());
+					const auto endIdx = std::distance(begin, Range.end());
+
+					const auto curMinFrameFp = GetFpOffset(0.f);
+					const auto curMaxFrameFp = GetFpOffset(float(m_viewRect.GetWidth()));
+					const auto curPixPerFrame = float(m_viewRect.GetWidth()) / (curMaxFrameFp - curMinFrameFp);
+
+					const auto frameCount = std::max(
+						int64_t(10.f / curPixPerFrame),
+						1ll
+					);
+					if (abs(beginIdx - xoff) < frameCount)
+						m_begin_insel = true;
+					else if (abs(endIdx - xoff) < frameCount)
+						m_end_insel = true;
+				}
+				else
+				{
+					m_end_insel = true;
+					selected_f0_begin = selected_f0_end = m_f0data.Data() + xoff + curve_idx * m_f0data.Size(1);
+				}
 			}
 			return true;
 		}
@@ -692,7 +749,7 @@ namespace SimpleF0Labeler
 	{
 		if (m_f0data.HasValue())
 		{
-			if (m_insel && selected_f0_begin == selected_f0_end)
+			if ((m_end_insel || m_begin_insel) && selected_f0_begin == selected_f0_end)
 				selected_f0_begin = selected_f0_end = nullptr;
 			if (time_in_sel)
 			{
@@ -704,7 +761,7 @@ namespace SimpleF0Labeler
 				WndControls::SetPlayerPos(xof);
 			}
 		}
-		m_insel = false;
+		m_end_insel = m_begin_insel = false;
 		m_lisdown = false;
 		time_in_sel = false;
 		in_move = false;
@@ -876,13 +933,21 @@ namespace SimpleF0Labeler
 		return UIScroll::OnWindowMessage(code, wParam, lParam);
 	}
 
+	bool CurveEditor::OnSetCursor(Mui::_m_param hCur, Mui::_m_param lParam)
+	{
+#ifdef _WIN32
+		::SetCursor((HCURSOR)hCur);
+#endif
+		return true;
+	}
+
 	bool CurveEditor::OnMouseExited(_m_uint flag, const UIPoint& point)
 	{
 		UIScroll::OnMouseExited(flag, point);
-		if (m_f0data.HasValue() && m_insel)
+		if (m_f0data.HasValue() && (m_end_insel || m_begin_insel))
 			if (selected_f0_begin == selected_f0_end)
 				selected_f0_begin = selected_f0_end = nullptr;
-		m_insel = false;
+		m_end_insel = m_begin_insel = false;
 		time_in_sel = false;
 
 		UPRButton();
@@ -1078,6 +1143,7 @@ namespace SimpleF0Labeler
 		const auto curMaxFrameFp = GetFpOffset(float(viewWidth)) * FrameScale;
 		const auto curPixPerFrame = float(viewWidth) / (curMaxFrameFp - curMinFrameFp);
 		const auto curCenterFactorX = abs(curMinFrameFp) < 1.f ? 0 : int(0.5f * curPixPerFrame);
+		const auto curFrameStride = (int64_t)round(std::max(1.f / curPixPerFrame, 1.f));
 
 		const auto curMinFrameBin = curMinFrameFp;
 		const auto curMaxFrameBin = std::min(curMaxFrameFp + (curCenterFactorX ? 1.f : 0.f), float(SpecFrames));
@@ -1120,7 +1186,7 @@ namespace SimpleF0Labeler
 			auto SpecData = m_specData.Slice(
 				{
 					DragonianLib::Range{ (int64_t)floor(curMinBin), (int64_t)ceil(curMaxBin) },
-					DragonianLib::Range{ (int64_t)floor(curMinFrameBin), (int64_t)ceil(curMaxFrameBin) }
+					DragonianLib::Range{ (int64_t)floor(curMinFrameBin), curFrameStride, (int64_t)ceil(curMaxFrameBin) }
 				}
 			).Contiguous().Evaluate();
 			const auto [NewBins, NewFrames] = SpecData.Size().RawArray();

@@ -33,9 +33,9 @@ _D_Dragonian_Lib_Operator_Space_Begin
 
 ThreadPool& GetThreadPool();
 ThreadPool& GetTaskPool();
-SizeType GetMaxTaskCountPerOperator();
+SizeType& GetMaxTaskCountPerOperator();
 void SetMaxTaskCountPerOperator(SizeType _MaxTaskCount);
-bool GetInstantRunFlag();
+std::atomic_bool& GetInstantRunFlag();
 void SetInstantRunFlag(bool _Flag);
 std::atomic_uint64_t& GetRandomDeviceId();
 void SetTaskPoolSize(SizeType _Size);
