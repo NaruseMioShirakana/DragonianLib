@@ -27,12 +27,11 @@
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
-template <class _ValueType, size_t _Rank>
+template <typename _ValueType, size_t _Rank>
 class Array
 {
 public:
 	static constexpr size_t _MyRank = _Rank;
-	static_assert(_MyRank > 0, "The rank of the array must be greater than 0.");
 	using ArrayType = _ValueType[_Rank];
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType* _Right, size_t _Begin = 0, size_t _End = _MyRank)
@@ -108,13 +107,19 @@ public:
 	{
 		return _MyData + _Rank;
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& operator[](size_t _Index)
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& operator[](
+		this const Array& _Self,
+		size_t _Index
+		)
 	{
-		return _MyData[_Index];
+		return _Self._MyData[_Index];
 	}
-	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& operator[](size_t _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& operator[](
+		this Array& _Self,
+		size_t _Index
+		)
 	{
-		return _MyData[_Index];
+		return _Self._MyData[_Index];
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& At(size_t _Index)
 	{
@@ -252,10 +257,194 @@ public:
 	_ValueType _MyData[_Rank]; ///< Data of the dimensions
 };
 
+template <typename _ValueType>
+class Array<_ValueType, 0>
+{
+	static constexpr size_t _MyRank = 0;
+	using ArrayType = _ValueType[1];
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline Array& Assign(const _ValueType*, size_t = 0, size_t = _MyRank)
+	{
+		return *this;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static Array ConstantOf(const _ValueType&)
+	{
+		return {};
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static void AssignConstant(const _ValueType&, size_t = 0, size_t = _MyRank)
+	{
+		
+	}
+	template <typename _Type = _ValueType>
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto Sum() const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
+	{
+		return _ValueType(0);
+	}
+	template <typename _Type = _ValueType>
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto InnerProduct(const Array<_Type, _MyRank>&) const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
+	{
+		return _ValueType(0);
+	}
+	template <typename _Type = _ValueType>
+	_D_Dragonian_Lib_Constexpr_Force_Inline auto Multiply() const
+		requires (TypeTraits::IsArithmeticValue<_Type>&& TypeTraits::IsSameTypeValue<_Type, _ValueType>)
+	{
+		return _ValueType(0);
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static size_t Size()
+	{
+		return 0;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* Data()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* Data() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* Begin() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* End() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* Begin()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* End()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& operator[](
+		this const Array& _Self,
+		size_t _Index
+		)
+	{
+		return _Self._MyData[_Index];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& operator[](
+		this Array& _Self,
+		size_t _Index
+		)
+	{
+		return _Self._MyData[_Index];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& At(size_t _Index)
+	{
+		return _MyData[_Index];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& At(size_t _Index) const
+	{
+		return _MyData[_Index];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& Front()
+	{
+		return _MyData[0];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& Front() const
+	{
+		return _MyData[0];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType& Back()
+	{
+		return _MyData[0];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType& Back() const
+	{
+		return _MyData[0];
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* begin()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* end()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* begin() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* end() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* ReversedBegin()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline _ValueType* ReversedEnd()
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* ReversedBegin() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline const _ValueType* ReversedEnd() const
+	{
+		return _MyData;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static bool Empty()
+	{
+		return true;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static size_t Rank()
+	{
+		return 0;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Array<_ValueType, 1> Insert(
+		const _ValueType& _Value, size_t
+	) const
+	{
+		return Array<_ValueType, 1>{ _Value };
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Array Erase(size_t _Index) const
+	{
+		return *this;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static std::string ToString()
+	{
+		return "[]";
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static std::wstring ToWString()
+	{
+		return L"[]";
+	}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline ArrayType& RawArray()
+	{
+		return _MyData;
+	}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline const ArrayType& RawArray() const
+	{
+		return _MyData;
+	}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator==(const Array& _Right) const
+	{
+		return true;
+	}
+
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool operator!=(const Array& _Right) const
+	{
+		return true;
+	}
+
+	_ValueType _MyData[1]{ };
+};
+
 template<typename _Tp, typename... _Up>
-Array(_Tp, _Up...)
--> ::DragonianLib::TemplateLibrary::Array<std::enable_if_t<(TypeTraits::IsSameTypeValue<_Tp, _Up> && ...), _Tp>,
-         1 + sizeof...(_Up)>;
+Array(_Tp&&, _Up&&...)
+-> ::DragonianLib::TemplateLibrary::Array<std::enable_if_t<(TypeTraits::CouldBeConvertedFromValue<TypeTraits::RemoveReferenceType<_Tp>, _Up> && ...), TypeTraits::RemoveReferenceType<_Tp>>,
+	1 + sizeof...(_Up)>;
 
 template <typename _ValueType, size_t _Size>
 using MArray = Array<_ValueType, _Size>;
@@ -407,38 +596,268 @@ struct ExtractAllShapesOfInitializerList<std::initializer_list<_ValueType>>
 	}
 };
 
-template <typename _Type, size_t _Rank1, size_t _Rank2>
-constexpr auto ArrayCat(const Array<_Type, _Rank1>& _Left)
+template <typename _Fs, typename _Sec>
+constexpr bool IsAllCmbAbleImpl()
 {
-	return _Left;
+	return (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> &&
+		TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec>) ||
+		(TypeTraits::IsArrayLikeValue<_Fs> && TypeTraits::IsArrayLikeValue<_Sec> &&
+			TypeTraits::IsSameTypeValue<TypeTraits::ArrayType<_Fs>, TypeTraits::ArrayType<_Sec>>);
+}
+template <typename>
+constexpr bool IsAllCmbAble()
+{
+	return true;
+}
+template <typename _Fs, typename _Sec, typename... _Rest>
+constexpr bool IsAllCmbAble()
+{
+	return IsAllCmbAbleImpl<_Fs, _Sec>() && IsAllCmbAble<_Sec, _Rest...>();
 }
 
-template <typename _Type, size_t _Rank1, size_t _Rank2>
-constexpr auto ArrayCat(const Array<_Type, _Rank1>& _Left, const Array<_Type, _Rank2>& _Right)
+template <typename _Fs, typename _Sec>
+constexpr bool IsAllMovCmbAbleImpl()
 {
-	Array<_Type, _Rank1 + _Rank2> _Ret;
-	std::copy_n(_Left.Data(), _Rank1, _Ret.Data());
-	std::copy_n(_Right.Data(), _Rank2, _Ret.Data() + _Rank1);
+	return (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> &&
+		TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec> && 
+		std::is_move_assignable_v<TypeTraits::ArrayType<_Fs>> &&
+		std::is_move_assignable_v<TypeTraits::ArrayType<_Sec>>) ||
+		(TypeTraits::IsArrayLikeValue<_Fs> && TypeTraits::IsArrayLikeValue<_Sec> &&
+			TypeTraits::IsSameTypeValue<TypeTraits::ArrayType<_Fs>, TypeTraits::ArrayType<_Sec>>);
+}
+template <typename>
+constexpr bool IsAllMovCmbAble()
+{
+	return true;
+}
+template <typename _Fs, typename _Sec, typename... _Rest>
+constexpr bool IsAllMovCmbAble()
+{
+	return IsAllMovCmbAbleImpl<_Fs, _Sec>() && IsAllMovCmbAble<_Sec, _Rest...>();
+}
+
+template <typename _ArrayLikeType>
+constexpr auto ImplCombineArray(
+	_ArrayLikeType&& _Left
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeType>)
+{
+	return std::forward<_ArrayLikeType>(_Left);
+}
+
+template <typename _ArrayLikeType>
+constexpr auto ImplMoveCombineArray(
+	_ArrayLikeType&& _Left
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeType>)
+{
+	return std::forward<_ArrayLikeType>(_Left);
+}
+
+template <typename _ArrayLikeTypeA, typename _ArrayLikeTypeB>
+constexpr auto ImplCombineArray(
+	_ArrayLikeTypeA&& _ArrayLikeA,
+	_ArrayLikeTypeB&& _ArrayLikeB
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeTypeA>&& TypeTraits::IsArrayLikeValue<_ArrayLikeTypeB>&& TypeTraits::IsSameTypeValue<TypeTraits::ArrayType<_ArrayLikeTypeA>, TypeTraits::ArrayType<_ArrayLikeTypeB>>)
+{
+	using ArrayType = TypeTraits::ArrayType<_ArrayLikeTypeA>;
+	constexpr size_t _RankA = TypeTraits::ArraySize<_ArrayLikeTypeA>;
+	constexpr size_t _RankB = TypeTraits::ArraySize<_ArrayLikeTypeB>;
+	auto ABegin = Begin(std::forward<_ArrayLikeTypeA>(_ArrayLikeA));
+	auto BBegin = Begin(std::forward<_ArrayLikeTypeB>(_ArrayLikeB));
+	Array<ArrayType, _RankA + _RankB> _Ret;
+	for (size_t i = 0; i < _RankA; ++i)
+		_Ret[i] = ABegin[i];
+	for (size_t i = 0; i < _RankB; ++i)
+		_Ret[i + _RankA] = BBegin[i];
 	return _Ret;
 }
 
-template <typename _Type, size_t _Rank1, size_t _Rank2>
-constexpr auto ArrayCat(Array<_Type, _Rank1>&& _RLeft, Array<_Type, _Rank2>&& _RRight)
+template <typename _ArrayLikeTypeA, typename _ArrayLikeTypeB>
+constexpr auto ImplMoveCombineArray(
+	_ArrayLikeTypeA&& _ArrayLikeA,
+	_ArrayLikeTypeB&& _ArrayLikeB
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeTypeA>&& TypeTraits::IsArrayLikeValue<_ArrayLikeTypeB>&& TypeTraits::IsSameTypeValue<TypeTraits::ArrayType<_ArrayLikeTypeA>, TypeTraits::ArrayType<_ArrayLikeTypeB>>&& std::is_move_assignable_v<TypeTraits::ArrayType<_ArrayLikeTypeA>>&& std::is_move_assignable_v<TypeTraits::ArrayType<_ArrayLikeTypeB>>)
 {
-	auto _Left = std::move(_RLeft);
-	auto _Right = std::move(_RRight);
-	Array<_Type, _Rank1 + _Rank2> _Ret;
-	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
+	using ArrayType = TypeTraits::ArrayType<_ArrayLikeTypeA>;
+	constexpr size_t _RankA = TypeTraits::ArraySize<_ArrayLikeTypeA>;
+	constexpr size_t _RankB = TypeTraits::ArraySize<_ArrayLikeTypeB>;
+	auto ABegin = Begin(std::forward<_ArrayLikeTypeA>(_ArrayLikeA));
+	auto BBegin = Begin(std::forward<_ArrayLikeTypeB>(_ArrayLikeB));
+	Array<ArrayType, _RankA + _RankB> _Ret;
+	for (size_t i = 0; i < _RankA; ++i)
+		_Ret[i] = std::move(ABegin[i]);
+	for (size_t i = 0; i < _RankB; ++i)
+		_Ret[i + _RankA] = std::move(BBegin[i]);
+	return _Ret;
+}
+
+template <typename _ArrayLikeType, typename _ValueTy>
+constexpr auto ImplCombineArrayValue(
+	_ArrayLikeType&& _Left,
+	_ValueTy&& _Right
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeType> && !TypeTraits::IsArrayLikeValue<_ValueTy>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_ArrayLikeType>, _ValueTy>)
+{
+	using ArrayType = TypeTraits::ArrayType<_ArrayLikeType>;
+	constexpr size_t _Rank = TypeTraits::ArraySize<_ArrayLikeType>;
+	auto ABegin = Begin(std::forward<_ArrayLikeType>(_Left));
+	Array<ArrayType, _Rank + 1> _Ret;
+	for (size_t i = 0; i < _Rank; ++i)
+		_Ret[i] = ABegin[i];
+	_Ret[_Rank] = std::forward<_ValueTy>(_Right);
+	return _Ret;
+}
+
+template <typename _ArrayLikeType, typename _ValueTy>
+constexpr auto ImplMoveCombineArrayValue(
+	_ArrayLikeType&& _Left,
+	_ValueTy&& _Right
+)
+	requires (TypeTraits::IsArrayLikeValue<_ArrayLikeType> && !TypeTraits::IsArrayLikeValue<_ValueTy>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_ArrayLikeType>, _ValueTy>)
+{
+	using ArrayType = TypeTraits::ArrayType<_ArrayLikeType>;
+	constexpr size_t _Rank = TypeTraits::ArraySize<_ArrayLikeType>;
+	auto ABegin = Begin(std::forward<_ArrayLikeType>(_Left));
+	Array<ArrayType, _Rank + 1> _Ret;
+	for (size_t i = 0; i < _Rank; ++i)
+		_Ret[i] = std::move(ABegin[i]);
+	_Ret[_Rank] = std::forward<_ValueTy>(_Right);
+	return _Ret;
+}
+
+template <typename _Fs, typename _Sec, typename... _Rest>
+constexpr auto CombineArrayImpl(_Fs&& _First, _Sec&& _Second, _Rest&&... _RestArr)
+{
+	if constexpr (sizeof...(_Rest))
 	{
-		std::copy_n(_Left.Data(), _Rank1, _Ret.Data());
-		std::copy_n(_Right.Data(), _Rank2, _Ret.Data() + _Rank1);
+		if constexpr (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> && TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec>)
+			return CombineArrayImpl(
+				ImplCombineArrayValue(
+					std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+				),
+				std::forward<_Rest>(_RestArr)...
+			);
+		else
+			return CombineArrayImpl(
+				ImplCombineArray(
+					std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+				),
+				std::forward<_Rest>(_RestArr)...
+			);
 	}
 	else
 	{
-		_Impl_Dragonian_Lib_Iterator_Move(_Ret.Data(), _Left.Data(), _Rank1);
-		_Impl_Dragonian_Lib_Iterator_Move(_Ret.Data() + _Rank1, _Right.Data(), _Rank2);
+		if constexpr (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> && TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec>)
+			return ImplCombineArrayValue(
+				std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+			);
+		else
+			return ImplCombineArray(
+				std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+			);
 	}
-	return _Ret;
+}
+
+template <typename _Fs>
+constexpr auto CombineArrayImpl(_Fs&& _First)
+{
+	return std::forward<_Fs>(_First);
+}
+
+template <typename _Fs, typename _Sec, typename... _Rest>
+constexpr auto MoveCombineArrayImpl(_Fs&& _First, _Sec&& _Second, _Rest&&... _RestArr)
+{
+	if constexpr (sizeof...(_Rest))
+	{
+		if constexpr (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> && TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec>)
+			return MoveCombineArrayImpl(
+				ImplMoveCombineArrayValue(
+					std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+				),
+				std::forward<_Rest>(_RestArr)...
+			);
+		else
+			return MoveCombineArrayImpl(
+				ImplMoveCombineArray(
+					std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+				),
+				std::forward<_Rest>(_RestArr)...
+			);
+	}
+	else
+	{
+		if constexpr (TypeTraits::IsArrayLikeValue<_Fs> && !TypeTraits::IsArrayLikeValue<_Sec> && TypeTraits::CouldBeConvertedFromValue<TypeTraits::ArrayType<_Fs>, _Sec>)
+			return ImplMoveCombineArrayValue(
+				std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+			);
+		else
+			return ImplMoveCombineArray(
+				std::forward<_Fs>(_First), std::forward<_Sec>(_Second)
+			);
+	}
+}
+
+template <typename _Fs>
+constexpr auto MoveCombineArrayImpl(_Fs&& _First)
+{
+	return std::forward<_Fs>(_First);
+}
+
+template <typename... _Args>
+constexpr auto CombineArray(_Args&&... _ArgsArr)
+	requires (IsAllCmbAble<_Args...>())
+{
+	return CombineArrayImpl(std::forward<_Args>(_ArgsArr)...);
+}
+
+template <typename... _Args>
+constexpr auto MoveCombineArray(_Args&&... _ArgsArr)
+	requires (IsAllMovCmbAble<_Args...>())
+{
+	return MoveCombineArrayImpl(std::forward<_Args>(_ArgsArr)...);
+}
+
+constexpr decltype(auto) ConstexprSum()
+{
+	return 0;
+}
+template <typename _Type>
+constexpr decltype(auto) ConstexprSum(_Type&& _First)
+{
+	return std::forward<_Type>(_First);
+}
+template <typename _Type, typename... _Rest>
+constexpr decltype(auto) ConstexprSum(_Type&& _Arg, _Rest&&... _Args)
+{
+	return std::forward<_Type>(_Arg) + ConstexprSum(std::forward<_Rest>(_Args)...);
+}
+template <typename... _Type>
+constexpr decltype(auto) ExpandSum(_Type&&... _Args)
+{
+	return ConstexprSum(std::forward<_Type>(_Args)...);
+}
+
+constexpr decltype(auto) ConstexprMul()
+{
+	return 0;
+}
+template <typename _Type>
+constexpr decltype(auto) ConstexprMul(_Type&& _First)
+{
+	return std::forward<_Type>(_First);
+}
+template <typename _Type, typename... _Rest>
+constexpr decltype(auto) ConstexprMul(_Type&& _Arg, _Rest&&... _Args)
+{
+	return std::forward<_Type>(_Arg) * ConstexprMul(std::forward<_Rest>(_Args)...);
+}
+template <typename... _Type>
+constexpr decltype(auto) ExpandMul(_Type&&... _Args)
+{
+	return ConstexprMul(std::forward<_Type>(_Args)...);
 }
 
 _D_Dragonian_Lib_Template_Library_Space_End

@@ -507,22 +507,6 @@ template <typename Fn>
 	);
 }
 
-class AddObj
-{
-public:
-	template <typename T>
-	explicit AddObj(std::shared_ptr<T> ptr)
-	{
-		std::cout << typeid(std::shared_ptr<T>).name() << std::endl;
-		std::cout << typeid(T).name() << std::endl;
-	}
-	template <typename T>
-	explicit AddObj(T Object)
-	{
-		std::cout << typeid(T).name() << std::endl;
-	}
-};
-
 int main()
 {
 	using namespace DragonianLib;
@@ -533,8 +517,8 @@ int main()
 
 	Einops::Rearrange(
 		Functional::Empty(Dimensions{ 10, 50, 60 }),
-		MakeRearrangeArgs(Einops::AutoDim, "axis1"),
-		MakeRearrangeArgs(Einops::AutoDim, "axis1")
+		Einops::MakeRearrangeArgs(Einops::RearrangeToken(2) * 5, Einops::AutoDim),
+		Einops::MakeRearrangeArgs(Einops::RearrangeToken(5) * 2, Einops::AutoCat)
 	);
 	return 0;
 	//TestStft();

@@ -957,7 +957,7 @@ namespace Functional
 			const auto NDims = _Inputs[0].Rank();
 			auto Shape = FShape;
 
-			for (size_t i = 1; i < _MyTensorCount; ++i)
+			for (size_t i = 1; std::cmp_less(i, _MyTensorCount); ++i)
 			{
 				const auto& CurShape = _Inputs[i].Shape();
 				for (SizeType j = 0; j < NDims; ++j)

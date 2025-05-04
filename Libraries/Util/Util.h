@@ -370,7 +370,7 @@ template <bool... _Conditions>
 constexpr bool BoolConditionOrValue = BoolConditionOr<_Conditions...>::Cond;
 
 template <typename... _Type>
-void ExpandExpression(_Type...) {}
+void ExpandExpression(_Type&&...) {}
 
 struct HResult
 {

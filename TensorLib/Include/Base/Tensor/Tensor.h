@@ -201,13 +201,13 @@ public:
 
 using PadCount = Range;
 template<typename... _Up>
-SliceOptions(_Up...) -> ::DragonianLib::SliceOptions<sizeof...(_Up)>;
+SliceOptions(_Up&&...) -> ::DragonianLib::SliceOptions<sizeof...(_Up)>;
 template<typename... _Up>
-VRanges(_Up...) -> ::DragonianLib::VRanges<sizeof...(_Up)>;
+VRanges(_Up&&...) -> ::DragonianLib::VRanges<sizeof...(_Up)>;
 template<typename... _Up>
-PaddingCounts(_Up...) -> ::DragonianLib::PaddingCounts<sizeof...(_Up)>;
+PaddingCounts(_Up&&...) -> ::DragonianLib::PaddingCounts<sizeof...(_Up)>;
 template<typename... _Up>
-Dimensions(_Up...) -> ::DragonianLib::Dimensions<sizeof...(_Up)>;
+Dimensions(_Up&&...) -> ::DragonianLib::Dimensions<sizeof...(_Up)>;
 
 /**
  * @brief Set the random seed.
@@ -2679,8 +2679,10 @@ public:
 
 		if (!IsContinuous())
 			_D_Dragonian_Lib_Throw_Exception("View Should Be Continuous!");
-		if (std::ranges::count(_ViewShape, -1) > 1)
+		const auto DynamicCount = std::ranges::count(_ViewShape, -1);
+		if (DynamicCount > 1)
 			_D_Dragonian_Lib_Throw_Exception("Count Of Dynamic Axis Should Be <= 1!");
+		bool HasDynamic = DynamicCount == 1;
 		for (const auto i : _ViewShape)
 			if (i <= 0 && i != -1)
 				_D_Dragonian_Lib_Throw_Exception("Count Of Size Should Be Greater Than 0 Or Equal -1 (Dynamic Axis)!");
@@ -2691,7 +2693,7 @@ public:
 		const auto Remainder = SrcSize % DstSize;
 		const auto DynamicAxes = SrcSize / DstSize;
 
-		if (Remainder)
+		if (Remainder || (!HasDynamic && DynamicAxes != 1))
 			_D_Dragonian_Lib_Throw_Exception("Could Not View The Tensor With Size["
 				+ std::to_string(SrcSize) + "] To Size[" + std::to_string(DstSize) + "]!");
 
@@ -2722,13 +2724,14 @@ public:
 	/**
 	 * @brief View the tensor with the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can view it with View(N, -1) to get a tensor with [N, C * H * W] shape.
 	 * @tparam _Args The specified shape.
+	 * @param _Shape0 The shapes.
 	 * @param _Shape The shapes.
 	 * @return A viewed tensor(view).
 	 */
 	template <typename... _Args>
-	decltype(auto) View(_Args... _Shape) const
+	decltype(auto) View(SizeType _Shape0, _Args... _Shape) const
 	{
-		Dimensions<sizeof...(_Args)> _ViewShape{ _Shape... };
+		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		return View(_ViewShape);
 	}
 
@@ -2898,15 +2901,22 @@ public:
 
 	/**
 	 * @brief Reshape the tensor to the specified shape. for example, we have a tensor with [N, C, H, W] shape, we can reshape it to [N, C * H * W] shape with ReShape(N, -1).
+	 * @param _Shape0 The shapes.
 	 * @param _Shape The shapes.
 	 * @return A reshaped tensor(view).
 	 */
 	template <typename _CurValueType = ValueType, typename... _Args>
-	decltype(auto) ReShape(_Args... _Shape) const
+	decltype(auto) ReShape(SizeType _Shape0, _Args... _Shape) const
 		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
 	{
-		Dimensions<sizeof...(_Args)> _ViewShape{ _Shape... };
+		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		return ReShape(_ViewShape);
+	}
+
+	template <typename _CurValueType = ValueType, typename... _Args>
+	decltype(auto) ReSize(SizeType _Shape0, _Args... _Shape) const
+	{
+		return ReShape(_Shape0, _Shape...);
 	}
 
 	//********************************************************Operation********************************************************//
@@ -3524,3 +3534,36 @@ template <typename _TensorType = float, Device _MyDevice = Device::CPU, size_t _
 using ITensor = Tensor<_TensorType, _NRank, _MyDevice>;
 
 _D_Dragonian_Lib_Space_End
+
+template <size_t _Size>
+struct DragonianLib::TypeTraits::ImplArrayTraits<DragonianLib::VRanges<_Size>>
+{
+	using Type = Range;
+	static constexpr size_t Size = _Size;
+};
+template <size_t _Size>
+constexpr bool DragonianLib::TypeTraits::IsArrayLike<DragonianLib::VRanges<_Size>> = true;
+template <size_t _Size>
+struct DragonianLib::TypeTraits::ImplArrayTraits<DragonianLib::PaddingCounts<_Size>>
+{
+	using Type = Range;
+	static constexpr size_t Size = _Size;
+};
+template <size_t _Size>
+constexpr bool DragonianLib::TypeTraits::IsArrayLike<DragonianLib::PaddingCounts<_Size>> = true;
+template <size_t _Size>
+struct DragonianLib::TypeTraits::ImplArrayTraits<DragonianLib::SliceOptions<_Size>>
+{
+	using Type = Range;
+	static constexpr size_t Size = _Size;
+};
+template <size_t _Size>
+constexpr bool DragonianLib::TypeTraits::IsArrayLike<DragonianLib::SliceOptions<_Size>> = true;
+template <size_t _Size>
+struct DragonianLib::TypeTraits::ImplArrayTraits<DragonianLib::Dimensions<_Size>>
+{
+	using Type = SizeType;
+	static constexpr size_t Size = _Size;
+};
+template <size_t _Size>
+constexpr bool DragonianLib::TypeTraits::IsArrayLike<DragonianLib::Dimensions<_Size>> = true;

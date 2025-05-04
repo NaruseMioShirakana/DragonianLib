@@ -506,6 +506,34 @@ constexpr bool IsArrayLikeValue = _D_Dragonian_Lib_Type_Traits_Namespace IsArray
 	_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>>;
 
 template <typename _Type>
+struct ImplArrayTraits {};
+template <typename _Type, size_t _Size>
+struct ImplArrayTraits<_Type[_Size]>
+{
+	using Type = _Type;
+	static constexpr size_t Size = _Size;
+};
+template <template <typename, size_t> typename _ObjType, typename _ValueType, size_t _ValueSize>
+struct ImplArrayTraits<_ObjType<_ValueType, _ValueSize>>
+{
+	using Type = _ValueType;
+	static constexpr size_t Size = _ValueSize;
+};
+template <template <size_t, typename> typename _ObjType, size_t _ValueSize, typename _ValueType>
+struct ImplArrayTraits<_ObjType<_ValueSize, _ValueType>>
+{
+	using Type = _ValueType;
+	static constexpr size_t Size = _ValueSize;
+};
+template <typename _Type>
+using ArrayTraits = typename _D_Dragonian_Lib_Type_Traits_Namespace ImplArrayTraits<
+	_D_Dragonian_Lib_Type_Traits_Namespace RemoveARPCVType<_Type>>;
+template <typename _Type>
+using ArrayType = typename _D_Dragonian_Lib_Type_Traits_Namespace ArrayTraits<_Type>::Type;
+template <typename _Type>
+constexpr size_t ArraySize = _D_Dragonian_Lib_Type_Traits_Namespace ArrayTraits<_Type>::Size;
+
+template <typename _Type>
 constexpr bool IsInitializerList = false;
 template <typename _Type>
 constexpr bool IsInitializerList<std::initializer_list<_Type>> = true;

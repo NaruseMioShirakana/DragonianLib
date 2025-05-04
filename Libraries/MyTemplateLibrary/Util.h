@@ -378,7 +378,7 @@ void _Impl_Dragonian_Lib_Cast_Range(
 }
 
 template <typename _Type>
-decltype(auto) CBegin(const _Type& _Container)
+constexpr decltype(auto) CBegin(const _Type& _Container)
 	requires (TypeTraits::HasCRange<_Type>)
 {
 	if constexpr (TypeTraits::HasCLRange<_Type>)
@@ -387,7 +387,7 @@ decltype(auto) CBegin(const _Type& _Container)
 		return _Container.CBegin();
 }
 template <typename _Type>
-decltype(auto) CEnd(const _Type& _Container)
+constexpr decltype(auto) CEnd(const _Type& _Container)
 	requires (TypeTraits::HasCRange<_Type>)
 {
 	if constexpr (TypeTraits::HasCLRange<_Type>)
@@ -395,9 +395,8 @@ decltype(auto) CEnd(const _Type& _Container)
 	else if constexpr (TypeTraits::HasCHRange<_Type>)
 		return _Container.CEnd();
 }
-
 template <typename _Type>
-decltype(auto) Begin(_Type&& _Container)
+constexpr decltype(auto) Begin(_Type&& _Container)
 	requires (TypeTraits::HasRange<_Type>)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
@@ -408,7 +407,7 @@ decltype(auto) Begin(_Type&& _Container)
 		return CBegin(std::forward<_Type>(_Container));
 }
 template <typename _Type>
-decltype(auto) End(_Type&& _Container)
+constexpr decltype(auto) End(_Type&& _Container)
 	requires (TypeTraits::HasRange<_Type>)
 {
 	if constexpr (TypeTraits::HasLRange<_Type>)
@@ -417,6 +416,26 @@ decltype(auto) End(_Type&& _Container)
 		return std::forward<_Type>(_Container).End();
 	else
 		return CEnd(std::forward<_Type>(_Container));
+}
+template <typename _Type, size_t _Rank>
+constexpr decltype(auto) Begin(_Type (& _Arr)[_Rank])
+{
+	return _Arr + 0;
+}
+template <typename _Type, size_t _Rank>
+constexpr decltype(auto) End(_Type (& _Arr)[_Rank])
+{
+	return _Arr + _Rank;
+}
+template <typename _Type, size_t _Rank>
+constexpr decltype(auto) Begin(const _Type(&_Arr)[_Rank])
+{
+	return _Arr + 0;
+}
+template <typename _Type, size_t _Rank>
+constexpr decltype(auto) End(const _Type(&_Arr)[_Rank])
+{
+	return _Arr + _Rank;
 }
 
 template <typename>
@@ -947,11 +966,11 @@ _D_Dragonian_Lib_Constexpr_Force_Inline auto DropElement(_TupleType&& _Tuple)
 	requires (_Index < std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>)
 {
 	return std::make_tuple(
+		std::get<_Index>(std::forward<_TupleType>(_Tuple)),
 		std::tuple_cat(
 			SubTuple<0, _Index>(std::forward<_TupleType>(_Tuple)),
 			SubTuple<_Index + 1, std::tuple_size_v<TypeTraits::RemoveARPCVType<_TupleType>>>(std::forward<_TupleType>(_Tuple))
-		),
-		SubTuple<_Index, _Index + 1>(std::forward<_TupleType>(_Tuple))
+		)
 	);
 }
 
