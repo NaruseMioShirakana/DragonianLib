@@ -816,6 +816,39 @@ struct CountType<_DestType, GeneralizedList<_Types...>>
 template <typename _DestType, typename... _Types>
 constexpr auto CountTypeValue = _D_Dragonian_Lib_Type_Traits_Namespace CountType<_DestType, _Types...>::Count;
 
+template <size_t _Index, typename _DestType, typename _First, typename... _Types>
+struct FindTypeStruct
+{
+	static constexpr size_t Index = _D_Dragonian_Lib_Type_Traits_Namespace FindTypeStruct<_Index + 1, _DestType, _Types...>::Index;
+};
+template <size_t _Index, typename _DestType, typename _First>
+struct FindTypeStruct<_Index, _DestType, _First>
+{
+	static constexpr size_t Index = _Index + 1;
+};
+template <size_t _Index, typename _DestType>
+struct FindTypeStruct<_Index, _DestType, _DestType>
+{
+	static constexpr size_t Index = _Index;
+};
+template <size_t _Index, typename _DestType, typename _First, typename... _Types>
+struct FindTypeStruct<_Index, _DestType, std::tuple<_First, _Types...>>
+{
+	static constexpr size_t Index = _D_Dragonian_Lib_Type_Traits_Namespace FindTypeStruct<_Index, _DestType, _First, _Types...>::Index;
+};
+template <size_t _Index, typename _DestType, typename _First, typename... _Types>
+struct FindTypeStruct<_Index, _DestType, GeneralizedList<_First, _Types...>>
+{
+	static constexpr size_t Index = _D_Dragonian_Lib_Type_Traits_Namespace FindTypeStruct<_Index, _DestType, _First, _Types...>::Index;
+};
+template <size_t _Index, typename _DestType, typename... _Types>
+struct FindTypeStruct<_Index, _DestType, _DestType, _Types...>
+{
+	static constexpr size_t Index = _Index;
+};
+template <size_t _Begin, typename _DestType, typename... _Types>
+constexpr auto FindFirst = FindTypeStruct<_Begin, _DestType, _Types...>::Index;
+
 template <typename _Type1, typename _Type2>
 concept SameImpl = _D_Dragonian_Lib_Type_Traits_Namespace IsSameTypeValue<_Type1, _Type2>;
 template <typename _Type1, typename _Type2>
@@ -952,8 +985,12 @@ concept HasHRange = requires(_Type & _Val)
 template <typename _Type>
 concept HasRange = HasLRange<_Type> || HasHRange<_Type> || HasCRange<_Type>;
 
+template <typename _IterType>
+using IteratorValueType = RemoveReferenceType<decltype(*InstanceOf<_IterType>())>;
+
 template <typename _IterTypeA, typename _IterTypeB>
-concept IsSameIterator = (IsIterator<_IterTypeA> && IsIterator<_IterTypeB>) &&
-(IsType<_IterTypeA, _IterTypeB> || IsSameTypeValue<RemoveARPCVType<decltype(*InstanceOf<_IterTypeA>())>, RemoveARPCVType<decltype(*InstanceOf<_IterTypeB>())>>);
+concept IsSameIterator = (IsIterator<_IterTypeA> && IsIterator<_IterTypeB>) && (IsType<_IterTypeA, _IterTypeB> ||
+	IsSameTypeValue<RemoveARPCVType<decltype(*InstanceOf<_IterTypeA>())>,
+	RemoveARPCVType<decltype(*InstanceOf<_IterTypeB>())>>);
 
 _D_Dragonian_Lib_Type_Traits_Namespace_End

@@ -31,350 +31,337 @@
 
 _D_Dragonian_Lib_Template_Library_Space_Begin
 
-constexpr size_t _D_Dragonian_Lib_Stl_Unfold_Count = 8;
+constexpr size_t _Valdef_Dragonian_Lib_StlUnfoldCount = 8;
 
 template <typename ValueType, typename ...ArgTypes>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Construct_At(ValueType& _Where, ArgTypes&&... _Args)
-	requires (std::is_constructible_v<ValueType, ArgTypes...>)
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplConstructAt(
+	ValueType& _Where,
+	ArgTypes&&... _Args
+) requires (std::is_constructible_v<ValueType, ArgTypes...>)
 {
-	return *new (std::addressof(_Where)) ValueType(std::forward<ArgTypes>(_Args)...);
+	return *new (&_Where) ValueType(std::forward<ArgTypes>(_Args)...);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline void _Impl_Dragonian_Lib_Destroy_Range(ValueType* _First, ValueType* _Last)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline void ImplDestroyRange(
+	IteratorType1 _First,
+	IteratorType2 _Last
+) requires (TypeTraits::IsSameIterator<IteratorType1, IteratorType2> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
-	if constexpr (!std::is_trivially_destructible_v<ValueType>)
+	using ValueType = TypeTraits::IteratorValueType<IteratorType1>;
+	if constexpr (!std::is_trivially_destructible_v<ValueType> && std::is_destructible_v<ValueType>)
 	{
 		if (_First >= _Last)
 			return;
 		const auto Size = static_cast<size_t>(_Last - _First);
 		size_t i = 0;
-		if (Size >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= Size - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
+		if (Size >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (; i <= Size - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+				for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
 					(_First + i + j)->~ValueType();
 		for (; i < Size; ++i)
 			(_First + i)->~ValueType();
 	}
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Default_Construct(ValueType* _Ptr, size_t _Count)
-	requires (std::is_default_constructible_v<ValueType>)
-{
-	if constexpr (std::is_trivially_copyable_v<ValueType>)
-		return;
-	else
-	{
-		size_t i = 0;
-		if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-					_Impl_Dragonian_Lib_Construct_At(_Ptr[i + j]);
-		for (; i < _Count; ++i)
-			_Impl_Dragonian_Lib_Construct_At(_Ptr[i]);
-	}
-}
-
-template <typename DestType, typename SrcType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Cast(DestType* _Dest, const SrcType* _Src, size_t _Count)
-	requires (std::is_assignable_v<DestType, SrcType>)
+template <typename IteratorType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorDefaultConstruct(
+	IteratorType _Ptr,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType>&& std::is_default_constructible_v<TypeTraits::IteratorValueType<IteratorType>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Dest[i + j] = _Src[i + j];
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Ptr[i + j]);
 	for (; i < _Count; ++i)
-		_Dest[i] = _Src[i];
+		ImplConstructAt(_Ptr[i]);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
-	requires (std::is_copy_assignable_v<ValueType>)
+template <typename DestIterator, typename SrcIterator>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorCast(
+	DestIterator _Dest,
+	SrcIterator _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<DestIterator>&& TypeTraits::IsIterator<SrcIterator>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<DestIterator>, TypeTraits::IteratorValueType<SrcIterator>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<DestIterator>>)
 {
-	if constexpr (std::is_trivially_copyable_v<ValueType>)
-		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
-	else
-	{
-		size_t i = 0;
-		if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				{
-					if constexpr (std::is_copy_assignable_v<ValueType>)
-						_Dest[i + j] = _Src[i + j];
-					else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-						_Dest[i + j] = ValueType(_Src[i + j]);
-					else
-						_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-				}
-		for (; i < _Count; ++i)
-		{
-			if constexpr (std::is_copy_assignable_v<ValueType>)
-				_Dest[i] = _Src[i];
-			else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-				_Dest[i] = ValueType(_Src[i]);
-			else
-				_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-		}
-	}
+	using DestType = TypeTraits::IteratorValueType<DestIterator>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[i + j] = DestType(_Src[i + j]);
+	for (; i < _Count; ++i)
+		_Dest[i] = DestType(_Src[i]);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
-	requires (std::is_copy_assignable_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorCopy(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
+{
+	using ValueType = TypeTraits::IteratorValueType<IteratorType1>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[i + j] = ValueType(_Src[i + j]);
+	for (; i < _Count; ++i)
+		_Dest[i] = ValueType(_Src[i]);
+}
+
+template <typename IteratorType, typename ValueType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorCopyOne(
+	IteratorType _Dest,
+	size_t _Count,
+	const ValueType& _Src
+) requires (TypeTraits::IsIterator<IteratorType> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType>, const ValueType&>)
+{
+	using DestType = TypeTraits::IteratorValueType<IteratorType>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[i + j] = DestType(_Src);
+	for (; i < _Count; ++i)
+		_Dest[i] = DestType(_Src);
+}
+
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorMove(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType2>>)
+{
+	using DestType = TypeTraits::IteratorValueType<IteratorType1>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[i + j] = DestType(std::move(_Src[i + j]));
+	for (; i < _Count; ++i)
+		_Dest[i] = DestType(std::move(_Src[i]));
+}
+
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplReversedIteratorCopy(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
+{
+	using ValueType = TypeTraits::IteratorValueType<IteratorType1>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[_Count - (1 + i + j)] = ValueType(_Src[_Count - (1 + i + j)]);
+	for (; i < _Count; ++i)
+		_Dest[_Count - (1 + i)] = ValueType(_Src[_Count - (1 + i)]);
+}
+
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplReversedIteratorMove(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType2>>)
+{
+	using ValueType = TypeTraits::IteratorValueType<IteratorType1>;
+	size_t i = 0;
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				_Dest[_Count - (1 + i + j)] = ValueType(std::move(_Src[_Count - (1 + i + j)]));
+	for (; i < _Count; ++i)
+		_Dest[_Count - (i + 1)] = ValueType(std::move(_Src[_Count - (i + 1)]));
+}
+
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplReversedIteratorCopyConstruct(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+)
+requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&&
+	TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>,
+	TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-			{
-				if constexpr (std::is_copy_assignable_v<ValueType>)
-					_Dest[i + j] = _Src[i + j];
-				else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-					_Dest[i + j] = ValueType(_Src[i + j]);
-				else
-					_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-			}
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Dest[_Count - (1 + i + j)], _Src[_Count - (1 + i + j)]);
 	for (; i < _Count; ++i)
-	{
-		if constexpr (std::is_copy_assignable_v<ValueType>)
-			_Dest[i] = _Src[i];
-		else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-			_Dest[i] = ValueType(_Src[i]);
-		else
-			_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-	}
+		ImplConstructAt(_Dest[_Count - (i + 1)], _Src[_Count - (i + 1)]);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_move_assignable_v<ValueType>)
-{
-	if constexpr (std::is_trivially_copyable_v<ValueType>)
-		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
-	else
-	{
-		size_t i = 0;
-		if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-					_Dest[i + j] = std::move(_Src[i + j]);
-		for (; i < _Count; ++i)
-			_Dest[i] = std::move(_Src[i]);
-	}
-}
-
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Copy(ValueType* _Dest, const ValueType* _Src, size_t _Count)
-	requires (std::is_copy_assignable_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplReversedIteratorMoveConstruct(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType2>>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-			{
-				const auto Index = _Count - (1 + i + j);
-				if constexpr (std::is_copy_assignable_v<ValueType>)
-					_Dest[Index] = _Src[Index];
-				else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-					_Dest[Index] = ValueType(_Src[Index]);
-				else
-					_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-			}
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Dest[_Count - (1 + i + j)], std::move(_Src[_Count - (1 + i + j)]));
 	for (; i < _Count; ++i)
-	{
-		const auto Index = _Count - (1 + i);
-		if constexpr (std::is_copy_assignable_v<ValueType>)
-			_Dest[Index] = _Src[Index];
-		else if constexpr (std::is_copy_constructible_v<ValueType> && std::is_move_assignable_v<ValueType>)
-			_Dest[Index] = ValueType(_Src[Index]);
-		else
-			_D_Dragonian_Lib_Stl_Throw("ValueType Must Be Copy Assignable!");
-	}
+		ImplConstructAt(_Dest[_Count - (i + 1)], std::move(_Src[_Count - (i + 1)]));
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Move(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_move_assignable_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorCopyConstruct(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&&
+	TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>,
+	TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Dest[_Count - (1 + i + j)] = std::move(_Src[_Count - (1 + i + j)]);
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Dest[i + j], _Src[i + j]);
 	for (; i < _Count; ++i)
-		_Dest[_Count - (i + 1)] = std::move(_Src[_Count - (i + 1)]);
+		ImplConstructAt(_Dest[i], _Src[i]);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
-	requires (std::is_copy_constructible_v<ValueType>)
+template <typename IteratorType, typename ValueType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorCopyConstructOne(
+	IteratorType _Dest,
+	size_t _Count,
+	const ValueType& _Src
+) requires (TypeTraits::IsIterator<IteratorType> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType>, const ValueType&>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], _Src[_Count - (1 + i + j)]);
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Dest[i + j], _Src);
 	for (; i < _Count; ++i)
-		_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], _Src[_Count - (i + 1)]);
+		ImplConstructAt(_Dest[i], _Src);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_move_constructible_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorMoveConstruct(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
 	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (1 + i + j)], std::move(_Src[_Count - (1 + i + j)]));
+	if (_Count >= _Valdef_Dragonian_Lib_StlUnfoldCount)
+		for (; i <= _Count - _Valdef_Dragonian_Lib_StlUnfoldCount; i += _Valdef_Dragonian_Lib_StlUnfoldCount)
+			for (size_t j = 0; j < _Valdef_Dragonian_Lib_StlUnfoldCount; ++j)
+				ImplConstructAt(_Dest[i + j], std::move(_Src[i + j]));
 	for (; i < _Count; ++i)
-		_Impl_Dragonian_Lib_Construct_At(_Dest[_Count - (i + 1)], std::move(_Src[_Count - (i + 1)]));
+		ImplConstructAt(_Dest[i], std::move(_Src[i]));
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_Construct(ValueType* _Dest, const ValueType* _Src, size_t _Count)
-	requires (std::is_copy_constructible_v<ValueType>)
+template <typename IteratorType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorOffset(
+	IteratorType _Src,
+	size_t _Count,
+	int64_t Offset
+) requires (TypeTraits::IsIterator<IteratorType> && (std::is_copy_assignable_v<TypeTraits::IteratorValueType<IteratorType>> || std::is_move_assignable_v<TypeTraits::IteratorValueType<IteratorType>>) && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>)
 {
-	if constexpr (std::is_trivially_copyable_v<ValueType>)
-		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
-	else
-	{
-		size_t i = 0;
-		if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-					_Impl_Dragonian_Lib_Construct_At(_Dest[i + j], _Src[i + j]);
-		for (; i < _Count; ++i)
-			_Impl_Dragonian_Lib_Construct_At(_Dest[i], _Src[i]);
-	}
-}
-
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Copy_Construct_One(ValueType* _Dest, size_t _Count, const ValueType& _Src)
-	requires (std::is_copy_constructible_v<ValueType>)
-{
-	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Impl_Dragonian_Lib_Construct_At(_Dest[i + j], _Src);
-	for (; i < _Count; ++i)
-		_Impl_Dragonian_Lib_Construct_At(_Dest[i], _Src);
-}
-
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_move_constructible_v<ValueType>)
-{
-	if constexpr (std::is_trivially_copyable_v<ValueType>)
-		memcpy(_Dest, _Src, sizeof(ValueType) * _Count);
-	else
-	{
-		size_t i = 0;
-		if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-				for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-					_Impl_Dragonian_Lib_Construct_At(_Dest[i + j], std::move(_Src[i + j]));
-		for (; i < _Count; ++i)
-			_Impl_Dragonian_Lib_Construct_At(_Dest[i], std::move(_Src[i]));
-	}
-}
-
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset(ValueType* _Src, size_t _Count, int64_t Offset)
-	requires (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)
-{
+	using ValueType = TypeTraits::IteratorValueType<IteratorType>;
 	if (Offset == 0 || _Count == 0)
 		return;
 	auto _Dest = _Src + Offset;
 	if (Offset < 0)
 	{
 		if constexpr (std::is_move_assignable_v<ValueType>)
-			_Impl_Dragonian_Lib_Iterator_Move(_Dest, _Src, _Count);
+			ImplIteratorMove(_Dest, _Src, _Count);
 		else
-			_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
+			ImplIteratorCopy(_Dest, _Src, _Count);
 	}
 	else
 	{
 		if constexpr (std::is_move_assignable_v<ValueType>)
-			_Impl_Dragonian_Lib_Reversed_Iterator_Move(_Dest, _Src, _Count);
+			ImplReversedIteratorMove(_Dest, _Src, _Count);
 		else
-			_Impl_Dragonian_Lib_Reversed_Iterator_Copy(_Dest, _Src, _Count);
+			ImplReversedIteratorCopy(_Dest, _Src, _Count);
 	}
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset_Construct(ValueType* _Src, size_t _Count, int64_t Offset)
-	requires (std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>)
+template <typename IteratorType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorOffsetConstruct(
+	IteratorType _Src,
+	size_t _Count,
+	int64_t Offset
+) requires (TypeTraits::IsIterator<IteratorType> && (std::is_copy_assignable_v<TypeTraits::IteratorValueType<IteratorType>> || std::is_move_assignable_v<TypeTraits::IteratorValueType<IteratorType>>) && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>)
 {
+	using ValueType = TypeTraits::IteratorValueType<IteratorType>;
 	if (Offset == 0 || _Count == 0)
 		return;
 	auto _Dest = _Src + Offset;
 	if (Offset < 0)
 	{
 		if constexpr (std::is_move_constructible_v<ValueType>)
-			_Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
+			ImplIteratorMoveConstruct(_Dest, _Src, _Count);
 		else
-			_Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
+			ImplIteratorCopyConstruct(_Dest, _Src, _Count);
 	}
 	else
 	{
 		if constexpr (std::is_move_constructible_v<ValueType>)
-			_Impl_Dragonian_Lib_Reversed_Iterator_Move_Construct(_Dest, _Src, _Count);
+			ImplReversedIteratorMoveConstruct(_Dest, _Src, _Count);
 		else
-			_Impl_Dragonian_Lib_Reversed_Iterator_Copy_Construct(_Dest, _Src, _Count);
+			ImplReversedIteratorCopyConstruct(_Dest, _Src, _Count);
 	}
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Offset_Copy(ValueType* _Src, size_t _Count, int64_t Offset)
-	requires (std::is_copy_assignable_v<ValueType>)
+template <typename IteratorType>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorOffsetCopy(
+	IteratorType _Src,
+	size_t _Count,
+	int64_t Offset
+) requires (TypeTraits::IsIterator<IteratorType>&& std::is_copy_assignable_v<TypeTraits::IteratorValueType<IteratorType>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType>>)
 {
 	if (Offset == 0)
 		return;
 	auto _Dest = _Src + Offset;
 	if (Offset < 0)
-		_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
+		ImplIteratorCopy(_Dest, _Src, _Count);
 	else
-		_Impl_Dragonian_Lib_Reversed_Iterator_Copy(_Dest, _Src, _Count);
+		ImplReversedIteratorCopy(_Dest, _Src, _Count);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Try_Move_Construct(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_copy_constructible_v<ValueType> || std::is_move_constructible_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorTryMoveConstruct(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&& TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
-	if constexpr (std::is_move_constructible_v<ValueType>)
-		_Impl_Dragonian_Lib_Iterator_Move_Construct(_Dest, _Src, _Count);
+	if constexpr (TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>>)
+		ImplIteratorMoveConstruct(_Dest, _Src, _Count);
 	else
-		_Impl_Dragonian_Lib_Iterator_Copy_Construct(_Dest, _Src, _Count);
+		ImplIteratorCopyConstruct(_Dest, _Src, _Count);
 }
 
-template <typename ValueType>
-_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) _Impl_Dragonian_Lib_Iterator_Try_Move_Assign(ValueType* _Dest, ValueType* _Src, size_t _Count)
-	requires (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)
+template <typename IteratorType1, typename IteratorType2>
+_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ImplIteratorTryMoveAssign(
+	IteratorType1 _Dest,
+	IteratorType2 _Src,
+	size_t _Count
+) requires (TypeTraits::IsIterator<IteratorType1>&& TypeTraits::IsIterator<IteratorType2>&&
+	TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>,
+	TypeTraits::IteratorValueType<IteratorType2>> && !TypeTraits::IsConstValue<TypeTraits::IteratorValueType<IteratorType1>>)
 {
-	if constexpr (std::is_move_assignable_v<ValueType>)
-		_Impl_Dragonian_Lib_Iterator_Move(_Dest, _Src, _Count);
+	if constexpr (TypeTraits::CouldBeConvertedFromValue<TypeTraits::IteratorValueType<IteratorType1>, TypeTraits::RReferenceType<TypeTraits::IteratorValueType<IteratorType2>>>)
+		ImplIteratorMove(_Dest, _Src, _Count);
 	else
-		_Impl_Dragonian_Lib_Iterator_Copy(_Dest, _Src, _Count);
-}
-
-template <typename ValueType1, typename ValueType2>
-	requires (TypeTraits::CouldBeConvertedFromValue<ValueType1, ValueType2>)
-void _Impl_Dragonian_Lib_Cast_Range(
-	ValueType1* _Dest, const ValueType2* _Src, size_t _Count
-)
-{
-	size_t i = 0;
-	if (_Count >= _D_Dragonian_Lib_Stl_Unfold_Count)
-		for (; i <= _Count - _D_Dragonian_Lib_Stl_Unfold_Count; i += _D_Dragonian_Lib_Stl_Unfold_Count)
-			for (size_t j = 0; j < _D_Dragonian_Lib_Stl_Unfold_Count; ++j)
-				_Dest[i + j] = ValueType1(_Src[i + j]);
-	for (; i < _Count; ++i)
-		_Dest[i] = ValueType1(_Src[i]);
+		ImplIteratorCopy(_Dest, _Src, _Count);
 }
 
 template <typename _Type>

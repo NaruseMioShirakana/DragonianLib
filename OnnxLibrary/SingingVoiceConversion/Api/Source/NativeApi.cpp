@@ -385,7 +385,7 @@ void _Dragonian_Lib_Svc_Add_Prefix(InitEnviromentSetting)(
 	};
 }
 
-void _Dragonian_Lib_Svc_Add_Prefix(InitHparams)(
+void _Dragonian_Lib_Svc_Add_Prefix(InitHyperParameters)(
 	_Dragonian_Lib_Svc_Add_Prefix(HyperParameters)* _Input
 	)
 {
@@ -594,7 +594,7 @@ _Dragonian_Lib_Svc_Add_Prefix(Vocoder) _Dragonian_Lib_Svc_Add_Prefix(LoadVocoder
 	}
 }
 
-void _Dragonian_Lib_Svc_Add_Prefix(UnrefVocoderModel)(
+void _Dragonian_Lib_Svc_Add_Prefix(UnrefVocoder)(
 	_Dragonian_Lib_Svc_Add_Prefix(Vocoder) _Model
 	)
 {
@@ -788,6 +788,32 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(CreateF
 	}
 }
 
+float* _Dragonian_Lib_Svc_Add_Prefix(GetTensorData)(
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
+	)
+{
+	if (!_Tensor)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Tensor Could Not Be Null");
+		return nullptr;
+	}
+
+	return (*_Tensor)->Data();
+}
+
+const INT64* _Dragonian_Lib_Svc_Add_Prefix(GetTensorShape)(
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
+	)
+{
+	if (!_Tensor)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Tensor Could Not Be Null");
+		return nullptr;
+	}
+
+	return (*_Tensor)->Size().Data();
+}
+
 void _Dragonian_Lib_Svc_Add_Prefix(DestoryFloatTensor)(
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
 	)
@@ -834,9 +860,41 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(EncodeU
 	}
 }
 
+_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ClusterSearch)(
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
+	INT64 _CodeBookId,
+	_Dragonian_Lib_Svc_Add_Prefix(Cluster) _Model
+	)
+{
+	if (!_Units)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Null");
+		return nullptr;
+	}
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null");
+		return nullptr;
+	}
+
+	try
+	{
+		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(
+			(*_Model)->Search(
+				_Units->Get().Squeeze(0).Squeeze(0),
+				_CodeBookId
+			).UnSqueeze(0).UnSqueeze(0));
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return nullptr;
+	}
+}
+
 _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ExtractF0)(
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
-	_Dragonian_Lib_Svc_Add_Prefix(F0ExtractorParameters)* _Parameters,
+	const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorParameters)* _Parameters,
 	_Dragonian_Lib_Svc_Add_Prefix(F0Extractor) _Model
 	)
 {
@@ -858,20 +916,102 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Extract
 
 	try
 	{
-		/*return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(
-			(*_Model)->ExtractF0(
-				_Audio->Get().Squeeze(0).Squeeze(0),
-				{
-					_Parameters->SamplingRate,
-					_Parameters->HopSize,
-					_Parameters->F0Bins,
-					_Parameters->WindowSize,
-					_Parameters->F0Max,
-					_Parameters->F0Min,
-					_Parameters->Threshold,
-					_Parameters->UserParameter
-				}
-			));*/
+		auto Ret = (*_Model)->ExtractF0(
+			_Audio->Get().Squeeze(0).Squeeze(0),
+			{
+				_Parameters->SamplingRate,
+				_Parameters->HopSize,
+				_Parameters->F0Bins,
+				_Parameters->WindowSize,
+				_Parameters->F0Max,
+				_Parameters->F0Min,
+				_Parameters->Threshold,
+				_Parameters->UserParameter
+			}
+		);
+		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(Ret.View(1, 1, Ret.Size(0), Ret.Size(1)));
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return nullptr;
+	}
+}
+
+_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inference)(
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
+	INT64 SourceSamplingRate,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _SpeakerMix,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Spec,
+	const _Dragonian_Lib_Svc_Add_Prefix(InferenceParameters)* _Parameters,
+	_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor)* _OutF0
+	)
+{
+	if (!_Audio)
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Audio Could Not Be Null");
+
+	if (!_Units)
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Units Could Not Be Null");
+
+	if (!_F0)
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_F0 Could Not Be Null");
+
+	if (!_Parameters)
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Parameters Could Not Be Null");
+
+	if (!_Model)
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null");
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::Parameters Params{
+		_Parameters->NoiseScale,
+		_Parameters->SpeakerId,
+		_Parameters->PitchOffset,
+		_Parameters->Seed,
+		_Parameters->ClusterRate,
+		static_cast<bool>(_Parameters->F0HasUnVoice),
+		{
+			_Parameters->Diffusion.Stride,
+			_Parameters->Diffusion.Begin,
+			_Parameters->Diffusion.End,
+			_GDragonianLibSvcNullStrCheck(_Parameters->Diffusion.Sampler),
+			_Parameters->Diffusion.MelFactor,
+			_Parameters->Diffusion.UserParameters
+		},
+		{
+			_Parameters->Reflow.Stride,
+			_Parameters->Reflow.Begin,
+			_Parameters->Reflow.End,
+			_Parameters->Reflow.Scale,
+			_GDragonianLibSvcNullStrCheck(_Parameters->Reflow.Sampler),
+			_Parameters->Reflow.MelFactor,
+			_Parameters->Reflow.UserParameters
+		},
+		_Parameters->StftNoiseScale,
+		nullptr,
+		_Parameters->UserParameters
+	};
+
+	DragonianLib::OnnxRuntime::SingingVoiceConversion::SliceDatas Slice;
+	Slice.SourceSampleCount = _Audio->Get().ElementCount();
+	Slice.SourceSampleRate = SourceSamplingRate;
+	Slice.GTAudio = _Audio->Get().Squeeze(0).View();
+	Slice.GTSampleRate = SourceSamplingRate;
+	if (_Spec)
+		Slice.GTSpec = _Spec->Get().View();
+	if (_SpeakerMix)
+		Slice.Speaker = _SpeakerMix->Get().View();
+	Slice.Units = _Units->Get().View();
+	Slice.F0 = _F0->Get().Squeeze(0).View();
+
+	try
+	{
+		auto Data = (*_Model)->VPreprocess(Params, std::move(Slice));
+		if (_OutF0)
+			*_OutF0 = new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(Data.F0.UnSqueeze(0));
+		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)((*_Model)->Forward(Params, Data));
 	}
 	catch (std::exception& e)
 	{

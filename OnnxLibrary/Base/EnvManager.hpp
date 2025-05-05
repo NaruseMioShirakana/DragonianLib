@@ -103,37 +103,11 @@ class OnnxRuntimeModel
 {
 public:
 	OnnxRuntimeModel() = default;
-    OnnxRuntimeModel(
-        OnnxRuntimeModelPointer Model
-    ) : _MyModel(std::move(Model))
-    {
-        if (!_MyModel)
-            return;
-        static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
-        std::wstring HexPtr;
-        {
-            std::wstringstream wss;
-            wss << std::hex << _MyModel.get();
-            wss >> HexPtr;
-        }
-        _MyStaticLogger->LogMessage(L"Reference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
-    }
-    ~OnnxRuntimeModel()
-    {
-		if (!_MyModel)
-			return;
-        static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
-        std::wstring HexPtr;
-        {
-            std::wstringstream wss;
-            wss << std::hex << _MyModel.get();
-            wss >> HexPtr;
-        }
-        _MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count() - 1));
-    }
-    OnnxRuntimeModel(const OnnxRuntimeModel&) = default;
+    OnnxRuntimeModel(OnnxRuntimeModelPointer Model);
+    ~OnnxRuntimeModel();
+    OnnxRuntimeModel(const OnnxRuntimeModel&);
     OnnxRuntimeModel(OnnxRuntimeModel&&) noexcept = default;
-    OnnxRuntimeModel& operator=(const OnnxRuntimeModel&) = default;
+    OnnxRuntimeModel& operator=(const OnnxRuntimeModel&);
     OnnxRuntimeModel& operator=(OnnxRuntimeModel&&) noexcept = default;
     OnnxRuntimeModel(nullptr_t) noexcept
     {

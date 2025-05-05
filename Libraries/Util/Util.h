@@ -372,6 +372,46 @@ constexpr bool BoolConditionOrValue = BoolConditionOr<_Conditions...>::Cond;
 template <typename... _Type>
 void ExpandExpression(_Type&&...) {}
 
+constexpr decltype(auto) ConstexprSum()
+{
+	return 0;
+}
+template <typename _Type>
+constexpr decltype(auto) ConstexprSum(_Type&& _First)
+{
+	return std::forward<_Type>(_First);
+}
+template <typename _Type, typename... _Rest>
+constexpr decltype(auto) ConstexprSum(_Type&& _Arg, _Rest&&... _Args)
+{
+	return std::forward<_Type>(_Arg) + ConstexprSum(std::forward<_Rest>(_Args)...);
+}
+template <typename... _Type>
+constexpr decltype(auto) ExpandSum(_Type&&... _Args)
+{
+	return ConstexprSum(std::forward<_Type>(_Args)...);
+}
+
+constexpr decltype(auto) ConstexprMul()
+{
+	return 0;
+}
+template <typename _Type>
+constexpr decltype(auto) ConstexprMul(_Type&& _First)
+{
+	return std::forward<_Type>(_First);
+}
+template <typename _Type, typename... _Rest>
+constexpr decltype(auto) ConstexprMul(_Type&& _Arg, _Rest&&... _Args)
+{
+	return std::forward<_Type>(_Arg) * ConstexprMul(std::forward<_Rest>(_Args)...);
+}
+template <typename... _Type>
+constexpr decltype(auto) ExpandMul(_Type&&... _Args)
+{
+	return ConstexprMul(std::forward<_Type>(_Args)...);
+}
+
 struct HResult
 {
 	int64_t Value;

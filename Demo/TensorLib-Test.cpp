@@ -11,6 +11,7 @@
 #include "OnnxLibrary/Vocoder/Register.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
 #include "TensorLib/Include/Base/Tensor/Einops.h"
+#include "OnnxLibrary/SingingVoiceConversion/Api/NativeApi.h"
 
 static auto MyLastTime = std::chrono::high_resolution_clock::now();
 static int64_t TotalStep = 0;
@@ -296,7 +297,6 @@ template <typename Fn>
 
 [[maybe_unused]] static void TestSvc()
 {
-	
 	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
 		44100,
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
@@ -507,6 +507,167 @@ template <typename Fn>
 	);
 }
 
+[[maybe_unused]] static void TestApi()
+{
+	DragonianVoiceSvcEnviromentSetting EnvSetting;
+	DragonianVoiceSvcHyperParameters HyperParameters;
+	DragonianVoiceSvcF0ExtractorParameters F0ExtractorParameters;
+	DragonianVoiceSvcInferenceParameters InferenceParameters;
+	DragonianVoiceSvcEnviroment Enviroment = 0;
+	DragonianVoiceSvcModel SvcModel = 0;
+	DragonianVoiceSvcUnitsEncoder UnitsEncoder = 0;
+	DragonianVoiceSvcF0Extractor F0Extractor = 0;
+	DragonianVoiceSvcVocoder Vocoder = 0;
+
+	DragonianVoiceSvcFloatTensor Audio = 0;
+	DragonianVoiceSvcFloatTensor RawF0 = 0;
+	DragonianVoiceSvcFloatTensor Units = 0;
+	DragonianVoiceSvcFloatTensor F0 = 0;
+	DragonianVoiceSvcFloatTensor NetOutput = 0;
+	DragonianVoiceSvcFloatTensor OutputAudio = 0;
+	
+	
+	struct { const wchar_t* Key; const wchar_t* Value; } ModelPaths[]
+	{
+		{ L"Ctrl", LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\encoder.onnx)" },
+		{ L"Velocity", LR"(D:\VSGIT\VC & TTS Python\DDSP-SVC-6.2\model\velocity.onnx)" },
+		{ 0, 0 },
+		{ L"Nsf-HiFi-GAN", LR"(D:\VSGIT\MoeVS-SVC\Build\Release\hifigan\nsf-hifigan-n.onnx)" },
+		{L"ContentVec-768-l12", LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\OnnxSoVits\vec-768-layer-12-f16.onnx)" },
+		{ L"Dio", 0 }
+	};
+
+	DragonianVoiceSvcInitEnviromentSetting(&EnvSetting);
+	EnvSetting.Provider = 1;
+	Enviroment = DragonianVoiceSvcCreateEnviroment(&EnvSetting);
+
+
+	DragonianVoiceSvcInitHyperParameters(&HyperParameters);
+	HyperParameters.ModelPaths = (DragonianVoiceSvcArgDict)ModelPaths;
+	HyperParameters.ModelType = DragonianVoiceSvcReflowSvc;
+	HyperParameters.ProgressCallback = ProgressCb;
+	HyperParameters.F0Max = 800;
+	HyperParameters.F0Min = 65;
+	HyperParameters.HopSize = 512;
+	HyperParameters.MelBins = 128;
+	HyperParameters.UnitsDim = 768;
+	HyperParameters.OutputSamplingRate = 44100;
+	HyperParameters.SpeakerCount = 92;
+	HyperParameters.HasSpeakerEmbedding = true;
+	HyperParameters.HasVolumeEmbedding = true;
+	HyperParameters.HasSpeakerMixLayer = true;
+	SvcModel = DragonianVoiceSvcLoadModel(&HyperParameters, Enviroment);
+
+
+	UnitsEncoder = DragonianVoiceSvcLoadUnitsEncoder(
+		ModelPaths[4].Key,
+		ModelPaths[4].Value,
+		16000,
+		768,
+		Enviroment
+	);
+
+
+	F0Extractor = DragonianVoiceSvcCreateF0Extractor(
+		ModelPaths[5].Key,
+		ModelPaths[5].Value,					//Should be set when using fcpe or rmvpe
+		0,										//Should be set when using fcpe or rmvpe
+		HyperParameters.OutputSamplingRate		//Should be set when using fcpe or rmvpe
+	);
+
+
+	Vocoder = DragonianVoiceSvcLoadVocoder(
+		ModelPaths[3].Key,
+		ModelPaths[3].Value,
+		44100,
+		128,
+		Enviroment
+	);
+
+
+	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
+	);
+	auto InputStream = DragonianLib::AvCodec::OpenInputStream(
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
+	);
+	auto RawAudio = InputStream.DecodeAll(44100, 2);
+	auto InputAudio = RawAudio[{"900000:944100", "0"}].Transpose(-1, -2).Contiguous();
+	Audio = DragonianVoiceSvcCreateFloatTensor(
+		InputAudio.Data(),
+		1,
+		1,
+		1,
+		InputAudio.Size(1)
+	);
+
+	DragonianVoiceSvcInitF0ExtractorParameters(&F0ExtractorParameters);
+	F0ExtractorParameters.HopSize = (INT32)HyperParameters.HopSize;
+	F0ExtractorParameters.SamplingRate = (INT32)HyperParameters.OutputSamplingRate;
+	F0ExtractorParameters.F0Max = HyperParameters.F0Max;
+	F0ExtractorParameters.F0Min = HyperParameters.F0Min;
+	F0ExtractorParameters.F0Bins = (INT32)HyperParameters.F0Bin;
+	RawF0 = DragonianVoiceSvcExtractF0(
+		Audio,
+		&F0ExtractorParameters,
+		F0Extractor
+	);
+
+	Units = DragonianVoiceSvcEncodeUnits(
+		Audio,
+		44100,
+		UnitsEncoder
+	);
+
+	DragonianVoiceSvcInitInferenceParameters(&InferenceParameters);
+	InferenceParameters.SpeakerId = 0;
+	InferenceParameters.PitchOffset = 0.f;
+	InferenceParameters.StftNoiseScale = 1.f;
+	InferenceParameters.NoiseScale = 1.f;
+	InferenceParameters.Reflow.Begin = 0.f;
+	InferenceParameters.Reflow.End = 1.f;
+	InferenceParameters.Reflow.Stride = 0.05f;
+	InferenceParameters.F0HasUnVoice = false;
+	InferenceParameters.Reflow.Sampler = L"Eular";
+	NetOutput = DragonianVoiceSvcInference(
+		Audio,
+		44100,
+		Units,
+		RawF0,
+		0,
+		0,
+		&InferenceParameters,
+		SvcModel,
+		&F0
+	);
+
+	//Calling "DragonianVoiceSvcUnrefGlobalCache" function means you don't need this model anymore, if you call this function, the model will be unloaded when all instances of this model are unrefed. If Enviroment is destoryed, all models will be unloaded.
+
+	DragonianVoiceSvcDestoryFloatTensor(OutputAudio);
+	DragonianVoiceSvcDestoryFloatTensor(F0);
+	DragonianVoiceSvcDestoryFloatTensor(NetOutput);
+	DragonianVoiceSvcDestoryFloatTensor(Units);
+	DragonianVoiceSvcDestoryFloatTensor(RawF0);
+	DragonianVoiceSvcDestoryFloatTensor(Audio);
+
+	DragonianVoiceSvcUnrefVocoder(Vocoder);
+	DragonianVoiceSvcUnrefGlobalCache(ModelPaths[3].Value, Enviroment);
+
+	DragonianVoiceSvcUnrefF0Extractor(F0Extractor);
+	//DragonianVoiceSvcUnrefGlobalCache(ModelPaths[5].Value, Enviroment);     //When using fcpe or rmvpe
+
+	DragonianVoiceSvcUnrefUnitsEncoder(UnitsEncoder);
+	DragonianVoiceSvcUnrefGlobalCache(ModelPaths[4].Value, Enviroment);
+
+	DragonianVoiceSvcUnrefModel(SvcModel);
+	DragonianVoiceSvcUnrefGlobalCache(ModelPaths[0].Value, Enviroment); 
+	DragonianVoiceSvcUnrefGlobalCache(ModelPaths[1].Value, Enviroment);
+
+
+	DragonianVoiceSvcDestoryEnviroment(Enviroment);
+}
+
 int main()
 {
 	using namespace DragonianLib;
@@ -515,11 +676,42 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
 
-	Einops::Rearrange(
-		Functional::Empty(Dimensions{ 10, 50, 60 }),
-		Einops::MakeRearrangeArgs(Einops::RearrangeToken(2) * 5, Einops::AutoDim),
-		Einops::MakeRearrangeArgs(Einops::RearrangeToken(5) * 2, Einops::AutoCat)
+	std::cout << Functional::Cat(
+		0,
+		Functional::ConstantOf(Dimensions{ 2,5 }, 0),
+		Functional::ConstantOf(Dimensions{ 2,5 }, 1),
+		Functional::ConstantOf(Dimensions{ 2, 5 }, 2)
+	) << "\n" << "\n";
+
+	auto [Packed, Shapes] = Einops::Pack(
+		std::make_tuple(
+			Functional::ConstantOf(Dimensions{ 2,5 }, 0),
+			Functional::ConstantOf(Dimensions{ 2,5, 40, 20 }, 1),
+			Functional::ConstantOf(Dimensions{ 2, 5, 30 }, 2)
+		),
+		Einops::MakeRearrangeArgs("a", "b", Einops::PackTag)
 	);
+	auto& [Shape1, Shape2, Shape3] = Shapes;
+
+	std::cout << Packed << "\n" << "\n";
+
+	auto [Tensor1, Tensor2, Tensor3] = Einops::UnPack(
+		Packed,
+		Shapes,
+		Einops::MakeRearrangeArgs("a", "b", Einops::PackTag)
+	);
+
+	std::cout << Tensor1 << "\n" << "\n";
+	std::cout << Tensor2 << "\n" << "\n";
+	std::cout << Tensor3 << "\n" << "\n";
+
+	std::cout << Packed.Shape() << "\n";
+	std::cout << Shape1 << "\n";
+	std::cout << Shape2 << "\n";
+	std::cout << Shape3 << "\n";
+
+	TestApi();
+
 	return 0;
 	//TestStft();
 }

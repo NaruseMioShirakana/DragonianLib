@@ -67,7 +67,7 @@ extern "C" {
 	/**
 	 * @brief Key value pair, the key must be string and the value must be string
 	 */
-	typedef LPWSTR _Dragonian_Lib_Svc_Add_Prefix(KVPair)[2];
+	typedef LPCWSTR _Dragonian_Lib_Svc_Add_Prefix(KVPair)[2];
 
 	/**
 	 * @brief Dictionary, array of key value pair, the last element of the array must be (nullptr, nullptr)
@@ -172,7 +172,7 @@ extern "C" {
 		/**
 		 * @brief Logger id of the environment.
 		 */
-		LPWSTR LoggerId;
+		LPCWSTR LoggerId;
 
 		/**
 		 * @brief CUDA config of the environment.
@@ -334,7 +334,7 @@ extern "C" {
 		 *	- "DPM-Solver"		(not implemented)
 		 *	- "DPM-Solver++"	(not implemented)
 		 */
-		LPWSTR Sampler;
+		LPCWSTR Sampler;
 
 		/**
 		 * @brief Mel factor, multiplied to the mel spectrogram, this argument is only used if the output audio has incorrect samples, this means that the mel spectrogram has incorrect unit, the mel factor is used to correct the mel spectrogram
@@ -379,7 +379,7 @@ extern "C" {
 		 *	- "PECECE"			(implemented)
 		 *	- "Heun"			(implemented)
 		 */
-		LPWSTR Sampler;
+		LPCWSTR Sampler;
 
 		/**
 		 * @brief Mel factor, multiplied to the mel spectrogram, this argument is only used if the output audio has incorrect samples, this means that the mel spectrogram has incorrect unit, the mel factor is used to correct the mel spectrogram
@@ -477,8 +477,8 @@ extern "C" {
 	struct _Dragonian_Lib_Svc_Add_Prefix(ClusterConfig)
 	{
 		INT64 ClusterCenterSize;  ///< Cluster center size
-		LPWSTR Path;              ///< Path
-		LPWSTR Type;              ///< Type ("KMeans" or "Index")
+		LPCWSTR Path;              ///< Path
+		LPCWSTR Type;              ///< Type ("KMeans" or "Index")
 	};
 
 	/**
@@ -740,6 +740,24 @@ extern "C" {
 		);
 
 	/**
+	 * @brief Get data buffer of a tensor
+	 * @param _Tensor Tensor to get data buffer
+	 * @return Data buffer of the tensor
+	 */
+	_Dragonian_Lib_Svc_Api float* _Dragonian_Lib_Svc_Add_Prefix(GetTensorData)(
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
+		);
+
+	/**
+	 * @brief Get shape of a tensor
+	 * @param _Tensor Tensor to get shape
+	 * @return Shape of the tensor, the shape is a 4d array, the value of each element is the size of each dimension
+	 */
+	_Dragonian_Lib_Svc_Api const INT64* _Dragonian_Lib_Svc_Add_Prefix(GetTensorShape)(
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
+		);
+
+	/**
 	 * @brief Destory a tensor
 	 * @param _Tensor Tensor to destory
 	 */
@@ -753,10 +771,28 @@ extern "C" {
 		_Dragonian_Lib_Svc_Add_Prefix(UnitsEncoder) _Model
 		);
 
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ClusterSearch)(
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
+		INT64 _CodeBookId,
+		_Dragonian_Lib_Svc_Add_Prefix(Cluster) _Model
+		);
+
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ExtractF0)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
-		_Dragonian_Lib_Svc_Add_Prefix(F0ExtractorParameters)* _Parameters,
+		const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorParameters)* _Parameters,
 		_Dragonian_Lib_Svc_Add_Prefix(F0Extractor) _Model
+		);
+
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inference)(
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
+		INT64 SourceSamplingRate,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _SpeakerMix,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Spec,
+		const _Dragonian_Lib_Svc_Add_Prefix(InferenceParameters)* _Parameters,
+		_Dragonian_Lib_Svc_Add_Prefix(Model) _Model,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor)* _OutF0
 		);
 
 #ifdef __cplusplus

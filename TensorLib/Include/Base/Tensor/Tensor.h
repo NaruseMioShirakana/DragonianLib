@@ -1127,7 +1127,7 @@ private:
 			[MyAlloc, Size](void* _Pointer)
 			{
 				auto _DataPointer = static_cast<ValueType*>(_Pointer);
-				TemplateLibrary::_Impl_Dragonian_Lib_Destroy_Range(_DataPointer, _DataPointer + Size);
+				TemplateLibrary::ImplDestroyRange(_DataPointer, _DataPointer + Size);
 				MyAlloc.deallocate(_Pointer);
 			}
 		);
@@ -1165,7 +1165,7 @@ private:
 			{
 				auto IterData = _MyData;
 				while (IterData != _MyLast)
-					TemplateLibrary::_Impl_Dragonian_Lib_Construct_At(*IterData++);
+					TemplateLibrary::ImplConstructAt(*IterData++);
 			}
 		}
 	}

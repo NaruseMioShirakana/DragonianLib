@@ -49,6 +49,9 @@
 	</Type>
 
 	<Type Name="DragonianLib::TemplateLibrary::Array&lt;*&gt;">
+		<DisplayString Condition="_MyRank == 0">
+			{{ Empty Array }}
+		</DisplayString>
 		<DisplayString Condition="_MyRank == 1">
 			{{ Rank: {_MyRank}, Data: [ {_MyData[0]} ] }}
 		</DisplayString>

@@ -72,6 +72,67 @@ static void DragonianLibOrtLoggingFn(
 	_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->LogMessage(UTF8ToWideString(ort_message));
 }
 
+OnnxRuntimeModel::OnnxRuntimeModel(OnnxRuntimeModelPointer Model)
+	: _MyModel(std::move(Model))
+{
+	if (!_MyModel)
+		return;
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring HexPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << _MyModel.get();
+		wss >> HexPtr;
+	}
+	_MyStaticLogger->LogMessage(L"Loaded Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
+}
+
+OnnxRuntimeModel::~OnnxRuntimeModel()
+{
+	if (!_MyModel)
+		return;
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring HexPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << _MyModel.get();
+		wss >> HexPtr;
+	}
+	_MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count() - 1));
+}
+
+OnnxRuntimeModel::OnnxRuntimeModel(const OnnxRuntimeModel& _Left) : _MyModel(_Left._MyModel)
+{
+	if (!_MyModel)
+		return;
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring HexPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << _MyModel.get();
+		wss >> HexPtr;
+	}
+	_MyStaticLogger->LogMessage(L"Reference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
+}
+
+OnnxRuntimeModel& OnnxRuntimeModel::operator=(const OnnxRuntimeModel& _Left)
+{
+	if (this == &_Left)
+		return *this;
+	_MyModel = _Left._MyModel;
+	if (!_MyModel)
+		return *this;
+	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
+	std::wstring HexPtr;
+	{
+		std::wstringstream wss;
+		wss << std::hex << _MyModel.get();
+		wss >> HexPtr;
+	}
+	_MyStaticLogger->LogMessage(L"Reference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count()));
+	return *this;
+}
+
 OnnxRuntimeEnvironmentBase::~OnnxRuntimeEnvironmentBase()
 {
 	static auto _MyStaticLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
@@ -219,8 +280,6 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 		std::vector<const char*> OrtCUDAOptionKeys;
 		std::vector<const char*> OrtCUDAOptionValues;
 
-		_MyCUDAOptions["device_id"] = std::to_string(_MyDeviceID);
-
 		for (const auto& it : _MyCUDAOptions)
 		{
 			OrtCUDAOptionKeys.emplace_back(it.first.c_str());
@@ -354,7 +413,7 @@ OnnxRuntimeModel& OnnxRuntimeEnvironmentBase::RefOnnxRuntimeModel(const std::wst
 	{
 		_MyStaticLogger->LogInfo(
 			L"Loading Model: \"" + ModelPath +
-			L"\" With OnnxEnvironment: Instance[PTR:" + EnvPtr + L"], Current Referece Count: 1"
+			L"\" With OnnxEnvironment: Instance[PTR:" + EnvPtr + L"], Current Referece Count: 0"
 		);
 		auto _DeleterLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
 		return GlobalOrtModelCache[ModelPath] = std::shared_ptr<Ort::Session>(

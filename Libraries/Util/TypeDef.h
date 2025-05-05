@@ -394,4 +394,56 @@ struct Rational
 	}
 };
 
+namespace Hash
+{
+	template <size_t Bits>
+	struct FNV1aConstants;
+
+	template <>
+	struct FNV1aConstants<32>
+	{
+		using HashType = UInt32;
+		static constexpr HashType Prime = 16777619U;
+		static constexpr HashType Offset = 2166136261U;
+	};
+
+	template <>
+	struct FNV1aConstants<64>
+	{
+		using HashType = UInt64;
+		static constexpr HashType Prime = 1099511628211ULL;
+		static constexpr HashType Offset = 14695981039346656037ULL;
+	};
+
+	template <size_t Bits>
+	constexpr auto CompileTimeHash(const std::string_view& String)
+	{
+		using Constants = FNV1aConstants<Bits>;
+		typename Constants::HashType hash = Constants::Offset;
+
+		for (auto c : String)
+		{
+			hash ^= static_cast<UInt8>(c);
+			hash *= Constants::Prime;
+		}
+		return hash;
+	}
+
+	template <size_t Bits>
+	constexpr auto CompileTimeHash(const std::wstring_view& String)
+	{
+		using Constants = FNV1aConstants<Bits>;
+		typename Constants::HashType hash = Constants::Offset;
+
+		for (auto c : String)
+		{
+			hash ^= static_cast<UInt16>(c & 0xFF);
+			hash *= Constants::Prime;
+			hash ^= static_cast<UInt16>((c >> 8) & 0xFF);
+			hash *= Constants::Prime;
+		}
+		return hash;
+	}
+}
+
 _D_Dragonian_Lib_Space_End
