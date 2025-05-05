@@ -765,27 +765,61 @@ extern "C" {
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Tensor
 		);
 
+	/**
+	 * @brief Encode audio to units
+	 * @param[Input] _Audio Audio to encode
+	 * @param[Input] _SourceSamplingRate Source sampling rate of the audio
+	 * @param[Input] _Model Units encoder model
+	 * @return[Output] Encoded units, the shape is [1, 1, Frames, _UnitsDim]
+	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(EncodeUnits)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
 		INT64 _SourceSamplingRate,
 		_Dragonian_Lib_Svc_Add_Prefix(UnitsEncoder) _Model
 		);
 
+	/**
+	 * @brief Search the nearest cluster center of units
+	 * @param[Input] _Units Encoded units, the shape is [1, 1, Frames, _UnitsDim]
+	 * @param[Input] _CodeBookId Code book id, the code book id is the index of the cluster center, it is used to select the cluster center from the cluster center list
+	 * @param[Input] _Model Cluster model
+	 * @return [Output] The nearest cluster center of units, the shape is [1, 1, Frames, _UnitsDim]
+	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ClusterSearch)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
 		INT64 _CodeBookId,
 		_Dragonian_Lib_Svc_Add_Prefix(Cluster) _Model
 		);
 
+	/**
+	 * @brief Extract F0 from audio
+	 * @param[Input] _Audio Audio to extract F0
+	 * @param[Input] _Parameters F0 extractor parameters
+	 * @param[Input] _Model F0 extractor model
+	 * @return [Output] Sliced audio segments, the shape is [1, 1, 1, Frames]
+	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(ExtractF0)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
 		const _Dragonian_Lib_Svc_Add_Prefix(F0ExtractorParameters)* _Parameters,
 		_Dragonian_Lib_Svc_Add_Prefix(F0Extractor) _Model
 		);
 
+	/**
+	 * @brief Inference
+	 * @param[Input] _Audio Input audio, shape must be {1, BatchSize, Channels, SampleCount}
+	 * @param[Input] _SourceSamplingRate Source sample rate
+	 * @param[Input] _Units Encoded units, shape must be {BatchSize, Channels, Frames, UnitsDim}
+	 * @param[Input] _F0 F0, shape must be {1, BatchSize, Channels, Frames}
+	 * @param[Input/Optional] _SpeakerMix Speaker mix tensor, shape must be {BatchSize, Channels, Frames, SpeakerCount}, if you need to control speaker mixing, you must set this parameter, otherwise, you can set this parameter to nullptr
+	 * @param[Input/Optional] _Spec Mel spectrogram, shape must be {BatchSize, Channels, MelBins, Frames}, if you need shallow diffusion, you must set this parameter, otherwise, you can set this parameter to nullptr
+	 * @param[Input] _Parameters Inference parameters, see SingingVoiceConversion::Parameters
+	 * @param[Input] _Model Model to use for inference
+	 * @param[Output/Optional] _OutF0 Output F0, shape must be {1, BatchSize, Channels, Frames}, if you need to get the output F0 for vocoder inference, you must set this parameter, otherwise, you can set this parameter to nullptr
+	 * @return[Output] Inference result, may be the mel spectrogram or the audio, if output is audio, shape must be {1, BatchSize, Channels, SampleCount}, if output is mel spectrogram, shape must be {BatchSize, Channels, MelBins, Frames}
+	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inference)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
-		INT64 SourceSamplingRate,
+		INT64 _SourceSamplingRate,
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _SpeakerMix,
@@ -795,6 +829,13 @@ extern "C" {
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor)* _OutF0
 		);
 
+	/**
+	 * @brief Infer vocoder
+	 * @param[Input] _Mel Mel spectrogram, shape must be {BatchSize, Channels, MelBins, Frames}
+	 * @param[Input] _F0 F0, shape must be {1, BatchSize, Channels, Frames}
+	 * @param[Input] _Model Vocoder model to use for inference
+	 * @return[Output] Inference result, shape is {1, BatchSize, Channels, SampleCount}
+	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(InferVocoder)(
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Mel,
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,

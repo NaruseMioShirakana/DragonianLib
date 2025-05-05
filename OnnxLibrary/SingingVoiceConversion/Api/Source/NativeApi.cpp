@@ -940,7 +940,7 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Extract
 
 _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inference)(
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Audio,
-	INT64 SourceSamplingRate,
+	INT64 _SourceSamplingRate,
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Units,
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
 	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _SpeakerMix,
@@ -996,9 +996,9 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inferen
 
 	DragonianLib::OnnxRuntime::SingingVoiceConversion::SliceDatas Slice;
 	Slice.SourceSampleCount = _Audio->Get().ElementCount();
-	Slice.SourceSampleRate = SourceSamplingRate;
+	Slice.SourceSampleRate = _SourceSamplingRate;
 	Slice.GTAudio = _Audio->Get().Squeeze(0).View();
-	Slice.GTSampleRate = SourceSamplingRate;
+	Slice.GTSampleRate = _SourceSamplingRate;
 	if (_Spec)
 		Slice.GTSpec = _Spec->Get().View();
 	if (_SpeakerMix)
