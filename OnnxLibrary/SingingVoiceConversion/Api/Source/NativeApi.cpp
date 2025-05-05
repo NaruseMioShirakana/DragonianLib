@@ -881,9 +881,9 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Cluster
 	{
 		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(
 			(*_Model)->Search(
-				_Units->Get().Squeeze(0).Squeeze(0),
-				_CodeBookId
-			).UnSqueeze(0).UnSqueeze(0));
+				_Units->Get().AutoView(-2, -1),
+				static_cast<DragonianLib::Long>(_CodeBookId)
+			).AutoView(1, 1, -2, -1));
 	}
 	catch (std::exception& e)
 	{
@@ -917,7 +917,7 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Extract
 	try
 	{
 		auto Ret = (*_Model)->ExtractF0(
-			_Audio->Get().Squeeze(0).Squeeze(0),
+			_Audio->Get().AutoView(-2, -1),
 			{
 				_Parameters->SamplingRate,
 				_Parameters->HopSize,
@@ -1012,6 +1012,46 @@ _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(Inferen
 		if (_OutF0)
 			*_OutF0 = new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(Data.F0.UnSqueeze(0));
 		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)((*_Model)->Forward(Params, Data));
+	}
+	catch (std::exception& e)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(DragonianLib::UTF8ToWideString(e.what()));
+		return nullptr;
+	}
+}
+
+_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(InferVocoder)(
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Mel,
+	_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
+	_Dragonian_Lib_Svc_Add_Prefix(Vocoder) _Model
+	)
+{
+	if (!_Mel)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Mel Could Not Be Null");
+		return nullptr;
+	}
+	if (!_Model)
+	{
+		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Model Could Not Be Null");
+		return nullptr;
+	}
+
+	try
+	{
+		if (_F0)
+		{
+			auto F0 = _F0->Get().Squeeze(0);
+			return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(
+			   (*_Model)->Forward(
+				   _Mel->Get(),
+				   F0
+			   ).UnSqueeze(0));
+		}
+		return new _Dragonian_Lib_Svc_Class_Name(FloatTensor)(
+			(*_Model)->Forward(
+				_Mel->Get()
+			).UnSqueeze(0));
 	}
 	catch (std::exception& e)
 	{

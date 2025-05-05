@@ -2735,6 +2735,16 @@ public:
 		return View(_ViewShape);
 	}
 
+	template <typename... _Args>
+	decltype(auto) AutoView(SizeType _Shape0, _Args... _Shape) const
+	{
+		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
+		for (auto& i : _ViewShape)
+			if (i < 0)
+				i = _MyShape[CalcIndex(i, Rank())];
+		return View(_ViewShape);
+	}
+
 	/**
 	 * @brief Reverse the tensor along the specified axis.
 	 * @param _Axis The specified axis.
@@ -2910,6 +2920,16 @@ public:
 		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
 	{
 		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
+		return ReShape(_ViewShape);
+	}
+
+	template <typename... _Args>
+	decltype(auto) AutoShape(SizeType _Shape0, _Args... _Shape) const
+	{
+		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
+		for (auto& i : _ViewShape)
+			if (i < 0)
+				i = _MyShape[CalcIndex(i, Rank())];
 		return ReShape(_ViewShape);
 	}
 

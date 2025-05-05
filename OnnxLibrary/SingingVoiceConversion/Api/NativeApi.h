@@ -795,6 +795,12 @@ extern "C" {
 		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor)* _OutF0
 		);
 
+	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(InferVocoder)(
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Mel,
+		_Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _F0,
+		_Dragonian_Lib_Svc_Add_Prefix(Vocoder) _Model
+		);
+
 #ifdef __cplusplus
 }
 #endif

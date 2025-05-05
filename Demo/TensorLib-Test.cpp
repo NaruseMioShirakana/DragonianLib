@@ -513,6 +513,7 @@ template <typename Fn>
 	DragonianVoiceSvcHyperParameters HyperParameters;
 	DragonianVoiceSvcF0ExtractorParameters F0ExtractorParameters;
 	DragonianVoiceSvcInferenceParameters InferenceParameters;
+
 	DragonianVoiceSvcEnviroment Enviroment = 0;
 	DragonianVoiceSvcModel SvcModel = 0;
 	DragonianVoiceSvcUnitsEncoder UnitsEncoder = 0;
@@ -525,6 +526,12 @@ template <typename Fn>
 	DragonianVoiceSvcFloatTensor F0 = 0;
 	DragonianVoiceSvcFloatTensor NetOutput = 0;
 	DragonianVoiceSvcFloatTensor OutputAudio = 0;
+
+	float* OutputAudioBuffer = 0;
+	float* SpecBuffer = 0;
+	INT64 AudioLength = 0;
+	INT64 SpecLength = 0;
+	INT64 i = 0;
 	
 	
 	struct { const wchar_t* Key; const wchar_t* Value; } ModelPaths[]
@@ -585,15 +592,11 @@ template <typename Fn>
 	);
 
 
-	auto OutStream = DragonianLib::AvCodec::OpenOutputStream(
-		44100,
-		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
-	);
-	auto InputStream = DragonianLib::AvCodec::OpenInputStream(
+	//</LoadYourAudioHere>
+	auto InputAudio = DragonianLib::AvCodec::OpenInputStream(
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
-	);
-	auto RawAudio = InputStream.DecodeAll(44100, 2);
-	auto InputAudio = RawAudio[{"900000:944100", "0"}].Transpose(-1, -2).Contiguous();
+	).DecodeAll(44100, 2)[{"900000:944100", "0"}].Transpose(-1, -2).Contiguous();
+	//<LoadYourAudioHere/>
 	Audio = DragonianVoiceSvcCreateFloatTensor(
 		InputAudio.Data(),
 		1,
@@ -601,6 +604,7 @@ template <typename Fn>
 		1,
 		InputAudio.Size(1)
 	);
+
 
 	DragonianVoiceSvcInitF0ExtractorParameters(&F0ExtractorParameters);
 	F0ExtractorParameters.HopSize = (INT32)HyperParameters.HopSize;
@@ -614,11 +618,13 @@ template <typename Fn>
 		F0Extractor
 	);
 
+
 	Units = DragonianVoiceSvcEncodeUnits(
 		Audio,
 		44100,
 		UnitsEncoder
 	);
+
 
 	DragonianVoiceSvcInitInferenceParameters(&InferenceParameters);
 	InferenceParameters.SpeakerId = 0;
@@ -641,6 +647,38 @@ template <typename Fn>
 		SvcModel,
 		&F0
 	);
+
+
+	SpecBuffer = DragonianVoiceSvcGetTensorData(NetOutput);
+	SpecLength = DragonianVoiceSvcGetTensorShape(NetOutput)[2] * DragonianVoiceSvcGetTensorShape(NetOutput)[3];
+
+
+	//If mel is normalized, denorm mel
+	for (i = 0; i < SpecLength; ++i)
+		SpecBuffer[i] = (SpecBuffer[i] + 1) / 2 * (HyperParameters.SpecMax - HyperParameters.SpecMin) + HyperParameters.SpecMin;
+
+
+	OutputAudio = DragonianVoiceSvcInferVocoder(
+		NetOutput,
+		F0,
+		Vocoder
+	);
+
+
+	OutputAudioBuffer = DragonianVoiceSvcGetTensorData(OutputAudio);
+	AudioLength = DragonianVoiceSvcGetTensorShape(OutputAudio)[3];
+
+
+	//</OutputAudioHere>
+	DragonianLib::AvCodec::OpenOutputStream(
+		44100,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals-n.mp3)"
+	).EncodeAll(
+		DragonianLib::TemplateLibrary::Ranges(OutputAudioBuffer, AudioLength + OutputAudioBuffer).RawConst(),
+		44100
+	);
+	//<OutputAudioHere/>
+
 
 	//Calling "DragonianVoiceSvcUnrefGlobalCache" function means you don't need this model anymore, if you call this function, the model will be unloaded when all instances of this model are unrefed. If Enviroment is destoryed, all models will be unloaded.
 
@@ -675,40 +713,6 @@ int main()
 	SetWorkerCount(8);
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
-
-	std::cout << Functional::Cat(
-		0,
-		Functional::ConstantOf(Dimensions{ 2,5 }, 0),
-		Functional::ConstantOf(Dimensions{ 2,5 }, 1),
-		Functional::ConstantOf(Dimensions{ 2, 5 }, 2)
-	) << "\n" << "\n";
-
-	auto [Packed, Shapes] = Einops::Pack(
-		std::make_tuple(
-			Functional::ConstantOf(Dimensions{ 2,5 }, 0),
-			Functional::ConstantOf(Dimensions{ 2,5, 40, 20 }, 1),
-			Functional::ConstantOf(Dimensions{ 2, 5, 30 }, 2)
-		),
-		Einops::MakeRearrangeArgs("a", "b", Einops::PackTag)
-	);
-	auto& [Shape1, Shape2, Shape3] = Shapes;
-
-	std::cout << Packed << "\n" << "\n";
-
-	auto [Tensor1, Tensor2, Tensor3] = Einops::UnPack(
-		Packed,
-		Shapes,
-		Einops::MakeRearrangeArgs("a", "b", Einops::PackTag)
-	);
-
-	std::cout << Tensor1 << "\n" << "\n";
-	std::cout << Tensor2 << "\n" << "\n";
-	std::cout << Tensor3 << "\n" << "\n";
-
-	std::cout << Packed.Shape() << "\n";
-	std::cout << Shape1 << "\n";
-	std::cout << Shape2 << "\n";
-	std::cout << Shape3 << "\n";
 
 	TestApi();
 

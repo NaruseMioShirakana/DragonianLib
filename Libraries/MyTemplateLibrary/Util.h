@@ -691,6 +691,11 @@ public:
 		return (_MyBegin >= _Begin) && (_MyEnd <= _End);
 	}
 
+	operator RangesWrp<const TypeTraits::RemoveARPCV<MyValueType>*, const TypeTraits::RemoveARPCV<MyValueType>*>()
+	{
+		return { &*_MyBegin, &*_MyEnd };
+	}
+
 protected:
 	MyIterTypeBeg _MyBegin = nullptr;
 	MyIterTypeEnd _MyEnd = nullptr;
