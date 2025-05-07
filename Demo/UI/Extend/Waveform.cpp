@@ -13,64 +13,6 @@ namespace SimpleF0Labeler
 		}
 	};
 
-	class WAVAudio : public Mui::Render::MAudio
-	{
-	public:
-
-		//获取音频时长(秒)
-		float GetDuration() override
-		{
-			auto NSamples = Source.Size(0);
-			return (float)((double)NSamples / 48000.0);
-		}
-
-		//获取音频位率(bits)
-		DragonianLib::UInt GetBitrate() override { return 16; }
-
-		//获取音频比特率(kbps)
-		DragonianLib::UInt GetBitPerSecond() override { return DragonianLib::UInt(Source.ElementCount() / 4); }
-
-		//获取音频采样率(hz)
-		DragonianLib::UInt GetSamplerate() override { return 48000; }
-
-		//获取音频声道数
-		DragonianLib::UInt GetChannel() override { return 2; }
-
-		//获取字节对齐数
-		DragonianLib::UInt GetBlockAlign() override { return 4; }
-
-		//获取PCM数据尺寸
-		DragonianLib::StdSize PCMGetDataSize() override { return Source.ElementCount() * sizeof(DragonianLib::Int16); }
-
-		//读取PCM数据
-		DragonianLib::StdSize PCMReadData(
-			DragonianLib::StdSize Begin,
-			DragonianLib::StdSize Size,
-			DragonianLib::Byte* Dest
-		) override
-		{
-			if (Source.Null())
-				return 0;
-			auto maxSize = Source.ElementCount() * sizeof(std::int16_t);
-			if (Begin >= maxSize)
-				return 0;
-
-			if (Begin + Size >= maxSize)
-				Size = maxSize - Begin - 1;
-
-			auto offset = Source.Data() + Begin / sizeof(std::int16_t);
-
-			memcpy(Dest, offset, Size);
-
-			Control->SetPtrOffset((Begin) / sizeof(std::int16_t));
-
-			return Size;
-		}
-
-		Int16Tensor2D Source;
-		Waveform* Control = nullptr;
-	};
-
 	void Waveform::Register()
 	{
 		Mui::XML::RegisterControl(
@@ -87,8 +29,10 @@ namespace SimpleF0Labeler
 		UIScroll::Horizontal = true;
 		UIScroll::BarWidth = 0;
 
-		_MyAudioData = std::make_shared<WAVAudio>();
-		static_cast<WAVAudio*>(_MyAudioData.get())->Control = this;
+		_MyAudioData = std::make_shared<PCMAudio>();
+		_MyAudioData->SetCallback(
+			[this](size_t Pos) { this->SetPtrOffset(Pos); }
+		);
 	}
 
 	Waveform::~Waveform()
@@ -112,13 +56,13 @@ namespace SimpleF0Labeler
 
 	size_t Waveform::GetPCMSize() const
 	{
-		return static_cast<WAVAudio*>(_MyAudioData.get())->PCMGetDataSize() / sizeof(std::int16_t);
+		return _MyAudioData->PCMGetDataSize() / sizeof(std::int16_t);
 	}
 
 	float Waveform::GetDataDuration() const
 	{
 		if (_MyPlayer && !_MyInt16Audio.Null())
-			return static_cast<WAVAudio*>(_MyAudioData.get())->GetDuration();
+			return _MyAudioData->GetDuration();
 		return 0.0f;
 	}
 
@@ -127,7 +71,7 @@ namespace SimpleF0Labeler
 		if (_MyPlayer && _MyTrack)
 			_MyPlayer->StopTrack(_MyTrack);
 		_MyInt16Audio.Clear();
-		static_cast<WAVAudio*>(_MyAudioData.get())->Source.Clear();
+		_MyAudioData->SetData(std::nullopt);
 		_MyResampledData.Clear();
 		_MyPtrOffset = 0;
 		_IsPause = true;
@@ -141,13 +85,15 @@ namespace SimpleF0Labeler
 		return _MyInt16Audio;
 	}
 
-	void Waveform::SetAudioData(const FloatTensor2D& AudioData)
+	void Waveform::SetAudioData(const FloatTensor2D& AudioData, DragonianLib::UInt SamplingRate)
 	{
 		Clear();
 		_MyInt16Audio = (AudioData * 32767.f).Cast<short>().Evaluate();
-		static_cast<WAVAudio*>(_MyAudioData.get())->Source = _MyInt16Audio.View();
+		_MyAudioData->SetData(_MyInt16Audio);
+		_MyAudioData->SetSamplingRate(SamplingRate);
 		if (_MyPlayer && _MyTrack)
 			_MyPlayer->SetTrackSound(_MyTrack, static_cast<Mui::Render::MAudio*>(_MyAudioData.get()));
+		_MyTrack->GetSamplerate();
 		Update();
 	}
 
@@ -202,7 +148,7 @@ namespace SimpleF0Labeler
 		Offset *= sizeof(std::int16_t);
 
 		//计算时间
-		auto MyAudio = static_cast<WAVAudio*>(_MyAudioData.get());
+		auto MyAudio = _MyAudioData.get();
 		auto Duration = Offset / MyAudio->GetBlockAlign();
 		double SampleOffset = (double)Duration / (double)MyAudio->GetSamplerate();
 		_MyPlayer->SetTrackPlaybackPos(_MyTrack, (float)SampleOffset);
@@ -214,7 +160,7 @@ namespace SimpleF0Labeler
 		if (_MyCallback)
 		{
 			double PreSize = (double)_MyPtrOffset / (double)_MyInt16Audio.ElementCount();
-			auto MyAudio = static_cast<WAVAudio*>(_MyAudioData.get());
+			auto MyAudio = _MyAudioData.get();
 			auto Duration = _MyPtrOffset * sizeof(std::int16_t) / MyAudio->GetBlockAlign();
 			double SampleIdx = (double)Duration / (double)MyAudio->GetSamplerate();
 			_MyCallback((float)PreSize, (float)SampleIdx);
@@ -468,7 +414,7 @@ namespace SimpleF0Labeler
 		const auto PtrOffset = GetOffset(x);
 		const auto MOffset = PtrOffset * sizeof(std::int16_t);
 
-		auto MyAudio = static_cast<WAVAudio*>(_MyAudioData.get());
+		auto MyAudio = _MyAudioData.get();
 		auto Duration = MOffset / MyAudio->GetBlockAlign();
 		double SampleOffset = (double)Duration / (double)MyAudio->GetSamplerate();
 

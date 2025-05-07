@@ -54,8 +54,34 @@ namespace SimpleF0Labeler
 				WndControls::PlayPause();
 			else if (GetKeyState(VK_LCONTROL) & 0x8000 && GetKeyState('S') & 0x8000)
 				WndControls::SaveData();
+			else if (GetKeyState(VK_RETURN) & 0x8000 && control == m_edit)
+			{
+				if (m_editor->GetCurveData().Null())
+					return false;
+				const auto Frame = m_editor->GetCurveData().Size(1);
+				auto cur = std::wcstoll(m_edit->Text.Get().cstr(), nullptr, 10);
+				cur = std::clamp(cur, 0ll, Frame - 1);
+				(cur *= static_cast<DragonianLib::SizeType>(WndControls::GetPcmSize())) /= Frame;
+				WndControls::SetPlayerPos(static_cast<size_t>(cur));
+			}
 			else
 				return false;
+		}
+		else if (event == Mui::Ctrl::Events::Menu_ItemLClick.Event())
+		{
+			auto item = std::any_cast<int>(param);
+			if (item == 0)
+				WndControls::ApplyCalc(m_editor->GetSelectedRange(), 2.f, 0.f);
+			else if (item == 1)
+				WndControls::ApplyCalc(m_editor->GetSelectedRange(), 0.5f, 0.f);
+			else if (item == 2)
+				WndControls::ApplyCalc(m_editor->GetSelectedRange(), 0.f, 0.f);
+			else if (item == 4)
+				WndControls::DeleteAudio(m_list->SelectedItemIndex);
+			else if (item == 5)
+				;
+			else if (item == 6)
+				;
 		}
 		else
 			return false;
@@ -65,10 +91,14 @@ namespace SimpleF0Labeler
 	Mui::Ctrl::UIControl* MainPage::OnLoadPageContent(Mui::Ctrl::UIControl* parent, Mui::XML::MuiXML* ui)
 	{
 		const std::wstring MainPageXml = LR"(
+		<PropGroup FontSize="15" ID="MainEditBox" Inset="2,2,2,2" Frame="4,4,60,23" />
 		<UIControl AutoSize="false" Size="100%,100%" Name="mainPage" Align="Absolute">
 			<UIControl AutoSize="false" Frame="0,0,100%,1" BgColor="#Menuline" />
 			<UIControl AutoSize="false" Frame="0,0,100%,31" Align="LinearHL">
 				<UIIconBtn AutoSize="false" Frame="3,3,23,23" IconSize="20,20" IconOffset="0,0,2,2" Prop="ani" Name="ShowSideBar" />
+				<UIControl AutoSize="false" Frame="0,0,165f,31" Align="LinearH">
+					<UIEditBox Prop="MainEditBox" Text="0" Name="MainPlayPos" Number="true" />
+				</UIControl>
 			</UIControl>
 			<UIControl AutoSize="false" Frame="162,30,100%,100%" Align="Absolute">
 				<UIControl AutoSize="false" Size="100%,101%" Align="LinearHL" Pos="0,0">
@@ -102,6 +132,7 @@ namespace SimpleF0Labeler
 		if (!ui->CreateUIFromXML(parent, MainPageXml))
 			__debugbreak();
 
+		m_edit = parent->Child<Mui::Ctrl::UIEditBox>(L"MainPlayPos");
 		m_editor = parent->Child<CurveEditor>(L"F0Editor");
 		m_wave = parent->Child<Waveform>(L"EditorPlayer");
 		auto timelabel = parent->Child<Mui::Ctrl::UILabel>(L"EditorTime");
@@ -110,9 +141,10 @@ namespace SimpleF0Labeler
 				Mui::_m_size ps = 0;
 				if (const auto& data = m_editor->GetCurveData(); !data.Null())
 					ps = size_t(round((float)data.Size(1) * pre));
+				m_edit->SetAttribute(L"Text", std::to_wstring(ps));
 				m_editor->SetPlayLinePos(ps);
 				const std::wstring str = FormatTime(tm) + L"\\" + FormatTime(m_wave->GetDataDuration());
-				timelabel->SetAttribute(L"text", str);
+				timelabel->SetAttribute(L"Text", str);
 			};
 		m_wave->SetAudioPlayer(Mui::MObjStorage::GetObj<Mui::Render::MDS_AudioPlayer>().get());
 		m_wave->SetPlayCallback(callback);

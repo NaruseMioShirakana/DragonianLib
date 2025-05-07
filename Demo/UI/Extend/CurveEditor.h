@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "../framework.h"
 #include <Render/Sound/Mui_SoundDef.h>
+#include <Mui_XML.h>
 
 namespace SimpleF0Labeler
 {
@@ -10,6 +11,7 @@ namespace SimpleF0Labeler
 		static constexpr Mui::XML::PropName ClassName{ L"CurveEditor" };
 		Mui::XML::PropName GetClsName() const override { return ClassName; }
 		static void Register();
+		inline static constexpr std::array _mctrl_attrib_attrib = Mui::Helper::MergeArrays(Mui::Helper::ToArray<Mui::XML::AttribType>({ {Mui::XML::AttribType::UIStyle, L"BarStyleV" },{Mui::XML::AttribType::UIStyle, L"BarStyleH" } }));
 
 		CurveEditor(UIControl* parent);
 		~CurveEditor() override;
@@ -147,6 +149,8 @@ namespace SimpleF0Labeler
 
 		float* selected_f0_begin = nullptr;
 		float* selected_f0_end = nullptr;
+
+		Mui::Ctrl::UIPopupMenu* m_menu;
 	};
 
 	void Write2Clipboard(const DragonianLib::TemplateLibrary::MutableRanges<float>& Range);

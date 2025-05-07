@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include "../framework.h"
-#include <Render/Sound/Mui_SoundDef.h>
 
 namespace SimpleF0Labeler
 {
@@ -21,7 +20,7 @@ namespace SimpleF0Labeler
 		float GetDataDuration() const;
 		void Clear();
 		Int16Tensor2D& GetAudio();
-		void SetAudioData(const FloatTensor2D& AudioData);
+		void SetAudioData(const FloatTensor2D& AudioData, DragonianLib::UInt SamplingRate);
 
 		void Play() const;
 		void Pause() const;
@@ -32,6 +31,10 @@ namespace SimpleF0Labeler
 		void SetPlayPos(size_t Offset);
 		void SetPtrOffset(size_t Offset);
 		void SetPlayCallback(std::function<void(float, float)> callback);
+		DragonianLib::UInt GetSamplingRate() const
+		{
+			return _MyAudioData->GetSamplerate();
+		}
 
 		void SetAniFlag(bool IsAnimate);
 
@@ -65,7 +68,7 @@ namespace SimpleF0Labeler
 		bool _IsPause = true;
 		size_t _MyPtrOffset = 0;
 		Int16Tensor2D _MyInt16Audio;
-		std::shared_ptr<void> _MyAudioData = nullptr;
+		std::shared_ptr<PCMAudio> _MyAudioData;
 		Mui::Render::MAudioTrack* _MyTrack = nullptr;
 		Mui::Render::MAudioPlayer* _MyPlayer = nullptr;
 		std::function<void(float, float)> _MyCallback;

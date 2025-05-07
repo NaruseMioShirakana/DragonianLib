@@ -99,7 +99,7 @@ void FileStream::ReOpen(const wchar_t* _Path, const wchar_t* _Mode)
 	MFile = _wfopen(_Path, _Mode);
 #endif
 	if (!MFile)
-		_D_Dragonian_Lib_Throw_Exception("Failed to open file.");
+		_D_Dragonian_Lib_Throw_Exception(WideStringToUTF8(L"Failed to open file: \"" + std::wstring(_Path) + L"\""));
 
 	_MyFile = std::shared_ptr<FILE>(
 		MFile,

@@ -1,6 +1,5 @@
 ﻿#include "UI/MainWindow.h"
 
-
 namespace SimpleF0Labeler
 {
 	static bool Application(std::wstring& errinfo)

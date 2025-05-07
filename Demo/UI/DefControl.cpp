@@ -100,9 +100,9 @@ namespace WndControls
 		{
 			if (!gdiplusToken) 
 				GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
-			DragonianLib::SetTaskPoolSize(4);
-			DragonianLib::SetWorkerCount(4);
-			DragonianLib::SetMaxTaskCountPerOperator(4);
+			//DragonianLib::SetTaskPoolSize(4);
+			//DragonianLib::SetWorkerCount(4);
+			//DragonianLib::SetMaxTaskCountPerOperator(4);
 		}
 		~Enviroment()
 		{
@@ -131,6 +131,12 @@ namespace WndControls
 	} GlobalEnviroment;  // NOLINT(misc-use-internal-linkage)
 
 	static DragonianLib::Int64 ColorMapSize = 0;
+
+	static auto GetSamplingRate()
+	{
+		static SidePage* MSidePage = Mui::MObjStorage::GetObjInstance<SidePage*>();
+		return MSidePage->GetSamplingRate();
+	}
 
 	static const DragonianLib::FunctionTransform::MFCCKernel& GetMelFn()
 	{
@@ -178,8 +184,6 @@ namespace WndControls
 		//Min Max Normalize
 		SpecFlat = DragonianLib::Functional::MinMaxNormalize(SpecFlat, 0).Evaluate();
 		const auto FreqPerBin = static_cast<float>(GetMelFn().GetFreqPerBin());
-		const auto FreqMinLog = PitchLabel::F0ToPitch(FreqPerBin);
-		const auto FreqMaxLog = PitchLabel::F0ToPitch(static_cast<float>(GetMelFn().GetMaxFreq()) + FreqPerBin);
 		
 		const auto SpecData = SpecFlat.Data();
 		if (Image.Null() || !Image.IsContiguous())
@@ -187,48 +191,49 @@ namespace WndControls
 				DragonianLib::Dimensions{ Bins, Frames }
 			);
 		if (ImageLogView.Null() || !ImageLogView.IsContiguous())
-			ImageLogView = DragonianLib::Functional::Empty<unsigned>(
-				DragonianLib::Dimensions{ Bins, Frames }
-			);
+			ImageLogView = DragonianLib::Functional::Zeros<unsigned>(
+				DragonianLib::Dimensions{ 1200, Frames }
+			).Evaluate();
 		const auto ImageData = Image.Data();
 		const auto LogViewData = ImageLogView.Data();
 
-		DragonianLib::TemplateLibrary::Vector<std::pair<std::pair<int, int>, float>> Interp(Bins);
+		std::vector<std::vector<std::pair<int, float>>> Interp(Bins);
 
-		int LastBin = 0;
-		for (INT y = 0; y < static_cast<INT>(Bins); ++y)
+		for (INT y = 1; y < 1200; ++y)
 		{
-			const auto CurFreq = static_cast<float>(FreqPerBin * static_cast<double>(y + 1));
-			const auto CurFreqLog = PitchLabel::F0ToPitch(CurFreq);
-			const auto CurFreqNorm = (CurFreqLog - FreqMinLog) / (FreqMaxLog - FreqMinLog);
-			const auto CurBin = int(CurFreqNorm * float(Bins - 1));
-			for (int i = LastBin; i < CurBin; ++i)
-			{
-				const auto Value = log10(float(i - LastBin) / float(CurBin - LastBin - 1) * 9.f + 1.f);
-				Interp[i] = { { CurBin, LastBin }, isnan(Value) ? 0.f : Value };
-			}
-			LastBin = CurBin;
+			const auto Freq = PitchLabel::PitchToF0(float(y - 1) * 0.1f);
+			const auto FreqBin = Freq / FreqPerBin;
+			const auto FreqFront = std::floor(FreqBin);
+			const auto FreqArgT = FreqBin - FreqFront;
+			const auto IntIndex = static_cast<int>(FreqFront);
+			if (IntIndex < 0 || IntIndex >= Bins - 1)
+				continue;
+			Interp[IntIndex].emplace_back(y, FreqArgT);
 		}
-		Interp.Back() = { {LastBin, LastBin}, 0.f };
 		
 		for (INT x = 0; x < static_cast<INT>(Frames); ++x)
 		{
 			for (INT y = 0; y < static_cast<INT>(Bins); ++y)
 			{
-				const auto& LogViewInfo = Interp[y];
-				float Value = std::clamp(*(SpecData + x * Bins + y), 0.001f, 0.999f);
-				float LogValue = std::clamp(
-					std::lerp(
-						*(SpecData + x * Bins + LogViewInfo.first.second),
-						*(SpecData + x * Bins + LogViewInfo.first.first),
-						LogViewInfo.second
-					),
-					0.001f,
-					0.999f
-				);
-
+				const float Value = std::clamp(*(SpecData + x * Bins + y), 0.001f, 0.999f);
 				ImageData[(Bins - y - 1) * Frames + x] = GlobalEnviroment.SpecColorMap[int(Value * 255.f)].argb;
-				LogViewData[(Bins - y - 1) * Frames + x] = GlobalEnviroment.SpecColorMap[int(LogValue * 255.f)].argb;
+				if (y < static_cast<INT>(Bins - 1))
+				{
+					const auto NextVal = *(SpecData + x * Bins + (y + 1));
+					for (const auto& [idx, param] : Interp[y])
+					{
+						float CurValue = std::clamp(
+							std::lerp(
+								Value,
+								NextVal,
+								param
+							),
+							0.001f,
+							0.999f
+						);
+						LogViewData[(1199 - idx) * Frames + x] = GlobalEnviroment.SpecColorMap[int(CurValue * 255.f)].argb;
+					}
+				}
 			}
 		}
 		Image/*.Interpolate<DragonianLib::Operators::InterpolateMode::Nearest>(
@@ -241,18 +246,18 @@ namespace WndControls
 		)*/.Evaluate();
 	}
 
-	static const FloatTensor2D& GetUpSampleRates()
+	static FloatTensor2D GetUpSampleRates(DragonianLib::Int64 SamplingRate)
 	{
-		static FloatTensor2D Upp(DragonianLib::Functional::Arange(1.f, 481.f, 1.f).UnSqueeze(0).Evaluate());
-		return Upp;
+		static FloatTensor2D Upp(DragonianLib::Functional::Arange(1.f, 1001.f, 1.f).UnSqueeze(0).Evaluate());
+		return Upp[{ std::nullopt, { 0, SamplingRate / 100 }}];
 	}
 
-	[[maybe_unused]] static FloatTensor2D SineGen(const FloatTensor2D& F0)
+	[[maybe_unused]] static FloatTensor2D SineGen(const FloatTensor2D& F0, DragonianLib::Int64 SamplingRate)
 	{
-		const auto SineSize = F0.Size(1) * 480;
+		const auto SineSize = F0.Size(1) * SamplingRate / 100;
 		const auto Freq = F0[0].Clone().UnSqueeze(-1);
 		auto Audio = DragonianLib::Functional::Zeros(DragonianLib::Dimensions{ 1, SineSize }).Evaluate();
-		auto Rad = Freq / 48000.f * GetUpSampleRates();
+		auto Rad = Freq / (float)SamplingRate * GetUpSampleRates(SamplingRate);
 		auto Rad2 = (Rad[{":", "-1:"}] + 0.5f) % 1.f - 0.5f;
 		auto RadAcc = Rad2.CumSum(0) % 1.f;
 		Rad[{"1:"}] += RadAcc[{":-1"}];
@@ -401,19 +406,43 @@ namespace WndControls
 			GlobalEnviroment.AudioCaches, [&](const auto& pair) { return pair.first == Path; }
 		);
 		if (Iter != GlobalEnviroment.AudioCaches.end())
+		{
+			if (std::cmp_not_equal(Iter->second.SamplingRate, SamplingRate))
+			{
+				Iter->second.Audio = Iter->second.Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+					DragonianLib::IDim(0),
+					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(Iter->second.SamplingRate))
+				).Evaluate();
+				Iter->second.SamplingRate = SamplingRate;
+			}
 			return Iter->second;
+		}
 		auto AudioPath = GetAudioPath(Path);
 		auto F0Path = GetF0Path(Path);
 		FloatTensor2D Audio, F0, Spec, Mel;
+
+		unsigned SourceSamplingRate;
 		if (std::filesystem::exists(AudioPath))
-			Audio = DragonianLib::AvCodec::OpenInputStream(
+		{
+			std::tie(Audio, SourceSamplingRate) = DragonianLib::AvCodec::OpenInputStream(
 				AudioPath
-			).DecodeAll(SamplingRate, 2);
+			).DecodeAudio(2);
+			if (SourceSamplingRate != SamplingRate)
+				Audio = Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+					DragonianLib::IDim(0),
+					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(SourceSamplingRate))
+				).Evaluate();
+		}
 		else if (std::filesystem::exists(Path))
 		{
-			Audio = DragonianLib::AvCodec::OpenInputStream(
+			std::tie(Audio, SourceSamplingRate) = DragonianLib::AvCodec::OpenInputStream(
 				Path
-			).DecodeAll(SamplingRate, 2);
+			).DecodeAudio(2);
+			if (SourceSamplingRate != SamplingRate)
+				Audio = Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+					DragonianLib::IDim(0),
+					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(SourceSamplingRate))
+				).Evaluate();
 			OpenOutputStream(
 				SamplingRate,
 				std::filesystem::path(AudioPath),
@@ -423,6 +452,7 @@ namespace WndControls
 				Audio.GetCRng(), SamplingRate, 2
 			);
 		}
+
 		const auto HopSize = SamplingRate / 100;
 		const auto AudioFrames = (DragonianLib::SizeType)ceil(double(Audio.Shape(0)) / double(HopSize)) + 1;
 		bool Modified = false;
@@ -454,17 +484,17 @@ namespace WndControls
 			const auto F0Shape = DragonianLib::Dimensions{ 10, AudioFrames };
 			F0 = DragonianLib::Functional::Zeros(F0Shape);
 		}
-		Audio = Audio.Mean(-1).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-			DragonianLib::IDim(0),
-			DragonianLib::IScale(48000. / double(SamplingRate))
-		).Evaluate().UnSqueeze(-1);
 
-		Spec = GetMelFn().GetStftKernel()(
-			Audio.View(1, 1, Audio.Size(0)).Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-				DragonianLib::IDim(-1),
-				DragonianLib::IScale(double(SpecSamplingRate) / 48000.)
-			)
-			).Squeeze(0).Squeeze(0);
+		Audio = Audio.Mean(-1).Evaluate().UnSqueeze(-1);
+		auto SpecAudio =
+			SamplingRate == SpecSamplingRate ?
+			Audio.AutoView(1, 1, -2) :
+			Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
+				DragonianLib::IDim(0),
+				DragonianLib::IScale(double(SpecSamplingRate) / static_cast<double>(SamplingRate))
+			).AutoView(1, 1, -2).Evaluate();
+
+		Spec = GetMelFn().GetStftKernel()(SpecAudio).AutoView(-2, -1);
 
 		/*;
 
@@ -587,32 +617,47 @@ namespace WndControls
 
 	void ApplyPitchShift(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges)
 	{
+		ApplyPitchShift(Ranges, Mui::MObjStorage::GetObjInstance<SidePage*>()->GetPitch());
+	}
+
+	void ApplyPitchShift(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges, float Pitch)
+	{
 		static const auto MaxFreq = PitchLabel::PitchToF0(119.9f);
 		static const auto MinFreq = PitchLabel::PitchToF0(0);
 
-		const auto Pitch = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetPitch();
+		WndControls::AppendUndo();
 		if (abs(Pitch) > 1e-5)
 			for (auto& i : Ranges)
 			{
 				i = std::min(i * std::pow(2.f, Pitch / 12.f), MaxFreq);
 				if (i < MinFreq) i = 0.f;
 			}
+		WndControls::CheckUnchanged();
 		GlobalEnviroment.CurveEditor->UpDate();
 	}
 
 	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges)
 	{
+		ApplyCalc(
+			Ranges,
+			Mui::MObjStorage::GetObjInstance<SidePage*>()->GetAlpha(),
+			Mui::MObjStorage::GetObjInstance<SidePage*>()->GetBeta()
+		);
+	}
+
+	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges, float Alpha, float Beta)
+	{
 		static const auto MaxFreq = PitchLabel::PitchToF0(119.9f);
 		static const auto MinFreq = PitchLabel::PitchToF0(0);
 
-		const auto Alpha = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetAlpha();
-		const auto Beta = Mui::MObjStorage::GetObjInstance<SidePage*>()->GetBeta();
+		WndControls::AppendUndo();
 		if (abs(Alpha - 1.f) > 1e-6 || abs(Beta) > 1e-6)
 			for (auto& i : Ranges)
 			{
 				i = std::min(Alpha * i + Beta, MaxFreq);
 				if (i < MinFreq) i = 0.f;
 			}
+		WndControls::CheckUnchanged();
 		GlobalEnviroment.CurveEditor->UpDate();
 	}
 
@@ -671,7 +716,7 @@ namespace WndControls
 		GlobalEnviroment.CurveEditor->SetPlayLinePos(0);
 		GlobalEnviroment.CurveEditor->SetCurveData(AudioAndF0.F0, AudioAndF0.Spec, AudioAndF0.LogSpec);
 		GlobalEnviroment.CurvePlayer->SetPlayPos(0);
-		GlobalEnviroment.CurvePlayer->SetAudioData(AudioAndF0.Audio);
+		GlobalEnviroment.CurvePlayer->SetAudioData(AudioAndF0.Audio, static_cast<DragonianLib::UInt>(AudioAndF0.SamplingRate));
 	}
 
 	void DeleteAudio(int Index)
@@ -786,10 +831,10 @@ namespace WndControls
 			return;
 		auto& Audio = GlobalEnviroment.CurvePlayer->GetAudio();
 		const auto& F0 = GlobalEnviroment.AudioCaches[Offset].second.F0;
-		const auto SineSize = std::min(F0.Size(1) * 480, Audio.Size(0));
+		const auto SineSize = std::min(F0.Size(1) * GlobalEnviroment.CurvePlayer->GetSamplingRate() / 100, Audio.Size(0));
 		const auto Freq = F0[0].Clone().UnSqueeze(-1);
 
-		auto Rad = Freq / 48000.f * GetUpSampleRates();
+		auto Rad = Freq / (float)GlobalEnviroment.CurvePlayer->GetSamplingRate() * GetUpSampleRates(GlobalEnviroment.CurvePlayer->GetSamplingRate());
 		auto Rad2 = (Rad[{":", "-1:"}] + 0.5f) % 1.f - 0.5f;
 		auto RadAcc = Rad2.CumSum(0) % 1.f;
 		Rad[{"1:"}] += RadAcc[{":-1"}];
@@ -852,6 +897,11 @@ namespace WndControls
 	std::wstring Localization(const std::wstring_view& Key)
 	{
 		return GlobalEnviroment.LanguageXml->GetStringValue(Key);
+	}
+
+	Mui::XML::MuiXML* GetUiXml()
+	{
+		return GlobalEnviroment.LanguageXml;
 	}
 }
 

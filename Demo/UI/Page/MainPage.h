@@ -34,5 +34,6 @@ namespace SimpleF0Labeler
 		Waveform* m_wave = nullptr;
 		CurveEditor* m_editor = nullptr;
 		Mui::Ctrl::UIListBox* m_list = nullptr;
+		Mui::Ctrl::UIEditBox* m_edit = nullptr;
 	};
 }

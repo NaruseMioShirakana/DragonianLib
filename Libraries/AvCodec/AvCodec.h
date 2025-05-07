@@ -527,7 +527,7 @@ namespace AvCodec
 		 */
 		template <typename _RetType = Float32>
 		Tensor<_RetType, 2, Device::CPU> DecodeAll(
-			UInt32 _OutputSamplingRate,
+			UInt32 _OutputSamplingRate = 0,
 			UInt32 _OutputChannels = 1,
 			bool _OutputPlanar = false,
 			void* _ParameterDict = nullptr
@@ -537,13 +537,16 @@ namespace AvCodec
 				_D_Dragonian_Lib_Throw_Exception("Stream is not initialized!");
 			if (_MyStreamIndex == -1)
 				_D_Dragonian_Lib_Throw_Exception("Stream is not opened!");
-			if (_OutputChannels == 0)
-				_D_Dragonian_Lib_Throw_Exception("Output channel count is zero!");
-			if (_OutputSamplingRate == 0)
-				_D_Dragonian_Lib_Throw_Exception("Output sampling rate is zero!");
 			const auto MOutputFormat = AvCodec::Type2PCMFormat<_RetType>(_OutputPlanar);
 			if (MOutputFormat == AvCodec::PCM_FORMAT_NONE)
 				_D_Dragonian_Lib_Throw_Exception("Invalid output format!");
+
+			auto DecoderSetting = GetCodecSettings();
+
+			if (_OutputChannels == 0)
+				_OutputChannels = DecoderSetting._InputChannels;
+			if (_OutputSamplingRate == 0)
+				_OutputSamplingRate = DecoderSetting._InputSamplingRate;
 
 			auto MyBuf = TemplateLibrary::Vector(_OutputChannels, TemplateLibrary::Vector<_RetType>());
 			const auto TimeBase = GetTimeBase();
@@ -560,7 +563,6 @@ namespace AvCodec
 
 					SharedScopeExit OnExit(ComUninitialize);
 
-					auto DecoderSetting = GetCodecSettings();
 					DecoderSetting._ParameterDict = _ParameterDict;
 					DecoderSetting._OutputSamplingRate = _OutputSamplingRate;
 					DecoderSetting._OutputSampleFormat = MOutputFormat;
@@ -643,6 +645,24 @@ namespace AvCodec
 				memcpy(Ret.Data() + i * Buf.Size(), Buf.Data(), Buf.Size() * sizeof(_RetType));
 
 			return Ret;
+		}
+
+		template <typename _RetType = Float32>
+		auto DecodeAudio(
+			UInt32 _OutputChannels = 1,
+			bool _OutputPlanar = false,
+			void* _ParameterDict = nullptr
+		)
+		{
+			return std::make_tuple(
+				DecodeAll<_RetType>(
+					0,
+					_OutputChannels,
+					_OutputPlanar,
+					_ParameterDict
+				),
+				GetCodecSettings()._InputSamplingRate
+			);
 		}
 	};
 

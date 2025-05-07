@@ -160,7 +160,12 @@ while (0) \
 
 _D_Dragonian_Lib_Space_Begin
 
-struct NoneType {}; ///< None type
+struct NoneType
+{
+	constexpr NoneType() {}
+	constexpr NoneType(nullptr_t) {}
+	constexpr NoneType(std::nullopt_t) {}
+}; ///< None type
 static constexpr NoneType None; ///< None constant
 template <typename _Type>
 constexpr bool operator==(const _Type&, const NoneType&)

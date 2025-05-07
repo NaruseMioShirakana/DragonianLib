@@ -776,9 +776,37 @@ void ImplMultiThreadCaller(
 	auto _Src2InfoOld = std::move(_ISrc2InfoOld);
 	auto _UserParameter = std::move(_IUserParameter);
 
-	const auto TotalRank = _DestInfoOld->GetRank();
-	const auto BatchDims = TotalRank - OperatorDims;
+	constexpr auto TotalRank = SizeType(_NRank);
+	constexpr auto BatchDims = TotalRank - OperatorDims;
+	static_assert(BatchDims >= 0);
+
 	const auto BatchCount = _DestInfoOld->GetSize(0, BatchDims);
+	SizeType DimStrideSrc = 1, Dest1DimStride = 1, Dest2DimStride = 1;
+	if constexpr (IsCallableValue<_ContinuousFunctionType>)
+	{
+		if (BatchDims)
+			DimStrideSrc = _DestInfoOld->ViewStride[BatchDims - 1];
+		else
+			DimStrideSrc = _DestInfoOld->ViewStride[0] * _DestInfoOld->Shape[0];
+	}
+	if constexpr (_ArgCount > 1 && IsCallableValue<_ContinuousFunctionType>)
+	{
+		if (_Src1InfoOld->GetSize(0, BatchDims) != BatchCount)
+			_D_Dragonian_Lib_Throw_Exception("Batch Size Mismatch Between Source 1 and Destination.");
+		if (BatchDims)
+			Dest1DimStride = _Src1InfoOld->ViewStride[BatchDims - 1];
+		else
+			Dest1DimStride = _Src1InfoOld->ViewStride[0] * _Src1InfoOld->Shape[0];
+	}
+	if constexpr (_ArgCount > 2 && IsCallableValue<_ContinuousFunctionType>)
+	{
+		if (_Src2InfoOld->GetSize(0, BatchDims) != BatchCount)
+			_D_Dragonian_Lib_Throw_Exception("Batch Size Mismatch Between Source 2 and Destination.");
+		if (BatchDims)
+			Dest2DimStride = _Src2InfoOld->ViewStride[BatchDims - 1];
+		else
+			Dest2DimStride = _Src2InfoOld->ViewStride[0] * _Src2InfoOld->Shape[0];
+	}
 	const auto OperatorUnfoldCount = _DestInfoOld->GetSize(BatchDims);
 	const auto DataSize = BatchCount * OperatorUnfoldCount;
 
@@ -823,7 +851,7 @@ void ImplMultiThreadCaller(
 					std::max(GetThreadPool().GetThreadCount(), 1ll),
 					GetMaxTaskCountPerOperator()
 				);
-				auto SplitSize = BatchCount / ThreadCount / DRAGONIANLIB_ALLOC_ALIG * DRAGONIANLIB_ALLOC_ALIG;
+				auto SplitSize = BatchCount / ThreadCount;
 				if (SplitSize == 0) SplitSize = 1;
 				const auto TaskCount = BatchCount / SplitSize;
 				const auto Remainder = BatchCount % SplitSize;
@@ -831,9 +859,9 @@ void ImplMultiThreadCaller(
 				SizeType i = 0;
 				for (; i < TaskCount; ++i)
 				{
-					auto _CDest = _Dest + i * SplitSize;
-					auto _CSrc1 = _Src1 + i * SplitSize;
-					auto _CSrc2 = _Src2 + i * SplitSize;
+					auto _CDest = _Dest + i * SplitSize * DimStrideSrc;
+					auto _CSrc1 = _Src1 + i * SplitSize * Dest1DimStride;
+					auto _CSrc2 = _Src2 + i * SplitSize * Dest2DimStride;
 					if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
 					{
 						auto _Param = std::make_shared<RandomSettings<_DstType>>(*_UserParameter);
@@ -857,9 +885,9 @@ void ImplMultiThreadCaller(
 				}
 				if (Remainder)
 				{
-					auto _CDest = _Dest + i * SplitSize;
-					auto _CSrc1 = _Src1 + i * SplitSize;
-					auto _CSrc2 = _Src2 + i * SplitSize;
+					auto _CDest = _Dest + i * SplitSize * DimStrideSrc;
+					auto _CSrc1 = _Src1 + i * SplitSize * Dest1DimStride;
+					auto _CSrc2 = _Src2 + i * SplitSize * Dest2DimStride;
 					if constexpr (IsSameTypeValue<RemoveARPCVType<_ParameterType>, RandomSettings<_DstType>>)
 						_UserParameter->_ThreadId = GetRandomDeviceId().fetch_add(1);
 					if constexpr (_ArgCount == 1)

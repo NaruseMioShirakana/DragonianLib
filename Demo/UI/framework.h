@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <Mui.h>
 #include <numbers>
+#include <Render/Sound/Mui_SoundDef.h>
 #include "Libraries/AvCodec/AvCodec.h"
 
 namespace SimpleF0Labeler
@@ -9,6 +10,83 @@ namespace SimpleF0Labeler
 	using FloatTensor2D = DragonianLib::Tensor<DragonianLib::Float32, 2, DragonianLib::Device::CPU>;
 	using Int16Tensor2D = DragonianLib::Tensor<DragonianLib::Int16, 2, DragonianLib::Device::CPU>;
 	using ImageTensor = DragonianLib::Tensor<DragonianLib::UInt32, 2, DragonianLib::Device::CPU>;
+
+	class PCMAudio : public Mui::Render::MAudio
+	{
+	public:
+		PCMAudio() = default;
+		PCMAudio(
+			DragonianLib::UInt SamplingRate,
+			const Int16Tensor2D& AudioData,
+			void(*Callback)(size_t)
+		) : _MySamplingRate(SamplingRate), _MySource(AudioData.View()), _MyCallback(Callback)
+		{
+
+		}
+
+		void SetData(const Int16Tensor2D& AudioData) { _MySource = AudioData.View(); }
+		void SetSamplingRate(DragonianLib::UInt SamplingRate) { _MySamplingRate = SamplingRate; }
+		void SetCallback(std::function<void(size_t)> Callback) { _MyCallback = std::move(Callback); }
+
+		float GetDuration() override
+		{
+			auto NSamples = _MySource.Size(0);
+			return (float)((double)NSamples / double(_MySamplingRate));
+		}
+
+		//获取音频位率(bits)
+		DragonianLib::UInt GetBitrate() override { return 16; }
+
+		//获取音频比特率(kbps)
+		DragonianLib::UInt GetBitPerSecond() override { return GetBitrate() * GetSamplerate() * GetChannel(); }
+
+		//获取音频采样率(hz)
+		DragonianLib::UInt GetSamplerate() override { return _MySamplingRate; }
+
+		//获取音频声道数
+		DragonianLib::UInt GetChannel() override { return 2; }
+
+		//获取字节对齐数
+		DragonianLib::UInt GetBlockAlign() override { return 4; }
+
+		//获取PCM数据尺寸
+		DragonianLib::StdSize PCMGetDataSize() override { return _MySource.ElementCount() * sizeof(DragonianLib::Int16); }
+
+		//读取PCM数据
+		DragonianLib::StdSize PCMReadData(
+			DragonianLib::StdSize Begin,
+			DragonianLib::StdSize Size,
+			DragonianLib::Byte* Dest
+		) override
+		{
+			if (_MySource.Null())
+				return 0;
+			auto maxSize = _MySource.ElementCount() * sizeof(std::int16_t);
+			if (Begin >= maxSize)
+				return 0;
+
+			if (Begin + Size >= maxSize)
+				Size = maxSize - Begin - 1;
+
+			auto offset = _MySource.Data() + Begin / sizeof(std::int16_t);
+
+			memcpy(Dest, offset, Size);
+
+			_MyCallback((Begin) / sizeof(std::int16_t));
+
+			return Size;
+		}
+
+		operator bool() const
+		{
+			return _MySource.HasValue();
+		}
+
+	private:
+		DragonianLib::UInt _MySamplingRate = 0;
+		Int16Tensor2D _MySource = std::nullopt;
+		std::function<void(size_t)> _MyCallback = nullptr;
+	};
 
 	class PitchLabel
 	{

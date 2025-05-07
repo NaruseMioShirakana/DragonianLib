@@ -122,19 +122,22 @@ struct InterpolateParam
 	}
 };
 
-template<size_t _NRank>
-struct OperatorParameter
+namespace DependencyChainTypes
 {
 	using DependencyChainDataPointers = TemplateLibrary::Array<std::shared_ptr<void>, 5>;
 	using DependencyChainPair = std::pair<std::shared_future<void>, DependencyChainDataPointers>;
 	using DependencyChainType = std::deque<DependencyChainPair>;
 	using DependencyChainPointer = std::shared_ptr<DependencyChainType>;
+}
 
+template<size_t _NRank>
+struct OperatorParameter
+{
 	IDLArray<SizeType, _NRank> Shape; ///< Shape: The [view end/shape] of the tensor.
 	IDLArray<SizeType, _NRank> Begin; ///< Begin: The [view begin] of the tensor.
 	IDLArray<SizeType, _NRank> ViewStride; ///< ViewStep: The step of the view.
-	DependencyChainPointer ResultDependency = nullptr; ///< Dependency: Block All the operations until the dependency is finished.
-	DependencyChainPointer ArgumentDependency = nullptr; ///< InplaceLock: Block the inplace operation until the dependency is finished.
+	DependencyChainTypes::DependencyChainPointer ResultDependency = nullptr; ///< Dependency: Block All the operations until the dependency is finished.
+	DependencyChainTypes::DependencyChainPointer ArgumentDependency = nullptr; ///< InplaceLock: Block the inplace operation until the dependency is finished.
 	void* UserParameter = nullptr; ///< UserParameter: The user parameter.
 	std::shared_ptr<void> Data = nullptr; ///< Data: The data of the tensor (prevent from the data being released while the tensor is used by an operator).
 	SizeType GetSize(size_t RangeBegin = 0, size_t RangeEnd = _NRank) const

@@ -56,10 +56,7 @@ namespace SimpleF0Labeler
 
 	void CurveEditor::Register()
 	{
-		Mui::XML::RegisterControl(
-			ClassName,
-			[](UIControl* parent) { return new CurveEditor(parent); }
-		);
+		MCTRL_REGISTER([](UIControl* parent) { return new CurveEditor(parent); });
 	}
 
 	CurveEditor::CurveEditor(UIControl* parent)
@@ -70,13 +67,28 @@ namespace SimpleF0Labeler
 		Horizontal = true;
 		BarWidth = m_preHeight;
 
-		Callback = [this](UIScroll* PH1, int PH2, bool PH3) {OnScrollView(PH1, PH2, PH3); };
+		Callback = [this](UIScroll* PH1, int PH2, bool PH3) { OnScrollView(PH1, PH2, PH3); };
 
 		m_sidebar = new UIScroll(this);
 		m_sidebar->Vertical = true;
 		m_sidebar->Button = false;
 		m_sidebar->BarWidth = m_barWidth;
 		m_sidebar->SetVisible(true, true);
+
+		m_menu = new Ctrl::UIPopupMenu(this);
+		m_menu->AddItem(L"f0 * 2.0");
+		m_menu->AddItem(L"f0 * 0.5");
+		m_menu->AddItem(L"f0 = 0.0");
+		m_menu->AddLine();
+		m_menu->AddItem(L"Delete");
+		m_menu->MenuWidth = 100;
+		m_menu->SetVisible(false);
+		//m_menu->SetAttribute(L"MenuStyle", WndControls::Localization(L"_mui_def_listStyle"));
+		//m_menu->SetAttribute(L"MenuItemStyle", WndControls::Localization(L"_mui_def_menuitemStyle"));
+		m_menu->SetItemEnable(0, false);
+		m_menu->SetItemEnable(1, false);
+		m_menu->SetItemEnable(2, false);
+		m_menu->SetItemEnable(4, false);
 
 		m_sidebar->AutoSize(false, false);
 		PosSizeUnit uint;
@@ -94,6 +106,15 @@ namespace SimpleF0Labeler
 		m_backColor = GetColor(L"WindowBackGroundColor");
 		for (int i = 0; i < 10; ++i)
 			m_curveColor[i] = GetColor(L"CurveColor" + std::to_wstring(i));
+
+		//m_menu->SetAttribute(L"MenuStyle", WndControls::Localization(L"_mui_def_scrollStyle"));
+		//m_menu->SetAttribute(L"MenuItemStyle", WndControls::Localization(L"_mui_def_scrollStyle"));
+		WndControls::GetUiXml()->SetAttribute(m_menu, L"MenuStyle", L"#_mui_def_listStyle");
+		WndControls::GetUiXml()->SetAttribute(m_menu, L"MenuItemStyle", L"#_mui_def_menuitemStyle");
+		WndControls::GetUiXml()->SetAttribute(this, L"BarStyleH", L"#_mui_def_scrollStyle");
+		WndControls::GetUiXml()->SetAttribute(m_sidebar, L"BarStyleV", L"#_mui_def_scrollStyle");
+		
+		m_menu->ItemFontColor = Color::M_White;
 	}
 
 	CurveEditor::~CurveEditor()
@@ -113,9 +134,21 @@ namespace SimpleF0Labeler
 			std::lock_guard lock(mx);
 			curve_idx = 0;
 			if (data.HasValue())
+			{
 				m_f0data = data.View();
+				m_menu->SetItemEnable(0, true);
+				m_menu->SetItemEnable(1, true);
+				m_menu->SetItemEnable(2, true);
+				m_menu->SetItemEnable(4, true);
+			}
 			else
+			{
 				m_f0data = std::nullopt;
+				m_menu->SetItemEnable(0, false);
+				m_menu->SetItemEnable(1, false);
+				m_menu->SetItemEnable(2, false);
+				m_menu->SetItemEnable(4, false);
+			}
 			if (spec.HasValue())
 				m_specData = spec.View();
 			else
@@ -346,13 +379,25 @@ namespace SimpleF0Labeler
 		if (const auto Range = GetSelectedRange(); !Range.Null() && Range.Size())
 		{
 			m_brush_m->SetColor(m_fontColor);
-			m_brush_m->SetOpacity(25);
+			m_brush_m->SetOpacity(50);
 			
-			const auto X_POS = std::max(CalcXPosWithPtr(param, Range.begin()), m_viewRect.left);
-			const auto X_L_POS = std::max(CalcXPosWithPtr(param, Range.end()), m_viewRect.left);
+			const auto X_POS = std::clamp(CalcXPosWithPtr(param, Range.begin()), m_viewRect.left, m_viewRect.right);
+			const auto X_L_POS = std::clamp(CalcXPosWithPtr(param, Range.end()), m_viewRect.left, m_viewRect.right);
 			if (X_POS < X_L_POS)
 				param->render->FillRectangle(
 					UIRect{ X_POS, top, X_L_POS - X_POS, bot - top }.ToRect(),
+					m_brush_m
+				);
+			m_brush_m->SetColor(Color::M_BLUE);
+			m_brush_m->SetOpacity(255);
+			if (X_POS != m_viewRect.left && X_POS != m_viewRect.right)
+				param->render->FillRectangle(
+					UIRect{ X_POS - _scale_to(2, scale.cx), top, _scale_to(2, scale.cx), bot - top }.ToRect(),
+					m_brush_m
+				);
+			if (X_L_POS != m_viewRect.left && X_L_POS != m_viewRect.right)
+				param->render->FillRectangle(
+					UIRect{ X_L_POS, top, _scale_to(2, scale.cx), bot - top }.ToRect(),
 					m_brush_m
 				);
 		}
@@ -445,12 +490,12 @@ namespace SimpleF0Labeler
 
 		DrawLabel(scale, param);
 
+		UIScroll::OnPaintProc(param);
+
 		if (m_f0data.HasValue())
 			DrawCurve(scale, param);
 
 		DrawPlayeLine(scale, param);
-
-		UIScroll::OnPaintProc(param);
 	}
 
 	bool CurveEditor::OnMouseWheel(_m_uint flag, short delta, const UIPoint& point)
@@ -571,7 +616,7 @@ namespace SimpleF0Labeler
 		{
 			const auto x = pt.x - m_viewRect.left;
 			auto xof = GetXOffset(static_cast<float>(x));
-			xof = xof * WndControls::GetPcmSize() / (m_f0data.Size(1) - 1);
+			xof = xof * WndControls::GetPcmSize() / m_f0data.Size(1);
 			WndControls::SetPlayerPos(xof);
 		}
 
@@ -668,7 +713,14 @@ namespace SimpleF0Labeler
 			WndControls::AppendUndo();
 			m_isdown = true;
 			m_lastPos = { pt.x - m_viewRect.left, pt.y };
+			if (GetKeyState(VK_LCONTROL) & 0x8000)
+			{
+				const auto scale = GetRectScale();
+				m_menu->SetPos(static_cast<int>(float(point.x) / scale.xs), static_cast<int>(float(point.y) / scale.ys));
+				m_menu->SetVisible(true, true);
+			}
 		}
+		
 		return false;
 	}
 
@@ -688,7 +740,8 @@ namespace SimpleF0Labeler
 			std::max(point.x - static_cast<int>(UINodeBase::m_data.Frame.left), 0),
 			std::max(point.y - static_cast<int>(UINodeBase::m_data.Frame.top), 0)
 		};
-
+		if (m_menu->IsVisible())
+			m_menu->SetVisible(false);
 		if (GetKeyState(VK_TAB) & 0x8000)
 		{
 			if (IsInRect(m_viewRect, pt))
@@ -863,24 +916,10 @@ namespace SimpleF0Labeler
 						}
 					}
 				}
-				else if (GetKeyState('W') & 0x8000)
-				{
-					if (Exec)
-					{
-						WndControls::AppendUndo();
-						WndControls::ApplyPitchShift(GetSelectedRange());
-						WndControls::CheckUnchanged();
-					}
-				}
-				else if (GetKeyState('E') & 0x8000)
-				{
-					if (Exec)
-					{
-						WndControls::AppendUndo();
-						WndControls::ApplyCalc(GetSelectedRange());
-						WndControls::CheckUnchanged();
-					}
-				}
+				else if (GetKeyState('W') & 0x8000 && Exec)
+					WndControls::ApplyPitchShift(GetSelectedRange());
+				else if (GetKeyState('E') & 0x8000 && Exec)
+					WndControls::ApplyCalc(GetSelectedRange());
 				else if (GetKeyState('A') & 0x8000)
 				{
 					selected_f0_begin = m_f0data.Data() + curve_idx * m_f0data.Size(1);
@@ -928,7 +967,6 @@ namespace SimpleF0Labeler
 			UpDate();
 			return true;
 		}
-
 		EndLabel:
 		return UIScroll::OnWindowMessage(code, wParam, lParam);
 	}
@@ -1162,8 +1200,61 @@ namespace SimpleF0Labeler
 			return;
 		if (m_showPitch)
 		{
-			
+			const auto curMaxPitch = (1.f - offsetY / (float)fullHeight) * 1200.f;
+			const auto curMinPitch = (1.f - (offsetY + float(viewHeight)) / (float)fullHeight) * 1200.f;
 
+			const auto curPixPerPitch = float(viewHeight) / (curMaxPitch - curMinPitch);
+
+			const auto curMinBinFp = curMaxPitch;
+			const auto curMaxBinFp = std::max(0.f, curMinPitch);
+			const auto curPixPerBin = float(viewHeight) / (curMinBinFp - curMaxBinFp);
+			const auto curCenterFactorY = int(0.5 * curPixPerPitch);
+
+			const auto curMinBin = 1200.f - curMinBinFp - (curCenterFactorY ? 1.f : 0.f);
+			const auto curMaxBin = 1200.f - curMaxBinFp;
+
+			const auto curMinBinFactorY = int((curMinBin - floor(curMinBin) + (curCenterFactorY ? 1.f : 0.f)) * curPixPerBin);
+			const auto curMaxBinFactorY = int((ceil(curMaxBin) - curMaxBin) * curPixPerBin);
+
+			auto SpecData = m_specLogView.Slice(
+				{
+					DragonianLib::Range{ (int64_t)floor(curMinBin), (int64_t)ceil(curMaxBin) },
+					DragonianLib::Range{ (int64_t)floor(curMinFrameBin), curFrameStride, (int64_t)ceil(curMaxFrameBin) }
+				}
+			).Contiguous().Evaluate();
+			const auto [NewBins, NewFrames] = SpecData.Size().RawArray();
+			Render::MBitmapPtr bitmap = param->render->CreateBitmap(
+				static_cast<_m_uint>(NewFrames),
+				static_cast<_m_uint>(NewBins),
+				SpecData.Data(),
+				static_cast<_m_uint>(SpecData.ElementCount()) * 4,
+				static_cast<_m_uint>(NewFrames) * 4
+			);
+
+			//计算绘制区域
+			UIRect dst = *param->destRect;
+			dst.left += fontWidth + space;
+			dst.right -= sidebarWidth + space;
+			dst.top += space + fontHeight;
+			dst.bottom -= preHeight + space + fontCenter;
+
+			//对由于缩放导致的频谱区域前后存在的小于1Bin的空隙进行处理
+			dst.top -= curMinBinFactorY;
+			dst.bottom += curMaxBinFactorY;
+			dst.left -= curMinBinFactorX;
+			dst.right += curMaxBinFactorX;
+
+			//确保每一个Bin的数据都在中心点
+			dst.top += curCenterFactorY;
+			dst.bottom += curCenterFactorY;
+			dst.left -= curCenterFactorX;
+			dst.right -= curCenterFactorX;
+
+			param->render->DrawBitmap(
+				bitmap,
+				255,
+				dst.ToRect()
+			);
 		}
 		else
 		{

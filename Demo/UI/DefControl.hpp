@@ -18,6 +18,8 @@ namespace WndControls
 
 	std::wstring Localization(const std::wstring_view& Key);
 
+	Mui::XML::MuiXML* GetUiXml();
+
 	void AppendUndo();
 
 	void CheckUnchanged();
@@ -25,8 +27,10 @@ namespace WndControls
 	void ApplyAppendUndo();
 
 	void ApplyPitchShift(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges);
+	void ApplyPitchShift(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges, float Shift);
 
 	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges);
+	void ApplyCalc(const DragonianLib::TemplateLibrary::MutableRanges<float>& Ranges, float Alpha, float Beta);
 
 	void SetPlayerPos(size_t Index);
 

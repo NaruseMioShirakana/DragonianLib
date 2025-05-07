@@ -54,9 +54,10 @@ struct Range
 
 	/**
 	 * @brief Constructor for a none range.
-	 * @param _NoneVal The none value to initialize the range.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType _NoneVal) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(nullptr_t) {}
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(std::nullopt_t) {}
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Val) : Begin(_Val), Step(_Val), End(_Val) {}
 
@@ -104,14 +105,14 @@ struct Range
 	 * @param _NoneVal The none value.
 	 * @param _End The end value.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType _NoneVal, SizeType _End) :End(_End) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType, SizeType _End) :End(_End) {  }
 
 	/**
 	 * @brief Constructor for a range with begin and none values.
 	 * @param _Begin The begining value.
 	 * @param _NoneVal The none value.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, NoneType _NoneVal) :Begin(_Begin) { UNUSED(_NoneVal); }
+	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, NoneType) :Begin(_Begin) {  }
 
 	/**
 	 * @brief Reverse the range.
@@ -287,10 +288,10 @@ public:
 	using ConstReference = const ValueType&;
 	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace DlibValue>);
 
-	using DependencyChainDataPointers = typename Operators::OperatorParameter<_NRank>::DependencyChainDataPointers;
-	using DependencyChainPair = typename Operators::OperatorParameter<_NRank>::DependencyChainPair;
-	using DependencyChainType = typename Operators::OperatorParameter<_NRank>::DependencyChainType;
-	using DependencyChainPointer = typename Operators::OperatorParameter<_NRank>::DependencyChainPointer;
+	using DependencyChainDataPointers = Operators::DependencyChainTypes::DependencyChainDataPointers;
+	using DependencyChainPair = Operators::DependencyChainTypes::DependencyChainPair;
+	using DependencyChainType = Operators::DependencyChainTypes::DependencyChainType;
+	using DependencyChainPointer = Operators::DependencyChainTypes::DependencyChainPointer;
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = Type2TensorType<_TensorType>;
 	using Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>;
@@ -339,6 +340,32 @@ public:
 			}
 		}
 	}
+	//Clean tasks that is already finished
+	void CleanInplaceChain() const
+	{
+		if (_MyFuturesAsArgument)
+		{
+			auto [SubBegin, SubEnd] = std::ranges::remove_if(
+				_MyFuturesAsArgument->begin(),
+				_MyFuturesAsArgument->end(),
+				[](const DependencyChainType::value_type& Iter) { return Iter.first._Is_ready(); }
+			);
+			_MyFuturesAsArgument->erase(SubBegin, SubEnd);
+		}
+	}
+	//Clean tasks that is already finished
+	void CleanOperationChain() const
+	{
+		if (_MyFuturesAsResult)
+		{
+			auto [SubBegin, SubEnd] = std::ranges::remove_if(
+				_MyFuturesAsResult->begin(),
+				_MyFuturesAsResult->end(),
+				[](const DependencyChainType::value_type& Iter) { return Iter.first._Is_ready(); }
+			);
+			_MyFuturesAsResult->erase(SubBegin, SubEnd);
+		}
+	}
 	//Check write permission.
 	void WaitingAsResult() const
 	{
@@ -348,7 +375,11 @@ public:
 			WaitingForTheOperationLock();
 		}
 		else
+		{
 			_IgnoreDep = false;
+			CleanOperationChain();
+			CleanInplaceChain();
+		}
 	}
 	//Check read permission.
 	void WaitingAsArgument() const
@@ -356,7 +387,11 @@ public:
 		if (!_IgnoreDep)
 			WaitingForTheOperationLock();
 		else
+		{
 			_IgnoreDep = false;
+			CleanOperationChain();
+		}
+		CleanInplaceChain();
 	}
 	//Check read and write permission.
 	void WaitingForAllLocks() const
