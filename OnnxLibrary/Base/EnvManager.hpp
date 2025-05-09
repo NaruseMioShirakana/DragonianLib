@@ -77,9 +77,9 @@ struct OnnxEnvironmentOptions
     Device Provider = Device::CPU; ///< Execution provider (device) of the environment.
     Int64 DeviceID = 0; ///< Device ID of the environment.
     Int64 IntraOpNumThreads = 4; ///< Number of threads for intra-op parallelism.
-	Int64 InterOpNumThreads = 2; ///< Number of threads for inter-op parallelism.
-	OrtLoggingLevel LoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level of the environment.
-	std::string LoggerId = "DragonianLib"; ///< Logger ID of the environment.
+    Int64 InterOpNumThreads = 2; ///< Number of threads for inter-op parallelism.
+    OrtLoggingLevel LoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level of the environment.
+    std::string LoggerId = "DragonianLib"; ///< Logger ID of the environment.
 
 	void SetCUDAOptions(const std::string& Key, const std::string& Value)
 	{
@@ -233,7 +233,7 @@ public:
 
 	void SetGraphOptimizationLevel(GraphOptimizationLevel Level) const;
 
-	void SetLogLevel(OrtLoggingLevel Level);
+	void SetLoggingLevel(OrtLoggingLevel Level);
 
     /**
      * @brief Creates an ONNX Runtime environment.
@@ -261,17 +261,18 @@ private:
 	 * @param Options ONNX Runtime environment options.
      */
     void Create(const OnnxEnvironmentOptions& Options);
-
+    
     std::unordered_map<std::wstring, OnnxRuntimeModel> GlobalOrtModelCache; ///< Global ONNX model cache.
     std::shared_ptr<Ort::Env> _MyOrtEnv = nullptr; ///< Pointer to the ONNX Runtime environment.
     std::shared_ptr<Ort::SessionOptions> _MyOrtSessionOptions = nullptr; ///< Pointer to the session options.
     std::shared_ptr<Ort::MemoryInfo> _MyOrtMemoryInfo = nullptr; ///< Pointer to the memory info.
-    std::shared_ptr <OrtCUDAProviderOptionsV2> _MyCudaOptionsV2 = nullptr; ///< CUDA provider options.
+    std::shared_ptr<OrtCUDAProviderOptionsV2> _MyCudaOptionsV2 = nullptr; ///< CUDA provider options.
+    std::shared_ptr<OrtTensorRTProviderOptionsV2> _MyTensorRTOptionsV2 = nullptr; ///< CUDA provider options.
     Int64 _MyIntraOpNumThreads = 4; ///< Number of threads for intra-op parallelism.
     Int64 _MyInterOpNumThreads = 2; ///< Number of threads for inter-op parallelism.
     Int64 _MyDeviceID = 0; ///< Current device ID.
     Device _MyProvider = Device::CPU; ///< Current provider.
-	OrtLoggingLevel _MyLoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level.
+    OrtLoggingLevel _MyLoggingLevel = ORT_LOGGING_LEVEL_VERBOSE; ///< Log level.
     std::string _MyLoggerId = "DragonianLib"; ///< Logger ID.
     std::unordered_map<std::string, std::string> _MyCUDAOptions{
         {"device_id", "0"},

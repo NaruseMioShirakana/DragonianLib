@@ -140,7 +140,7 @@ extern "C" {
 		 * - 0: CPU (default)
 		 * - 1: CUDA (NVIDIA GPU)
 		 * - 2: ROCm (AMD GPU), not implemented yet
-		 * - 3: DIRECTX (Intel GPU)
+		 * - 3: DIRECTX (DirectX12)
 		 */
 		INT32 Provider;
 

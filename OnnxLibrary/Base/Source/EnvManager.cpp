@@ -9,8 +9,65 @@
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
 #include "OnnxLibrary/Base/EnvManager.hpp"
+#include "onnxruntime_cxx_api.h"
 
 _D_Dragonian_Lib_Onnx_Runtime_Header
+
+constexpr const char* CUDAEPSessionOptions[]{
+	"device_id",
+	"user_compute_stream",
+	"do_copy_in_default_stream",
+	"use_ep_level_unified_stream",
+	"gpu_mem_limit",
+	"arena_extend_strategy",
+	"cudnn_conv_algo_search",
+	"cudnn_conv_use_max_workspace",
+	"cudnn_conv1d_pad_to_nc1d",
+	"enable_cuda_graph",
+	"enable_skip_layer_norm_strict_mode",
+	"use_tf32",
+	"prefer_nhwc",
+	"disable_synchronize_execution_providers",
+	"cudnn_conv_use_max_workspace ",
+	"cudnn_conv1d_pad_to_nc1d",
+};
+
+constexpr const char* TensorRTEPSessionOptions[]{
+	"device_id",
+	"user_compute_stream",
+	"trt_engine_cache_enable",
+	"trt_engine_cache_path",
+	"trt_engine_cache_prefix",
+	"trt_engine_hw_compatible",
+	"trt_max_workspace_size",
+	"trt_fp16_enable",
+	"trt_int8_enable",
+	"trt_int8_calibration_table_name",
+	"trt_int8_use_native_calibration_table",
+	"trt_build_heuristics_enable",
+	"trt_sparsity_enable",
+	"trt_dla_enable",
+	"trt_dla_core",
+	"trt_max_partition_iterations",
+	"trt_min_subgraph_size",
+	"trt_dump_subgraphs",
+	"trt_force_sequential_engine_build",
+	"trt_op_types_to_exclude",
+	"trt_context_memory_sharing_enable",
+	"trt_layer_norm_fp32_fallback",
+	"trt_cuda_graph_enable",
+	"trt_builder_optimization_level",
+	"trt_auxiliary_streams",
+	"trt_tactic_sources",
+	"trt_extra_plugin_lib_paths",
+	"trt_detailed_build_log",
+	"trt_timing_cache_enable",
+	"trt_timing_cache_path",
+	"trt_force_timing_cache",
+	"trt_profile_min_shapes",
+	"trt_profile_max_shapes",
+	"trt_profile_opt_shapes",
+};
 
 DLogger& GetDefaultLogger() noexcept
 {
@@ -263,35 +320,8 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 	else if (_MyProvider == Device::CUDA)
 	{
 		const auto AvailableProviders = Ort::GetAvailableProviders();
-		bool Found = true;
-		for (const auto& it : AvailableProviders)
-			if (it.find("CUDA") != std::string::npos)
-				Found = false;
-		if (Found)
+		if (std::ranges::find(AvailableProviders, "CUDAExecutionProvider") == AvailableProviders.end())
 			_D_Dragonian_Lib_Throw_Exception("CUDA Provider Not Found");
-
-		OrtCUDAProviderOptionsV2* TmpCudaProviderOptionsV2 = nullptr;
-		GlobalOrtApi.CreateCUDAProviderOptions(&TmpCudaProviderOptionsV2);
-		_MyCudaOptionsV2 = std::shared_ptr<OrtCUDAProviderOptionsV2>(
-			TmpCudaProviderOptionsV2,
-			GlobalOrtApi.ReleaseCUDAProviderOptions
-		);
-
-		std::vector<const char*> OrtCUDAOptionKeys;
-		std::vector<const char*> OrtCUDAOptionValues;
-
-		for (const auto& it : _MyCUDAOptions)
-		{
-			OrtCUDAOptionKeys.emplace_back(it.first.c_str());
-			OrtCUDAOptionValues.emplace_back(it.second.c_str());
-		}
-		
-		GlobalOrtApi.UpdateCUDAProviderOptions(
-			_MyCudaOptionsV2.get(),
-			OrtCUDAOptionKeys.data(),
-			OrtCUDAOptionValues.data(),
-			OrtCUDAOptionKeys.size()
-		);
 
 		_MyOrtEnv = std::make_shared<Ort::Env>(
 			_MyLoggingLevel,
@@ -299,6 +329,62 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 			DragonianLibOrtLoggingFn,
 			nullptr
 		);
+
+		std::vector<const char*> OrtCUDAOptionKeys, OrtCUDAOptionValues;
+		std::vector<const char*> OrtTrtOptionKeys, OrtTrtOptionValues;
+
+		bool EnableTRT = false;
+		for (const auto& it : _MyCUDAOptions)
+		{
+			if (std::ranges::contains(CUDAEPSessionOptions, it.first))
+			{
+				OrtCUDAOptionKeys.emplace_back(it.first.c_str());
+				OrtCUDAOptionValues.emplace_back(it.second.c_str());
+			}
+			if (std::ranges::contains(TensorRTEPSessionOptions, it.first))
+			{
+				OrtTrtOptionKeys.emplace_back(it.first.c_str());
+				OrtTrtOptionValues.emplace_back(it.second.c_str());
+			}
+			if (it.first == "tensorrt" && it.second == "true")
+			{
+				EnableTRT = true;
+				if (std::ranges::find(AvailableProviders, "TensorrtExecutionProvider") == AvailableProviders.end())
+					_D_Dragonian_Lib_Throw_Exception("TensorRT Provider Not Found");
+			}
+		}
+		
+		{
+			OrtCUDAProviderOptionsV2* TmpCudaProviderOptionsV2 = nullptr;
+			GlobalOrtApi.CreateCUDAProviderOptions(&TmpCudaProviderOptionsV2);
+			_MyCudaOptionsV2 = { TmpCudaProviderOptionsV2,GlobalOrtApi.ReleaseCUDAProviderOptions };
+			GlobalOrtApi.UpdateCUDAProviderOptions(
+				TmpCudaProviderOptionsV2,
+				OrtCUDAOptionKeys.data(),
+				OrtCUDAOptionValues.data(),
+				OrtCUDAOptionKeys.size()
+			);
+			_MyOrtSessionOptions->AppendExecutionProvider_CUDA_V2(
+				*TmpCudaProviderOptionsV2
+			);
+		}
+
+		if (EnableTRT)
+		{
+			OrtTensorRTProviderOptionsV2* TmpTrtOptions = nullptr;
+			GlobalOrtApi.CreateTensorRTProviderOptions(&TmpTrtOptions);
+			_MyTensorRTOptionsV2 = { TmpTrtOptions, GlobalOrtApi.ReleaseTensorRTProviderOptions };
+			GlobalOrtApi.UpdateTensorRTProviderOptions(
+				TmpTrtOptions,
+				OrtTrtOptionKeys.data(),
+				OrtTrtOptionValues.data(),
+				OrtTrtOptionKeys.size()
+			);
+			_MyOrtSessionOptions->AppendExecutionProvider_TensorRT_V2(
+				*TmpTrtOptions
+			);
+		}
+
 		_MyOrtSessionOptions->SetIntraOpNumThreads(
 			1
 		);
@@ -307,9 +393,6 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 		);
 		_MyOrtSessionOptions->SetGraphOptimizationLevel(
 			ORT_ENABLE_ALL
-		);
-		_MyOrtSessionOptions->AppendExecutionProvider_CUDA_V2(
-			*_MyCudaOptionsV2
 		);
 		_MyOrtSessionOptions->SetExecutionMode(
 			ORT_SEQUENTIAL
@@ -323,12 +406,8 @@ void OnnxRuntimeEnvironmentBase::Create(const OnnxEnvironmentOptions& Options)
 	else if (_MyProvider == Device::DIRECTX)
 	{
 		const auto AvailableProviders = Ort::GetAvailableProviders();
-		std::string ret;
-		for (const auto& it : AvailableProviders)
-			if (it.find("Dml") != std::string::npos)
-				ret = it;
-		if (ret.empty())
-			_D_Dragonian_Lib_Throw_Exception("DML Provider Not Found");
+		if (std::ranges::find(AvailableProviders, "DmlExecutionProvider") == AvailableProviders.end())
+			_D_Dragonian_Lib_Throw_Exception("Dml Provider Not Found");
 
 		const OrtDmlApi* OrtDmlApi = nullptr;
 		GlobalOrtApi.GetExecutionProviderApi(
@@ -505,9 +584,9 @@ void OnnxRuntimeEnvironmentBase::SetGraphOptimizationLevel(GraphOptimizationLeve
 	_MyOrtSessionOptions->SetGraphOptimizationLevel(Level);
 }
 
-void OnnxRuntimeEnvironmentBase::SetLogLevel(OrtLoggingLevel Level)
+void OnnxRuntimeEnvironmentBase::SetLoggingLevel(OrtLoggingLevel Level)
 {
-	_MyOrtSessionOptions->SetLogSeverityLevel(Level);
+	_MyOrtSessionOptions->SetLogSeverityLevel(static_cast<int>(Level));
 	_MyLoggingLevel = Level;
 }
 

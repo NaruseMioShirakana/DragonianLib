@@ -545,9 +545,8 @@ template <typename Fn>
 	};
 
 	DragonianVoiceSvcInitEnviromentSetting(&EnvSetting);
-	EnvSetting.Provider = 1;
+	EnvSetting.Provider = 3;
 	Enviroment = DragonianVoiceSvcCreateEnviroment(&EnvSetting);
-
 
 	DragonianVoiceSvcInitHyperParameters(&HyperParameters);
 	HyperParameters.ModelPaths = (DragonianVoiceSvcArgDict)ModelPaths;
