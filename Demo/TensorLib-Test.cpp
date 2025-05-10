@@ -10,11 +10,22 @@
 #include "OnnxLibrary/UnitsEncoder/Register.hpp"
 #include "OnnxLibrary/Vocoder/Register.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
+#include "Libraries/Image-Video/ImgVideo.hpp"
 #include "TensorLib/Include/Base/Tensor/Einops.h"
 #include "OnnxLibrary/SingingVoiceConversion/Api/NativeApi.h"
 
 static auto MyLastTime = std::chrono::high_resolution_clock::now();
 static int64_t TotalStep = 0;
+
+template <typename Fn>
+[[maybe_unused]] static void WithTimer(const Fn& fn)
+{
+	auto start = std::chrono::high_resolution_clock::now();
+	fn();
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
+}
+
 [[maybe_unused]] static void ShowProgressBar(int64_t progress) {
 	int barWidth = 70;
 	float progressRatio = static_cast<float>(progress) / float(TotalStep);
@@ -41,15 +52,6 @@ static int64_t TotalStep = 0;
 		TotalStep = b;
 	else
 		ShowProgressBar(b);
-}
-
-template <typename Fn>
-[[maybe_unused]] static void WithTimer(const Fn& fn)
-{
-	auto start = std::chrono::high_resolution_clock::now();
-	fn();
-	auto end = std::chrono::high_resolution_clock::now();
-	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 
 [[maybe_unused]] static void TestUVR()
@@ -713,8 +715,33 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
 
-	TestApi();
+	auto Image = ImageVideo::LoadAndSplitImageNorm(
+		LR"(C:\DataSpace\MediaProj\Wallpaper\T\83579d7a-f57f-4098-9ec8-3c3dcd122ddb.png)",
+		64,
+		64,
+		16,
+		16
+	);
 
+	//19, 20
+	auto NewImage = Einops::Rearrange(
+		Image,
+		Einops::MakeRearrangeArgs(
+			EinToken("HW"), "WW",
+			"H", "W", "C"
+		),
+		Einops::MakeRearrangeArgs(
+			EinToken("HW") * "H",
+			EinToken("WW") * "W",
+			"C"
+		)
+	).Evaluate();
+
+	//TestApi();
+	ImageVideo::SaveBitmap(
+		NewImage,
+		LR"(C:\DataSpace\MediaProj\Wallpaper\T\test.png)"
+	);
 	return 0;
 	//TestStft();
 }

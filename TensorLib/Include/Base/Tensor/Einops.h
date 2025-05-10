@@ -96,6 +96,10 @@ namespace Einops
 		template <size_t _NumRank>
 		friend constexpr Token<_NumRank + 1> operator*(const Token<_NumRank>& _Left, const std::string_view& _Token);
 		template <size_t _NumRank>
+		friend constexpr Token<_NumRank + 1> operator*(Int64 _Right, const Token<_NumRank>& _Left);
+		template <size_t _NumRank>
+		friend constexpr Token<_NumRank + 1> operator*(const std::string_view& _Token, const Token<_NumRank>& _Left);
+		template <size_t _NumRank>
 		friend constexpr Token<_NumRank> operator/(const Token<_NumRank>& _Left, Int64 _Right);
 	};
 
@@ -150,6 +154,10 @@ namespace Einops
 		template <size_t _NumRank>
 		friend constexpr Token<_NumRank + 1> operator*(const Token<_NumRank>& _Left, const std::string_view& _Token);
 		template <size_t _NumRank>
+		friend constexpr Token<_NumRank + 1> operator*(Int64 _Right, const Token<_NumRank>& _Left);
+		template <size_t _NumRank>
+		friend constexpr Token<_NumRank + 1> operator*(const std::string_view& _Token, const Token<_NumRank>& _Left);
+		template <size_t _NumRank>
 		friend constexpr Token<_NumRank> operator/(const Token<_NumRank>& _Left, Int64 _Right);
 	};
 
@@ -197,18 +205,17 @@ namespace Einops
 	constexpr bool IsTokenValue = IsToken<TypeTraits::RemoveARPCVType<_Type>>::Cond || IsAutoDimValue<_Type> || IsAutoCatValue<_Type>;
 	template <typename _Type>
 	constexpr bool IsTokenLikeValue = IsTokenValue<_Type> || TypeTraits::CouldBeConvertedFromValue<Token<1>, _Type>;
-	template <typename _TupleType, size_t... _Index>
-	constexpr bool TupleIsAllToken(std::index_sequence<_Index...>)
+
+	template <typename... _TupleTypes>
+	struct TupleIsAllToken
 	{
-		return BoolConditionAndValue<IsTokenLikeValue<std::tuple_element_t<_Index, _TupleType>>...>;
-	}
-	template <typename _TupleType>
-	constexpr bool TupleIsAllToken()
+		constexpr static bool Cond = BoolConditionAndValue<IsTokenLikeValue<_TupleTypes>...>;
+	};
+	template <typename... _TupleTypes>
+	struct TupleIsAllToken<std::tuple<_TupleTypes...>>
 	{
-		if constexpr (std::tuple_size_v<_TupleType> == 0)
-			return false;
-		return TupleIsAllToken<_TupleType>(std::make_index_sequence<std::tuple_size_v<_TupleType>>{});
-	}
+		constexpr static bool Cond = BoolConditionAndValue<IsTokenLikeValue<_TupleTypes>...>;
+	};
 
 	template <typename _Type>
 	constexpr bool IsTokenLikeValue1D = TypeTraits::CouldBeConvertedFromValue<Token<1>, _Type> || IsAutoCatValue<_Type>;
@@ -247,6 +254,19 @@ namespace Einops
 		return _Left * Token<1>(_Token);
 	}
 	template <size_t _NumRank>
+	constexpr Token<_NumRank + 1> operator*(Int64 _Right, const Token<_NumRank>& _Left)
+	{
+		Token<_NumRank + 1> _Ret;
+		_Ret._Names = TemplateLibrary::CombineArray(TemplateLibrary::Array{ Hash("Unknown") }, _Left._Names);
+		_Ret._Dims = TemplateLibrary::CombineArray(TemplateLibrary::Array<Rational, 1>{ _Right }, _Left._Dims);
+		return _Ret;
+	}
+	template <size_t _NumRank>
+	constexpr Token<_NumRank + 1> operator*(const std::string_view& _Token, const Token<_NumRank>& _Left)
+	{
+		return Token<1>(_Token) * _Left;
+	}
+	template <size_t _NumRank>
 	constexpr Token<_NumRank> operator/(const Token<_NumRank>& _Left, Int64 _Right)
 	{
 		auto _Ret = _Left;
@@ -277,7 +297,7 @@ namespace Einops
 	template <typename _TupleArg>
 	constexpr auto MakeRearrangeArgsWithTuple(
 		const _TupleArg& _RawArgs
-	) requires (TupleIsAllToken<_TupleArg>())
+	) requires (TupleIsAllToken<_TupleArg>::Cond)
 	{
 		return ImplMakeRearrangeArgs(
 			_RawArgs,
@@ -288,7 +308,7 @@ namespace Einops
 	template <typename... _Args>
 	constexpr auto MakeRearrangeArgs(
 		_Args&&... _RawArgs
-	) requires (TupleIsAllToken<std::tuple<_Args...>>())
+	) requires (TupleIsAllToken<std::tuple<_Args...>>::Cond)
 	{
 		return ImplMakeRearrangeArgs(
 			std::make_tuple(std::forward<_Args>(_RawArgs)...),
@@ -502,7 +522,7 @@ namespace Einops
 		const _TupleArg1& _RawSourceArgs,
 		const _TupleArg2& _RawDestArgs,
 		const std::unordered_map<std::string_view, Int64>& _RawDimensionCounts = {}
-	) requires (TupleIsAllToken<_TupleArg1>() && TupleIsAllToken<_TupleArg2>() && (std::tuple_size_v<_TupleArg1> <= _Rank) && (TypeTraits::CountTypeValue<AutoDimTag, _TupleArg1> < 2) && (TypeTraits::CountTypeValue<AutoCatTag, _TupleArg1> == 0) && (TypeTraits::CountTypeValue<AutoDimTag, _TupleArg2> + TypeTraits::CountTypeValue<AutoCatTag, _TupleArg2> < 2))
+	) requires (TupleIsAllToken<_TupleArg1>::Cond && TupleIsAllToken<_TupleArg2>::Cond && (std::tuple_size_v<_TupleArg1> <= _Rank) && (TypeTraits::CountTypeValue<AutoDimTag, _TupleArg1> < 2) && (TypeTraits::CountTypeValue<AutoCatTag, _TupleArg1> == 0) && (TypeTraits::CountTypeValue<AutoDimTag, _TupleArg2> + TypeTraits::CountTypeValue<AutoCatTag, _TupleArg2> < 2))
 	{
 		constexpr auto RawSourceArgSize = std::tuple_size_v<_TupleArg1>;
 		constexpr auto RawDestArgSize = std::tuple_size_v<_TupleArg2>;
@@ -944,5 +964,7 @@ namespace Einops
 	}
 
 }
+
+using EinToken = Einops::Token<1>;
 
 _D_Dragonian_Lib_Space_End

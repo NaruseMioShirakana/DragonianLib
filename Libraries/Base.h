@@ -407,6 +407,8 @@ private:
 class UniqueScopeExit
 {
 public:
+	friend class SharedScopeExit;
+
 	UniqueScopeExit() = default;
 
 	template <typename _FunTy, typename... _Args>
@@ -429,6 +431,17 @@ public:
 	UniqueScopeExit(const UniqueScopeExit&) = delete;
 	UniqueScopeExit& operator=(UniqueScopeExit&&) noexcept = default;
 	UniqueScopeExit& operator=(const UniqueScopeExit&) = delete;
+
+	void Execute()
+	{
+		if (_MyFun) _MyFun();
+		Detach();
+	}
+
+	void Detach()
+	{
+		_MyFun = nullptr;
+	}
 
 private:
 	std::function<void()> _MyFun;
@@ -453,9 +466,26 @@ public:
 
 	}
 
-	operator UniqueScopeExit() const
+	SharedScopeExit(
+		UniqueScopeExit&& _Right
+	) : _MyFun(std::make_shared<UniqueScopeExit>(std::move(_Right)))
 	{
-		return std::move(*_MyFun);
+
+	}
+
+	void Execute() const
+	{
+		_MyFun->Execute();
+	}
+
+	void Reset()
+	{
+		_MyFun = nullptr;
+	}
+
+	void Detach() const
+	{
+		_MyFun->Detach();
 	}
 
 private:

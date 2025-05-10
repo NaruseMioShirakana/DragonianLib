@@ -728,7 +728,7 @@ extern "C" {
 		);
 
 	/**
-	 * @brief Create a tensor, shape is [_0, _1, _2, _3]
+	 * @brief Create a tensor, shape is [_0, _1, _2, _3], the buffer is allocated by the user, the buffer will not be freed by the library, it is the user's responsibility to free the buffer
 	 * @return 4d float tensor
 	 */
 	_Dragonian_Lib_Svc_Api _Dragonian_Lib_Svc_Add_Prefix(FloatTensor) _Dragonian_Lib_Svc_Add_Prefix(CreateFloatTensor)(

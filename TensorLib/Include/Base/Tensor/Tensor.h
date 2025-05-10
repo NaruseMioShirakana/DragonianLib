@@ -2002,6 +2002,17 @@ public:
 	}
 
 	/**
+	 * @brief Get the stride of the specified axis of the tensor.
+	 * @param _Index
+	 * @return
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Stride(SizeType _Index) const
+	{
+		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
+		return _MyViewStride[_Index];
+	}
+
+	/**
 	 * @brief Whether the tensor is empty (null).
 	 * @return true if the tensor is empty, false otherwise.
 	 */

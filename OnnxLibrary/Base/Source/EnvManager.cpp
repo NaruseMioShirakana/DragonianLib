@@ -9,7 +9,6 @@
 #include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
 #include "OnnxLibrary/Base/EnvManager.hpp"
-#include "onnxruntime_cxx_api.h"
 
 _D_Dragonian_Lib_Onnx_Runtime_Header
 
@@ -129,8 +128,8 @@ static void DragonianLibOrtLoggingFn(
 	_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->LogMessage(UTF8ToWideString(ort_message));
 }
 
-OnnxRuntimeModel::OnnxRuntimeModel(OnnxRuntimeModelPointer Model)
-	: _MyModel(std::move(Model))
+OnnxRuntimeModel::OnnxRuntimeModel(OnnxRuntimeModelPointer Model, OnnxRuntimeEnvironment Environment)
+	: _MyEnvironment(std::move(Environment)), _MyModel(std::move(Model))
 {
 	if (!_MyModel)
 		return;
@@ -495,19 +494,22 @@ OnnxRuntimeModel& OnnxRuntimeEnvironmentBase::RefOnnxRuntimeModel(const std::wst
 			L"\" With OnnxEnvironment: Instance[PTR:" + EnvPtr + L"], Current Referece Count: 0"
 		);
 		auto _DeleterLogger = _D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger();
-		return GlobalOrtModelCache[ModelPath] = std::shared_ptr<Ort::Session>(
-			new Ort::Session(*GetEnvironment(), ModelPath.c_str(), *GetSessionOptions()),
-			[_DeleterLogger, ModelPath](const Ort::Session* Ptr)
-			{
-				std::wstring HexPtr;
+		return GlobalOrtModelCache[ModelPath] = OnnxRuntimeModel(
+			std::shared_ptr<Ort::Session>(
+				new Ort::Session(*GetEnvironment(), ModelPath.c_str(), *GetSessionOptions()),
+				[_DeleterLogger, ModelPath](const Ort::Session* Ptr)
 				{
-					std::wstringstream wss;
-					wss << std::hex << Ptr;
-					wss >> HexPtr;
+					std::wstring HexPtr;
+					{
+						std::wstringstream wss;
+						wss << std::hex << Ptr;
+						wss >> HexPtr;
+					}
+					delete Ptr;
+					_DeleterLogger->LogInfo(L"Model Unloaded: Instance[PTR:" + HexPtr + L", PATH:\"" + ModelPath + L"\"], Current Referece Count: 0");
 				}
-				delete Ptr;
-				_DeleterLogger->LogInfo(L"Model Unloaded: Instance[PTR:" + HexPtr + L", PATH:\"" + ModelPath + L"\"], Current Referece Count: 0");
-			}
+			),
+			shared_from_this()
 		);
 	}
 	catch (std::exception& e)

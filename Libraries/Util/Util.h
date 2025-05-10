@@ -349,15 +349,10 @@ enum class ComInitializeFlag : uint8_t
 	COINIT_SPEED_OVER_MEMORY,
 };
 
-template <bool _Fs, bool... _Rest>
+template <bool... _Rest>
 struct BoolConditionAnd
 {
-	static constexpr bool Cond = _Fs && BoolConditionAnd<_Rest...>::Cond;
-};
-template <bool _Fs>
-struct BoolConditionAnd<_Fs>
-{
-	static constexpr bool Cond = _Fs;
+	static constexpr bool Cond = sizeof...(_Rest) && (_Rest && ...);
 };
 template <bool... _Conditions>
 constexpr bool BoolConditionAndValue = BoolConditionAnd<_Conditions...>::Cond;

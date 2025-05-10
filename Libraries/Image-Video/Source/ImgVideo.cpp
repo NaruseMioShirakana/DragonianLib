@@ -16,7 +16,6 @@
 #else
 #error GDIPLUS is not supported on this platform.
 #endif
-#include "Libraries/Base.h"
 
 #ifdef _WIN32
 #define _D_Dragonian_Lib_Image_Video_W32 1
@@ -30,10 +29,31 @@
 #define _D_Dragonian_Lib_Image_Video_Static 0
 #endif
 
-
 _D_Dragonian_Lib_Image_Video_Header
 
 #if _D_Dragonian_Lib_Image_Video_W32 + _D_Dragonian_Lib_Image_Video_Static == 2
+
+UInt64 GdiToken = 0;  // NOLINT(misc-use-internal-linkage)
+
+[[maybe_unused]] OnConstruct GdiInit{  // NOLINT(misc-use-internal-linkage)
+	[]
+	{
+		if (GdiToken)
+			return;
+		Gdiplus::GdiplusStartupInput In;
+		Gdiplus::GdiplusStartupOutput Out;
+		GdiplusStartup(&GdiToken, &In, &Out);
+	}
+};
+
+[[maybe_unused]] UniqueScopeExit GdiClose{  // NOLINT(misc-use-internal-linkage)
+	[]
+	{
+		if (!GdiToken)
+		return;
+		Gdiplus::GdiplusShutdown(GdiToken);
+	}
+};
 
 static void GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
@@ -77,23 +97,354 @@ static bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT
 	return true;
 }
 
-static void DrawRectangle(HDC hdc, int x, int y, int width, int height)
+Image5D LoadAndSplitImage(
+	const std::wstring& Path,
+	Int64 WindowHeight,
+	Int64 WindowWidth,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
 {
-	MoveToEx(hdc, x, y, nullptr);
-	LineTo(hdc, x + width, y);
-	LineTo(hdc, x + width, y + height);
-	LineTo(hdc, x, y + height);
-	LineTo(hdc, x, y);
+	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
+		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
+
+	auto Bitmap = Gdiplus::Bitmap::FromFile(Path.c_str());
+	if (!Bitmap)
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+	UniqueScopeExit BitmapGuard([&] { delete Bitmap; });
+
+	const auto Width = (Int64)Bitmap->GetWidth();
+	const auto Height = (Int64)Bitmap->GetHeight();
+	
+	if (WindowHeight <= 0) WindowHeight = Height;
+	else if (WindowHeight < 32) WindowHeight = 32;
+	if (WindowWidth <= 0) WindowWidth = Width;
+	else if (WindowWidth < 32) WindowWidth = 32;
+
+	HopHeight = std::max(HopHeight, 16ll);
+	HopWidth = std::max(HopWidth, 16ll);
+
+	const auto WindowCountHeight = (Height + WindowHeight) / HopHeight;
+	const auto WindowCountWidth = (Width + WindowWidth) / HopWidth;
+	//const auto WindowCount = WindowCountHeight * WindowCountWidth;
+
+	Gdiplus::Rect Rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
+	Gdiplus::BitmapData BitmapData;
+
+	//BGRA
+	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &BitmapData) != Gdiplus::Status::Ok)
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+	UniqueScopeExit BitmapLockGuard([&] { Bitmap->UnlockBits(&BitmapData); });
+
+	const auto ColStride = static_cast<Int64>(BitmapData.Stride);
+	const auto Channel = ColStride / Width;
+
+	auto Ret = Image5D::Zeros(
+		{
+			WindowCountHeight,
+			WindowCountWidth,
+			WindowHeight,
+			WindowWidth,
+			Channel
+		}
+	).Evaluate();
+	const auto RetColStride = Ret.Stride(0);
+	const auto RetRowStride = Ret.Stride(1);
+	const auto RetPixStride = Ret.Stride(2);
+
+	const auto RetData = Ret.Data();
+	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
+
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll) / 2;
+	Int64 HOffsetBack = HOffsetFront + WindowHeight;
+	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
+	{
+		const auto HFront = std::clamp(HOffsetFront, 0ll, Height);
+		const auto HFrontPadding = std::max(0 - HOffsetFront, 0ll);
+		const auto HBack = std::clamp(HOffsetBack, 0ll, Height);
+		if (HBack <= 0 || HFront >= Height) continue;
+
+		const auto RetColData = RetData + WinH * RetColStride;
+		const auto CurColData = BitMapData + HFront * ColStride;
+
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll) / 2;
+		Int64 WOffsetBack = WOffsetFront + WindowWidth;
+		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
+		{
+			Ret.AppendTask(
+				[=]
+				{
+					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
+					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
+					const auto WBack = std::clamp(WOffsetBack, 0ll, Width);
+					if (WBack <= 0 || WFront >= Width) return;
+
+					const auto RetRowData = RetColData + WinW * RetRowStride;
+					const auto CurRowData = CurColData + WFront * 4;
+
+					for (Int64 Y = HFront; Y < HBack; ++Y)
+					{
+						const auto YPos = Y - HFront;
+						for (Int64 X = WFront; X < WBack; ++X)
+						{
+							const auto XPos = X - WFront;
+							const auto CurData = CurRowData + YPos * ColStride + XPos * 4;
+							const auto Data = RetRowData + (YPos + HFrontPadding) * RetPixStride + (XPos + WFrontPadding) * Channel;
+							Data[0] = CurData[2];  //R
+							Data[1] = CurData[1];  //G
+							Data[2] = CurData[0];  //B
+							Data[3] = CurData[3];  //A
+						}
+					}
+				}
+			);
+		}
+	}
+
+	return std::move(Ret.Evaluate());
+	/*return Image::FromBuffer(
+		{ 1, Height, Width, Channel },
+		static_cast<BYTE*>(BitmapData.Scan0),
+		Channel * Height * Width
+	).Clone();*/
 }
 
-Image::Image(const wchar_t* input, int interp_mode)
+NormalizedImage5D LoadAndSplitImageNorm(
+	const std::wstring& Path,
+	Int64 WindowHeight,
+	Int64 WindowWidth,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
+{
+	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
+		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
+
+	auto Bitmap = Gdiplus::Bitmap::FromFile(Path.c_str());
+	if (!Bitmap)
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+	UniqueScopeExit BitmapGuard([&] { delete Bitmap; });
+
+	const auto Width = (Int64)Bitmap->GetWidth();
+	const auto Height = (Int64)Bitmap->GetHeight();
+	if (WindowHeight <= 0) WindowHeight = Height;
+	else if (WindowHeight < 32) WindowHeight = 32;
+	if (WindowWidth <= 0) WindowWidth = Width;
+	else if (WindowWidth < 32) WindowWidth = 32;
+
+	HopHeight = std::max(HopHeight, 16ll);
+	HopWidth = std::max(HopWidth, 16ll);
+
+	const auto WindowCountHeight = (Height + WindowHeight) / HopHeight;
+	const auto WindowCountWidth = (Width + WindowWidth) / HopWidth;
+	//const auto WindowCount = WindowCountHeight * WindowCountWidth;
+
+	Gdiplus::Rect Rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
+	Gdiplus::BitmapData BitmapData;
+
+	//BGRA
+	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &BitmapData) != Gdiplus::Status::Ok)
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+	UniqueScopeExit BitmapLockGuard([&] { Bitmap->UnlockBits(&BitmapData); });
+
+	const auto ColStride = static_cast<Int64>(BitmapData.Stride);
+	const auto Channel = ColStride / Width;
+
+	auto Ret = NormalizedImage5D::Ones(
+		{
+			WindowCountHeight,
+			WindowCountWidth,
+			WindowHeight,
+			WindowWidth,
+			Channel
+		}
+	).Evaluate();
+	const auto RetColStride = Ret.Stride(0);
+	const auto RetRowStride = Ret.Stride(1);
+	const auto RetPixStride = Ret.Stride(2);
+
+	const auto RetData = Ret.Data();
+	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
+
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll) / 2;
+	Int64 HOffsetBack = HOffsetFront + WindowHeight;
+	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
+	{
+		const auto HFront = std::clamp(HOffsetFront, 0ll, Height);
+		const auto HFrontPadding = std::max(0 - HOffsetFront, 0ll);
+		const auto HBack = std::clamp(HOffsetBack, 0ll, Height);
+		if (HBack <= 0 || HFront >= Height) continue;
+
+		const auto RetColData = RetData + WinH * RetColStride;
+		const auto CurColData = BitMapData + HFront * ColStride;
+
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll) / 2;
+		Int64 WOffsetBack = WOffsetFront + WindowWidth;
+		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
+		{
+			Ret.AppendTask(
+				[=]
+				{
+					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
+					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
+					const auto WBack = std::clamp(WOffsetBack, 0ll, Width);
+					if (WBack <= 0 || WFront >= Width) return;
+
+					const auto RetRowData = RetColData + WinW * RetRowStride;
+					const auto CurRowData = CurColData + WFront * 4;
+
+					for (Int64 Y = HFront; Y < HBack; ++Y)
+					{
+						const auto YPos = Y - HFront;
+						for (Int64 X = WFront; X < WBack; ++X)
+						{
+							const auto XPos = X - WFront;
+							const auto CurData = CurRowData + YPos * ColStride + XPos * 4;
+							const auto Data = RetRowData + (YPos + HFrontPadding) * RetPixStride + (XPos + WFrontPadding) * Channel;
+							Data[0] = static_cast<float>(CurData[2]) / 255.f;  //R
+							Data[1] = static_cast<float>(CurData[1]) / 255.f;  //G
+							Data[2] = static_cast<float>(CurData[0]) / 255.f;  //B
+							Data[3] = static_cast<float>(CurData[3]) / 255.f;  //A
+						}
+					}
+				}
+			);
+		}
+	}
+
+	return std::move(Ret.Evaluate());
+	/*return Image::FromBuffer(
+		{ 1, Height, Width, Channel },
+		static_cast<BYTE*>(BitmapData.Scan0),
+		Channel * Height * Width
+	).Clone();*/
+}
+
+void SaveBitmap(
+	const Image3D& ImageData,
+	const std::wstring& Path,
+	UInt Quality
+)
+{
+	if (ImageData.Shape(2) != 4)
+		_D_Dragonian_Lib_Throw_Exception("Image buffer must be [H, W, 4] format!");
+
+	const auto Height = ImageData.Shape(0);
+	const auto Width = ImageData.Shape(1);
+
+	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(static_cast<INT>(Width), static_cast<INT>(Height), PixelFormat32bppARGB);
+	if (!bitmap)
+		_D_Dragonian_Lib_Throw_Exception("Failed to create GDI+ bitmap!");
+
+	UniqueScopeExit BitmapGuard([&] { delete bitmap; });
+
+	Gdiplus::Rect rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
+	Gdiplus::BitmapData bitmapData;
+	if (bitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData) != Gdiplus::Status::Ok)
+		_D_Dragonian_Lib_Throw_Exception("Failed to lock bitmap bits!");
+
+	UniqueScopeExit LockGuard([&] { bitmap->UnlockBits(&bitmapData); });
+
+	const auto ImageDataPtr = ImageData.Data();
+	const auto PixStride = ImageData.Stride(1);
+	const auto RowStride = ImageData.Stride(0);
+
+	BYTE* dstData = static_cast<BYTE*>(bitmapData.Scan0);
+	const auto dstStride = static_cast<Int64>(bitmapData.Stride);
+
+	for (Int64 y = 0; y < Height; ++y) {
+		for (Int64 x = 0; x < Width; ++x) {
+			const auto offset = y * RowStride + x * PixStride;
+			BYTE* pixel = dstData + y * dstStride + x * 4ll;
+			pixel[0] = static_cast<BYTE>(ImageDataPtr[offset + 2]); // B
+			pixel[1] = static_cast<BYTE>(ImageDataPtr[offset + 1]); // G
+			pixel[2] = static_cast<BYTE>(ImageDataPtr[offset + 0]); // R
+			pixel[3] = static_cast<BYTE>(ImageDataPtr[offset + 3]); // A
+		}
+	}
+
+	LockGuard.Execute();
+
+	SaveBitmapToPNG(bitmap, Path.c_str(), Quality);
+}
+
+void SaveBitmap(
+	const NormalizedImage3D& ImageData,
+	const std::wstring& Path,
+	UInt Quality
+)
+{
+	if (ImageData.Shape(2) != 4)
+		_D_Dragonian_Lib_Throw_Exception("Image buffer must be [H, W, 4] format!");
+
+	const auto Height = ImageData.Shape(0);
+	const auto Width = ImageData.Shape(1);
+
+	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(static_cast<INT>(Width), static_cast<INT>(Height), PixelFormat32bppARGB);
+	if (!bitmap)
+		_D_Dragonian_Lib_Throw_Exception("Failed to create GDI+ bitmap!");
+
+	UniqueScopeExit BitmapGuard([&] { delete bitmap; });
+
+	Gdiplus::Rect rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
+	Gdiplus::BitmapData bitmapData;
+	if (bitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData) != Gdiplus::Status::Ok)
+		_D_Dragonian_Lib_Throw_Exception("Failed to lock bitmap bits!");
+
+	UniqueScopeExit LockGuard([&] { bitmap->UnlockBits(&bitmapData); });
+
+	const auto ImageDataPtr = ImageData.Data();
+	const auto PixStride = ImageData.Stride(1);
+	const auto RowStride = ImageData.Stride(0);
+
+	BYTE* dstData = static_cast<BYTE*>(bitmapData.Scan0);
+	const auto dstStride = static_cast<Int64>(bitmapData.Stride);
+
+	for (Int64 y = 0; y < Height; ++y) {
+		for (Int64 x = 0; x < Width; ++x) {
+			const auto offset = y * RowStride + x * PixStride;
+			BYTE* pixel = dstData + y * dstStride + x * 4ll;
+			pixel[0] = static_cast<BYTE>(ImageDataPtr[offset + 2] * 255.f); // B
+			pixel[1] = static_cast<BYTE>(ImageDataPtr[offset + 1] * 255.f); // G
+			pixel[2] = static_cast<BYTE>(ImageDataPtr[offset + 0] * 255.f); // R
+			pixel[3] = static_cast<BYTE>(ImageDataPtr[offset + 3] * 255.f); // A
+		}
+	}
+
+	LockGuard.Execute();
+	SaveBitmapToPNG(bitmap, Path.c_str(), Quality);
+}
+
+#else
+
+#endif
+
+NormalizedImage3D CombineImage(
+	const NormalizedImage5D& ImageSlice,
+	Int64 WindowHeight,
+	Int64 WindowWidth,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
+{
+	std::vector WindowH(WindowHeight, 1.f);
+	const auto CrossFadeSizeH = std::max(WindowHeight - HopHeight, 0ll);
+	const auto ScaleFactorH = 1.f / float(CrossFadeSizeH);
+	std::vector WindowW(WindowWidth, 1.f);
+	const auto CrossFadeSizeW = std::max(WindowWidth - HopWidth, 0ll);
+	const auto ScaleFactorW = 1.f / float(CrossFadeSizeW);
+	return {};
+
+}
+
+/*Image::Image(const wchar_t* input, int interp_mode)
 {
 	Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(input);
 	if (!bmp) _D_Dragonian_Lib_Throw_Exception("image load failed!");
 	shape[0] = ((int)bmp->GetWidth() / 16) * 16;
 	shape[1] = ((int)bmp->GetHeight() / 16) * 16;
 
-	Gdiplus::Bitmap* canvas = new Gdiplus::Bitmap(shape[0], shape[1], PixelFormat32bppARGB);
+	Gdiplus::Bitmap* canvas = new Gdiplus::Bitmap(shape[0], shape[1], );
 	Gdiplus::Graphics graph(canvas);
 	graph.SetInterpolationMode(Gdiplus::InterpolationMode(interp_mode));
 	graph.DrawImage(bmp, 0, 0, shape[0], shape[1]);
@@ -720,28 +1071,6 @@ void Image::TransposeBGR(size_t scale)
 		}
 		T_ = true;
 	}
-}
-
-static inline UInt64 Token = 0;
-
-void GdiInit()
-{
-#ifdef _WIN32
-	if (Token)
-		return;
-	Gdiplus::GdiplusStartupInput In;
-	Gdiplus::GdiplusStartupOutput Out;
-	GdiplusStartup(&Token, &In, &Out);
-#endif
-}
-
-void GdiClose()
-{
-#ifdef _WIN32
-	if (!Token)
-		return;
-	Gdiplus::GdiplusShutdown(Token);
-#endif
-}
+}*/
 
 _D_Dragonian_Lib_Image_Video_End

@@ -24,7 +24,6 @@
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Tensor.h"
 #include "Libraries/NumpySupport/NumpyFileFormat.h"
-#include <ostream>
 
 _D_Dragonian_Lib_Space_Begin
 

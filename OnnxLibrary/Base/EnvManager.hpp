@@ -103,7 +103,7 @@ class OnnxRuntimeModel
 {
 public:
 	OnnxRuntimeModel() = default;
-    OnnxRuntimeModel(OnnxRuntimeModelPointer Model);
+    OnnxRuntimeModel(OnnxRuntimeModelPointer Model, OnnxRuntimeEnvironment Environment);
     ~OnnxRuntimeModel();
     OnnxRuntimeModel(const OnnxRuntimeModel&);
     OnnxRuntimeModel(OnnxRuntimeModel&&) noexcept = default;
@@ -141,6 +141,7 @@ public:
 	}
 
 private:
+    OnnxRuntimeEnvironment _MyEnvironment = nullptr;
     OnnxRuntimeModelPointer _MyModel = nullptr;
 };
 
@@ -148,7 +149,7 @@ private:
  * @class OnnxRuntimeEnvironmentBase
  * @brief Manages the ONNX Runtime environment and session options.
  */
-class OnnxRuntimeEnvironmentBase
+class OnnxRuntimeEnvironmentBase : public std::enable_shared_from_this<OnnxRuntimeEnvironmentBase>
 {
 public:
     friend std::shared_ptr<OnnxRuntimeEnvironmentBase>;
