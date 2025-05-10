@@ -719,27 +719,13 @@ int main()
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\83579d7a-f57f-4098-9ec8-3c3dcd122ddb.png)",
 		64,
 		64,
-		16,
-		16
+		48,
+		48
 	);
-
-	//19, 20
-	auto NewImage = Einops::Rearrange(
-		Image,
-		Einops::MakeRearrangeArgs(
-			EinToken("HW"), "WW",
-			"H", "W", "C"
-		),
-		Einops::MakeRearrangeArgs(
-			EinToken("HW") * "H",
-			EinToken("WW") * "W",
-			"C"
-		)
-	).Evaluate();
-
+	
 	//TestApi();
 	ImageVideo::SaveBitmap(
-		NewImage,
+		ImageVideo::CombineImage(Image, 64, 64, 48, 48),
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\test.png)"
 	);
 	return 0;

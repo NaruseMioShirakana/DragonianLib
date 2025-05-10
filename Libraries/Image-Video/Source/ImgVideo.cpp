@@ -155,7 +155,7 @@ Image5D LoadAndSplitImage(
 	const auto RetData = Ret.Data();
 	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
 
-	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll) / 2;
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
 	Int64 HOffsetBack = HOffsetFront + WindowHeight;
 	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
 	{
@@ -167,7 +167,7 @@ Image5D LoadAndSplitImage(
 		const auto RetColData = RetData + WinH * RetColStride;
 		const auto CurColData = BitMapData + HFront * ColStride;
 
-		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll) / 2;
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll);
 		Int64 WOffsetBack = WOffsetFront + WindowWidth;
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
@@ -266,7 +266,7 @@ NormalizedImage5D LoadAndSplitImageNorm(
 	const auto RetData = Ret.Data();
 	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
 
-	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll) / 2;
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
 	Int64 HOffsetBack = HOffsetFront + WindowHeight;
 	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
 	{
@@ -278,7 +278,7 @@ NormalizedImage5D LoadAndSplitImageNorm(
 		const auto RetColData = RetData + WinH * RetColStride;
 		const auto CurColData = BitMapData + HFront * ColStride;
 
-		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll) / 2;
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll);
 		Int64 WOffsetBack = WOffsetFront + WindowWidth;
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
@@ -427,14 +427,81 @@ NormalizedImage3D CombineImage(
 	Int64 HopWidth
 )
 {
+	if (ImageSlice.Size(4) != 4)
+		_D_Dragonian_Lib_Throw_Exception("Channel must be 4!");
 	std::vector WindowH(WindowHeight, 1.f);
 	const auto CrossFadeSizeH = std::max(WindowHeight - HopHeight, 0ll);
 	const auto ScaleFactorH = 1.f / float(CrossFadeSizeH);
+	for (Int64 i = 0; i < CrossFadeSizeH; ++i)
+	{
+		const auto Scale = float(i) * ScaleFactorH;
+		WindowH[i] = Scale;
+		WindowH[WindowHeight - i - 1] = Scale;
+	}
 	std::vector WindowW(WindowWidth, 1.f);
 	const auto CrossFadeSizeW = std::max(WindowWidth - HopWidth, 0ll);
 	const auto ScaleFactorW = 1.f / float(CrossFadeSizeW);
-	return {};
+	for (Int64 i = 0; i < CrossFadeSizeW; ++i)
+	{
+		const auto Scale = float(i) * ScaleFactorW;
+		WindowW[i] = Scale;
+		WindowW[WindowWidth - i - 1] = Scale;
+	}
+	const auto WindowCountH = ImageSlice.Shape(0);
+	const auto WindowCountW = ImageSlice.Shape(1);
+	const auto ImageHeight = WindowCountH * HopHeight;
+	const auto ImageWidth = WindowCountW * HopWidth;
 
+	auto Ret = NormalizedImage3D::Zeros(
+		{
+			ImageHeight + WindowHeight,
+			ImageWidth + WindowWidth,
+			4
+		}
+	);
+	auto Weights = Ret.Clone().Evaluate();
+
+	const auto RetData = Ret.Data();
+	const auto ImageData = ImageSlice.Data();
+	const auto WeightsData = Weights.Data();
+
+	auto CombineFn = [=](auto Channel)
+		{
+			for (Int64 WinH = 0; WinH < WindowCountH; ++WinH)
+			{
+				const auto ImageDataHW = ImageData + WinH * ImageSlice.Stride(0);
+				const auto RetDataHW = RetData + WinH * HopHeight * Ret.Stride(0);
+				for (Int64 WinW = 0; WinW < WindowCountW; ++WinW)
+				{
+					const auto ImageDataW = ImageDataHW + WinW * ImageSlice.Stride(1);
+					const auto RetDataW = RetDataHW + WinW * HopWidth * Ret.Stride(1);
+					for (Int64 Y = 0; Y < WindowHeight; ++Y)
+					{
+						const auto ImageDataY = ImageDataW + Y * ImageSlice.Stride(2);
+						const auto RetDataY = RetDataW + Y * Ret.Stride(0);
+						const auto WeightY = WindowH[Y];
+						for (Int64 X = 0; X < WindowWidth; ++X)
+						{
+							const auto ImageDataXY = ImageDataY + X * 4ll;
+							const auto RetDataXY = RetDataY + X * 4ll;
+							const auto WeightsXY = WeightsData + (RetDataXY - RetData);
+							const auto WeightX = WindowW[X];
+							const auto Weight = WeightY * WeightX;
+							RetDataXY[Channel] += ImageDataXY[Channel] * Weight;
+							WeightsXY[Channel] += Weight;
+						}
+					}
+				}
+			}
+		};
+
+	for (Int64 C = 0; C < 4; ++C)
+		Ret.AppendTask(
+			CombineFn,
+			C
+		);
+
+	return (Ret / Weights).Evaluate();
 }
 
 /*Image::Image(const wchar_t* input, int interp_mode)

@@ -478,17 +478,21 @@ public:
 		return Bd.first.Continuous();
 	}
 
-	template <typename _ThisType, typename _TFn>
-	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn)
-		requires (TypeTraits::IsInvocableValue<_TFn>)
+	template <typename _ThisType, typename _TFn, typename... _ArgType>
+	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn, _ArgType&&... _Args)
+		requires (TypeTraits::IsInvocableValue<_TFn, _ArgType...>)
 	{
 		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst, nullptr, nullptr };
 		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
 			std::forward<_ThisType>(_Self)._MyFuturesAsResult->emplace_back(
-				Operators::GetTaskPool().Commit(std::forward<_TFn>(_Fn)), _DataPointer
+				Operators::GetTaskPool().Commit(
+					std::forward<_TFn>(_Fn),
+					std::forward<_ArgType>(_Args)...
+				),
+				_DataPointer
 			);
 		else
-			std::forward<_TFn>(_Fn)();
+			std::forward<_TFn>(_Fn)(std::forward<_ArgType>(_Args)...);
 		return std::forward<_ThisType>(_Self);
 	}
 
