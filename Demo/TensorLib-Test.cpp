@@ -13,6 +13,7 @@
 #include "Libraries/Image-Video/ImgVideo.hpp"
 #include "TensorLib/Include/Base/Tensor/Einops.h"
 #include "OnnxLibrary/SingingVoiceConversion/Api/NativeApi.h"
+#include "OnnxLibrary/SuperResolution/ImplSuperResolution.hpp"
 
 static auto MyLastTime = std::chrono::high_resolution_clock::now();
 static int64_t TotalStep = 0;
@@ -711,7 +712,7 @@ int main()
 {
 	using namespace DragonianLib;
 	std::wcout.imbue(std::locale("zh_CN"));
-	SetWorkerCount(8);
+	SetWorkerCount(1);
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(8);
 
@@ -719,13 +720,26 @@ int main()
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\83579d7a-f57f-4098-9ec8-3c3dcd122ddb.png)",
 		64,
 		64,
-		48,
-		48
+		58,
+		58
 	);
+
+	OnnxRuntime::SuperResolution::HyperParameters Parameters;
+	Parameters.RGBModel = LR"(D:\VSGIT\白叶的AI工具箱\Models\real-hatgan\x2\x2_universal-fix1.onnx)";
+	Parameters.Callback = ProgressCb;
+
+	OnnxRuntime::SuperResolution::SuperResolutionBCRGBHW Model(
+		OnnxRuntime::CreateOnnxRuntimeEnvironment({
+			Device::CUDA,
+			}),
+			Parameters
+			);
+
+	Image = Model.Infer(Image, 1);
 	
 	//TestApi();
 	ImageVideo::SaveBitmap(
-		ImageVideo::CombineImage(Image, 64, 64, 48, 48),
+		ImageVideo::CombineImage(Image, 58 * 2, 58 * 2),
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\test.png)"
 	);
 	return 0;

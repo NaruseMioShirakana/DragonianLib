@@ -97,7 +97,7 @@ static bool SaveBitmapToPNG(Gdiplus::Bitmap* bitmap, const WCHAR* filename, UINT
 	return true;
 }
 
-Image5D LoadAndSplitImage(
+std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	const std::wstring& Path,
 	Int64 WindowHeight,
 	Int64 WindowWidth,
@@ -201,7 +201,7 @@ Image5D LoadAndSplitImage(
 		}
 	}
 
-	return std::move(Ret.Evaluate());
+	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -209,7 +209,7 @@ Image5D LoadAndSplitImage(
 	).Clone();*/
 }
 
-NormalizedImage5D LoadAndSplitImageNorm(
+std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 	const std::wstring& Path,
 	Int64 WindowHeight,
 	Int64 WindowWidth,
@@ -312,7 +312,210 @@ NormalizedImage5D LoadAndSplitImageNorm(
 		}
 	}
 
-	return std::move(Ret.Evaluate());
+	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	/*return Image::FromBuffer(
+		{ 1, Height, Width, Channel },
+		static_cast<BYTE*>(BitmapData.Scan0),
+		Channel * Height * Width
+	).Clone();*/
+}
+
+std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
+	const Image3D& ImageData,
+	Int64 WindowHeight,
+	Int64 WindowWidth,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
+{
+	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
+		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
+
+	if (!ImageData.HasValue())
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+
+	const auto Width = ImageData.Size(1);
+	const auto Height = ImageData.Size(0);
+
+	if (WindowHeight <= 0) WindowHeight = Height;
+	else if (WindowHeight < 32) WindowHeight = 32;
+	if (WindowWidth <= 0) WindowWidth = Width;
+	else if (WindowWidth < 32) WindowWidth = 32;
+
+	HopHeight = std::max(HopHeight, 16ll);
+	HopWidth = std::max(HopWidth, 16ll);
+
+	const auto WindowCountHeight = (Height + WindowHeight) / HopHeight;
+	const auto WindowCountWidth = (Width + WindowWidth) / HopWidth;
+
+	const auto ColStride = ImageData.Stride(0);
+	const auto Channel = ColStride / Width;
+
+	auto Ret = Image5D::Zeros(
+		{
+			WindowCountHeight,
+			WindowCountWidth,
+			WindowHeight,
+			WindowWidth,
+			Channel
+		}
+	).Evaluate();
+	const auto RetColStride = Ret.Stride(0);
+	const auto RetRowStride = Ret.Stride(1);
+	const auto RetPixStride = Ret.Stride(2);
+
+	const auto RetData = Ret.Data();
+	const auto BitMapData = ImageData.Data();
+
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
+	Int64 HOffsetBack = HOffsetFront + WindowHeight;
+	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
+	{
+		const auto HFront = std::clamp(HOffsetFront, 0ll, Height);
+		const auto HFrontPadding = std::max(0 - HOffsetFront, 0ll);
+		const auto HBack = std::clamp(HOffsetBack, 0ll, Height);
+		if (HBack <= 0 || HFront >= Height) continue;
+
+		const auto RetColData = RetData + WinH * RetColStride;
+		const auto CurColData = BitMapData + HFront * ColStride;
+
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll);
+		Int64 WOffsetBack = WOffsetFront + WindowWidth;
+		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
+		{
+			Ret.AppendTask(
+				[=]
+				{
+					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
+					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
+					const auto WBack = std::clamp(WOffsetBack, 0ll, Width);
+					if (WBack <= 0 || WFront >= Width) return;
+
+					const auto RetRowData = RetColData + WinW * RetRowStride;
+					const auto CurRowData = CurColData + WFront * 4;
+
+					for (Int64 Y = HFront; Y < HBack; ++Y)
+					{
+						const auto YPos = Y - HFront;
+						for (Int64 X = WFront; X < WBack; ++X)
+						{
+							const auto XPos = X - WFront;
+							const auto CurData = CurRowData + YPos * ColStride + XPos * 4;
+							const auto Data = RetRowData + (YPos + HFrontPadding) * RetPixStride + (XPos + WFrontPadding) * Channel;
+							Data[0] = CurData[2];  //R
+							Data[1] = CurData[1];  //G
+							Data[2] = CurData[0];  //B
+							Data[3] = CurData[3];  //A
+						}
+					}
+				}
+			);
+		}
+	}
+
+	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	/*return Image::FromBuffer(
+		{ 1, Height, Width, Channel },
+		static_cast<BYTE*>(BitmapData.Scan0),
+		Channel * Height * Width
+	).Clone();*/
+}
+
+std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
+	const NormalizedImage3D& ImageData,
+	Int64 WindowHeight,
+	Int64 WindowWidth,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
+
+{
+	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
+		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
+
+	if (!ImageData.HasValue())
+		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+
+	const auto Width = ImageData.Size(1);
+	const auto Height = ImageData.Size(0);
+
+	if (WindowHeight <= 0) WindowHeight = Height;
+	else if (WindowHeight < 32) WindowHeight = 32;
+	if (WindowWidth <= 0) WindowWidth = Width;
+	else if (WindowWidth < 32) WindowWidth = 32;
+
+	HopHeight = std::max(HopHeight, 16ll);
+	HopWidth = std::max(HopWidth, 16ll);
+
+	const auto WindowCountHeight = (Height + WindowHeight) / HopHeight;
+	const auto WindowCountWidth = (Width + WindowWidth) / HopWidth;
+
+	const auto ColStride = ImageData.Stride(0);
+	const auto Channel = ColStride / Width;
+
+	auto Ret = NormalizedImage5D::Zeros(
+		{
+			WindowCountHeight,
+			WindowCountWidth,
+			WindowHeight,
+			WindowWidth,
+			Channel
+		}
+	).Evaluate();
+	const auto RetColStride = Ret.Stride(0);
+	const auto RetRowStride = Ret.Stride(1);
+	const auto RetPixStride = Ret.Stride(2);
+
+	const auto RetData = Ret.Data();
+	const auto BitMapData = ImageData.Data();
+
+	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
+	Int64 HOffsetBack = HOffsetFront + WindowHeight;
+	for (Int64 WinH = 0; WinH < WindowCountHeight; ++WinH, HOffsetFront += HopHeight, HOffsetBack += HopHeight)
+	{
+		const auto HFront = std::clamp(HOffsetFront, 0ll, Height);
+		const auto HFrontPadding = std::max(0 - HOffsetFront, 0ll);
+		const auto HBack = std::clamp(HOffsetBack, 0ll, Height);
+		if (HBack <= 0 || HFront >= Height) continue;
+
+		const auto RetColData = RetData + WinH * RetColStride;
+		const auto CurColData = BitMapData + HFront * ColStride;
+
+		Int64 WOffsetFront = -std::max(WindowWidth - HopWidth, 0ll);
+		Int64 WOffsetBack = WOffsetFront + WindowWidth;
+		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
+		{
+			Ret.AppendTask(
+				[=]
+				{
+					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
+					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
+					const auto WBack = std::clamp(WOffsetBack, 0ll, Width);
+					if (WBack <= 0 || WFront >= Width) return;
+
+					const auto RetRowData = RetColData + WinW * RetRowStride;
+					const auto CurRowData = CurColData + WFront * 4;
+
+					for (Int64 Y = HFront; Y < HBack; ++Y)
+					{
+						const auto YPos = Y - HFront;
+						for (Int64 X = WFront; X < WBack; ++X)
+						{
+							const auto XPos = X - WFront;
+							const auto CurData = CurRowData + YPos * ColStride + XPos * 4;
+							const auto Data = RetRowData + (YPos + HFrontPadding) * RetPixStride + (XPos + WFrontPadding) * Channel;
+							Data[0] = CurData[2];  //R
+							Data[1] = CurData[1];  //G
+							Data[2] = CurData[0];  //B
+							Data[3] = CurData[3];  //A
+						}
+					}
+				}
+			);
+		}
+	}
+
+	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -404,10 +607,10 @@ void SaveBitmap(
 		for (Int64 x = 0; x < Width; ++x) {
 			const auto offset = y * RowStride + x * PixStride;
 			BYTE* pixel = dstData + y * dstStride + x * 4ll;
-			pixel[0] = static_cast<BYTE>(ImageDataPtr[offset + 2] * 255.f); // B
-			pixel[1] = static_cast<BYTE>(ImageDataPtr[offset + 1] * 255.f); // G
-			pixel[2] = static_cast<BYTE>(ImageDataPtr[offset + 0] * 255.f); // R
-			pixel[3] = static_cast<BYTE>(ImageDataPtr[offset + 3] * 255.f); // A
+			pixel[0] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 2] * 255.f, 0.f, 255.f)); // B
+			pixel[1] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 1] * 255.f, 0.f, 255.f)); // G
+			pixel[2] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 0] * 255.f, 0.f, 255.f)); // R
+			pixel[3] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 3] * 255.f, 0.f, 255.f)); // A
 		}
 	}
 
@@ -420,13 +623,15 @@ void SaveBitmap(
 #endif
 
 NormalizedImage3D CombineImage(
-	const NormalizedImage5D& ImageSlice,
-	Int64 WindowHeight,
-	Int64 WindowWidth,
+	const std::tuple<const NormalizedImage5D&, Int64, Int64>& BitMapSlice,
 	Int64 HopHeight,
 	Int64 HopWidth
 )
 {
+	const auto& [ImageSlice, SourceHeight, SourceWidth] = BitMapSlice;
+	const auto WindowHeight = ImageSlice.Shape(2);
+	const auto WindowWidth = ImageSlice.Shape(3);
+
 	if (ImageSlice.Size(4) != 4)
 		_D_Dragonian_Lib_Throw_Exception("Channel must be 4!");
 	std::vector WindowH(WindowHeight, 1.f);
@@ -501,7 +706,30 @@ NormalizedImage3D CombineImage(
 			C
 		);
 
-	return (Ret / Weights).Evaluate();
+	return (Ret / Weights).Slice({
+			Range{ CrossFadeSizeH, CrossFadeSizeH + SourceHeight },
+			Range{ CrossFadeSizeW, CrossFadeSizeW + SourceWidth },
+			None
+		}).Contiguous().Evaluate();
+}
+
+NormalizedImage3D CombineImage(
+	const std::tuple<NormalizedImage5D, Int64, Int64>& BitMapSlice,
+	Int64 HopHeight,
+	Int64 HopWidth
+)
+{
+	return CombineImage(
+		std::tuple_cat(
+			std::forward_as_tuple(std::get<0>(BitMapSlice)),
+			std::make_tuple(
+				std::get<1>(BitMapSlice),
+				std::get<2>(BitMapSlice)
+			)
+		),
+		HopHeight,
+		HopWidth
+	);
 }
 
 /*Image::Image(const wchar_t* input, int interp_mode)

@@ -198,6 +198,13 @@ public:
 			_Tmp._MyData[i - 1] = _MyData[i];
 		return _Tmp;
 	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline static Dimensions ConstantOf(const SizeType& _Value)
+	{
+		Dimensions _Tmp;
+		for (size_t i = 0; i < _NRank; ++i)
+			_Tmp._MyData[i] = _Value;
+		return _Tmp;
+	}
 };
 
 using PadCount = Range;
@@ -3491,14 +3498,24 @@ public:
 		}
 
 		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(OutShape, _MyAllocator);
-		auto RetView = Ret.View();
-		auto MyView = View();
+		auto _PermuteArgs = Dimensions<_NRank>::ConstantOf(-1);
 		for (size_t i = 0; i < _Dims.Size(); ++i)
 		{
 			const auto Axis = CalcIndex(_Dims[i], Rank());
-			RetView = RetView.AxisFromTo(Axis, -1);
-			MyView = MyView.AxisFromTo(Axis, -1);
+			_PermuteArgs[_NRank - _Dims.Size() + i] = Axis;
+			//RetView = RetView.AxisFromTo(Axis, -1);
+			//MyView = MyView.AxisFromTo(Axis, -1);
 		}
+		constexpr auto Dimm = Int64(_NRank - _Dims.Size());
+		for (Int64 i = 0, j = 0; i < Rank() && j < Dimm; ++i)
+		{
+			while (std::ranges::contains(_PermuteArgs, i))
+				++i;
+			_PermuteArgs[j++] = i;
+		}
+
+		auto RetView = Ret.Permute(_PermuteArgs);
+		auto MyView = Permute(_PermuteArgs);
 		MyView.WaitingAsArgument();
 
 		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplInterpolate<_Mode, _NRank>

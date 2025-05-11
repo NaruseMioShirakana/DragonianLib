@@ -20,7 +20,7 @@ using NormalizedImage5D = Tensor<Float32, 5, Device::CPU>;
 using Image3D = Tensor<UInt8, 3, Device::CPU>;
 using NormalizedImage3D = Tensor<Float32, 3, Device::CPU>;
 
-Image5D LoadAndSplitImage(
+std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	const std::wstring& Path,
 	Int64 WindowHeight = 0,
 	Int64 WindowWidth = 0,
@@ -28,8 +28,24 @@ Image5D LoadAndSplitImage(
 	Int64 HopWidth = 0
 );
 
-NormalizedImage5D LoadAndSplitImageNorm(
+std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 	const std::wstring& Path,
+	Int64 WindowHeight = 0,
+	Int64 WindowWidth = 0,
+	Int64 HopHeight = 0,
+	Int64 HopWidth = 0
+);
+
+std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
+	const Image3D& ImageData,
+	Int64 WindowHeight = 0,
+	Int64 WindowWidth = 0,
+	Int64 HopHeight = 0,
+	Int64 HopWidth = 0
+);
+
+std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
+	const NormalizedImage3D& ImageData,
 	Int64 WindowHeight = 0,
 	Int64 WindowWidth = 0,
 	Int64 HopHeight = 0,
@@ -37,9 +53,13 @@ NormalizedImage5D LoadAndSplitImageNorm(
 );
 
 NormalizedImage3D CombineImage(
-	const NormalizedImage5D& ImageSlice,
-	Int64 WindowHeight = 0,
-	Int64 WindowWidth = 0,
+	const std::tuple<const NormalizedImage5D&, Int64, Int64>& BitMapSlice,
+	Int64 HopHeight = 0,
+	Int64 HopWidth = 0
+);
+
+NormalizedImage3D CombineImage(
+	const std::tuple<NormalizedImage5D, Int64, Int64>& BitMapSlice,
 	Int64 HopHeight = 0,
 	Int64 HopWidth = 0
 );

@@ -945,7 +945,7 @@ namespace Functional
 		constexpr auto _MyTensorCount = SizeType(_MyTraits::_MyTensorArgumentCount);
 
 		auto _MyTensors = FunctionalTraits::StackCatTraits(std::forward<_ArgTypes>(_Args)...);
-		auto _Dim = _MyTensorType::CalcIterator(_MyTensors._Axis, _MyRank);
+		auto _Dim = _MyTensorType::CalcIndex(_MyTensors._Axis, _MyRank);
 		const auto& _Inputs = _MyTensors._Tensors;
 
 		if constexpr (_MyTensorCount == 1)

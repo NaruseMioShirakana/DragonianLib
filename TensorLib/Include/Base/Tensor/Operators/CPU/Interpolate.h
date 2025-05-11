@@ -84,8 +84,7 @@ namespace Interpolate
 
 		const auto N0 = DEI0 * DST0; const auto N1 = SEI0 * SST0;
 		//DB[0] = SB[0];	DB[N0] = SB[N1];
-		DB[0] = SB[0];		DB[N0] = SB[N1];
-		for (STT i = 1; i < DEI0; ++i)
+		for (STT i = 0; i < DS[0]; ++i)
 		{
 			const DBL LSI = BG0 + DBL(i) * ST0; const STT LSIF = STT(LSI);
 			const DBL LSWI = LSI - DBL(LSIF); const STT LSIC = std::min(LSIF + 1, SEI0);
@@ -96,6 +95,7 @@ namespace Interpolate
 			else 
 				DB[ID] = OP(SB[I0], SB[I1], LSWI);
 		}
+		DB[0] = SB[0];		DB[N0] = SB[N1];
 	}
 
 	template <typename _Type, typename Fn>
@@ -119,14 +119,13 @@ namespace Interpolate
 		const auto N0 = DEI0 * DST0; const auto N1 = SEI0 * SST0;
 		const auto M0 = DEI1 * DST1; const auto M1 = SEI1 * SST1;
 		//DB[0][0] = SB[0][0];	DB[N0][0] = SB[N1][0];	DB[0][M0] = SB[0][M1];	DB[N0][M0] = SB[N1][M1];
-		DB[0] = SB[0];			DB[N0] = SB[N1];		DB[M0] = SB[M1];		DB[N0 + M0] = SB[N1 + M1];
-		for (STT i = 1; i < DEI0; ++i)
+		for (STT i = 0; i < DS[0]; ++i)
 		{
 			const DBL LSI = BG0 + DBL(i) * ST0; const STT LSIF = STT(LSI);
 			const DBL LSWI = LSI - DBL(LSIF); const STT LSIC = std::min(LSIF + 1, SEI0);
 			const auto ID = i * DST0; const bool AEI = LSIF == LSIC;
 			const auto I0 = LSIF * SST0; const auto I1 = LSIC * SST0;
-			for (STT j = 1; j < DEI1; ++j)
+			for (STT j = 0; j < DS[1]; ++j)
 			{
 				const DBL LSJ = BG1 + DBL(j) * ST1; const STT LSJF = STT(LSJ);
 				const DBL LSWJ = LSJ - DBL(LSJF); const STT LSJC = std::min(LSJF + 1, SEI1);
@@ -142,6 +141,7 @@ namespace Interpolate
 					DB[ID + JD] = OP(OP(SB[I0 + J0], SB[I0 + J1], LSWJ), OP(SB[I1 + J0], SB[I1 + J1], LSWJ), LSWI);
 			}
 		}
+		DB[0] = SB[0];			DB[N0] = SB[N1];		DB[M0] = SB[M1];		DB[N0 + M0] = SB[N1 + M1];
 	}
 
 	template <typename _Type, typename Fn>
@@ -165,27 +165,22 @@ namespace Interpolate
 		const auto BG1 = BG[1]; const auto ST1 = ST[1];
 		const auto BG2 = BG[2]; const auto ST2 = ST[2];
 
-		
 		const auto N0 = DEI0 * DST0; const auto N1 = SEI0 * SST0;
 		const auto M0 = DEI1 * DST1; const auto M1 = SEI1 * SST1;
 		const auto L0 = DEI2 * DST2; const auto L1 = SEI2 * SST2;
-		//DB[0][0][0] = SB[0][0][0];		DB[N0][0][0] = SB[N1][0][0];	DB[0][M0][0] = SB[0][M1][0];	DB[0][0][L0] = SB[0][0][L1];
-		DB[0] = SB[0];						DB[N0] = SB[N1];				DB[M0] = SB[M1];				DB[L0] = SB[L1];
-		//DB[N0][M0][0] = SB[N1][M1][0];	DB[N0][0][L0] = SB[N1][0][L1];	DB[0][M0][L0] = SB[0][M1][L1];	DB[N0][M0][L0] = SB[N1][M1][L1];
-		DB[N0 + M0] = SB[N1 + M1];			DB[N0 + L0] = SB[N1 + L1];		DB[M0 + L0] = SB[M1 + L1];		DB[N0 + M0 + L0] = SB[N1 + M1 + L1];
-		for (STT i = 1; i < DEI0; ++i)
+		for (STT i = 0; i < DS[0]; ++i)
 		{
 			const DBL LSI = BG0 + DBL(i) * ST0; const STT LSIF = STT(LSI);
 			const DBL LSWI = LSI - DBL(LSIF); const STT LSIC = std::min(LSIF + 1, SEI0);
 			const auto ID = i * DST0; const bool AEI = LSIF == LSIC;
 			const auto I0 = LSIF * SST0; const auto I1 = LSIC * SST0;
-			for (STT j = 1; j < DEI1; ++j)
+			for (STT j = 0; j < DS[1]; ++j)
 			{
 				const DBL LSJ = BG1 + DBL(j) * ST1; const STT LSJF = STT(LSJ);
 				const DBL LSWJ = LSJ - DBL(LSJF); const STT LSJC = std::min(LSJF + 1, SEI1);
 				const auto JD = j * DST1; const bool AEJ = LSJF == LSJC;
 				const auto J0 = LSJF * SST1; const auto J1 = LSJC * SST1;
-				for (STT k = 1; k < DEI2; ++k)
+				for (STT k = 0; k < DS[2]; ++k)
 				{
 					const DBL LSK = BG2 + DBL(k) * ST2; const STT LSKF = STT(LSK);
 					const DBL LSWK = LSK - DBL(LSKF); const STT LSKC = std::min(LSKF + 1, SEI2);
@@ -210,6 +205,10 @@ namespace Interpolate
 				}
 			}
 		}
+		//DB[0][0][0] = SB[0][0][0];		DB[N0][0][0] = SB[N1][0][0];	DB[0][M0][0] = SB[0][M1][0];	DB[0][0][L0] = SB[0][0][L1];
+		DB[0] = SB[0];						DB[N0] = SB[N1];				DB[M0] = SB[M1];				DB[L0] = SB[L1];
+		//DB[N0][M0][0] = SB[N1][M1][0];	DB[N0][0][L0] = SB[N1][0][L1];	DB[0][M0][L0] = SB[0][M1][L1];	DB[N0][M0][L0] = SB[N1][M1][L1];
+		DB[N0 + M0] = SB[N1 + M1];			DB[N0 + L0] = SB[N1 + L1];		DB[M0 + L0] = SB[M1 + L1];		DB[N0 + M0 + L0] = SB[N1 + M1 + L1];
 	}
 
 	template <size_t _Dim, typename _Type, typename Fn>
