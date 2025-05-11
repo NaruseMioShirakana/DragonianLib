@@ -100,9 +100,9 @@ namespace WndControls
 		{
 			if (!gdiplusToken) 
 				GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
-			//DragonianLib::SetTaskPoolSize(4);
-			//DragonianLib::SetWorkerCount(4);
-			//DragonianLib::SetMaxTaskCountPerOperator(4);
+			DragonianLib::SetTaskPoolSize(4);
+			DragonianLib::SetWorkerCount(8);
+			DragonianLib::SetMaxTaskCountPerOperator(4);
 		}
 		~Enviroment()
 		{
@@ -141,7 +141,7 @@ namespace WndControls
 	static const DragonianLib::FunctionTransform::MFCCKernel& GetMelFn()
 	{
 		static DragonianLib::FunctionTransform::MFCCKernel MelKernel{
-			SpecSamplingRate, 2048, SpecSamplingRate / 200, -1, 128, 20.f, 11025.f
+			SpecSamplingRate, 2048, SpecSamplingRate / 200, -1, 128, 20.f, 11025.f, DragonianLib::FunctionTransform::BlackmanHarrisWindow<double>(2048)
 		};
 		return MelKernel;
 	}
@@ -409,10 +409,11 @@ namespace WndControls
 		{
 			if (std::cmp_not_equal(Iter->second.SamplingRate, SamplingRate))
 			{
-				Iter->second.Audio = Iter->second.Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-					DragonianLib::IDim(0),
-					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(Iter->second.SamplingRate))
-				).Evaluate();
+				Iter->second.Audio = DragonianLib::FunctionTransform::WindowedResample(
+					Iter->second.Audio.UnSqueeze(0).Transpose(),
+					Iter->second.SamplingRate,
+					SamplingRate
+				).Squeeze(0).Transpose().Contiguous().Evaluate();
 				Iter->second.SamplingRate = SamplingRate;
 			}
 			return Iter->second;
@@ -428,10 +429,9 @@ namespace WndControls
 				AudioPath
 			).DecodeAudio(2);
 			if (SourceSamplingRate != SamplingRate)
-				Audio = Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-					DragonianLib::IDim(0),
-					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(SourceSamplingRate))
-				).Evaluate();
+				Audio = DragonianLib::FunctionTransform::WindowedResample(
+					Audio.UnSqueeze(0).Transpose(), SourceSamplingRate, SamplingRate
+				).Squeeze(0).Transpose().Contiguous().Evaluate();
 		}
 		else if (std::filesystem::exists(Path))
 		{
@@ -439,10 +439,9 @@ namespace WndControls
 				Path
 			).DecodeAudio(2);
 			if (SourceSamplingRate != SamplingRate)
-				Audio = Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-					DragonianLib::IDim(0),
-					DragonianLib::IScale(double(SamplingRate) / static_cast<double>(SourceSamplingRate))
-				).Evaluate();
+				Audio = DragonianLib::FunctionTransform::WindowedResample(
+					Audio.UnSqueeze(0).Transpose(), SourceSamplingRate, SamplingRate
+				).Squeeze(0).Transpose().Contiguous().Evaluate();
 			OpenOutputStream(
 				SamplingRate,
 				std::filesystem::path(AudioPath),
@@ -489,10 +488,9 @@ namespace WndControls
 		auto SpecAudio =
 			SamplingRate == SpecSamplingRate ?
 			Audio.AutoView(1, 1, -2) :
-			Audio.Interpolate<DragonianLib::Operators::InterpolateMode::Linear>(
-				DragonianLib::IDim(0),
-				DragonianLib::IScale(double(SpecSamplingRate) / static_cast<double>(SamplingRate))
-			).AutoView(1, 1, -2).Evaluate();
+			DragonianLib::FunctionTransform::WindowedResample(
+				Audio.Transpose().UnSqueeze(0), SamplingRate, SpecSamplingRate
+			).Evaluate();
 
 		Spec = GetMelFn().GetStftKernel()(SpecAudio).AutoView(-2, -1);
 

@@ -304,7 +304,7 @@ namespace FunctionTransform
 	}
 
 	StftKernel::StftKernel(
-		int NumFFT, int HopSize, int WindowSize, const double* Window,
+		int NumFFT, int HopSize, int WindowSize, TemplateLibrary::Vector<Double> Window,
 		bool Center, PaddingType Padding
 	)
 	{
@@ -332,8 +332,8 @@ namespace FunctionTransform
 			CENTER_PADDING_SIZE = 0;
 		PADDING_TYPE = Padding;
 
-		if (Window)
-			WINDOW = { Window, Window + WINDOW_SIZE };
+		if (std::cmp_equal(Window.Size(), WINDOW_SIZE))
+			WINDOW = std::move(Window);
 		else
 		{
 			WINDOW.Resize(WINDOW_SIZE);
@@ -426,8 +426,8 @@ namespace FunctionTransform
 
 	MFCCKernel::MFCCKernel(
 		int SamplingRate, int NumFFT, int HopSize, int WindowSize, int MelBins,
-		double FreqMin, double FreqMax, const double* Window, bool Center, PaddingType Padding, DLogger _Logger
-	) : STFT_KERNEL(NumFFT, HopSize, WindowSize, Window, Center, Padding), _MyLogger(std::move(_Logger))
+		double FreqMin, double FreqMax, TemplateLibrary::Vector<Double> Window, bool Center, PaddingType Padding, DLogger _Logger
+	) : STFT_KERNEL(NumFFT, HopSize, WindowSize, std::move(Window), Center, Padding), _MyLogger(std::move(_Logger))
 	{
 		double MEL_MIN = HZ2Mel(FreqMin);
 		double MEL_MAX = HZ2Mel(FreqMax);

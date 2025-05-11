@@ -98,6 +98,14 @@ public:
         Destory();
     }
 
+    Vector(nullptr_t)
+    {
+        _MyAllocator = Allocator();
+        _MyFirst = (Pointer)_MyAllocator.allocate(sizeof(ValueType) * DRAGONIANLIB_EMPTY_CAPACITY);
+        _MyLast = _MyFirst;
+        _MyEnd = _MyFirst + DRAGONIANLIB_EMPTY_CAPACITY;
+    }
+
     Vector(Allocator _Allocator = Allocator())
     {
         _MyAllocator = _Allocator;

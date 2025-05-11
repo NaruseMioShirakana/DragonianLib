@@ -23,12 +23,430 @@
 
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Tensor.h"
+#include <numbers>
 
 _D_Dragonian_Lib_Space_Begin
 
 namespace FunctionTransform
 {
 	class MFCCKernel;
+
+	/**
+	 * @brief Modified Bessel function of the first kind of order zero, I₀(x)
+	 * @tparam T Type of input and output (float, double)
+	 * @param x Input value
+	 * @return I₀(x) value
+	 */
+	template <typename T>
+	T BesselI0(T x)
+	{
+		T sum = T(1.0);
+		T term = T(1.0);
+		T factorial = T(1.0);
+		T x_squared = x * x / T(4.0);
+
+		if (x > T(15.0))
+			return std::exp(x) / std::sqrt(T(2) * std::numbers::pi_v<T> *x);
+
+		for (int i = 1; i <= 30; i++)
+		{
+			factorial *= static_cast<T>(i);
+			term *= x_squared / (factorial * factorial);
+			sum += term;
+
+			if (term < sum * T(1e-12))
+				break;
+		}
+		return sum;
+	}
+
+	/**
+	 * @brief Creates a Hann window, W(i, N) = 0.5 * (1 - cos(2πi / [N - 1, N]))
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> HannWindow(
+		size_t WindowSize,
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto Step = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = static_cast<T>(0.5) * (static_cast<T>(1) - cos(Step * static_cast<T>(i)));
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Hamming window, W(i, N) = α - (1 - α) * cos(2πi / [N - 1, N])
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Alpha Alpha (default: 0.54)
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> HammingWindow(
+		size_t WindowSize,
+		T Alpha = T(0.54),
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		Alpha = std::clamp(Alpha, T(0.), T(1.));
+		const T Beta = T(1) - Alpha;
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto Step = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = Alpha - Beta * cos(Step * static_cast<T>(i));
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Blackman window, a2 = α / 2, a0 = 0.5 - a2, a1 = 0.5, W(i, N) = a0 - a1 * cos(2πi / [N - 1, N]) + a2 * cos(4πi / [N - 1, N])
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Alpha Alpha (default: 0.16)
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> BlackmanWindow(
+		size_t WindowSize,
+		T Alpha = T(0.16),
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto Step = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		const T a2 = Alpha / static_cast<T>(2);
+		const T a0 = static_cast<T>(0.5) - a2;
+		const T a1 = static_cast<T>(0.5);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = a0 - a1 * cos(Step * static_cast<T>(i)) + a2 * cos(T(2) * Step * static_cast<T>(i));
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Rectangular (uniform) window, W(i, N) = 1
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> RectangularWindow(
+		size_t WindowSize
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = static_cast<T>(1);
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Bartlett (triangular) window, W(i, N) = 1 - 2 * |i - (N - 1) / 2| / (N - 1)
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> BartlettWindow(
+		size_t WindowSize
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const T N1 = static_cast<T>(WindowSize - 1);
+		const T HalfN1 = N1 / static_cast<T>(2);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = static_cast<T>(1) - static_cast<T>(2) * std::abs((static_cast<T>(i) - HalfN1) / N1);
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Blackman-Nuttall window, W(i, N) = 0.3635819 - 0.4891775 * cos(2πi / [N - 1, N]) + 0.1365995 * cos(4πi / [N - 1, N]) - 0.0106411 * cos(6πi / [N - 1, N])
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> BlackmanNuttallWindow(
+		size_t WindowSize,
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto Step = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = static_cast<T>(0.3635819) - static_cast<T>(0.4891775) * cos(Step * static_cast<T>(i))
+			+ static_cast<T>(0.1365995) * cos(T(2) * Step * static_cast<T>(i))
+			- static_cast<T>(0.0106411) * cos(T(3) * Step * static_cast<T>(i));
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Blackman-Harris window, W(i, N) = 0.35875 - 0.48829 * cos(2πi / [N - 1, N]) + 0.14128 * cos(4πi / [N - 1, N]) - 0.01168 * cos(6πi / [N - 1, N])
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> BlackmanHarrisWindow(
+		size_t WindowSize,
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto Step = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		for (size_t i = 0; i < WindowSize; i++)
+			Window[i] = static_cast<T>(0.35875) - static_cast<T>(0.48829) * cos(Step * static_cast<T>(i))
+			+ static_cast<T>(0.14128) * cos(2 * Step * static_cast<T>(i))
+			- static_cast<T>(0.01168) * cos(3 * Step * static_cast<T>(i));
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Tukey (tapered cosine) window
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Alpha Width of the cosine-tapered portion (0 ≤ alpha ≤ 1)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> TukeyWindow(
+		size_t WindowSize,
+		T Alpha = T(0.5)
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t N = WindowSize;
+		const T AlphaHalfN = Alpha * static_cast<T>(N) / static_cast<T>(2);
+
+		for (size_t i = 0; i < WindowSize; i++)
+		{
+			if (i < AlphaHalfN)
+				Window[i] = static_cast<T>(0.5) * (static_cast<T>(1) -
+					cos(std::numbers::pi_v<T> *static_cast<T>(i) / AlphaHalfN));
+			else if (i <= N - AlphaHalfN)
+				Window[i] = static_cast<T>(1.0);
+			else
+				Window[i] = static_cast<T>(0.5) * (static_cast<T>(1) -
+					cos(std::numbers::pi_v<T> *static_cast<T>(N - i) / AlphaHalfN));
+		}
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a custom cosine-sum window
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Coefficients Vector of cosine coefficients
+	 * @param Div Divisor for the resulting window (default: 1.0)
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> CosineSumWindow(
+		size_t WindowSize,
+		const TemplateLibrary::Vector<T>& Coefficients,
+		const T Div = T(1.),
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const size_t Denominator = Periodic ? WindowSize : WindowSize - 1;
+		const auto AngularStep = T(2) * std::numbers::pi_v<T> / static_cast<T>(Denominator);
+		for (size_t i = 0; i < WindowSize; i++)
+		{
+			Window[i] = Coefficients[0];
+			for (size_t j = 1; j < Coefficients.Size(); j++)
+			{
+				if (j % 2 == 1)
+					Window[i] -= Coefficients[j] * cos(j * AngularStep * static_cast<T>(i));
+				else
+					Window[i] += Coefficients[j] * cos(j * AngularStep * static_cast<T>(i));
+			}
+			Window[i] /= Div;
+		}
+		return Window;
+	}
+
+	template <typename T>
+	TemplateLibrary::Vector<T> FlatTopWindow(
+		size_t WindowSize,
+		bool Periodic = false
+	)
+	{
+		static TemplateLibrary::Vector<T> Coefficients{
+			T(1.), T(1.93), T(1.29), T(0.388), T(0.0322)
+		};
+		return CosineSumWindow(
+			WindowSize,
+			Coefficients,
+			T(1.),
+			Periodic
+		);
+	}
+
+	/**
+	 * @brief Creates a Kaiser window
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Beta Shape parameter (higher values = wider main lobe and lower side lobes)
+	 * @param Periodic Whether the window is periodic (true) or symmetric (false)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> KaiserWindow(
+		size_t WindowSize,
+		T Beta = T(8.6),
+		bool Periodic = false
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+		const T Denominator = static_cast<T>(Periodic ? WindowSize : WindowSize - 1);
+		const T I0Beta = BesselI0(Beta);
+		for (size_t i = 0; i < WindowSize; i++)
+		{
+			const T x = T(2.0) * static_cast<T>(i) / Denominator - T(1.0);
+
+			const T arg = Beta * std::sqrt(T(1.0) - x * x);
+			Window[i] = BesselI0(arg) / I0Beta;
+		}
+		return Window;
+	}
+
+	/**
+	 * @brief Creates a Gaussian window, W(i, N) = exp(-0.5 * ((i - (N - 1) / 2) / (sigma * (N - 1) / 2))^2)
+	 * @tparam T Type of window elements (e.g. float, double)
+	 * @param WindowSize Size of the window
+	 * @param Sigma Standard deviation as a fraction of half window size (default: 0.4)
+	 * @return Vector containing the window coefficients
+	 */
+	template <typename T>
+	TemplateLibrary::Vector<T> GaussianWindow(
+		size_t WindowSize,
+		T Sigma = T(0.4)
+	)
+	{
+		TemplateLibrary::Vector<T> Window(WindowSize);
+
+		const T N1 = static_cast<T>(WindowSize - 1);
+		const T HalfN1 = N1 / static_cast<T>(2);
+		const T ScaleFactor = Sigma * HalfN1;
+		const T Denominator = static_cast<T>(2) * ScaleFactor * ScaleFactor;
+
+		for (size_t i = 0; i < WindowSize; i++)
+		{
+			const T Diff = static_cast<T>(i) - HalfN1;
+			Window[i] = std::exp(-(Diff * Diff) / Denominator);
+		}
+
+		return Window;
+	}
+
+	/**
+	 * @brief Performs windowed resampling of a one-dimensional signal
+	 * @tparam T Type of signal elements (e.g. float, double)
+	 * @param Signal Input signal
+	 * @param InputSampleRate Original sampling rate in Hz
+	 * @param OutputSampleRate Target sampling rate in Hz
+	 * @param KeepPower Whether to keep the power of the signal (default: true)
+	 * @param InWindow Window function to use (default: "Kaiser")
+	 */
+	template <typename T>
+	Tensor<T, 3, Device::CPU> WindowedResample(
+		const Tensor<T, 3, Device::CPU>& Signal,
+		size_t InputSampleRate,
+		size_t OutputSampleRate,
+		bool KeepPower = true,
+		const TemplateLibrary::Vector<T>& InWindow = {}
+	)
+	{
+		static auto DefaultWindow = KaiserWindow<T>(32);
+
+		if (InputSampleRate == OutputSampleRate)
+			return Signal;
+
+		TemplateLibrary::Vector<T> Window;
+		if (InWindow.Empty())
+			Window = DefaultWindow;
+		else
+			Window = InWindow;
+
+		const auto WindowSize = static_cast<SizeType>(Window.Size());
+
+		const auto [BatchSize, Channel, SampleCount] = Signal.Size().RawArray();
+
+		const auto ResampleRatio = double(OutputSampleRate) / double(InputSampleRate);
+		const auto OutputSize = static_cast<Int64>(std::ceil(static_cast<double>(SampleCount) * ResampleRatio));
+
+		auto Output = Tensor<T, 3, Device::CPU>::New(
+			{ BatchSize, Channel, OutputSize }
+		);
+
+		if (!KeepPower)
+		{
+			T WindowSum = 0;
+			for (SizeType i = 0; i < WindowSize; ++i)
+				WindowSum += Window[i];
+			for (SizeType i = 0; i < WindowSize; ++i)
+				Window[i] /= WindowSum;
+		}
+
+		const auto FilterScale = std::min(1., ResampleRatio);
+		const auto HalfWindow = WindowSize / 2;
+
+		const auto OutputData = Output.Data();
+		const auto InputData = Signal.Data();
+		const auto StrideInp = Signal.Stride(2);
+
+		for (SizeType B = 0; B < BatchSize; ++B)
+		{
+			for (SizeType C = 0; C < Channel; ++C)
+			{
+				const auto CurOutputData = OutputData + B * Output.Stride(0) + C * Output.Stride(1);
+				const auto CurInputData = InputData + B * Signal.Stride(0) + C * Signal.Stride(1);
+				for (SizeType i = 0; i < OutputSize; ++i)
+				{
+					const auto InputPos = static_cast<double>(i) / ResampleRatio;
+					const auto InputIdx = static_cast<SizeType>(InputPos);
+					T Sum = 0;
+					SizeType WinCount = 0;
+					for (SizeType j = 0; j < WindowSize; ++j)
+					{
+						const SizeType WindowIdx = j;
+						const SizeType InputSample = InputIdx - HalfWindow + j;
+						if (InputSample >= 0 && InputSample < static_cast<int>(SampleCount))
+						{
+							const auto Delta = InputPos - static_cast<double>(InputSample);
+							double SincVal;
+							if (std::abs(Delta) < 1e-6)
+								SincVal = 1.0;
+							else
+								SincVal = std::sin(std::numbers::pi_v<double> *FilterScale * Delta) /
+								(std::numbers::pi_v<double> *FilterScale * Delta);
+							Sum += CurInputData[InputSample * StrideInp] * static_cast<T>(SincVal) * Window[WindowIdx];
+							WinCount++;
+						}
+					}
+					if (WinCount > 0 && WinCount < WindowSize)
+						Sum *= static_cast<T>(WindowSize) / static_cast<T>(WinCount);
+					CurOutputData[i] = Sum;
+				}
+			}
+		}
+		return Output;
+	}
 
 	/**
 	* @class StftKernel
@@ -40,14 +458,14 @@ namespace FunctionTransform
 		StftKernel() = default; ///< Default constructor
 
 		StftKernel(
-			int NumFFT, int HopSize = -1, int WindowSize = -1, const double* Window = nullptr,
+			int NumFFT, int HopSize = -1, int WindowSize = -1, TemplateLibrary::Vector<Double> Window = {},
 			bool Center = true, PaddingType Padding = PaddingType::Zero
 		); ///< Parameterized constructor
 
 		~StftKernel(); ///< Destructor
 
 		friend class MFCCKernel; ///< Friend class
-		inline static double PI = 3.14159265358979323846; ///< Constant value of PI
+		inline static double PI = std::numbers::pi_v<double>; ///< Constant value of PI
 
 		/**
 		 * @brief Short-Time Fourier Transform
@@ -195,7 +613,7 @@ namespace FunctionTransform
 
 		MFCCKernel(
 			int SamplingRate, int NumFFT, int HopSize = -1, int WindowSize = -1, int MelBins = 0,
-			double FreqMin = 20., double FreqMax = 11025., const double* Window = nullptr,
+			double FreqMin = 20., double FreqMax = 11025., TemplateLibrary::Vector<Double> Window = {},
 			bool Center = true, PaddingType Padding = PaddingType::Zero,
 			DLogger _Logger = nullptr
 		);
