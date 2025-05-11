@@ -18,7 +18,7 @@
 */
 
 #pragma once
-#include "../TensorRTBase/TRTBase.hpp"
+#include "TensorRT/TensorRTBase/TRTBase.hpp"
 #include "Libraries/Image-Video/ImgVideo.hpp"
 
 #define _D_Dragonian_Lib_TRT_Sr_Space_Header _D_Dragonian_TensorRT_Lib_Space_Header namespace SuperResolution {
@@ -29,20 +29,28 @@ _D_Dragonian_Lib_TRT_Sr_Space_Header
 class MoeSR
 {
 public:
-    MoeSR(const std::wstring& RGBModel, long Scale, const TrtConfig& TrtSettings, ProgressCallback _Callback);
+    MoeSR(
+        const std::wstring& RGBModel,
+        Int64 Scale,
+        const TrtConfig& TrtSettings,
+        ProgressCallback _Callback = nullptr
+    );
     ~MoeSR();
 
-    ImageVideo::Image& Infer(ImageVideo::Image& _Image, int64_t _BatchSize);
+	std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> Infer(
+        const std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64>& _Bitmap
+    );
 private:
     MoeSR(const MoeSR&) = delete;
     MoeSR(MoeSR&&) = delete;
     MoeSR& operator=(const MoeSR&) = delete;
     MoeSR& operator=(MoeSR&&) = delete;
 
-    ProgressCallback Callback_;
+    ProgressCallback _MyCallback;
     std::unique_ptr<TrtModel> Model = nullptr;
     InferenceSession _MySession;
-    long ScaleFactor = 2;
+    Int64 _MyScaleH = 2;
+    Int64 _MyScaleW = 2;
     static inline std::vector<DynaShapeSlice> DynaSetting{
         {
             "DynaArg0",

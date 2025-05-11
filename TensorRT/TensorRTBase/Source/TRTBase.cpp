@@ -1,17 +1,32 @@
-﻿#include "../TRTBase.hpp"
+﻿#include "TensorRT/TensorRTBase/TRTBase.hpp"
 #include "Libraries/Util/Logger.h"
 #include "NvOnnxParser.h"
-#include "NvInferPlugin.h"
+
 #include <cuda_runtime_api.h>
 
 _D_Dragonian_TensorRT_Lib_Space_Header
 
-DLogger logger;
-
-void _Impl_Dragonian_Lib_Free_CPU_Memory(void* _Pointer) { TemplateLibrary::CPUAllocator::deallocate(_Pointer); }
-void _Impl_Dragonian_Lib_Free_CUDA_Memory(void* _Pointer) { if (cudaFree(_Pointer)) _D_Dragonian_Lib_CUDA_Error; }
-struct _Impl_Dragonian_Lib_Default_Deleter { template <typename T>void operator()(T* obj) const { delete obj; } };
-_Impl_Dragonian_Lib_Default_Deleter _Valdef_My_Default_Deleter;
+DLogger& GetDefaultLogger() noexcept
+{
+	static DLogger _MyLogger = std::make_shared<Logger>(
+		*_D_Dragonian_Lib_Namespace GetDefaultLogger(),
+		L"TensorRT"
+	);
+	return _MyLogger;
+}
+static void CUDAFreeMem(void* _Pointer)
+{
+	if (cudaFree(_Pointer))
+		_D_Dragonian_Lib_CUDA_Error;
+}
+struct TensorRTDefDeleter
+{
+	template <typename T>
+	void operator()(T* obj) const
+	{
+		delete obj;
+	}
+} DefDeleter;
 
 static size_t NvDataType2Size(nvinfer1::DataType _Ty)
 {
@@ -31,50 +46,81 @@ static size_t NvDataType2Size(nvinfer1::DataType _Ty)
 static void setAllDynamicRanges(const nvinfer1::INetworkDefinition* network, float inRange = 2.0F, float outRange = 4.0F)
 {
 	// Ensure that all layer inputs have a scale.
-	for (int i = 0; i < network->getNbLayers(); i++)
-	{
-		auto layer = network->getLayer(i);
-		for (int j = 0; j < layer->getNbInputs(); j++)
-		{
-			nvinfer1::ITensor* input{ layer->getInput(j) };
-			// Optional inputs are nullptr here and are from RNN layers.
-			if (input != nullptr && !input->dynamicRangeIsSet())
-			{
-				if (!input->setDynamicRange(-inRange, inRange)) _D_Dragonian_Lib_Fatal_Error;
-			}
-		}
-	}
+	//for (int i = 0; i < network->getNbLayers(); i++)
+	//{
+	//	auto layer = network->getLayer(i);
+	//	for (int j = 0; j < layer->getNbInputs(); j++)
+	//	{
+	//		nvinfer1::ITensor* input{ layer->getInput(j) };
+	//		// Optional inputs are nullptr here and are from RNN layers.
+	//		if (input != nullptr && !input->dynamicRangeIsSet())
+	//		{
+	//			if (!input->setDynamicRange(-inRange, inRange)) _D_Dragonian_Lib_Fatal_Error;
+	//		}
+	//	}
+	//}
 
 	// Ensure that all layer outputs have a scale.
 	// Tensors that are also inputs to layers are ingored here
 	// since the previous loop nest assigned scales to them.
-	for (int i = 0; i < network->getNbLayers(); i++)
-	{
-		auto layer = network->getLayer(i);
-		for (int j = 0; j < layer->getNbOutputs(); j++)
-		{
-			nvinfer1::ITensor* output{ layer->getOutput(j) };
-			// Optional outputs are nullptr here and are from RNN layers.
-			if (output != nullptr && !output->dynamicRangeIsSet())
-			{
-				// Pooling must have the same input and output scales.
-				if (layer->getType() == nvinfer1::LayerType::kPOOLING)
-				{
-					if (!output->setDynamicRange(-inRange, inRange)) _D_Dragonian_Lib_Fatal_Error;
-				}
-				else
-				{
-					if (!output->setDynamicRange(-outRange, outRange)) _D_Dragonian_Lib_Fatal_Error;
-				}
-			}
-		}
-	}
+	//for (int i = 0; i < network->getNbLayers(); i++)
+	//{
+	//	auto layer = network->getLayer(i);
+	//	for (int j = 0; j < layer->getNbOutputs(); j++)
+	//	{
+	//		nvinfer1::ITensor* output{ layer->getOutput(j) };
+	//		// Optional outputs are nullptr here and are from RNN layers.
+	//		if (output != nullptr && !output->dynamicRangeIsSet())
+	//		{
+	//			// Pooling must have the same input and output scales.
+	//			/*if (layer->getType() == nvinfer1::LayerType::kPOOLING)
+	//			{
+	//				if (!output->setDynamicRange(-inRange, inRange)) _D_Dragonian_Lib_Fatal_Error;
+	//			}
+	//			else
+	//			{
+	//				if (!output->setDynamicRange(-outRange, outRange)) _D_Dragonian_Lib_Fatal_Error;
+	//			}*/
+	//		}
+	//	}
+	//}
 }
 
-void DLogger::log(Severity severity, nvinfer1::AsciiChar const* msg) noexcept
+void MyLogger::log(Severity severity, nvinfer1::AsciiChar const* msg) noexcept
 {
 	if (severity <= Severity::kWARNING)
-		LogMessage(UTF8ToWideString(msg));
+		GetDefaultLogger()->LogMessage(UTF8ToWideString(msg));
+}
+
+static bool IsTensorRTDataTypeSupported(nvinfer1::DataType dataType)
+{
+	int currentDevice = 0;
+	if (cudaGetDevice(&currentDevice) != cudaSuccess)
+		return false;
+	cudaDeviceProp deviceProp;
+	if (cudaGetDeviceProperties(&deviceProp, currentDevice) != cudaSuccess)
+		return false;
+	int computeCapability = deviceProp.major * 10 + deviceProp.minor;
+	switch (dataType)
+	{
+	case nvinfer1::DataType::kHALF:
+		return computeCapability >= 53;
+	case nvinfer1::DataType::kINT8:
+	case nvinfer1::DataType::kUINT8:
+		return computeCapability >= 61;
+	case nvinfer1::DataType::kFP8:
+		return computeCapability >= 90;
+	case nvinfer1::DataType::kINT64:
+		return computeCapability >= 70;
+	case nvinfer1::DataType::kBF16:
+	case nvinfer1::DataType::kINT4:
+		return computeCapability >= 75;
+	case nvinfer1::DataType::kFLOAT:
+	case nvinfer1::DataType::kINT32:
+	case nvinfer1::DataType::kBOOL:
+		return true;
+	}
+	return false;
 }
 
 void TrtModel::LoadModel(
@@ -90,6 +136,7 @@ void TrtModel::LoadModel(
 	int32_t OptimizationLevel
 )
 {
+	MyLogger logger;
 	if (_CacheFile.empty() || !exists(std::filesystem::path(_CacheFile)))
 	{
 		auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(logger));
@@ -121,19 +168,19 @@ void TrtModel::LoadModel(
 		//Config
 		auto timingCache = std::unique_ptr<nvinfer1::ITimingCache>();
 
-		if (EnableFp16 && builder->platformHasFastFp16())
+		if (EnableFp16 && IsTensorRTDataTypeSupported(nvinfer1::DataType::kHALF))
 			config->setFlag(nvinfer1::BuilderFlag::kFP16);
-		if (EnableBf16 && builder->platformHasFastFp16())
+		if (EnableBf16 && IsTensorRTDataTypeSupported(nvinfer1::DataType::kBF16))
 			config->setFlag(nvinfer1::BuilderFlag::kBF16);
-		if (EnableInt8 && builder->platformHasFastInt8())
+		if (EnableInt8 && IsTensorRTDataTypeSupported(nvinfer1::DataType::kINT8))
 		{
 			config->setFlag(nvinfer1::BuilderFlag::kINT8);
 			setAllDynamicRanges(mNetwork.get(), 127.0F, 127.0F);
 		}
 
-		if (_CacheFile.size() && exists(std::filesystem::path(_CacheFile)))
+		if (!_CacheFile.empty() && exists(std::filesystem::path(_CacheFile)))
 		{
-			LogMessage(L"Not Impl Yet!");
+			GetDefaultLogger()->LogMessage(L"Not Impl Yet!");
 		}
 
 		size_t VRAMFREE, VRAMTOTAL;
@@ -159,9 +206,9 @@ void TrtModel::LoadModel(
 			for (int32_t i = 0; i < mNetwork->getNbInputs(); i++)
 			{
 				auto inp = mNetwork->getInput(i);
-				auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());
+				auto iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), inp->getName());  // NOLINT(modernize-use-ranges)
 				if (iter == DynaShapeConfig.end())
-					iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));
+					iter = std::find(DynaShapeConfig.begin(), DynaShapeConfig.end(), "DynaArg" + std::to_string(i));  // NOLINT(modernize-use-ranges)
 				if (iter == DynaShapeConfig.end())
 					continue;
 				opt->setDimensions(inp->getName(), nvinfer1::OptProfileSelector::kMIN, iter->Min);
@@ -186,16 +233,18 @@ void TrtModel::LoadModel(
 
 		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(
 			nvinfer1::createInferRuntime(logger),
-			_Valdef_My_Default_Deleter
+			DefDeleter
 		);
 		if (!mRuntime)
 			_D_Dragonian_Lib_Fatal_Error;
 
+		mModelBuffer = { static_cast<Byte*>(plan->data()), static_cast<Byte*>(plan->data()) + plan->size() };
+
 		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
 			mRuntime->deserializeCudaEngine(
-				plan->data(), plan->size()
+				mModelBuffer.data(), mModelBuffer.size()
 			),
-			_Valdef_My_Default_Deleter
+			DefDeleter
 		);
 		if (!mEngine)
 			_D_Dragonian_Lib_Fatal_Error;
@@ -205,21 +254,22 @@ void TrtModel::LoadModel(
 		FileGuard file(_CacheFile, L"rb");
 		struct stat file_stat;
 		stat(WideStringToUTF8(_CacheFile).c_str(), &file_stat);
-		std::vector<unsigned char> Buffer(file_stat.st_size);
-		fread(Buffer.data(), 1, file_stat.st_size, file);
+		//std::vector<unsigned char> Buffer(file_stat.st_size);
+		mModelBuffer.resize(file_stat.st_size);
+		fread(mModelBuffer.data(), 1, file_stat.st_size, file);
 
 		mRuntime = std::shared_ptr<nvinfer1::IRuntime>(
 			nvinfer1::createInferRuntime(logger),
-			_Valdef_My_Default_Deleter
+			DefDeleter
 		);
 		if (!mRuntime)
 			_D_Dragonian_Lib_Fatal_Error;
 
 		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
 			mRuntime->deserializeCudaEngine(
-				Buffer.data(), Buffer.size()
+				mModelBuffer.data(), mModelBuffer.size()
 			),
-			_Valdef_My_Default_Deleter
+			DefDeleter
 		);
 		if (!mEngine)
 			_D_Dragonian_Lib_Fatal_Error;
@@ -255,12 +305,12 @@ InferenceSession TrtModel::Construct(
 	InferenceSession ReInferenceSession;
 	if (Inputs.size() < size_t(mInputCount))
 		_D_Dragonian_Lib_Throw_Exception("Missing Inputs!");
-	if (_OutputNames.size() != mOutputCount)
+	if (std::cmp_not_equal(_OutputNames.size(), mOutputCount))
 		_D_Dragonian_Lib_Throw_Exception("Output Count Mismatch!");
 
 	ReInferenceSession._MyContext = std::shared_ptr<nvinfer1::IExecutionContext>(
 		mEngine->createExecutionContext(),
-		_Valdef_My_Default_Deleter
+		DefDeleter
 	);
 	ReInferenceSession._MyInputInfos.resize(mInputCount);
 	ReInferenceSession._MyInputGpuBuffer.resize(mInputCount);
@@ -279,7 +329,7 @@ InferenceSession TrtModel::Construct(
 		auto const name = mEngine->getIOTensorName(i);
 		if (mEngine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
 		{
-			auto _Tensor = std::find(Inputs.begin(), Inputs.end(), name);
+			auto _Tensor = std::find(Inputs.begin(), Inputs.end(), name);  // NOLINT(modernize-use-ranges)
 
 			if (_Tensor == Inputs.end())
 				_D_Dragonian_Lib_Throw_Exception("The Input " + std::string(name) + " Is Missing, Please Fix This Input!");
@@ -307,7 +357,7 @@ InferenceSession TrtModel::Construct(
 			auto& TensorRef = ReInferenceSession._MyOutputInfos[Index];
 			TensorRef._MyShape = mContext->getTensorShape(name);
 			TensorRef._MyType = mEngine->getTensorDataType(name);
-			TensorRef._MySize = NvDataType2Size(TensorRef._MyType);
+			TensorRef._MySize = static_cast<int64_t>(NvDataType2Size(TensorRef._MyType));
 			TensorRef._MyName = name;
 			for (int j = 0; j < TensorRef._MyShape.nbDims; ++j)
 				TensorRef._MySize *= TensorRef._MyShape.d[j];
@@ -325,15 +375,15 @@ InferenceSession TrtModel::Construct(
 
 IGPUBufferImpl& IGPUBufferImpl::ReAllocate(size_t NewSize)
 {
-	if (NewSize > static_cast<size_t>(_MySize))
+	if (std::cmp_greater(NewSize, static_cast<size_t>(_MySize)))
 	{
 		void* Data = nullptr;
 		if (cudaMalloc(&Data, NewSize))
 			_D_Dragonian_Lib_CUDA_Error;
 		_MyData = std::shared_ptr<void>(
-			Data, _Impl_Dragonian_Lib_Free_CUDA_Memory
+			Data, CUDAFreeMem
 		);
-		_MySize = NewSize;
+		_MySize = static_cast<int64_t>(NewSize);
 	}
 	return *this;
 }
@@ -352,9 +402,13 @@ ITensorInfo::ITensorInfo(
 	const nvinfer1::Dims& shape,
 	std::string name,
 	int64_t size,
-	nvinfer1::DataType type
+	nvinfer1::DataType type,
+	void* data
 ) : _MyShape(shape), _MyName(std::move(name)),
-_MySize(size), _MyType(type) {}
+_MySize(size), _MyType(type), _MyData(data)
+{
+
+}
 
 bool ITensorInfo::operator==(const char* _Val) const
 {
@@ -363,7 +417,7 @@ bool ITensorInfo::operator==(const char* _Val) const
 
 int64_t ITensorInfo::GetElementCount() const
 {
-	return _MySize / NvDataType2Size(_MyType);
+	return static_cast<int64_t>(_MySize / NvDataType2Size(_MyType));
 }
 
 bool ITensorInfo::operator==(const ITensorInfo& _Val) const
@@ -411,7 +465,7 @@ const
 #endif
 {
 #ifdef DRAGONIANLIB_DEBUG
-	for (const auto& Condition : _MyCondition)
+	for (const auto Condition : _MyCondition)
 		if (!Condition)
 			_D_Dragonian_Lib_Throw_Exception("No Input Data!");
 	TidyGuard Tidy([this] { _MyCondition = { _MyCondition.size(), false, std::allocator<bool>() }; });

@@ -18,21 +18,29 @@
 */
 
 #pragma once
-#include <functional>
 #include <mutex>
+#include <functional>
+
+#include "NvInferRuntime.h"
 #include "Libraries/Base.h"
-#include "NvInfer.h"
-#include "Libraries/MyTemplateLibrary/Vector.h"
+#include "Libraries/Util/Logger.h"
 #include "Libraries/Util/StringPreprocess.h"
+#include "TensorLib/Include/Base/Tensor/Functional.h"
 
 #define _D_Dragonian_TensorRT_Lib_Space_Header _D_Dragonian_Lib_Space_Begin namespace TensorRTLib{
 #define _D_Dragonian_TensorRT_Lib_Space_End } _D_Dragonian_Lib_Space_End
 
 _D_Dragonian_TensorRT_Lib_Space_Header
 
-using ProgressCallback = std::function<void(size_t, size_t)>;
+DLogger& GetDefaultLogger() noexcept;
 
-class DLogger final : public nvinfer1::ILogger
+/**
+ * @typedef ProgressCallback
+ * @brief Callback function for progress updates
+ */
+using ProgressCallback = std::function<void(bool, Int64)>;
+
+class MyLogger final : public nvinfer1::ILogger
 {
 public:
 	void log(Severity severity, nvinfer1::AsciiChar const* msg) noexcept override;
@@ -115,6 +123,7 @@ public:
 private:
 	std::shared_ptr<nvinfer1::IRuntime> mRuntime = nullptr;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr;
+	std::vector<unsigned char> mModelBuffer;
 	std::mutex mMutex;
 
 	int64_t mInputCount = 0, mOutputCount = 0, mIONodeCount = 0;
@@ -156,7 +165,8 @@ struct ITensorInfo
 		const nvinfer1::Dims& shape = nvinfer1::Dims2(0, 0),
 		std::string name = "None",
 		int64_t size = 0,
-		nvinfer1::DataType type = nvinfer1::DataType::kFLOAT
+		nvinfer1::DataType type = nvinfer1::DataType::kFLOAT,
+		void* data = nullptr
 	);
 	~ITensorInfo() = default;
 	bool operator==(const char* _Val) const;
@@ -176,12 +186,14 @@ struct ITensorInfo
 	const std::string& GetName() const { return _MyName; }
 	int64_t GetSize() const { return _MySize; }
 	nvinfer1::DataType GetType() const { return _MyType; }
+	void* GetData() const { return _MyData; }
 
 protected:
 	nvinfer1::Dims _MyShape;
 	std::string _MyName;
 	int64_t _MySize = 0;
 	nvinfer1::DataType _MyType = nvinfer1::DataType::kFLOAT;
+	void* _MyData = nullptr;
 };
 
 class InferenceSession

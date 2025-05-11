@@ -2,9 +2,19 @@
 #include "TensorRT/SingingVoiceConversion/VitsSvc.hpp"
 #include <iostream>
 
-auto MyLastTime = std::chrono::high_resolution_clock::now();
-size_t TotalStep = 0;
-void ShowProgressBar(size_t progress) {
+static auto MyLastTime = std::chrono::high_resolution_clock::now();
+static int64_t TotalStep = 0;
+
+template <typename Fn>
+[[maybe_unused]] static void WithTimer(const Fn& fn)
+{
+	auto start = std::chrono::high_resolution_clock::now();
+	fn();
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
+}
+
+[[maybe_unused]] static void ShowProgressBar(int64_t progress) {
 	int barWidth = 70;
 	float progressRatio = static_cast<float>(progress) / float(TotalStep);
 	int pos = static_cast<int>(float(barWidth) * progressRatio);
@@ -21,26 +31,18 @@ void ShowProgressBar(size_t progress) {
 		else std::cout << " ";
 	}
 	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
+	MyLastTime = std::chrono::high_resolution_clock::now();
 }
 
-void ProgressCb(size_t a, size_t b)
+[[maybe_unused]] static void ProgressCb(bool a, int64_t b)
 {
-	if (a == 0)
+	if (a)
 		TotalStep = b;
-	ShowProgressBar(a);
+	else
+		ShowProgressBar(b);
 }
 
-template <typename _Function>
-std::enable_if_t<std::is_invocable_v<_Function>>
-WithTimer(const _Function& _Func)
-{
-	auto start = std::chrono::high_resolution_clock::now();
-	_Func();
-	auto end = std::chrono::high_resolution_clock::now();
-	std::cout << "\nTime: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms\n";
-}
-
-enum class ModelType
+enum class ModelType : uint8_t
 {
 	float32,
 	float16,
@@ -72,6 +74,9 @@ int main(int argc, char** argv)
 	int SpeakerCount = 1;
 	bool EnableSpeakerMix = false;
 	bool EnableVolumeEmbed = false;
+
+	if (true)
+		goto llllllllllll;
 
 	if (argc == 0 || (argc == 1 && strcmp(*argv, "--help") == 0))
 	{
@@ -163,7 +168,6 @@ int main(int argc, char** argv)
 		std::cout << "     |- Enable Volume Embed\n\n\n";
 		return 0;
 	}
-
 	if (argc == 1 && strcmp(*argv, "--debug") == 0) 
 	{
 		argv++;
@@ -176,7 +180,6 @@ int main(int argc, char** argv)
 		TrtModelPath.clear();
 		TrtHubertPath.clear();
 	}
-
 	while (argc)
 	{
 		
@@ -485,47 +488,46 @@ int main(int argc, char** argv)
 		--argc;
 	}
 
-	DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvcConfig MyConfig{
-			OnnxModelPath,
-			OnnxHubertPath,
-			ModelName,
-			nullptr,
-			DragonianLib::TensorRTLib::SingingVoiceConversion::ClusterConfig{
-				ClusterCenterSize,
-				ClusterPath,
-				ClusterType
-			},
-			DragonianLib::TensorRTLib::TrtConfig{
+llllllllllll:
+
+	DragonianLib::TensorRTLib::SingingVoiceConversion::HParams MyConfig{
+		{
+			{L"Model", OnnxModelPath},
+			{L"UnitsEncoder", OnnxHubertPath}
+		},
+		DragonianLib::TensorRTLib::TrtConfig{
+			{
 				{
-					{
-						OnnxModelPath,
-						TrtModelPath
-					},
-					{
-						OnnxHubertPath,
-						TrtHubertPath
-					}
+					OnnxModelPath,
+					TrtModelPath
 				},
-				{},
-				DLACore,
-				EnableFallback,
-				ModelPrecision == ModelType::float16,
-				ModelPrecision == ModelType::bfloat16,
-				ModelPrecision == ModelType::int8,
-				Severity,
-				OptimizationLevel
+				{
+					OnnxHubertPath,
+					TrtHubertPath
+				}
 			},
-			SamplingRate,
-			HopSize,
-			FeatureDimention,
-			SpeakerCount,
-			EnableSpeakerMix,
-			EnableVolumeEmbed
+			{},
+			DLACore,
+			EnableFallback,
+			ModelPrecision == ModelType::float16,
+			ModelPrecision == ModelType::bfloat16,
+			ModelPrecision == ModelType::int8,
+			Severity,
+			OptimizationLevel
+		},
+		nullptr,
+		SamplingRate,
+		FeatureDimention,
+		HopSize,
+		SpeakerCount,
+		EnableVolumeEmbed,
+		static_cast<bool>(SpeakerCount),
+		EnableSpeakerMix
 	};
 	auto DynaSetting = DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc::VitsSvcDefaultsDynaSetting;
-	DynaSetting[1].Max.d[2] = MyConfig.HiddenUnitKDims;
-	DynaSetting[1].Min.d[2] = MyConfig.HiddenUnitKDims;
-	DynaSetting[1].Opt.d[2] = MyConfig.HiddenUnitKDims;
+	DynaSetting[1].Max.d[2] = MyConfig.UnitsDim;
+	DynaSetting[1].Min.d[2] = MyConfig.UnitsDim;
+	DynaSetting[1].Opt.d[2] = MyConfig.UnitsDim;
 	if (!EnableSpeakerMix)
 		DynaSetting.erase(std::find(DynaSetting.begin(), DynaSetting.end(), "sid"));
 	MyConfig.TrtSettings.DynaSetting = std::move(DynaSetting);
@@ -534,9 +536,8 @@ int main(int argc, char** argv)
 
 	try
 	{
-		Model = std::make_shared<DragonianLib::TensorRTLib::SingingVoiceConversion::VitsSvc>(
-			MyConfig,
-			ProgressCb
+		Model = std::make_shared<DragonianLib::TensorRTLib::SingingVoiceConversion::Rvc>(
+			MyConfig
 		);
 	}
 	catch (const std::exception& e)
@@ -556,13 +557,12 @@ int main(int argc, char** argv)
 		std::cout << "Press Source Path: > ";
 		std::wcin.getline(SourcePath, 1024);
 
-		DragonianLibSTL::Vector<float> Audio;
+		DragonianLib::Tensor<float,3, DragonianLib::Device::CPU> Audio;
 		try
 		{
-			Audio = DragonianLib::AvCodec::AvCodec().DecodeFloat(
-				DragonianLib::UnicodeToAnsi(SourcePath).c_str(),
-				SourceSamplingRate
-			);
+			Audio = DragonianLib::AvCodec::OpenInputStream(
+				LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
+			).DecodeAll(44100, 1)[{"441000:882000", "0"}].Transpose(-1, -2).Contiguous().UnSqueeze(0);
 		}
 		catch (const std::exception& e)
 		{
@@ -570,20 +570,20 @@ int main(int argc, char** argv)
 			continue;
 		}
 
-		const auto AudioSeconds = static_cast<double>(Audio.Size()) / static_cast<double>(SourceSamplingRate);
+		const auto AudioSeconds = static_cast<double>(Audio.Size(0)) / static_cast<double>(SourceSamplingRate);
 		std::cout << "\n\n//******************************************Start Inference******************************************//\n\n";
 
 		try
 		{
 			MyLastTime = std::chrono::high_resolution_clock::now();
 			auto TimeBegin = std::chrono::high_resolution_clock::now();
-			Audio = Model->InferenceAudio(
+			Audio = Model->Inference(
+				{},
 				Audio,
-				DragonianLib::TensorRTLib::SingingVoiceConversion::InferenceParams{},
 				SourceSamplingRate,
-				4,
-				true
-			);
+				DragonianLib::F0Extractor::New(L"Dio", nullptr),
+				{}
+			).Squeeze(0);
 			const auto UsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - TimeBegin).count();
 			auto InferenceDurations = static_cast<double>(UsedTime) / 1000.0;
 			std::cout << "\n\nInference Use Times: " << InferenceDurations << "s\n";
@@ -605,7 +605,7 @@ int main(int argc, char** argv)
 			{
 				DragonianLib::AvCodec::WritePCMData(
 					OutputPath,
-					Audio,
+					Audio.GetCRng().RawConst().Byte(),
 					SourceSamplingRate
 				);
 				std::cout << "Output Audio Saved To: " << DragonianLib::UnicodeToAnsi(OutputPath) << '\n';

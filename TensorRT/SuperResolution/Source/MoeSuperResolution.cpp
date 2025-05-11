@@ -1,35 +1,44 @@
-﻿#include "../MoeSuperResolution.hpp"
-#include "Libraries/Base.h"
+﻿#include "TensorRT/SuperResolution/MoeSuperResolution.hpp"
+#include "TensorLib/Include/Base/Tensor/Functional.h"
 
 _D_Dragonian_Lib_TRT_Sr_Space_Header
 
-ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, int64_t _BatchSize)
+std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> MoeSR::Infer(
+	const std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64>& _Bitmap
+)
 {
-	UNUSED(_BatchSize);
-	_BatchSize = 1;
-	size_t progress = 0;
+	//constexpr auto _BatchSize = 1ll;
+	auto& [Bitmap, SourceHeight, SourceWidth] = _Bitmap;
+	auto RGBChannel = Bitmap.ReversedSlice({ "0:3" }).Permute(0, 1, 4, 2, 3).Contiguous();
+	auto AlphaChannel = Bitmap.ReversedSlice(
+		{ "3" }
+	).Ignore().Interpolate<Operators::InterpolateMode::Bilinear>(
+		Dimensions{ 2ll, 3ll },
+		IScale(double(_MyScaleH), double(_MyScaleW))
+	);
 
-	auto InputWidth = _Image.GetWidth();
-	auto InputHeight = _Image.GetHeight();
-	const auto pixCount = InputWidth * InputHeight;
-	const auto dataSize = pixCount * 3ull;
-	const auto TotalScale = (size_t)uint32_t(ScaleFactor * ScaleFactor);
-
-	_Image.Transpose();
-
-	auto& imgRGB = _Image.data.rgb;
-	auto& imgAlpha = _Image.data.alpha;
-	DragonianLibSTL::Vector<float> OutRGB;
-	OutRGB.Reserve(imgRGB.Size() * TotalScale);
-
-	const size_t progressMax = imgAlpha.Size() / pixCount;
-	Callback_(progress, progressMax);
+	RGBChannel.Evaluate();
+	const auto BatchCount = RGBChannel.Size(0) * RGBChannel.Size(1);
+	const auto RGBData = RGBChannel.Data();
+	const auto WindowHeight = RGBChannel.Size(3);
+	const auto WindowWidth = RGBChannel.Size(4);
+	const auto BatchStride = WindowHeight * WindowWidth * 3;
+	auto Ret = ImageVideo::NormalizedImage5D::New({
+			RGBChannel.Size(0),
+			RGBChannel.Size(1),
+			3,
+			WindowHeight * _MyScaleH,
+			WindowWidth * _MyScaleW,
+		});
+	auto RetData = Ret.Data();
+	if (_MyCallback)
+		_MyCallback(true, BatchCount);
 
 	std::vector<ITensorInfo> InputTensorsInfo;
 	InputTensorsInfo.emplace_back(
-		nvinfer1::Dims4(_BatchSize, 3, InputHeight, InputWidth),
+		nvinfer1::Dims4(1, 3, WindowHeight, WindowWidth),
 		Model->GetInputNames()[0],
-		dataSize * _BatchSize * sizeof(float),
+		BatchStride * sizeof(float),
 		nvinfer1::DataType::kFLOAT
 	);
 
@@ -46,49 +55,53 @@ ImageVideo::Image& MoeSR::Infer(ImageVideo::Image& _Image, int64_t _BatchSize)
 		_D_Dragonian_Lib_Throw_Exception(e.what());
 	}
 
-	while (progress < progressMax)
+	for (SizeType Batch = 0; Batch < BatchCount; ++Batch)
 	{
-		if (progress + _BatchSize > progressMax)
-			_BatchSize = int64_t(progressMax - progress);
-		if (_BatchSize == 0)
-			break;
+		const auto CurData = RGBData + Batch * BatchStride;
+		const auto InputSize = BatchStride;
+		const auto OutputSize = InputSize * _MyScaleH * _MyScaleW;
 
 		try
 		{
 			_MySession.HostMemoryToDevice(
-				0, imgRGB.Data() + (dataSize * progress),
-				dataSize * _BatchSize * sizeof(float)
+				0, CurData,
+				InputSize * sizeof(float)
 			);
 			_MySession.Run();
+			_MySession.DeviceMemoryToHost(
+				0, RetData,
+				OutputSize * sizeof(float)
+			);
 		}
 		catch (std::exception& e)
 		{
 			_D_Dragonian_Lib_Throw_Exception(e.what());
 		}
 
-		std::vector<float> OutData(TotalScale * dataSize);
-		_MySession.DeviceMemoryToHost(0, OutData.data(), OutData.size() * sizeof(float));
-		OutRGB.Insert(OutRGB.End(), OutData.data(), OutData.data() + OutData.size());
-		progress += _BatchSize;
-		Callback_(progress, progressMax);
+		RetData += OutputSize;
+		if (_MyCallback)
+			_MyCallback(false, Batch);
 	}
-
-	_Image.data.rgb = std::move(OutRGB);
-	imgAlpha.Clear();
-	imgAlpha.Resize(imgRGB.Size() / 3, 1.f);
-	_Image.Transpose(ScaleFactor);
-	return _Image;
+	return std::make_tuple(
+		Functional::Cat(
+			Ret.Permute(0, 1, 3, 4, 2),
+			AlphaChannel,
+			-1
+		).Evaluate(),
+		SourceHeight * _MyScaleH,
+		SourceWidth * _MyScaleW
+	);
 }
 
 MoeSR::MoeSR(
 	const std::wstring& RGBModel,
-	long Scale,
+	Int64 Scale,
 	const TrtConfig& TrtSettings,
 	ProgressCallback _Callback
 )
 {
-	Callback_ = std::move(_Callback);
-	ScaleFactor = Scale;
+	_MyCallback = std::move(_Callback);
+	_MyScaleH = _MyScaleW = Scale;
 	try
 	{
 		Model = std::make_unique<TrtModel>(
