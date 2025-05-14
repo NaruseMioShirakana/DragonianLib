@@ -18,16 +18,16 @@ option(DRAGONIANLIB_CUDA								"cuda backend"									ON)
 option(DRAGONIANLIB_ROCM								"rocm backend"									OFF)
 option(DRAGONIANLIB_VULKAN								"vk backend"									OFF)
 
-option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				OFF)
-option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		OFF)
-option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					OFF)
-option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			OFF)
-option(DRAGONIANLIB_ORT_DEMIX							"build ort demix libs"							OFF)
-option(DRAGONIANLIB_ORT_F0_EXTRACTOR					"build ort f0 extractor libs"					OFF)
-option(DRAGONIANLIB_ORT_CONTEXT							"build ort context extractor libs"				OFF)
-option(DRAGONIANLIB_ORT_G2P								"build ort g2p libs"							OFF)
-option(DRAGONIANLIB_ORT_UNIT_ENCODER					"build ort unit extractor libs"					OFF)
-option(DRAGONIANLIB_ORT_VOCODER							"build ort vocoder libs"						OFF)
+option(DRAGONIANLIB_ORT_SUPER_RESOLUTION				"build ort super resolution libs"				ON)
+option(DRAGONIANLIB_ORT_SINGING_VOICE_CONVERSION		"build ort singing voice conversion libs"		ON)
+option(DRAGONIANLIB_ORT_TEXT_TO_SPEECH					"build ort text to speech libs"					ON)
+option(DRAGONIANLIB_ORT_MUSIC_TRANSCRIPTION			"build ort music transcription libs"			ON)
+option(DRAGONIANLIB_ORT_DEMIX							"build ort demix libs"							ON)
+option(DRAGONIANLIB_ORT_F0_EXTRACTOR					"build ort f0 extractor libs"					ON)
+option(DRAGONIANLIB_ORT_CONTEXT							"build ort context extractor libs"				ON)
+option(DRAGONIANLIB_ORT_G2P								"build ort g2p libs"							ON)
+option(DRAGONIANLIB_ORT_UNIT_ENCODER					"build ort unit extractor libs"					ON)
+option(DRAGONIANLIB_ORT_VOCODER							"build ort vocoder libs"						ON)
 
 option(DRAGONIANLIB_TRT_SUPER_RESOLUTION				"build trt super resolution libs"				OFF)
 option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conversion libs"		OFF)
@@ -373,22 +373,14 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	message("Build Type: \"Release\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
-		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
+		/GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
 	)
-	target_link_options(
-        ${DRAGONIANLIB_LIB} PRIVATE
-        /LTCG
-    )
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	message("Build Type: \"RelWithDebInfo\"")
 	target_compile_options(
 		${DRAGONIANLIB_LIB} PRIVATE
-		/GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj
+		/Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj
 	)
-	target_link_options(
-        ${DRAGONIANLIB_LIB} PRIVATE
-        /LTCG
-    )
 else()
 	message("Build Type: \"Debug\"")
 	add_definitions(-DDRAGONIANLIB_DEBUG)
@@ -536,10 +528,10 @@ set(DRAGONIANLIB_LIBRARIES ${DRAGONIANLIB_LIB})
 set(DRAGONIANLIB_INCLUDE_DIRS ${PROJECT_SOURCE_DIR})
 
 set(DRAGONIANLIB_ONNX_LIBRARIES ${DRAGONIANLIB_ORT_LIB})
-#set(DRAGONIANLIB_ONNX_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
+set(DRAGONIANLIB_ONNX_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
 
 set(DRAGONIANLIB_TENSORRT_LIBRARIES ${DRAGONIANLIB_TRT_LIB})
-#set(DRAGONIANLIB_TENSORRT_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
+set(DRAGONIANLIB_TENSORRT_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
 
 #Install Target
 install(

@@ -130,8 +130,11 @@ std::tuple<SignalTensor, SpecTensor, SpecTensor, SpecTensor, Int64, Int64, Float
 	//[Channels, FrameCount, FFTSize, 2(Real, Imag)]
 	Int64 FrameCount = INT64_MAX;
 	for (const auto& StftResult : StftResults)
+	{
+		StftResult.Evaluate();
 		if (StftResult.Shape(1) < FrameCount)
 			FrameCount = StftResult.Shape()[1];
+	}
 
 	//[Channels, FrameCount, Bins + 1, 2(Real, Imag)]
 	auto ComplexSpec = Functional::Zeros<Complex32>(
@@ -205,6 +208,7 @@ SignalTensor CascadedNet::Spec2Audio(
 	Int64 InputHighEndH
 ) const
 {
+	const auto ChannelCount = Spec.Size(0);
 	auto Mirror = Spec[{
 		None,
 		{
@@ -225,7 +229,7 @@ SignalTensor CascadedNet::Spec2Audio(
 		const auto& Band = _MySetting.Bands[BandIdx];
 		const auto H = Band.CropStop - Band.CropStart;
 		auto BSpec = Functional::Ones<Complex32>(
-			IDim(2, Band.FFTSize / 2 + 1, Spec.Shape(2))
+			IDim(ChannelCount, Band.FFTSize / 2 + 1, Spec.Shape(2))
 		).Evaluate();
 		BSpec[{None, { Band.CropStart, Band.CropStop }}].Ignore().TensorAssign(
 			Spec[{None, { Offset, Offset + H }}].Ignore()
@@ -239,22 +243,20 @@ SignalTensor CascadedNet::Spec2Audio(
 				const auto MaxBin = Band.FFTSize / 2;
 				BSpec[{None, { MaxBin - InputHighEndH, MaxBin }}].Ignore().TensorAssign(
 					HighEnd[{None, { None, InputHighEndH }}].Ignore()
-				).Evaluate();
+				);
 			}
 			if (Band.HpfStart > 0)
 				HighPass(BSpec, Band.HpfStart, Band.HpfStop - 1);
 			if (BandSize == 1)
 			{
-				Audio = FunctionTransform::StftKernel::Inverse(
-					BSpec.UnSqueeze(0).Transpose(),
-					Band.HopSize
+				Audio = _MyStftKernels[BandIdx].Inverse(
+					BSpec.UnSqueeze(0).Transpose()
 				);
 			}
 			else
 			{
-				auto Temp = FunctionTransform::StftKernel::Inverse(
-					BSpec.UnSqueeze(0).Transpose(),
-					Band.HopSize
+				auto Temp = _MyStftKernels[BandIdx].Inverse(
+					BSpec.UnSqueeze(0).Transpose()
 				);
 				Audio = Audio.Interpolate<Operators::InterpolateMode::Linear>(
 					IDim(-1),
@@ -267,9 +269,8 @@ SignalTensor CascadedNet::Spec2Audio(
 			if (BandIdx == 0)
 			{
 				LowPass(BSpec, Band.LpfStart, Band.LpfStop);
-				Audio = FunctionTransform::StftKernel::Inverse(
-					BSpec.UnSqueeze(0).Transpose(),
-					Band.HopSize
+				Audio = _MyStftKernels[BandIdx].Inverse(
+					BSpec.UnSqueeze(0).Transpose()
 				);
 				if (_MySetting.Bands[BandIdx + 1].SamplingRate != Band.SamplingRate)
 					Audio = Audio.Interpolate<Operators::InterpolateMode::Linear>(
@@ -281,9 +282,8 @@ SignalTensor CascadedNet::Spec2Audio(
 			{
 				HighPass(BSpec, Band.HpfStart, Band.HpfStop - 1);
 				LowPass(BSpec, Band.LpfStart, Band.LpfStop);
-				auto Temp = FunctionTransform::StftKernel::Inverse(
-					BSpec.UnSqueeze(0).Transpose(),
-					Band.HopSize
+				auto Temp = _MyStftKernels[BandIdx].Inverse(
+					BSpec.UnSqueeze(0).Transpose()
 				);
 				if (Audio.Size(-1) != Temp.Size(-1))
 					Audio = Audio.Interpolate<Operators::InterpolateMode::Linear>(
@@ -293,7 +293,7 @@ SignalTensor CascadedNet::Spec2Audio(
 			}
 		}
 	}
-	return Audio.Evaluate();
+	return Audio;
 }
 
 TemplateLibrary::Vector<SignalTensor> CascadedNet::Forward(
@@ -314,8 +314,9 @@ TemplateLibrary::Vector<SignalTensor> CascadedNet::Forward(
 	XSpecM.Evaluate();
 	InputHighEnd.Evaluate();
 	constexpr Int64 One = 1;
-	const Int64 InputShape[4]{ 1, 2, _MySetting.Bins + 1, _MySetting.WindowSize };
-	const auto OutShape = Dimensions{ 1, 2, _MySetting.Bins + 1, _MyRoiSize };
+	const auto ChannelCount = XSpecM.Size(0);
+	const Int64 InputShape[4]{ 1, ChannelCount, _MySetting.Bins + 1, _MySetting.WindowSize };
+	const auto OutShape = Dimensions{ 1, ChannelCount, _MySetting.Bins + 1, _MyRoiSize };
 	Ort::Value Inputs[3]{
 		Ort::Value{nullptr},
 		Ort::Value::CreateTensor(*_MyMemoryInfo, &SplitBin, 1, &One, 1),

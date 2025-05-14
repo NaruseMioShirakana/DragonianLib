@@ -102,7 +102,6 @@ struct Range
 
 	/**
 	 * @brief Constructor for a range with none and end values.
-	 * @param _NoneVal The none value.
 	 * @param _End The end value.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline Range(NoneType, SizeType _End) :End(_End) {  }
@@ -110,7 +109,6 @@ struct Range
 	/**
 	 * @brief Constructor for a range with begin and none values.
 	 * @param _Begin The begining value.
-	 * @param _NoneVal The none value.
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline Range(SizeType _Begin, NoneType) :Begin(_Begin) {  }
 
@@ -489,7 +487,7 @@ public:
 	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn, _ArgType&&... _Args)
 		requires (TypeTraits::IsInvocableValue<_TFn, _ArgType...>)
 	{
-		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst, nullptr, nullptr };
+		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst };
 		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
 			std::forward<_ThisType>(_Self)._MyFuturesAsResult->emplace_back(
 				Operators::GetTaskPool().Commit(
@@ -716,8 +714,22 @@ private:
 	}
 
 public:
-	Tensor(const Tensor& Left) = default;
-	Tensor(Tensor&& Right) noexcept = default;
+	Tensor(const Tensor& Left)
+		: _MyFirst(Left._MyFirst), _MyLast(Left._MyLast), _MyData(Left._MyData),
+		_MyShape(Left._MyShape), _MyViewStride(Left._MyViewStride),
+		_MyFuturesAsResult(Left._MyFuturesAsResult), _MyFuturesAsArgument(Left._MyFuturesAsArgument),
+		_MyAllocator(Left._MyAllocator)
+	{
+
+	}
+	Tensor(Tensor&& Right) noexcept
+		: _MyFirst(std::move(Right._MyFirst)), _MyLast(Right._MyLast), _MyData(Right._MyData),
+		_MyShape(Right._MyShape), _MyViewStride(Right._MyViewStride),
+		_MyFuturesAsResult(std::move(Right._MyFuturesAsResult)), _MyFuturesAsArgument(std::move(Right._MyFuturesAsArgument)),
+		_MyAllocator(std::move(Right._MyAllocator)), _IgnoreDep(Right._IgnoreDep)
+	{
+
+	}
 	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
 
 	template <size_t _TRank>

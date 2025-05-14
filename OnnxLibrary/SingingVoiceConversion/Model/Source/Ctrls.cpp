@@ -116,10 +116,8 @@ std::optional<Tensor<Float32, 4, Device::CPU>>& Unit2Ctrl::PreprocessSpec(
 		if (M != _MyMelBins)
 			_D_Dragonian_Lib_Throw_Exception("Invalid mel bins, expected: " + std::to_string(_MyMelBins) + ", got: " + std::to_string(M));
 	}
-	MyData->Evaluate();
 	if (abs(Scale - 1.f) > 1e-4)
 		*MyData *= Scale;
-	MyData->Evaluate();
 
 	return MyData;
 }
@@ -275,7 +273,7 @@ OrtTuple Unit2Ctrl::Extract(
 		auto SourceNoise = (Tensor<Float32, 3, Device::CPU>::Randn(
 			IDim(F0.Shape(0), F0.Shape(1), F0.Shape(2) * _MyHopSize),
 			0.f, 1.f
-		) * Params.StftNoiseScale).Evaluate();
+		) * Params.StftNoiseScale);
 
 		_D_Dragonian_Lib_Rethrow_Block(
 			InputTensors.Emplace(

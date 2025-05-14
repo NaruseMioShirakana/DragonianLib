@@ -33,7 +33,7 @@ TemplateLibrary::Vector<SignalTensor> Demix::Forward(
 
 	auto Spec = _MyStftKernel.Execute(
 		SignalView
-	);
+	).Evaluate();
 
 	auto RealSpec = Spec.ViewAs<Float32>().View(
 		Spec.Size(0),

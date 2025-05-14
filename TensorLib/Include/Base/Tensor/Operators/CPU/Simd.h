@@ -1627,84 +1627,86 @@ public:
 private:
 	__m256i _YMMX;
 
-public:
-	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
-		const __m256i m0 = _mm256_load_si256(_Src + 0);
-		const __m256i m1 = _mm256_load_si256(_Src + 1);
-		const __m256i m2 = _mm256_load_si256(_Src + 2);
-		const __m256i m3 = _mm256_load_si256(_Src + 3);
-		const __m256i m4 = _mm256_load_si256(_Src + 4);
-		const __m256i m5 = _mm256_load_si256(_Src + 5);
-		const __m256i m6 = _mm256_load_si256(_Src + 6);
-		const __m256i m7 = _mm256_load_si256(_Src + 7);
-		_mm256_store_si256(_Dst + 0, m0);
-		_mm256_store_si256(_Dst + 1, m1);
-		_mm256_store_si256(_Dst + 2, m2);
-		_mm256_store_si256(_Dst + 3, m3);
-		_mm256_store_si256(_Dst + 4, m4);
-		_mm256_store_si256(_Dst + 5, m5);
-		_mm256_store_si256(_Dst + 6, m6);
-		_mm256_store_si256(_Dst + 7, m7);
-	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_4(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
-		const __m256i m0 = _mm256_load_si256(_Src + 0);
-		const __m256i m1 = _mm256_load_si256(_Src + 1);
-		const __m256i m2 = _mm256_load_si256(_Src + 2);
-		const __m256i m3 = _mm256_load_si256(_Src + 3);
-		_mm256_store_si256(_Dst + 0, m0);
-		_mm256_store_si256(_Dst + 1, m1);
-		_mm256_store_si256(_Dst + 2, m2);
-		_mm256_store_si256(_Dst + 3, m3);
-	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_2(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
-		const __m256i m0 = _mm256_load_si256(_Src + 0);
-		const __m256i m1 = _mm256_load_si256(_Src + 1);
-		_mm256_store_si256(_Dst + 0, m0);
-		_mm256_store_si256(_Dst + 1, m1);
-	}
-	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemcpy256_1(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
-		const __m256i m0 = _mm256_load_si256(_Src + 0);
-		_mm256_store_si256(_Dst + 0, m0);
-	}
-
-	static _D_Dragonian_Lib_Constexpr_Force_Inline void DragonianLibMemCpy(void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size)
-	{
-		__m256i* __restrict _Dst_Ptr = (__m256i*)_Dst;
-		const __m256i* __restrict _Src_Ptr = (const __m256i*)_Src;
-		while (true)
-		{
-			if (!(_Size >> 8))
-				break;
-			DragonianLibMemcpy256_8(_Dst_Ptr, _Src_Ptr);
-			_Dst_Ptr += 8;
-			_Src_Ptr += 8;
-			_Size -= alignof(__m256i) * 8;
-		}
-		if (_Size >> 7)
-		{
-			DragonianLibMemcpy256_4(_Dst_Ptr, _Src_Ptr);
-			_Dst_Ptr += 4;
-			_Src_Ptr += 4;
-			_Size -= alignof(__m256i) * 4;
-		}
-		if (_Size >> 6)
-		{
-			DragonianLibMemcpy256_2(_Dst_Ptr, _Src_Ptr);
-			_Dst_Ptr += 2;
-			_Src_Ptr += 2;
-			_Size -= alignof(__m256i) * 2;
-		}
-		if (_Size >> 5)
-		{
-			DragonianLibMemcpy256_1(_Dst_Ptr, _Src_Ptr);
-			++_Dst_Ptr;
-			++_Src_Ptr;
-			_Size -= alignof(__m256i);
-		}
-		if (_Size)
-			memcpy(_Dst_Ptr, _Src_Ptr, _Size);
-	}
 };
+
+_D_Dragonian_Lib_Force_Inline void DragonianLibMemcpy256_8(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	const __m256i m0 = _mm256_load_si256(_Src + 0);
+	const __m256i m1 = _mm256_load_si256(_Src + 1);
+	const __m256i m2 = _mm256_load_si256(_Src + 2);
+	const __m256i m3 = _mm256_load_si256(_Src + 3);
+	const __m256i m4 = _mm256_load_si256(_Src + 4);
+	const __m256i m5 = _mm256_load_si256(_Src + 5);
+	const __m256i m6 = _mm256_load_si256(_Src + 6);
+	const __m256i m7 = _mm256_load_si256(_Src + 7);
+	_mm256_store_si256(_Dst + 0, m0);
+	_mm256_store_si256(_Dst + 1, m1);
+	_mm256_store_si256(_Dst + 2, m2);
+	_mm256_store_si256(_Dst + 3, m3);
+	_mm256_store_si256(_Dst + 4, m4);
+	_mm256_store_si256(_Dst + 5, m5);
+	_mm256_store_si256(_Dst + 6, m6);
+	_mm256_store_si256(_Dst + 7, m7);
+}
+_D_Dragonian_Lib_Force_Inline void DragonianLibMemcpy256_4(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	const __m256i m0 = _mm256_load_si256(_Src + 0);
+	const __m256i m1 = _mm256_load_si256(_Src + 1);
+	const __m256i m2 = _mm256_load_si256(_Src + 2);
+	const __m256i m3 = _mm256_load_si256(_Src + 3);
+	_mm256_store_si256(_Dst + 0, m0);
+	_mm256_store_si256(_Dst + 1, m1);
+	_mm256_store_si256(_Dst + 2, m2);
+	_mm256_store_si256(_Dst + 3, m3);
+}
+_D_Dragonian_Lib_Force_Inline void DragonianLibMemcpy256_2(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	const __m256i m0 = _mm256_load_si256(_Src + 0);
+	const __m256i m1 = _mm256_load_si256(_Src + 1);
+	_mm256_store_si256(_Dst + 0, m0);
+	_mm256_store_si256(_Dst + 1, m1);
+}
+_D_Dragonian_Lib_Force_Inline void DragonianLibMemcpy256_1(__m256i* __restrict _Dst, const __m256i* __restrict _Src) {
+	const __m256i m0 = _mm256_load_si256(_Src + 0);
+	_mm256_store_si256(_Dst + 0, m0);
+}
+
+_D_Dragonian_Lib_Force_Inline void DragonianLibMemCpy(
+	void* const __restrict _Dst, const void* const __restrict _Src, size_t _Size
+)
+{
+	__m256i* __restrict _Dst_Ptr = (__m256i*)_Dst;
+	const __m256i* __restrict _Src_Ptr = (const __m256i*)_Src;
+	while (true)
+	{
+		if (!(_Size >> 8))
+			break;
+		DragonianLibMemcpy256_8(_Dst_Ptr, _Src_Ptr);
+		_Dst_Ptr += 8;
+		_Src_Ptr += 8;
+		_Size -= alignof(__m256i) * 8;
+	}
+	if (_Size >> 7)
+	{
+		DragonianLibMemcpy256_4(_Dst_Ptr, _Src_Ptr);
+		_Dst_Ptr += 4;
+		_Src_Ptr += 4;
+		_Size -= alignof(__m256i) * 4;
+	}
+	if (_Size >> 6)
+	{
+		DragonianLibMemcpy256_2(_Dst_Ptr, _Src_Ptr);
+		_Dst_Ptr += 2;
+		_Src_Ptr += 2;
+		_Size -= alignof(__m256i) * 2;
+	}
+	if (_Size >> 5)
+	{
+		DragonianLibMemcpy256_1(_Dst_Ptr, _Src_Ptr);
+		++_Dst_Ptr;
+		++_Src_Ptr;
+		_Size -= alignof(__m256i);
+	}
+	if (_Size)
+		memcpy(_Dst_Ptr, _Src_Ptr, _Size);
+}
 
 namespace SimdTypeTraits
 {

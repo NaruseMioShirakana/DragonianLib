@@ -416,33 +416,38 @@ namespace FunctionTransform
 			{
 				const auto CurOutputData = OutputData + B * Output.Stride(0) + C * Output.Stride(1);
 				const auto CurInputData = InputData + B * Signal.Stride(0) + C * Signal.Stride(1);
-				for (SizeType i = 0; i < OutputSize; ++i)
-				{
-					const auto InputPos = static_cast<double>(i) / ResampleRatio;
-					const auto InputIdx = static_cast<SizeType>(InputPos);
-					T Sum = 0;
-					SizeType WinCount = 0;
-					for (SizeType j = 0; j < WindowSize; ++j)
+				Output.AppendTask(
+					[=]
 					{
-						const SizeType WindowIdx = j;
-						const SizeType InputSample = InputIdx - HalfWindow + j;
-						if (InputSample >= 0 && InputSample < static_cast<int>(SampleCount))
+						for (SizeType i = 0; i < OutputSize; ++i)
 						{
-							const auto Delta = InputPos - static_cast<double>(InputSample);
-							double SincVal;
-							if (std::abs(Delta) < 1e-6)
-								SincVal = 1.0;
-							else
-								SincVal = std::sin(std::numbers::pi_v<double> *FilterScale * Delta) /
-								(std::numbers::pi_v<double> *FilterScale * Delta);
-							Sum += CurInputData[InputSample * StrideInp] * static_cast<T>(SincVal) * Window[WindowIdx];
-							WinCount++;
+							const auto InputPos = static_cast<double>(i) / ResampleRatio;
+							const auto InputIdx = static_cast<SizeType>(InputPos);
+							T Sum = 0;
+							SizeType WinCount = 0;
+							for (SizeType j = 0; j < WindowSize; ++j)
+							{
+								const SizeType WindowIdx = j;
+								const SizeType InputSample = InputIdx - HalfWindow + j;
+								if (InputSample >= 0 && InputSample < static_cast<int>(SampleCount))
+								{
+									const auto Delta = InputPos - static_cast<double>(InputSample);
+									double SincVal;
+									if (std::abs(Delta) < 1e-6)
+										SincVal = 1.0;
+									else
+										SincVal = std::sin(std::numbers::pi_v<double> *FilterScale * Delta) /
+										(std::numbers::pi_v<double> *FilterScale * Delta);
+									Sum += CurInputData[InputSample * StrideInp] * static_cast<T>(SincVal) * Window[WindowIdx];
+									WinCount++;
+								}
+							}
+							if (WinCount > 0 && WinCount < WindowSize)
+								Sum *= static_cast<T>(WindowSize) / static_cast<T>(WinCount);
+							CurOutputData[i] = Sum;
 						}
 					}
-					if (WinCount > 0 && WinCount < WindowSize)
-						Sum *= static_cast<T>(WindowSize) / static_cast<T>(WinCount);
-					CurOutputData[i] = Sum;
-				}
+				);
 			}
 		}
 		return Output;
@@ -599,7 +604,7 @@ namespace FunctionTransform
 		int CENTER_PADDING_SIZE = 256;
 		double WINDOW_POWER_SUM = 0.0; ///< Window power sum
 		PaddingType PADDING_TYPE = PaddingType::Reflect;
-		TemplateLibrary::Vector<Double> WINDOW;
+		std::shared_ptr<TemplateLibrary::Vector<Double>> WINDOW;
 	};
 
 	/**

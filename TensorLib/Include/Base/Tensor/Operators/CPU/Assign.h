@@ -42,7 +42,7 @@ void AssignTensorCont(
 	if constexpr (TypeTraits::IsSameTypeValue<_TypeDest, _TypeSrc> && std::is_trivially_copy_assignable_v<_TypeSrc>)
 	{
 		DestSize *= sizeof(_TypeDest);
-		Vectorized<_TypeDest>::DragonianLibMemCpy(_Dest, _Src, DestSize);
+		DragonianLibMemCpy(_Dest, _Src, DestSize);
 	}
 	else if constexpr (
 		(TypeTraits::CouldBeConvertedFromValue<_TypeDest, _TypeSrc> && std::is_move_assignable_v<_TypeDest>) ||
@@ -195,7 +195,7 @@ void AssignBufferCont(
 	DestSize = std::min(DestSize, _Value->_Count - Index);
 	const auto _SrcPtr = _Value->_Src + Index;
 	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
-		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
+		DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
 	else if constexpr (std::is_copy_assignable_v<_Type>)
 	{
 		int64_t i = 0;
@@ -275,7 +275,7 @@ void MoveBufferCont(
 	DestSize = std::min(DestSize, _Value->_Count - Index);
 	const auto _SrcPtr = _Value->_Src + Index;
 	if constexpr (std::is_trivially_copy_assignable_v<_Type>)
-		Vectorized<_Type>::DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
+		DragonianLibMemCpy(_Dest, _SrcPtr, DestSize * sizeof(_Type));
 	else if constexpr (std::is_move_assignable_v<_Type>)
 	{
 		int64_t i = 0;

@@ -17,21 +17,9 @@
 #error GDIPLUS is not supported on this platform.
 #endif
 
-#ifdef _WIN32
-#define _D_Dragonian_Lib_Image_Video_W32 1
-#else
-#define _D_Dragonian_Lib_Image_Video_W32 0
-#endif
-
-#ifndef DRAGONIANLIB_EXPORT
-#define _D_Dragonian_Lib_Image_Video_Static 1
-#else
-#define _D_Dragonian_Lib_Image_Video_Static 0
-#endif
-
 _D_Dragonian_Lib_Image_Video_Header
 
-#if _D_Dragonian_Lib_Image_Video_W32 + _D_Dragonian_Lib_Image_Video_Static == 2
+#ifdef _WIN32
 
 UInt64 GdiToken = 0;  // NOLINT(misc-use-internal-linkage)
 
@@ -111,7 +99,7 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	auto Bitmap = Gdiplus::Bitmap::FromFile(Path.c_str());
 	if (!Bitmap)
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
-	UniqueScopeExit BitmapGuard([&] { delete Bitmap; });
+	SharedScopeExit BitmapGuard([=] { delete Bitmap; });
 
 	const auto Width = (Int64)Bitmap->GetWidth();
 	const auto Height = (Int64)Bitmap->GetHeight();
@@ -129,14 +117,14 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	//const auto WindowCount = WindowCountHeight * WindowCountWidth;
 
 	Gdiplus::Rect Rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
-	Gdiplus::BitmapData BitmapData;
+	auto BitmapData = std::make_shared<Gdiplus::BitmapData>();
 
 	//BGRA
-	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &BitmapData) != Gdiplus::Status::Ok)
+	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, BitmapData.get()) != Gdiplus::Status::Ok)
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
-	UniqueScopeExit BitmapLockGuard([&] { Bitmap->UnlockBits(&BitmapData); });
+	SharedScopeExit BitmapLockGuard([=] { Bitmap->UnlockBits(BitmapData.get()); });
 
-	const auto ColStride = static_cast<Int64>(BitmapData.Stride);
+	const auto ColStride = static_cast<Int64>(BitmapData->Stride);
 	const auto Channel = ColStride / Width;
 
 	auto Ret = Image5D::Zeros(
@@ -153,7 +141,7 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	const auto RetPixStride = Ret.Stride(2);
 
 	const auto RetData = Ret.Data();
-	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
+	const auto BitMapData = static_cast<BYTE*>(BitmapData->Scan0);
 
 	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
 	Int64 HOffsetBack = HOffsetFront + WindowHeight;
@@ -172,7 +160,7 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
 			Ret.AppendTask(
-				[=]
+				[=](SharedScopeExit, SharedScopeExit) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
 					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
@@ -196,12 +184,14 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 							Data[3] = CurData[3];  //A
 						}
 					}
-				}
+				},
+				BitmapLockGuard,
+				BitmapGuard
 			);
 		}
 	}
 
-	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	return std::make_tuple(std::move(Ret), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -223,7 +213,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 	auto Bitmap = Gdiplus::Bitmap::FromFile(Path.c_str());
 	if (!Bitmap)
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
-	UniqueScopeExit BitmapGuard([&] { delete Bitmap; });
+	SharedScopeExit BitmapGuard([=] { delete Bitmap; });
 
 	const auto Width = (Int64)Bitmap->GetWidth();
 	const auto Height = (Int64)Bitmap->GetHeight();
@@ -240,14 +230,14 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 	//const auto WindowCount = WindowCountHeight * WindowCountWidth;
 
 	Gdiplus::Rect Rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
-	Gdiplus::BitmapData BitmapData;
+	auto BitmapData = std::make_shared<Gdiplus::BitmapData>();
 
 	//BGRA
-	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &BitmapData) != Gdiplus::Status::Ok)
+	if (Bitmap->LockBits(&Rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, BitmapData.get()) != Gdiplus::Status::Ok)
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
-	UniqueScopeExit BitmapLockGuard([&] { Bitmap->UnlockBits(&BitmapData); });
+	SharedScopeExit BitmapLockGuard([=] { Bitmap->UnlockBits(BitmapData.get()); });
 
-	const auto ColStride = static_cast<Int64>(BitmapData.Stride);
+	const auto ColStride = static_cast<Int64>(BitmapData->Stride);
 	const auto Channel = ColStride / Width;
 
 	auto Ret = NormalizedImage5D::Ones(
@@ -264,7 +254,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 	const auto RetPixStride = Ret.Stride(2);
 
 	const auto RetData = Ret.Data();
-	const auto BitMapData = static_cast<BYTE*>(BitmapData.Scan0);
+	const auto BitMapData = static_cast<BYTE*>(BitmapData->Scan0);
 
 	Int64 HOffsetFront = -std::max(WindowHeight - HopHeight, 0ll);
 	Int64 HOffsetBack = HOffsetFront + WindowHeight;
@@ -283,7 +273,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
 			Ret.AppendTask(
-				[=]
+				[=](SharedScopeExit, SharedScopeExit) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
 					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
@@ -307,12 +297,14 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 							Data[3] = static_cast<float>(CurData[3]) / 255.f;  //A
 						}
 					}
-				}
+				},
+				BitmapLockGuard,
+				BitmapGuard
 			);
 		}
 	}
 
-	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	return std::make_tuple(std::move(Ret), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -321,7 +313,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 }
 
 std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
-	const Image3D& ImageData,
+	const Image3D& RawImageData,
 	Int64 WindowHeight,
 	Int64 WindowWidth,
 	Int64 HopHeight,
@@ -331,8 +323,13 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
 		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
 
-	if (!ImageData.HasValue())
+	if (!RawImageData.HasValue())
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+
+	if (RawImageData.Size(2) != 4)
+		_D_Dragonian_Lib_Throw_Exception("Image buffer must be [H, W, 4] format!");
+
+	const auto ImageData = RawImageData.Contiguous();
 
 	const auto Width = ImageData.Size(1);
 	const auto Height = ImageData.Size(0);
@@ -360,6 +357,7 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 			Channel
 		}
 	).Evaluate();
+	ImageData.Evaluate();
 	const auto RetColStride = Ret.Stride(0);
 	const auto RetRowStride = Ret.Stride(1);
 	const auto RetPixStride = Ret.Stride(2);
@@ -384,7 +382,7 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
 			Ret.AppendTask(
-				[=]
+				[=](std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
 					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
@@ -408,12 +406,13 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 							Data[3] = CurData[3];  //A
 						}
 					}
-				}
+				},
+				ImageData.Buffer()
 			);
 		}
 	}
 
-	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	return std::make_tuple(std::move(Ret), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -422,19 +421,23 @@ std::tuple<Image5D, Int64, Int64> LoadAndSplitImage(
 }
 
 std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
-	const NormalizedImage3D& ImageData,
+	const NormalizedImage3D& RawImageData,
 	Int64 WindowHeight,
 	Int64 WindowWidth,
 	Int64 HopHeight,
 	Int64 HopWidth
 )
-
 {
 	if (WindowHeight % 2 || WindowWidth % 2 || HopHeight % 2 || HopWidth % 2)
 		_D_Dragonian_Lib_Throw_Exception("arg must be divisible by 2!");
 
-	if (!ImageData.HasValue())
+	if (!RawImageData.HasValue())
 		_D_Dragonian_Lib_Throw_Exception("image load failed!");
+
+	if (RawImageData.Size(2) != 4)
+		_D_Dragonian_Lib_Throw_Exception("Image buffer must be [H, W, 4] format!");
+
+	const auto ImageData = RawImageData.Contiguous();
 
 	const auto Width = ImageData.Size(1);
 	const auto Height = ImageData.Size(0);
@@ -462,6 +465,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 			Channel
 		}
 	).Evaluate();
+	ImageData.Evaluate();
 	const auto RetColStride = Ret.Stride(0);
 	const auto RetRowStride = Ret.Stride(1);
 	const auto RetPixStride = Ret.Stride(2);
@@ -486,7 +490,7 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 		for (Int64 WinW = 0; WinW < WindowCountWidth; ++WinW, WOffsetFront += HopWidth, WOffsetBack += HopWidth)
 		{
 			Ret.AppendTask(
-				[=]
+				[=](std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto WFront = std::clamp(WOffsetFront, 0ll, Width);
 					const auto WFrontPadding = std::max(0 - WOffsetFront, 0ll);
@@ -510,12 +514,13 @@ std::tuple<NormalizedImage5D, Int64, Int64> LoadAndSplitImageNorm(
 							Data[3] = CurData[3];  //A
 						}
 					}
-				}
+				},
+				ImageData.Buffer()
 			);
 		}
 	}
 
-	return std::make_tuple(std::move(Ret.Evaluate()), Height, Width);
+	return std::make_tuple(std::move(Ret), Height, Width);
 	/*return Image::FromBuffer(
 		{ 1, Height, Width, Channel },
 		static_cast<BYTE*>(BitmapData.Scan0),
@@ -548,7 +553,9 @@ void SaveBitmap(
 
 	UniqueScopeExit LockGuard([&] { bitmap->UnlockBits(&bitmapData); });
 
+	ImageData.Evaluate();
 	const auto ImageDataPtr = ImageData.Data();
+	const auto ChannelStride = ImageData.Stride(2);
 	const auto PixStride = ImageData.Stride(1);
 	const auto RowStride = ImageData.Stride(0);
 
@@ -559,10 +566,10 @@ void SaveBitmap(
 		for (Int64 x = 0; x < Width; ++x) {
 			const auto offset = y * RowStride + x * PixStride;
 			BYTE* pixel = dstData + y * dstStride + x * 4ll;
-			pixel[0] = static_cast<BYTE>(ImageDataPtr[offset + 2]); // B
-			pixel[1] = static_cast<BYTE>(ImageDataPtr[offset + 1]); // G
+			pixel[0] = static_cast<BYTE>(ImageDataPtr[offset + 2 * ChannelStride]); // B
+			pixel[1] = static_cast<BYTE>(ImageDataPtr[offset + 1 * ChannelStride]); // G
 			pixel[2] = static_cast<BYTE>(ImageDataPtr[offset + 0]); // R
-			pixel[3] = static_cast<BYTE>(ImageDataPtr[offset + 3]); // A
+			pixel[3] = static_cast<BYTE>(ImageDataPtr[offset + 3 * ChannelStride]); // A
 		}
 	}
 
@@ -586,7 +593,7 @@ void SaveBitmap(
 	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(static_cast<INT>(Width), static_cast<INT>(Height), PixelFormat32bppARGB);
 	if (!bitmap)
 		_D_Dragonian_Lib_Throw_Exception("Failed to create GDI+ bitmap!");
-
+	
 	UniqueScopeExit BitmapGuard([&] { delete bitmap; });
 
 	Gdiplus::Rect rect(0, 0, static_cast<INT>(Width), static_cast<INT>(Height));
@@ -596,7 +603,9 @@ void SaveBitmap(
 
 	UniqueScopeExit LockGuard([&] { bitmap->UnlockBits(&bitmapData); });
 
+	ImageData.Evaluate();
 	const auto ImageDataPtr = ImageData.Data();
+	const auto ChannelStride = ImageData.Stride(2);
 	const auto PixStride = ImageData.Stride(1);
 	const auto RowStride = ImageData.Stride(0);
 
@@ -607,10 +616,18 @@ void SaveBitmap(
 		for (Int64 x = 0; x < Width; ++x) {
 			const auto offset = y * RowStride + x * PixStride;
 			BYTE* pixel = dstData + y * dstStride + x * 4ll;
-			pixel[0] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 2] * 255.f, 0.f, 255.f)); // B
-			pixel[1] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 1] * 255.f, 0.f, 255.f)); // G
-			pixel[2] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 0] * 255.f, 0.f, 255.f)); // R
-			pixel[3] = static_cast<BYTE>(std::clamp(ImageDataPtr[offset + 3] * 255.f, 0.f, 255.f)); // A
+			pixel[0] = static_cast<BYTE>(std::clamp(
+				ImageDataPtr[offset + 2 * ChannelStride] * 255.f, 0.f, 255.f
+			)); // B
+			pixel[1] = static_cast<BYTE>(std::clamp(
+				ImageDataPtr[offset + 1 * ChannelStride] * 255.f, 0.f, 255.f
+			)); // G
+			pixel[2] = static_cast<BYTE>(std::clamp(
+				ImageDataPtr[offset + 0] * 255.f, 0.f, 255.f
+			)); // R
+			pixel[3] = static_cast<BYTE>(std::clamp(
+				ImageDataPtr[offset + 3 * ChannelStride] * 255.f, 0.f, 255.f
+			)); // A
 		}
 	}
 
@@ -664,35 +681,45 @@ NormalizedImage3D CombineImage(
 			4
 		}
 	);
-	auto Weights = Ret.Clone().Evaluate();
+	auto Weights = NormalizedImage3D::Zeros(
+		{
+			ImageHeight + WindowHeight,
+			ImageWidth + WindowWidth,
+			4
+		}
+	).Evaluate();
+	Ret.Evaluate();
+	ImageSlice.Evaluate();
 
 	const auto RetData = Ret.Data();
 	const auto ImageData = ImageSlice.Data();
 	const auto WeightsData = Weights.Data();
+	const auto [_1DS, _2DS, _3DS, _4DS, _5DS] = ImageSlice.ViewStrides().RawArray();
+	const auto [_1DSS, _2DSS, _3DSS] = Ret.ViewStrides().RawArray();
 
-	auto CombineFn = [=](auto Channel)
+	auto CombineFn = [=](auto Channel, std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 		{
 			for (Int64 WinH = 0; WinH < WindowCountH; ++WinH)
 			{
-				const auto ImageDataHW = ImageData + WinH * ImageSlice.Stride(0);
-				const auto RetDataHW = RetData + WinH * HopHeight * Ret.Stride(0);
+				const auto ImageDataHW = ImageData + WinH * _1DS;
+				const auto RetDataHW = RetData + WinH * HopHeight * _1DSS;
 				for (Int64 WinW = 0; WinW < WindowCountW; ++WinW)
 				{
-					const auto ImageDataW = ImageDataHW + WinW * ImageSlice.Stride(1);
-					const auto RetDataW = RetDataHW + WinW * HopWidth * Ret.Stride(1);
+					const auto ImageDataW = ImageDataHW + WinW * _2DS;
+					const auto RetDataW = RetDataHW + WinW * HopWidth * _2DSS;
 					for (Int64 Y = 0; Y < WindowHeight; ++Y)
 					{
-						const auto ImageDataY = ImageDataW + Y * ImageSlice.Stride(2);
-						const auto RetDataY = RetDataW + Y * Ret.Stride(0);
+						const auto ImageDataY = ImageDataW + Y * _3DS;
+						const auto RetDataY = RetDataW + Y * _1DSS;
 						const auto WeightY = WindowH[Y];
 						for (Int64 X = 0; X < WindowWidth; ++X)
 						{
-							const auto ImageDataXY = ImageDataY + X * 4ll;
+							const auto ImageDataXY = ImageDataY + X * _4DS;
 							const auto RetDataXY = RetDataY + X * 4ll;
 							const auto WeightsXY = WeightsData + (RetDataXY - RetData);
 							const auto WeightX = WindowW[X];
 							const auto Weight = WeightY * WeightX;
-							RetDataXY[Channel] += ImageDataXY[Channel] * Weight;
+							RetDataXY[Channel] += *(ImageDataXY + Channel * _5DS) * Weight;
 							WeightsXY[Channel] += Weight;
 						}
 					}
@@ -703,14 +730,15 @@ NormalizedImage3D CombineImage(
 	for (Int64 C = 0; C < 4; ++C)
 		Ret.AppendTask(
 			CombineFn,
-			C
+			C,
+			ImageSlice.Buffer()
 		);
 
 	return (Ret / Weights).Slice({
 			Range{ CrossFadeSizeH, CrossFadeSizeH + SourceHeight },
 			Range{ CrossFadeSizeW, CrossFadeSizeW + SourceWidth },
 			None
-		}).Contiguous().Evaluate();
+		}).Contiguous();
 }
 
 NormalizedImage3D CombineImage(

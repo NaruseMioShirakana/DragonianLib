@@ -136,15 +136,17 @@ namespace FunctionTransform
 
 	template <typename TypeInput, typename TypeOutput>
 	static void ExecuteStft(
-		Tensor<TypeOutput, 4, Device::CPU>& View, TypeOutput* Spectrogram, const TypeInput* Signal, const double* WINDOW,
-		int WINDOW_SIZE, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES
+		Tensor<TypeOutput, 4, Device::CPU>& View, TypeOutput* Spectrogram, const TypeInput* Signal, 
+		const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW, int WINDOW_SIZE, int NUM_FFT,
+		int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES,
+		const std::shared_ptr<void>& BUFFER
 	)
 	{
 		constexpr int Stride = 100;
 		for (int Thread = 0; Thread < NUM_FRAMES; Thread += Stride)
 		{
 			View.AppendTask(
-				[NUM_FFT, FFT_BINS, NUM_FRAMES, PADDING, HOP_SIZE, Signal, WINDOW, WINDOW_SIZE, Spectrogram, Thread]
+				[=](std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto FrameEnd = std::min(Thread + Stride, NUM_FRAMES);
 					DragonianLibSTL::Vector VInputBuffer(NUM_FFT, 0.0);
@@ -164,7 +166,7 @@ namespace FunctionTransform
 						WindowFn(
 							SignalData + PADDING,
 							&Signal[size_t(CurFrame) * HOP_SIZE],
-							WINDOW,
+							WINDOW->Data(),
 							WINDOW_SIZE
 						);
 						fftw_execute(PlanDftReal2Complex.get());
@@ -175,22 +177,25 @@ namespace FunctionTransform
 							Spectrogram[BeginIdx + j] = Cpx;
 						}
 					}
-				}
+				},
+				BUFFER
 			);
 		}
 	}
 
 	template <typename TypeInput, typename TypeOutput>
 	static void ExecuteIStft(
-		Tensor<TypeOutput, 3, Device::CPU>& View, TypeOutput* Signal, const TypeInput* Spectrogram, const double* WINDOW,
-		double WINDOW_POW_SUM, int WINDOW_SIZE, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES
+		Tensor<TypeOutput, 3, Device::CPU>& View, TypeOutput* Signal, const TypeInput* Spectrogram,
+		const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW, double WINDOW_POW_SUM, int WINDOW_SIZE,
+		int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES,
+		const std::shared_ptr<void>& BUFFER
 	)
 	{
 		constexpr int Stride = 100;
 		for (int Thread = 0; Thread < NUM_FRAMES; Thread += Stride)
 		{
 			View.AppendTask(
-				[NUM_FFT, FFT_BINS, NUM_FRAMES, PADDING, HOP_SIZE, Signal, WINDOW, WINDOW_SIZE, WINDOW_POW_SUM, Spectrogram, Thread]
+				[=](std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					const auto FrameEnd = std::min(Thread + Stride, NUM_FRAMES);
 					DragonianLibSTL::Vector VOutputBuffer(NUM_FFT, 0.0);
@@ -214,22 +219,23 @@ namespace FunctionTransform
 						InverseWindowFn(
 							SignalData + PADDING,
 							SignalData + PADDING,
-							WINDOW,
+							WINDOW->Data(),
 							WINDOW_POW_SUM,
 							WINDOW_SIZE
 						);
 						for (int j = 0; j < WINDOW_SIZE; j++)
 							Signal[size_t(CurFrame) * HOP_SIZE + j] += TypeOutput(SignalData[j + PADDING]);
 					}
-				}
+				},
+				BUFFER
 			);
 		}
 	}
 
 	template <typename TypeOutput, typename TypeInput>
 	static Tensor<TypeOutput, 4, Device::CPU> ExecuteStft(
-		const Tensor<TypeInput, 3, Device::CPU>& RawSignal, const double* WINDOW, int WINDOW_SIZE,
-		int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int CENTER_PADDING_SIZE, PaddingType PADDING_TYPE
+		const Tensor<TypeInput, 3, Device::CPU>& RawSignal, const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW,
+		int WINDOW_SIZE, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int CENTER_PADDING_SIZE, PaddingType PADDING_TYPE
 	)
 	{
 		const auto [BatchSize, Channel, RawSignalSize] = RawSignal.Size().RawArray();
@@ -264,17 +270,18 @@ namespace FunctionTransform
 				const auto SpectrogramData = SpecDataBegin + (b * Channel + c) * NUM_FRAMES * FFT_BINS;
 				ExecuteStft(
 					SpectrogramTensor, SpectrogramData, SignalData, WINDOW,
-					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(NUM_FRAMES)
+					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(NUM_FRAMES),
+					SignalCont.Buffer()
 				);
 			}
 		}
-		return std::move(SpectrogramTensor.Evaluate());
+		return SpectrogramTensor;
 	}
 
 	template <typename TypeOutput, typename TypeInput>
 	static Tensor<TypeOutput, 3, Device::CPU> ExecuteIStft(
-		const Tensor<TypeInput, 4, Device::CPU>& RawSpectrogram, const double* WINDOW, int WINDOW_SIZE, double WINDOW_POW_SUM,
-		int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS
+		const Tensor<TypeInput, 4, Device::CPU>& RawSpectrogram, const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW,
+		int WINDOW_SIZE, double WINDOW_POW_SUM, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS
 	)
 	{
 		const auto [BatchSize, ChannelCount, FrameCount, StftBins] = RawSpectrogram.Size().RawArray();
@@ -296,11 +303,12 @@ namespace FunctionTransform
 				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFT_BINS;
 				ExecuteIStft(
 					Signal, SignalData, SpectrogramData, WINDOW, WINDOW_POW_SUM,
-					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(FrameCount)
+					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(FrameCount),
+					Spectrogram.Buffer()
 				);
 			}
 		}
-		return std::move(Signal.Evaluate());
+		return Signal;
 	}
 
 	StftKernel::StftKernel(
@@ -333,15 +341,15 @@ namespace FunctionTransform
 		PADDING_TYPE = Padding;
 
 		if (std::cmp_equal(Window.Size(), WINDOW_SIZE))
-			WINDOW = std::move(Window);
+			WINDOW = std::make_shared<TemplateLibrary::Vector<Double>>(std::move(Window));
 		else
 		{
-			WINDOW.Resize(WINDOW_SIZE);
-			HannWindowFn(WINDOW.Data(), WINDOW_SIZE);
+			WINDOW = std::make_shared<TemplateLibrary::Vector<Double>>(WINDOW_SIZE);
+			HannWindowFn(WINDOW->Data(), WINDOW_SIZE);
 		}
 		WINDOW_POWER_SUM = 0.;
 		for (int i = 0; i < WINDOW_SIZE; i++)
-			WINDOW_POWER_SUM += WINDOW[i] * WINDOW[i];
+			WINDOW_POWER_SUM += (*WINDOW)[i] * (*WINDOW)[i];
 	}
 
 	StftKernel::~StftKernel() = default;
@@ -349,7 +357,7 @@ namespace FunctionTransform
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -357,7 +365,7 @@ namespace FunctionTransform
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -365,7 +373,7 @@ namespace FunctionTransform
 	Tensor<Float64, 4, Device::CPU> StftKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float64>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -373,7 +381,7 @@ namespace FunctionTransform
 	Tensor<Complex32, 4, Device::CPU> StftKernel::Execute(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Complex32>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -381,7 +389,7 @@ namespace FunctionTransform
 	Tensor<Complex64, 4, Device::CPU> StftKernel::Execute(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Complex64>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -389,28 +397,28 @@ namespace FunctionTransform
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float32>(
-			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float32>(
-			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float64, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex64, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float64>(
-			Spectrogram, WINDOW.Data(), WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal, Int64 HopSize) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW.Data(),
+			Signal, WINDOW,
 			WINDOW_SIZE, NUM_FFT, static_cast<int>(HopSize), PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
@@ -421,7 +429,7 @@ namespace FunctionTransform
 			Spectrogram.Shape().RawArray();
 		const auto FFTSize = (FFTBin - 1) * 2;
 		const auto SignalSize = FrameCount * HopSize;
-		return StftKernel(static_cast<int>(FFTSize), static_cast<int>(HopSize)).Inverse(Spectrogram)[{None, None, { None, SignalSize }}].Contiguous().Evaluate();
+		return StftKernel(static_cast<int>(FFTSize), static_cast<int>(HopSize)).Inverse(Spectrogram)[{None, None, { None, SignalSize }}].Contiguous();
 	}
 
 	MFCCKernel::MFCCKernel(
@@ -485,6 +493,7 @@ namespace FunctionTransform
 				auto MelData = Result.Data() + (b * ChannelCount + c) * MEL_BINS * FrameCount;
 				Result.AppendTask(
 					[this, SpecData, MelData, FrameCount]
+					(std::shared_ptr<void>, std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 					{
 						//MelBasis[MelBins, FFTSize]
 						//SpecData[FrameCount, FFTSize]
@@ -508,16 +517,14 @@ namespace FunctionTransform
 						);
 						for (int i = 0; i < MEL_BINS * FrameCount; i++)
 							MelData[i] = log(std::max(1e-5f, MelData[i]));
-					}
+					},
+					WEIGHT.Buffer(),
+					Spec.Buffer()
 				);
 			}
 		}
 
-		const auto BgnTime = clock();
-		Result.Evaluate();
-		if (_MyLogger)
-			_MyLogger->Log((L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
-		return std::move(Result.Evaluate());
+		return Result;
 	}
 
 	Tensor<Float64, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 4, Device::CPU>& Spectrogram) const
@@ -534,6 +541,7 @@ namespace FunctionTransform
 				auto MelData = Result.Data() + (b * ChannelCount + c) * MEL_BINS * FrameCount;
 				Result.AppendTask(
 					[this, SpecData, MelData, FrameCount]
+					(std::shared_ptr<void>, std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 					{
 						//MelBasis[MelBins, FFTSize]
 						//SpecData[FrameCount, FFTSize]
@@ -557,16 +565,14 @@ namespace FunctionTransform
 						);
 						for (int i = 0; i < MEL_BINS * FrameCount; i++)
 							MelData[i] = log(std::max(1e-5, MelData[i]));
-					}
+					},
+					WEIGHT.Buffer(),
+					Spec.Buffer()
 				);
 			}
 		}
 
-		const auto BgnTime = clock();
-		Result.Evaluate();
-		if (_MyLogger)
-			_MyLogger->Log((L"Mel Transform Use Time " + std::to_wstring(clock() - BgnTime) + L"ms"), Logger::LogLevel::Info);
-		return std::move(Result.Evaluate());
+		return Result;
 	}
 
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
@@ -574,19 +580,19 @@ namespace FunctionTransform
 		const auto SignalSize = Signal.Size(2);
 		if (SignalSize < STFT_KERNEL.WINDOW_SIZE)
 			_D_Dragonian_Lib_Throw_Exception("Signal is too short.");
-		return operator()(Signal.Cast<Float32>());
+		return operator()(Signal.Cast<Float32>() / 32768.f);
 	}
 
 	Tensor<Float32, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		auto [Mel, Spec] = WithSpec(Signal);
-		return std::move(Mel.Evaluate());
+		return std::move(Mel);
 	}
 
 	Tensor<Float64, 4, Device::CPU> MFCCKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		auto [Mel, Spec] = WithSpec(Signal);
-		return std::move(Mel.Evaluate());
+		return std::move(Mel);
 	}
 
 	DragonianLibSTL::Vector<float> CQT(

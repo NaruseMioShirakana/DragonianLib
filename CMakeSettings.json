@@ -31,7 +31,7 @@
       "variables": [
         {
           "name": "CMAKE_CXX_FLAGS_RELEASE",
-          "value": "/MD /GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
+          "value": "/MD /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
           "type": "STRING"
         },
         {
@@ -54,12 +54,12 @@
       "variables": [
         {
           "name": "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
-          "value": "/MD /GL /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj /DNDEBUG",
+          "value": "/MD /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj /DNDEBUG",
           "type": "STRING"
         },
         {
           "name": "CMAKE_CXX_FLAGS_RELEASE",
-          "value": "/MD /GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
+          "value": "/MD /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
           "type": "STRING"
         },
         {

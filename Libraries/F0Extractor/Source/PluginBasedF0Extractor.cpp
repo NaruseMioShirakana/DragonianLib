@@ -8,9 +8,9 @@ PluginF0Extractor::PluginF0Extractor(const Plugin::Plugin& Plugin, const void* U
 			[Plugin](void* Instance) { Plugin->DestoryInstance(Instance); })
 	), _MyPlugin(Plugin),
 	_MyGetF0Size((GetF0SizeFunctionType)Plugin->GetFunction("GetF0Size", true)),
-	_MyExtractPD((ExtractFunctionType)_MyPlugin->GetFunction("ExtractF0PD")),
-	_MyExtractPS((ExtractFunctionType)_MyPlugin->GetFunction("ExtractF0PS")),
-	_MyExtractI16((ExtractFunctionType)_MyPlugin->GetFunction("ExtractF0I16"))
+	_MyExtractPD((ExtractFunctionTypeF64)_MyPlugin->GetFunction("ExtractF0PD")),
+	_MyExtractPS((ExtractFunctionTypeF32)_MyPlugin->GetFunction("ExtractF0PS")),
+	_MyExtractI16((ExtractFunctionTypeI16)_MyPlugin->GetFunction("ExtractF0I16"))
 {
 
 }
@@ -28,15 +28,24 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float3
 	auto InputData = PCMData.Continuous().Evaluate();
 	Dimensions<2> OutputSize{ Channel, F0Size };
 	Tensor<Float32, 2, Device::CPU> Output = Tensor<Float32, 2, Device::CPU>::New(OutputSize);
+	const auto InputBuffer = InputData.Data();
+	const auto OutputBuffer = Output.Data();
 
-	_MyExtractPS(
-		_MyInstance.get(),
-		InputData.Data(), DataSize, Channel,
-		Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
-		Output.Data()
+	Output.AppendTask(
+		[this, InputBuffer, Params, OutputBuffer, DataSize, Channel]
+		(std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
+		{
+			_MyExtractPS(
+				_MyInstance.get(),
+				InputBuffer, DataSize, Channel,
+				Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
+				OutputBuffer
+			);
+		},
+		InputData.Buffer()
 	);
 
-	return std::move(Output.Evaluate());
+	return Output;
 }
 
 Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
@@ -52,15 +61,24 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Float6
 	auto InputData = PCMData.Continuous().Evaluate();
 	Dimensions<2> OutputSize{ Channel, F0Size };
 	Tensor<Float32, 2, Device::CPU> Output = Tensor<Float32, 2, Device::CPU>::New(OutputSize);
+	const auto InputBuffer = InputData.Data();
+	const auto OutputBuffer = Output.Data();
 
-	_MyExtractPD(
-		_MyInstance.get(),
-		InputData.Data(), DataSize, Channel,
-		Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
-		Output.Data()
+	Output.AppendTask(
+		[this, InputBuffer, Params, OutputBuffer, DataSize, Channel]
+		(std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
+		{
+			_MyExtractPD(
+				_MyInstance.get(),
+				InputBuffer, DataSize, Channel,
+				Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
+				OutputBuffer
+			);
+		},
+		InputData.Buffer()
 	);
 
-	return std::move(Output.Evaluate());
+	return Output;
 }
 
 Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
@@ -76,15 +94,24 @@ Tensor<Float32, 2, Device::CPU> PluginF0Extractor::ExtractF0(const Tensor<Int16,
 	auto InputData = PCMData.Continuous().Evaluate();
 	Dimensions<2> OutputSize{ Channel, F0Size };
 	Tensor<Float32, 2, Device::CPU> Output = Tensor<Float32, 2, Device::CPU>::New(OutputSize);
+	const auto InputBuffer = InputData.Data();
+	const auto OutputBuffer = Output.Data();
 
-	_MyExtractI16(
-		_MyInstance.get(),
-		InputData.Data(), DataSize, Channel,
-		Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
-		Output.Data()
+	Output.AppendTask(
+		[this, InputBuffer, Params, OutputBuffer, DataSize, Channel]
+		(std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
+		{
+			_MyExtractI16(
+				_MyInstance.get(),
+				InputBuffer, DataSize, Channel,
+				Params.SamplingRate, Params.HopSize, Params.F0Bins, Params.F0Max, Params.F0Min, Params.UserParameter,
+				OutputBuffer
+			);
+		},
+		InputData.Buffer()
 	);
 
-	return std::move(Output.Evaluate());
+	return Output;
 }
 
 

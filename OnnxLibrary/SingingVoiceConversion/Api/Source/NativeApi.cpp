@@ -797,7 +797,7 @@ float* _Dragonian_Lib_Svc_Add_Prefix(GetTensorData)(
 		_Dragonian_Lib_Svc_Add_Prefix(RaiseError)(L"_Tensor Could Not Be Null");
 		return nullptr;
 	}
-
+	(*_Tensor)->Evaluate();
 	return (*_Tensor)->Data();
 }
 

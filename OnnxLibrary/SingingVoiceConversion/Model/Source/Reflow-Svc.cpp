@@ -70,7 +70,7 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 				Tuple[0].GetTensorTypeAndShapeInfo().GetElementCount()
 			);
 
-			(*Mel += (Mel2 * Mel2Scale)).Evaluate();
+			(*Mel += (Mel2 * Mel2Scale));
 		}
 
 		if ((Params.Reflow.End - Params.Reflow.Begin) / Params.Reflow.Stride <= 0.f)
@@ -79,6 +79,7 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 			return std::move(*Mel);
 		}
 
+		Mel = Mel->Contiguous().Evaluate();
 		Spec = Ort::Value::CreateTensor(
 			*_MyMemoryInfo,
 			Mel->Data(),

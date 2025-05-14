@@ -19,7 +19,7 @@ namespace PreDefinedF0PreprocessMethod
 		void*
 	)
 	{
-		return F0.Log2().Evaluate();
+		return F0.Log2();
 	}
 }
 

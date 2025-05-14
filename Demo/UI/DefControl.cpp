@@ -489,7 +489,7 @@ namespace WndControls
 			SamplingRate == SpecSamplingRate ?
 			Audio.AutoView(1, 1, -2) :
 			DragonianLib::FunctionTransform::WindowedResample(
-				Audio.Transpose().UnSqueeze(0), SamplingRate, SpecSamplingRate
+				Audio.Transpose().UnSqueeze(0), SamplingRate, SpecSamplingRate, false
 			).Evaluate();
 
 		Spec = GetMelFn().GetStftKernel()(SpecAudio).AutoView(-2, -1);

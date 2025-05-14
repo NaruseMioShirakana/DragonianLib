@@ -239,6 +239,7 @@ Tensor<Float32, 4, Device::CPU> ProphesierDiffusion::Forward(
 			return std::move(*Mel);
 		}
 
+		Mel = Mel->Contiguous().Evaluate();
 		auto Spec = Ort::Value::CreateTensor(
 			*_MyMemoryInfo,
 			Mel->Data(),
@@ -358,7 +359,7 @@ Tensor<Float32, 4, Device::CPU> DiffusionSvc::Forward(
 					Tuple[2].GetTensorTypeAndShapeInfo().GetElementCount()
 				);
 
-				(*Mel += (Mel2 * Mel2Scale)).Evaluate();
+				(*Mel += (Mel2 * Mel2Scale));
 			}
 		}
 
@@ -368,6 +369,7 @@ Tensor<Float32, 4, Device::CPU> DiffusionSvc::Forward(
 			return std::move(*Mel);
 		}
 
+		Mel = Mel->Contiguous().Evaluate();
 		Spec = Ort::Value::CreateTensor(
 			*_MyMemoryInfo,
 			Mel->Data(),

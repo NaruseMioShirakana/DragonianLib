@@ -79,7 +79,7 @@ std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> SuperResolutionBCRGBHW::
 			Ret.Permute(0, 1, 3, 4, 2),
 			AlphaChannel,
 			-1
-		).Evaluate(),
+		),
 		SourceHeight * _MyScaleH,
 		SourceWidth * _MyScaleW
 	);
@@ -153,7 +153,7 @@ std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> SuperResolutionBHWCRGB::
 			Ret,
 			AlphaChannel,
 			-1
-		).Evaluate(),
+		),
 		SourceHeight * _MyScaleH,
 		SourceWidth * _MyScaleW
 	);
@@ -215,7 +215,7 @@ std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> SuperResolutionBCRGBAHW:
 			_MyCallback(false, Batch);
 	}
 	return std::make_tuple(
-		Ret.Permute(0, 1, 3, 4, 2).Evaluate(),
+		Ret.Permute(0, 1, 3, 4, 2),
 		SourceHeight * _MyScaleH,
 		SourceWidth * _MyScaleW
 	);
@@ -277,7 +277,7 @@ std::tuple<ImageVideo::NormalizedImage5D, Int64, Int64> SuperResolutionBHWCRGBA:
 			_MyCallback(false, Batch);
 	}
 	return std::make_tuple(
-		Ret.Evaluate(),
+		std::move(Ret),
 		SourceHeight * _MyScaleH,
 		SourceWidth * _MyScaleW
 	);

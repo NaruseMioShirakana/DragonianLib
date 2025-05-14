@@ -7,7 +7,7 @@ if(DRAGONIANLIB_SHARED_LIBS)
 	add_definitions(-DDRAGONIANLIB_IMPORT)
 endif()
 
-if (true)
+if (false)
 	file(GLOB_RECURSE F0EditorUISrc 
 		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.h
 		${CMAKE_CURRENT_SOURCE_DIR}/UI/*.c
@@ -27,23 +27,7 @@ endif()
 
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-	target_compile_options(
-		${DRAGONIANLIBDEMOEXE} PRIVATE
-		/GL /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
-	)
-	target_link_options(
-        ${DRAGONIANLIBDEMOEXE} PRIVATE
-        /LTCG
-    )
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-	target_compile_options(
-		${DRAGONIANLIBDEMOEXE} PRIVATE
-		
-	)
-	target_link_options(
-        ${DRAGONIANLIBDEMOEXE} PRIVATE
-        /LTCG
-    )
 else()
 	add_definitions(-DDRAGONIANLIB_DEBUG)
 	target_compile_options(
@@ -55,8 +39,8 @@ endif()
 target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_LIBRARIES})
 target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_INCLUDE_DIRS})
 
-#target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_ONNX_LIBRARIES})
-#target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_ONNX_INCLUDE_DIRS}) 
+target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_ONNX_LIBRARIES})
+target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_ONNX_INCLUDE_DIRS}) 
 
 #target_link_libraries(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_TENSORRT_LIBRARIES})
 #target_include_directories(${DRAGONIANLIBDEMOEXE} PRIVATE ${DRAGONIANLIB_TENSORRT_INCLUDE_DIRS} ${TENSORRT_INCLUDE_DIRS}) 

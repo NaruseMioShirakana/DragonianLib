@@ -55,13 +55,11 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 
 	SliceDatas InferenceDatas;
 
-	Audio.Evaluate();
-
 	InferenceDatas.SourceSampleRate = SourceSampleRate;
 	InferenceDatas.SourceSampleCount = Length;
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		InferenceDatas.Units = (*UnitsEncoder)(Audio, SourceSampleRate, AudioMask).Evaluate();
+		InferenceDatas.Units = (*UnitsEncoder)(Audio, SourceSampleRate, AudioMask);
 	);
 
 	if (UnitsCluster)
@@ -70,17 +68,20 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 		const auto ClusterRate = Operators::BinaryOperators::Clamp(Params.ClusterRate, 0.f, 1.f);
 		if (ClusterRate > 1e-4)
 		{
-			auto ClusUnits = (UnitsCluster.value().get())->Search(InferenceDatas.Units.View(-1, _MyUnitsDim), static_cast<Long>(Params.SpeakerId)).View(BatchSize, Channels, AudioFrames, _MyUnitsDim).Evaluate();
+			auto ClusUnits = (UnitsCluster.value().get())->Search(
+				InferenceDatas.Units.View(-1, _MyUnitsDim),
+				static_cast<Long>(Params.SpeakerId)
+			).View(BatchSize, Channels, AudioFrames, _MyUnitsDim);
+
 			if (ClusterRate > 0.9999f)
 				InferenceDatas.Units = std::move(ClusUnits);
 			else
 				InferenceDatas.Units = InferenceDatas.Units * (1 - ClusterRate) + ClusUnits * ClusterRate;
-			InferenceDatas.Units.Evaluate();
 		}
 	}
 
 	_D_Dragonian_Lib_Rethrow_Block(
-		InferenceDatas.F0 = (*F0Extractor)(Audio.View(-1, Length), F0Params).View(BatchSize, Channels, -1).Evaluate();
+		InferenceDatas.F0 = (*F0Extractor)(Audio.View(-1, Length), F0Params).View(BatchSize, Channels, -1);
 	);
 
 	if (_HasVolumeEmbedding)
@@ -89,7 +90,7 @@ Tensor<Float32, 4, Device::CPU> SingingVoiceConversionModule::Inference(
 				Audio,
 				SourceSampleRate * _MyHopSize / _MyOutputSamplingRate,
 				SourceSampleRate >> 4
-			).Evaluate();
+			);
 		);
 
 	InferenceDatas.GTAudio = Audio.View();
@@ -113,40 +114,40 @@ SliceDatas SingingVoiceConversionModule::Preprocess(
 	Ret.SourceSampleCount = InferenceDatas.SourceSampleCount;
 
 	if (!InferenceDatas.Units.Null())
-		Ret.Units = InferenceDatas.Units.Clone().Evaluate();
+		Ret.Units = InferenceDatas.Units.Clone();
 
 	if (!InferenceDatas.F0.Null())
-		Ret.F0 = InferenceDatas.F0.Clone().Evaluate();
+		Ret.F0 = InferenceDatas.F0.Clone();
 
 	if (InferenceDatas.Volume && !InferenceDatas.Volume->Null())
-		Ret.Volume = InferenceDatas.Volume->Clone().Evaluate();
+		Ret.Volume = InferenceDatas.Volume->Clone();
 
 	if (InferenceDatas.UnVoice && !InferenceDatas.UnVoice->Null())
-		Ret.UnVoice = InferenceDatas.UnVoice->Clone().Evaluate();
+		Ret.UnVoice = InferenceDatas.UnVoice->Clone();
 
 	if (InferenceDatas.F0Embed && !InferenceDatas.F0Embed->Null())
-		Ret.F0Embed = InferenceDatas.F0Embed->Clone().Evaluate();
+		Ret.F0Embed = InferenceDatas.F0Embed->Clone();
 
 	if (InferenceDatas.UnitsLength && !InferenceDatas.UnitsLength->Null())
-		Ret.UnitsLength = InferenceDatas.UnitsLength->Clone().Evaluate();
+		Ret.UnitsLength = InferenceDatas.UnitsLength->Clone();
 
 	if (InferenceDatas.SpeakerId && !InferenceDatas.SpeakerId->Null())
-		Ret.SpeakerId = InferenceDatas.SpeakerId->Clone().Evaluate();
+		Ret.SpeakerId = InferenceDatas.SpeakerId->Clone();
 
 	if (InferenceDatas.Speaker && !InferenceDatas.Speaker->Null())
-		Ret.Speaker = InferenceDatas.Speaker->Clone().Evaluate();
+		Ret.Speaker = InferenceDatas.Speaker->Clone();
 
 	if (InferenceDatas.Noise && !InferenceDatas.Noise->Null())
-		Ret.Noise = InferenceDatas.Noise->Clone().Evaluate();
+		Ret.Noise = InferenceDatas.Noise->Clone();
 
 	if (InferenceDatas.Mel2Units && !InferenceDatas.Mel2Units->Null())
-		Ret.Mel2Units = InferenceDatas.Mel2Units->Clone().Evaluate();
+		Ret.Mel2Units = InferenceDatas.Mel2Units->Clone();
 
 	if (InferenceDatas.GTSpec && !InferenceDatas.GTSpec->Null())
-		Ret.GTSpec = InferenceDatas.GTSpec->Clone().Evaluate();
+		Ret.GTSpec = InferenceDatas.GTSpec->Clone();
 
 	if (InferenceDatas.GTAudio && !InferenceDatas.GTAudio->Null())
-		Ret.GTAudio = InferenceDatas.GTAudio->Clone().Evaluate();
+		Ret.GTAudio = InferenceDatas.GTAudio->Clone();
 
 	Ret.GTSampleRate = InferenceDatas.GTSampleRate;
 
@@ -235,6 +236,7 @@ Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::ExtractVolume(
 			auto VolumeData = Volume.Data() + i * Channels * NumFrames + j * NumFrames;
 			Volume.AppendTask(
 				[AudioData, Audio2Data, VolumeData, HopSize, WindowSize, NumFrames]
+				(std::shared_ptr<void>, std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					for (SizeType k = 0; k < NumFrames; ++k)
 					{
@@ -248,11 +250,13 @@ Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::ExtractVolume(
 						);
 						VolumeData[k] = sqrt(Operators::BinaryOperators::ClampMin(float(MeanSquare - Mean * Mean), 0.f));
 					}
-				}
+				},
+				NewAudio.Buffer(),
+				NewAudio2.Buffer()
 			);
 		}
 	}
-	return std::move(Volume.Evaluate());
+	return Volume;
 }
 
 Tensor<Int64, 3, Device::CPU> SingingVoiceConversionModule::GetF0Embed(
@@ -271,6 +275,7 @@ Tensor<Int64, 3, Device::CPU> SingingVoiceConversionModule::GetF0Embed(
 			auto F0EmbedData = F0Embed.Data() + i * Channels * Length + j * Length;
 			F0Embed.AppendTask(
 				[F0Data, F0EmbedData, Length, F0Bin, F0MelMax, F0MelMin]
+				(std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					for (SizeType k = 0; k < Length; ++k)
 					{
@@ -281,11 +286,12 @@ Tensor<Int64, 3, Device::CPU> SingingVoiceConversionModule::GetF0Embed(
 						F0Mel = std::min(F0Mel, F0Bin - 1.f);
 						F0EmbedData[k] = static_cast<Int64>(F0Mel);
 					}
-				}
+				},
+				F0Cont.Buffer()
 			);
 		}
 	}
-	return std::move(F0Embed.Evaluate());
+	return F0Embed;
 }
 
 Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::InterpolateUnVoicedF0(
@@ -303,6 +309,7 @@ Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::InterpolateUnVoice
 			auto InterpolatedF0Data = InterpolatedF0.Data() + i * Channels * Length + j * Length;
 			InterpolatedF0.AppendTask(
 				[InterpolatedF0Data, F0Data, Length]
+				(std::shared_ptr<void>) // NOLINT(performance-unnecessary-value-param)
 				{
 					constexpr Float32 epsilon = std::numeric_limits<Float32>::epsilon();
 
@@ -347,11 +354,12 @@ Tensor<Float32, 3, Device::CPU> SingingVoiceConversionModule::InterpolateUnVoice
 							break;
 						}
 					}
-				}
+				},
+				F0Cont.Buffer()
 			);
 		}
 	}
-	return std::move(InterpolatedF0.Evaluate());
+	return InterpolatedF0;
 }
 
 void SingingVoiceConversionModule::CheckParams(
@@ -416,7 +424,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessUnits(
 			MyData.Units = MyData.Units.Interpolate<Operators::InterpolateMode::Nearest>(
 				IDim(-2),
 				{ IDim(TargetNumFrames) }
-			).Evaluate();
+			);
 		);
 
 	return MyData;
@@ -463,7 +471,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessUnitsLength(
 			MyData.UnitsLength = UnitsSizeType::ConstantOf(
 				{ BatchSize, Channels, 1 },
 				TargetNumFrames
-			).Evaluate();
+			);
 		);
 	}
 
@@ -501,7 +509,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessMel2Units(
 				MyData.Mel2Units = MyData.Mel2Units->Interpolate<Operators::InterpolateMode::Nearest>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 	else
@@ -512,19 +520,19 @@ SliceDatas& SingingVoiceConversionModule::PreprocessMel2Units(
 		const auto UnitFrames = MyData.Units.Shape(-2);
 		auto MyMel2Unit = Functional::Linspace(
 			0.f, static_cast<Float32>(UnitFrames), TargetNumFrames, true
-		).Cast<Int64>().ClampMax(UnitFrames - 1).Evaluate();
+		).Cast<Int64>().ClampMax(UnitFrames - 1);
 		const auto BatchChannels = BatchSize * Channels;
 		if (BatchChannels > 1)
 			_D_Dragonian_Lib_Rethrow_Block(
 				MyData.Mel2Units = MyMel2Unit.UnSqueeze(0).Repeat(
 					{ BatchChannels }
-				).View(BatchSize, Channels, TargetNumFrames).Evaluate();
+				).View(BatchSize, Channels, TargetNumFrames);
 			);
 		else
 			_D_Dragonian_Lib_Rethrow_Block(
 				MyData.Mel2Units = MyMel2Unit.View(
 					BatchSize, Channels, TargetNumFrames
-				).Evaluate();
+				);
 			);
 	}
 
@@ -562,7 +570,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessUnVoice(
 				MyData.UnVoice = MyData.UnVoice->Interpolate<Operators::InterpolateMode::Nearest>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 	else
@@ -580,7 +588,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessUnVoice(
 				MyData.UnVoice = MyData.UnVoice->Interpolate<Operators::InterpolateMode::Nearest>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 
@@ -621,24 +629,24 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0(
 	if (InterpolateUnVoiced)
 		MyData.F0 = InterpolateUnVoicedF0(
 			MyData.F0
-		).Evaluate();
+		);
 
 	if (NumFramesF0 != TargetNumFrames)
 		_D_Dragonian_Lib_Rethrow_Block(
 			MyData.F0 = MyData.F0.Interpolate<Operators::InterpolateMode::Linear>(
 				IDim(-1),
 				{ IDim(TargetNumFrames) }
-			).Evaluate();
+			);
 		);
 
 	if (F0Method || abs(F0Offset) > 1e-4f)
-		MyData.SourceF0 = MyData.F0.Clone().Evaluate();
+		MyData.SourceF0 = MyData.F0.Clone();
 
 	if (abs(F0Offset) > 1e-4f)
-		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 *= std::pow(2.f, F0Offset / 12.f)).Evaluate(););
+		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 *= std::pow(2.f, F0Offset / 12.f)););
 
 	if (F0Method)
-		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 = F0Method(MyData.F0, UserParameters).Evaluate()););
+		_D_Dragonian_Lib_Rethrow_Block((MyData.F0 = F0Method(MyData.F0, UserParameters)););
 	
 	return MyData;
 }
@@ -675,7 +683,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessVolume(
 				MyData.Volume = MyData.Volume->Interpolate<Operators::InterpolateMode::Linear>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 	else
@@ -692,14 +700,14 @@ SliceDatas& SingingVoiceConversionModule::PreprocessVolume(
 				*MyData.GTAudio,
 				MyData.GTSampleRate * _MyHopSize / _MyOutputSamplingRate,
 				MyData.GTSampleRate >> 4
-			).Evaluate();
+			);
 		);
 		if (MyData.Volume->Shape(-1) != TargetNumFrames)
 			_D_Dragonian_Lib_Rethrow_Block(
 				MyData.Volume = MyData.Volume->Interpolate<Operators::InterpolateMode::Linear>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 
@@ -737,7 +745,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0Embed(
 				MyData.F0Embed = MyData.F0Embed->Interpolate<Operators::InterpolateMode::Nearest>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 	else
@@ -748,7 +756,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0Embed(
 			_D_Dragonian_Lib_Throw_Exception("F0 could not be null");
 
 		if (abs(F0Offset) > 1e-4f)
-			_D_Dragonian_Lib_Rethrow_Block((MyData.F0 *= std::pow(2.f, F0Offset / 12.f)).Evaluate(););
+			_D_Dragonian_Lib_Rethrow_Block((MyData.F0 *= std::pow(2.f, F0Offset / 12.f)););
 		_D_Dragonian_Lib_Rethrow_Block(
 			MyData.F0Embed = GetF0Embed(
 				MyData.F0,
@@ -762,7 +770,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessF0Embed(
 				MyData.F0Embed = MyData.F0Embed->Interpolate<Operators::InterpolateMode::Nearest>(
 					IDim(-1),
 					{ IDim(TargetNumFrames) }
-				).Evaluate();
+				);
 			);
 	}
 
@@ -810,7 +818,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessSpeakerMix(
 					MyData.Speaker = MyData.Speaker->Interpolate<Operators::InterpolateMode::Nearest>(
 						IDim(-2),
 						{ IDim(TargetNumFrames) }
-					).Evaluate();
+					);
 				);
 		}
 		else
@@ -828,9 +836,9 @@ SliceDatas& SingingVoiceConversionModule::PreprocessSpeakerMix(
 			_D_Dragonian_Lib_Rethrow_Block(
 				MyData.Speaker = Functional::Zeros(
 					IDim(BatchSize, Channels, TargetNumFrames, _MySpeakerCount)
-				).Evaluate();
+				);
 			);
-			(MyData.Speaker.value()[{":", ":", ":", Range::Idx(SpeakerId)}]= 1.f).Evaluate();
+			(MyData.Speaker.value()[{":", ":", ":", Range::Idx(SpeakerId)}]= 1.f);
 		}
 	}
 
@@ -885,7 +893,7 @@ SliceDatas& SingingVoiceConversionModule::PreprocessSpeakerId(
 			_D_Dragonian_Lib_Rethrow_Block(MyData.SpeakerId = SpkType::ConstantOf(
 				{ BatchSize, Channels, 1 },
 				SpeakerId
-			).Evaluate(););
+			););
 		}
 	}
 

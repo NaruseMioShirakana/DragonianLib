@@ -37,7 +37,7 @@ SliceDatas& VitsSvc::PreprocessNoise(
 			_D_Dragonian_Lib_Rethrow_Block(MyData.Noise = MyData.Noise->Interpolate<Operators::InterpolateMode::Nearest>(
 				IDim(-1),
 				{ IDim(TargetNumFrames) }
-			).Evaluate(););
+			););
 	}
 	else
 	{
@@ -46,7 +46,7 @@ SliceDatas& VitsSvc::PreprocessNoise(
 		_D_Dragonian_Lib_Rethrow_Block(
 			MyData.Noise = (Functional::Randn(
 				IDim(BatchSize, Channels, _MyNoiseDims, TargetNumFrames)
-			) * Scale).Evaluate();
+			) * Scale);
 		);
 	}
 	return MyData;
@@ -64,7 +64,7 @@ SliceDatas& VitsSvc::PreprocessStftNoise(
 		MyData.StftNoise = Functional::ConstantOf(
 			IDim(BatchSize, Channels, _MyWindowSize, TargetNumFrames),
 			Scale
-		).Evaluate();
+		);
 		);
 	return MyData;
 }

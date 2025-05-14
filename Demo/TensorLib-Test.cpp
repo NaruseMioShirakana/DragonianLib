@@ -11,6 +11,7 @@
 #include "OnnxLibrary/Vocoder/Register.hpp"
 #include "Libraries/G2P/G2PModule.hpp"
 #include "Libraries/Image-Video/ImgVideo.hpp"
+#include "OnnxLibrary/Demix/CascadedNet.hpp"
 #include "TensorLib/Include/Base/Tensor/Einops.h"
 #include "OnnxLibrary/SingingVoiceConversion/Api/NativeApi.h"
 #include "OnnxLibrary/SuperResolution/ImplSuperResolution.hpp"
@@ -62,21 +63,23 @@ template <typename Fn>
 	Env->EnableMemPattern(true);
 	OnnxRuntime::AudioDemix::Demix Net(
 		L"D:\\VSGIT\\MSST-WebUI-main\\configs_backup\\vocal_models\\melband_roformer_instvox_duality_v2.onnx",
+		//LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\UVR\HP5_only_main_vocal.onnx)",
 		Env,
-		{}
+		OnnxRuntime::AudioDemix::CascadedNet::GetPreDefinedHParams(L"4band_v2")
 	);
 	auto AudioInStream = AvCodec::OpenInputStream(
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)"
 	);
-	auto AudioData = AudioInStream.DecodeAll(
-		32000, 2, true
+	auto [AudioData, SamplingRate] = AudioInStream.DecodeAudio(
+		2, true
 	);
 
 	auto Results = Net.Forward(
 		AudioData.UnSqueeze(0),
-		{ 32000, 85, 0.5f, 512, ProgressCb }
+		{ SamplingRate, 85, 0.5f, 512, ProgressCb }
 	);
-
+	Results[0] = Functional::MinMaxNormalize(Results[0], -1).Evaluate();
+	Results[1] = Functional::MinMaxNormalize(Results[1], -1).Evaluate();
 	auto OutputStream = AvCodec::OpenOutputStream(
 		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Vocal.wav)"
 	);
@@ -279,22 +282,22 @@ template <typename Fn>
 	);
 
 	auto AudioInStream = AvCodec::OpenInputStream(
-		LR"(C:\DataSpace\MediaProj\PlayList\ttt.wav)"
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)"
 	);
-	auto SrcAudio = AudioInStream.DecodeAll(
-		44100
-	).View(1, 1, -1);
+	auto [SrcAudio, SamplingRate] = AudioInStream.DecodeAudio(
+		2, true
+	);
 
-	auto Spec = Stft.Execute(SrcAudio);
+	auto Spec = Stft.Execute(SrcAudio.UnSqueeze(0));
 
 	auto Signal = Functional::MinMaxNormalize(Stft.Inverse(Spec), -1).Evaluate();
 
 	auto AudioOutStream = AvCodec::OpenOutputStream(
-		44100,
-		LR"(C:\DataSpace\MediaProj\PlayList\Test-IStft.wav)"
+		SamplingRate,
+		LR"(C:\DataSpace\MediaProj\PlayList\Echoism-ISTFT.wav)"
 	);
 	AudioOutStream.EncodeAll(
-		Signal.GetCRng(), 44100
+		Signal.GetCRng(), SamplingRate, 2, true
 	);
 }
 
@@ -548,7 +551,7 @@ template <typename Fn>
 	};
 
 	DragonianVoiceSvcInitEnviromentSetting(&EnvSetting);
-	EnvSetting.Provider = 3;
+	EnvSetting.Provider = 1;
 	Enviroment = DragonianVoiceSvcCreateEnviroment(&EnvSetting);
 
 	DragonianVoiceSvcInitHyperParameters(&HyperParameters);
@@ -597,7 +600,7 @@ template <typename Fn>
 	//</LoadYourAudioHere>
 	auto InputAudio = DragonianLib::AvCodec::OpenInputStream(
 		LR"(C:\DataSpace\MediaProj\PlayList\Echoism_vocals.wav)"
-	).DecodeAll(44100, 2)[{"900000:944100", "0"}].Transpose(-1, -2).Contiguous();
+	).DecodeAll(44100, 2)[{"882000:1323000", "0"}].Transpose(-1, -2).Contiguous().Evaluate();
 	//<LoadYourAudioHere/>
 	Audio = DragonianVoiceSvcCreateFloatTensor(
 		InputAudio.Data(),
@@ -708,21 +711,18 @@ template <typename Fn>
 	DragonianVoiceSvcDestoryEnviroment(Enviroment);
 }
 
-int main()
+[[maybe_unused]] static void TestSR()
 {
 	using namespace DragonianLib;
-	std::wcout.imbue(std::locale("zh_CN"));
-	SetWorkerCount(1);
-	SetMaxTaskCountPerOperator(4);
-	SetTaskPoolSize(8);
-
 	auto Image = ImageVideo::LoadAndSplitImageNorm(
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\83579d7a-f57f-4098-9ec8-3c3dcd122ddb.png)",
-		64,
-		64,
-		58,
-		58
+		256,
+		256,
+		248,
+		248
 	);
+
+	std::get<0>(Image) + std::get<0>(Image);
 
 	OnnxRuntime::SuperResolution::HyperParameters Parameters;
 	Parameters.RGBModel = LR"(D:\VSGIT\白叶的AI工具箱\Models\real-hatgan\x2\x2_universal-fix1.onnx)";
@@ -736,12 +736,23 @@ int main()
 			);
 
 	Image = Model.Infer(Image, 1);
-	
+
 	//TestApi();
 	ImageVideo::SaveBitmap(
-		ImageVideo::CombineImage(Image, 58 * 2, 58 * 2),
+		ImageVideo::CombineImage(Image, 248ll * 2, 248ll * 2),
 		LR"(C:\DataSpace\MediaProj\Wallpaper\T\test.png)"
 	);
+}
+
+int main()
+{
+	using namespace DragonianLib;
+	std::wcout.imbue(std::locale("zh_CN"));
+	SetWorkerCount(16);
+	SetMaxTaskCountPerOperator(4);
+	SetTaskPoolSize(4);
+
+	TestSR();
 	return 0;
 	//TestStft();
 }

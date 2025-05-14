@@ -47,9 +47,31 @@ public:
 	/**
 	 * @brief Extract function type (Instance, Input, InputSize, Channel, SamplingRate, HopSize, F0Bins, F0Max, F0Min, UserParameters, Output)
 	 */
-	using ExtractFunctionType = void(*)(
+	using ExtractFunctionTypeI16 = void(*)(
 		void* Instance,
-		const void* Input,
+		const Int16* Input,
+		Int64 InputSize, Int64 Channel,
+		long SamplingRate, long HopSize, long F0Bins, double F0Max, double F0Min, void* UserParameters,
+		float* Output
+		);
+
+	/**
+	 * @brief Extract function type (Instance, Input, InputSize, Channel, SamplingRate, HopSize, F0Bins, F0Max, F0Min, UserParameters, Output)
+	 */
+	using ExtractFunctionTypeF32 = void(*)(
+		void* Instance,
+		const Float32* Input,
+		Int64 InputSize, Int64 Channel,
+		long SamplingRate, long HopSize, long F0Bins, double F0Max, double F0Min, void* UserParameters,
+		float* Output
+		);
+
+	/**
+	 * @brief Extract function type (Instance, Input, InputSize, Channel, SamplingRate, HopSize, F0Bins, F0Max, F0Min, UserParameters, Output)
+	 */
+	using ExtractFunctionTypeF64 = void(*)(
+		void* Instance,
+		const Float64* Input,
 		Int64 InputSize, Int64 Channel,
 		long SamplingRate, long HopSize, long F0Bins, double F0Max, double F0Min, void* UserParameters,
 		float* Output
@@ -103,13 +125,13 @@ private:
 	GetF0SizeFunctionType _MyGetF0Size = nullptr;
 
 	//"void ExtractF0PD(void*, const void*, Int64, Int64, long, long, long, double, double, void*, float*)"
-	ExtractFunctionType _MyExtractPD = nullptr;
+	ExtractFunctionTypeF64 _MyExtractPD = nullptr;
 
 	//"void ExtractF0PS(void*, const void*, Int64, Int64, long, long, long, double, double, void*, float*)"
-	ExtractFunctionType _MyExtractPS = nullptr;
+	ExtractFunctionTypeF32 _MyExtractPS = nullptr;
 
 	//"void ExtractF0I16(void*, const void*, Int64, Int64, long, long, long, double, double, void*, float*)"
-	ExtractFunctionType _MyExtractI16 = nullptr;
+	ExtractFunctionTypeI16 _MyExtractI16 = nullptr;
 };
 
 _D_Dragonian_Lib_F0_Extractor_End

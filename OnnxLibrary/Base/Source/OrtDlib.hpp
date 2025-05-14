@@ -125,7 +125,7 @@ auto CreateTensorViewFromOrtValue(
 				_Shape,
 				{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 				BufferSize
-			).Clone().Evaluate();
+			).Clone();
 		}
 
 		if constexpr (TypeTraits::IsFloatingPointValue<_MyValueType>)
@@ -137,7 +137,7 @@ auto CreateTensorViewFromOrtValue(
 					_Shape,
 					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
+				).template Cast<_MyValueType>();
 			}
 			if (ElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16)
 			{
@@ -146,7 +146,7 @@ auto CreateTensorViewFromOrtValue(
 					_Shape,
 					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
+				).template Cast<_MyValueType>();
 			}
 		}
 		else if constexpr (TypeTraits::IsIntegerValue<_MyValueType>)
@@ -158,7 +158,7 @@ auto CreateTensorViewFromOrtValue(
 					_Shape,
 					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
+				).template Cast<_MyValueType>();
 			}
 			if (ElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
 			{
@@ -167,7 +167,7 @@ auto CreateTensorViewFromOrtValue(
 					_Shape,
 					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
+				).template Cast<_MyValueType>();
 			}
 			if (ElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
 			{
@@ -176,7 +176,7 @@ auto CreateTensorViewFromOrtValue(
 					_Shape,
 					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 					BufferSize
-				).template Cast<_MyValueType>().Evaluate();
+				).template Cast<_MyValueType>();
 			}
 		}
 	}
@@ -190,11 +190,12 @@ auto CreateTensorViewFromOrtValue(
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
 std::pair<Ort::Value, std::shared_ptr<DlibValue>> CreateValueFromTensor(
 	const OrtMemoryInfo* _MyMemoryInfo,
-	const Tensor<_TensorType, _NRank, _MyDevice>& _Tensor,
+	const Tensor<_TensorType, _NRank, _MyDevice>& _RawTensor,
 	const UInt64 _InputAxisCount,
 	size_t _AxisOffset
 )
 {
+	auto _Tensor = _RawTensor.Contiguous().Evaluate();
 	auto Shared = _Tensor.CreateShared();
 	const auto TensorShape = Shared->Shape().Data();
 	auto TensorData = Shared->Data();
@@ -209,7 +210,7 @@ std::pair<Ort::Value, std::shared_ptr<DlibValue>> CreateValueFromTensor(
 				TensorShape + _AxisOffset,
 				_InputAxisCount
 			),
-			Shared
+			std::move(Shared)
 		};
 	}
 	catch (std::exception& e)
@@ -221,7 +222,7 @@ std::pair<Ort::Value, std::shared_ptr<DlibValue>> CreateValueFromTensor(
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
 auto CheckAndTryCreateValueFromTensor(
 	const OrtMemoryInfo* _MyMemoryInfo,
-	const Tensor<_TensorType, _NRank, _MyDevice>& _InputTensor,
+	const Tensor<_TensorType, _NRank, _MyDevice>& _Tensor,
 	ONNXTensorElementDataType _DataType,
 	const TemplateLibrary::Vector<Int64>& _InputShapes,
 	const TemplateLibrary::Array<const wchar_t*, _NRank>& _AxisNames,
@@ -229,7 +230,6 @@ auto CheckAndTryCreateValueFromTensor(
 	const DLogger& _Logger = nullptr
 )
 {
-	auto _Tensor = _InputTensor.Continuous().Evaluate();
 	const auto& TensorShape = _Tensor.Shape();
 	const auto TensorAxisCount = TensorShape.Size();
 	const auto InputAxisCount = _InputShapes.Size();
@@ -278,14 +278,14 @@ auto CheckAndTryCreateValueFromTensor(
 			if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BFLOAT16)
 				return CreateValueFromTensor<BFloat16, _NRank, _MyDevice>(
 					_MyMemoryInfo,
-					_Tensor.template Cast<BFloat16>().Evaluate(),
+					_Tensor.template Cast<BFloat16>(),
 					InputAxisCount,
 					AxisOffset
 				);
 			if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
 				return CreateValueFromTensor<Float16, _NRank, _MyDevice>(
 					_MyMemoryInfo,
-					_Tensor.template Cast<Float16>().Evaluate(),
+					_Tensor.template Cast<Float16>(),
 					InputAxisCount,
 					AxisOffset
 				);
@@ -304,21 +304,21 @@ auto CheckAndTryCreateValueFromTensor(
 			if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
 				return CreateValueFromTensor<Int8, _NRank, _MyDevice>(
 					_MyMemoryInfo,
-					_Tensor.template Cast<Int8>().Evaluate(),
+					_Tensor.template Cast<Int8>(),
 					InputAxisCount,
 					AxisOffset
 				);
 			if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
 				return CreateValueFromTensor<Int16, _NRank, _MyDevice>(
 					_MyMemoryInfo,
-					_Tensor.template Cast<Int16>().Evaluate(),
+					_Tensor.template Cast<Int16>(),
 					InputAxisCount,
 					AxisOffset
 				);
 			if (_DataType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
 				return CreateValueFromTensor<Int32, _NRank, _MyDevice>(
 					_MyMemoryInfo,
-					_Tensor.template Cast<Int32>().Evaluate(),
+					_Tensor.template Cast<Int32>(),
 					InputAxisCount,
 					AxisOffset
 				);
