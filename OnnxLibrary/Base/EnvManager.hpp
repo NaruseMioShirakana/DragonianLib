@@ -103,7 +103,7 @@ class OnnxRuntimeModel
 {
 public:
 	OnnxRuntimeModel() = default;
-    OnnxRuntimeModel(OnnxRuntimeModelPointer Model, OnnxRuntimeEnvironment Environment);
+    OnnxRuntimeModel(OnnxRuntimeModelPointer Model);
     ~OnnxRuntimeModel();
     OnnxRuntimeModel(const OnnxRuntimeModel&);
     OnnxRuntimeModel(OnnxRuntimeModel&&) noexcept = default;
@@ -141,7 +141,6 @@ public:
 	}
 
 private:
-    OnnxRuntimeEnvironment _MyEnvironment = nullptr;
     OnnxRuntimeModelPointer _MyModel = nullptr;
 };
 
@@ -235,6 +234,8 @@ public:
 	void SetGraphOptimizationLevel(GraphOptimizationLevel Level) const;
 
 	void SetLoggingLevel(OrtLoggingLevel Level);
+
+    void ClearCache();
 
     /**
      * @brief Creates an ONNX Runtime environment.

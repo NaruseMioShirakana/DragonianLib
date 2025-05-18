@@ -715,7 +715,7 @@ template <typename Fn>
 {
 	using namespace DragonianLib;
 	auto Image = ImageVideo::LoadAndSplitImageNorm(
-		LR"(C:\DataSpace\MediaProj\Wallpaper\T\83579d7a-f57f-4098-9ec8-3c3dcd122ddb.png)",
+		LR"(C:\DataSpace\MediaProj\Wallpaper\T\1747414157401.png)",
 		256,
 		256,
 		248,
@@ -728,20 +728,21 @@ template <typename Fn>
 	Parameters.RGBModel = LR"(D:\VSGIT\白叶的AI工具箱\Models\real-hatgan\x2\x2_universal-fix1.onnx)";
 	Parameters.Callback = ProgressCb;
 
-	OnnxRuntime::SuperResolution::SuperResolutionBCRGBHW Model(
-		OnnxRuntime::CreateOnnxRuntimeEnvironment({
+	auto Env = OnnxRuntime::CreateOnnxRuntimeEnvironment({
 			Device::CUDA,
-			}),
-			Parameters
-			);
-
-	Image = Model.Infer(Image, 1);
-
-	//TestApi();
-	ImageVideo::SaveBitmap(
-		ImageVideo::CombineImage(Image, 248ll * 2, 248ll * 2),
-		LR"(C:\DataSpace\MediaProj\Wallpaper\T\test.png)"
+		});
+	OnnxRuntime::SuperResolution::SuperResolutionBCRGBHW Model(
+		Env,
+		Parameters
 	);
+
+	//Image = Model.Infer(Image, 1);
+
+	////TestApi();
+	//ImageVideo::SaveBitmap(
+	//	ImageVideo::CombineImage(Image, 248ll * 2, 248ll * 2),
+	//	LR"(C:\DataSpace\MediaProj\Wallpaper\T\Theresa.png)"
+	//);
 }
 
 int main()
@@ -753,6 +754,7 @@ int main()
 	SetTaskPoolSize(4);
 
 	TestSR();
-	return 0;
+
 	//TestStft();
+	return 0;
 }

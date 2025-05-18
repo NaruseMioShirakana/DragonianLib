@@ -525,6 +525,7 @@ void _Dragonian_Lib_Svc_Add_Prefix(DestoryEnviroment)(
 {
 	try
 	{
+		_Enviroment->operator->()->ClearCache();
 		delete _Enviroment;
 	}
 	catch (std::exception& e)

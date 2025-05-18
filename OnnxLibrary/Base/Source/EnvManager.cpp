@@ -128,8 +128,8 @@ static void DragonianLibOrtLoggingFn(
 	_D_Dragonian_Lib_Onnx_Runtime_Space GetDefaultLogger()->LogMessage(UTF8ToWideString(ort_message));
 }
 
-OnnxRuntimeModel::OnnxRuntimeModel(OnnxRuntimeModelPointer Model, OnnxRuntimeEnvironment Environment)
-	: _MyEnvironment(std::move(Environment)), _MyModel(std::move(Model))
+OnnxRuntimeModel::OnnxRuntimeModel(OnnxRuntimeModelPointer Model)
+	: _MyModel(std::move(Model))
 {
 	if (!_MyModel)
 		return;
@@ -157,7 +157,8 @@ OnnxRuntimeModel::~OnnxRuntimeModel()
 	_MyStaticLogger->LogMessage(L"UnReference Model: Instance[PTR:" + HexPtr + L"], Current Referece Count: " + std::to_wstring(_MyModel.use_count() - 1));
 }
 
-OnnxRuntimeModel::OnnxRuntimeModel(const OnnxRuntimeModel& _Left) : _MyModel(_Left._MyModel)
+OnnxRuntimeModel::OnnxRuntimeModel(const OnnxRuntimeModel& _Left)
+	: _MyModel(_Left._MyModel)
 {
 	if (!_MyModel)
 		return;
@@ -508,8 +509,7 @@ OnnxRuntimeModel& OnnxRuntimeEnvironmentBase::RefOnnxRuntimeModel(const std::wst
 					delete Ptr;
 					_DeleterLogger->LogInfo(L"Model Unloaded: Instance[PTR:" + HexPtr + L", PATH:\"" + ModelPath + L"\"], Current Referece Count: 0");
 				}
-			),
-			shared_from_this()
+			)
 		);
 	}
 	catch (std::exception& e)
@@ -590,6 +590,11 @@ void OnnxRuntimeEnvironmentBase::SetLoggingLevel(OrtLoggingLevel Level)
 {
 	_MyOrtSessionOptions->SetLogSeverityLevel(static_cast<int>(Level));
 	_MyLoggingLevel = Level;
+}
+
+void OnnxRuntimeEnvironmentBase::ClearCache()
+{
+	GlobalOrtModelCache.clear();
 }
 
 OnnxRuntimeEnvironment OnnxRuntimeEnvironmentBase::CreateEnv(const OnnxEnvironmentOptions& Options)
