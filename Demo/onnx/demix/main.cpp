@@ -68,7 +68,7 @@ int main()
 
 	auto Results = Net.Forward(
 		AudioData.UnSqueeze(0),
-		{ SamplingRate, 85, 0.5f, 512, DefaultProgressCallback(std::cout) }
+		{ SamplingRate, 85, 0.1f, 512, DefaultProgressCallback(std::cout) }
 	);
 
 	Results[0] = Functional::MinMaxNormalize(Results[0], -1, .8f, -.8f).Evaluate();
