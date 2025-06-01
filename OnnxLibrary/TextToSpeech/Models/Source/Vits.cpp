@@ -297,7 +297,7 @@ namespace Vits
 		std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds,
 		std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds,
 		std::optional<const Tensor<Float, 4, Device::CPU>> Bert,
-		std::optional<Tensor<Float, 2, Device::CPU>> Clap,
+		std::optional<Tensor<Float, 3, Device::CPU>> Clap,
 		Int64 VQIndex,
 		Int64 SpeakerIndex
 	) const
@@ -587,7 +587,7 @@ namespace Vits
 					Inputs.Emplace(
 						CheckAndTryCreateValueFromTensor(
 							*_MyMemoryInfo,
-							Clap->UnSqueeze(-1),
+							*Clap,
 							_MyInputTypes[Axis],
 							_MyInputDims[Axis],
 							{ L"BatchSize", L"ClapDims", L"1" },
@@ -601,7 +601,7 @@ namespace Vits
 					Inputs.Emplace(
 						CheckAndTryCreateValueFromTensor(
 							*_MyMemoryInfo,
-							Clap->UnSqueeze(-1),
+							*Clap,
 							_MyInputTypes[Axis],
 							_MyInputDims[Axis],
 							{ L"BatchSize", L"ClapDims" },
@@ -1277,7 +1277,7 @@ namespace Vits
 		std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds,
 		std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds,
 		std::optional<const Tensor<Float32, 4, Device::CPU>> Bert,
-		std::optional<Tensor<Float32, 2, Device::CPU>> Clap,
+		std::optional<Tensor<Float32, 3, Device::CPU>> Clap,
 		std::optional<Tensor<Float32, 3, Device::CPU>> Duration
 	) const
 	{

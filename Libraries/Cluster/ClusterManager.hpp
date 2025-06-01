@@ -26,7 +26,7 @@
 
 _D_Dragonian_Lib_Cluster_Namespace_Begin
 
-using Cluster = std::shared_ptr<BaseCluster>;
+using Cluster = ModulePointer<BaseCluster>;
 using Constructor = std::function<Cluster(const std::wstring&, Int64, Int64)>;
 
 /**

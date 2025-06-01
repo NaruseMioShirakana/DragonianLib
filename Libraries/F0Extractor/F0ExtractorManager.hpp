@@ -29,7 +29,7 @@
 
 _D_Dragonian_Lib_F0_Extractor_Header
 
-using F0Extractor = std::shared_ptr<BaseF0Extractor>;
+using F0Extractor = ModulePointer<BaseF0Extractor>;
 using Constructor = std::function<F0Extractor(const void*)>;
 
 struct PEModelHParams

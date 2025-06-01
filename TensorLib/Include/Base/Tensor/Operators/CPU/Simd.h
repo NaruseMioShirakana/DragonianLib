@@ -55,6 +55,8 @@ template<typename Type, typename = std::enable_if_t<TypeTraits::IsAvx256Supporte
 class Vectorized
 {
 public:
+	static constexpr size_t Alignment = 32; // AVX-256 requires 32-byte alignment
+	static constexpr size_t Stride = sizeof(__m256) / sizeof(Type);
 	static constexpr size_t size() { return sizeof(__m256) / sizeof(Type); }
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized() = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline ~Vectorized() = default;
@@ -64,12 +66,7 @@ public:
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized& operator=(Vectorized&&) = default;
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(const Type* _ValPtr)
 	{
-		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
-			_YMMX = _mm256_castps_si256(_mm256_load_ps(reinterpret_cast<float const*>(_ValPtr)));
-		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
-			_YMMX = _mm256_castpd_si256(_mm256_load_pd(reinterpret_cast<double const*>(_ValPtr)));
-		else
-			_YMMX = _mm256_load_si256((const __m256i*)_ValPtr);
+		LoadPointer(_ValPtr);
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256i _Val) : _YMMX(_Val) {}
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized(__m256 _Val) : _YMMX(_mm256_castps_si256(_Val)) {}
@@ -110,6 +107,15 @@ public:
 			_YMMX = _mm256_set1_epi64x(_Val);
 		else
 			_D_Dragonian_Lib_Not_Implemented_Error;
+	}
+	_D_Dragonian_Lib_Constexpr_Force_Inline void LoadPointer(const Type* _ValPtr)
+	{
+		if constexpr (TypeTraits::IsSameTypeValue<Type, Float32> || TypeTraits::IsSameTypeValue<Type, Complex32>)
+			_YMMX = _mm256_castps_si256(_mm256_load_ps(reinterpret_cast<float const*>(_ValPtr)));
+		else if constexpr (TypeTraits::IsSameTypeValue<Type, Float64> || TypeTraits::IsSameTypeValue<Type, Complex64>)
+			_YMMX = _mm256_castpd_si256(_mm256_load_pd(reinterpret_cast<double const*>(_ValPtr)));
+		else
+			_YMMX = _mm256_load_si256((const __m256i*)_ValPtr);
 	}
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline void Store(Type* _Dest) const
@@ -1779,7 +1785,9 @@ template <
 	_FunctionTypeEnd _EndFunction
 ) requires (IsCallableValue<_FunctionTypeMid>)
 {
-	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(Type));
+	using VectorType = Vectorized<Type>;
+
+	constexpr Int64 Stride = VectorType::Stride;
 	constexpr Int64 LoopStride = Throughput * Stride;
 
 	auto _MyResultValue = _InitValue;
@@ -1798,13 +1806,13 @@ template <
 
 			if (_Size >= LoopStride)
 			{
-				Vectorized<Type> VectorizedValue[Throughput]; Vectorized<Type> VectorizedSource[Throughput];
+				VectorType VectorizedValue[Throughput]; VectorType VectorizedSource[Throughput];
 				for (Int64 i = 0; i < Throughput; ++i)
-					VectorizedValue[i] = Vectorized<Type>(_InitValue);
+					VectorizedValue[i] = VectorType(_InitValue);
 				while (_Size >= LoopStride)
 				{
 					for (Int64 i = 0; i < Throughput; ++i)
-						VectorizedSource[i] = Vectorized<Type>(_Src + i * Stride);
+						VectorizedSource[i] = VectorType(_Src + i * Stride);
 					if constexpr (IsCallableValue<_FunctionTypePreVec>)
 						for (Int64 i = 0; i < Throughput; ++i)
 							VectorizedSource[i] = _PreFunctionVec(VectorizedSource[i]);
@@ -1865,8 +1873,10 @@ template <
 	std::shared_ptr<_ParameterType> _IValPtr = nullptr
 )
 {
+	using VectorType = Vectorized<_InputType>;
+
 	auto _ValPtr = std::move(_IValPtr);
-	constexpr Int64 Stride = Int64(sizeof(__m256) / sizeof(_InputType));
+	constexpr Int64 Stride = VectorType::Stride;
 	constexpr Int64 LoopStride = OpThroughput * Stride;
 
 	if constexpr (TypeTraits::IsAvx256SupportedValue<_InputType>)

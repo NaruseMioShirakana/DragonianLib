@@ -37,4 +37,9 @@ Tensor<Float32, 2, Device::CPU> BaseCluster::Search(const Tensor<Float32, 2, Dev
 
 }
 
+Tensor<Float32, 2, Device::CPU> BaseCluster::operator()(Float32* Points, Long CodebookID, Int64 Count)
+{
+	return Search(Points, CodebookID, Count);
+}
+
 _D_Dragonian_Lib_Cluster_Namespace_End

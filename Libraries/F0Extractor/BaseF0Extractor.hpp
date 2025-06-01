@@ -65,7 +65,7 @@ public:
      * @brief Extract F0 from PCM data
 	 * @param PCMData PCM data, Shape [Channel, Samples], Channel not mean the channel of audio, it means the channel of the tensor, so it should be any value except zero and negative
 	 * @param Params Parameters for F0 extraction
-	 * @return F0, Shape [Channel, Frames], you don't need to call the evaluate function before using it
+	 * @return F0, Shape [Channel, Frames]
      */
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float64, 2, Device::CPU>& PCMData,
@@ -76,7 +76,7 @@ public:
      * @brief Extract F0 from PCM data
 	 * @param PCMData PCM data, Shape [Channel, Samples], Channel not mean the channel of audio, it means the channel of the tensor, so it should be any value except zero and negative
      * @param Params Parameters for F0 extraction
-	 * @return F0, Shape [Channel, Frames], you don't need to call the evaluate function before using it
+	 * @return F0, Shape [Channel, Frames]
      */
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Float32, 2, Device::CPU>& PCMData,
@@ -87,28 +87,139 @@ public:
      * @brief Extract F0 from PCM data
 	 * @param PCMData PCM data, Shape [Channel, Samples], Channel not mean the channel of audio, it means the channel of the tensor, so it should be any value except zero and negative
      * @param Params Parameters for F0 extraction
-	 * @return F0, Shape [Channel, Frames], you don't need to call the evaluate function before using it
+	 * @return F0, Shape [Channel, Frames]
      */
     virtual Tensor<Float32, 2, Device::CPU> ExtractF0(
         const Tensor<Int16, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
     ) const;
 
-    Tensor<Float32, 2, Device::CPU> operator()(
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> Extract(
+        const Tensor<Float64, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+    ) const
+    {
+        if constexpr (Rank == 2)
+            return WithBench(PCMData, Params);
+        else
+        {
+            auto View = PCMData.Size();
+            View.Back() = -1;
+            return WithBench(PCMData.ReShape(-1, PCMData.Size(-1)), Params).View(View);
+        }
+    }
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> operator()(
+        const Tensor<Float64, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+        ) const
+    {
+        return Extract(PCMData, Params);
+    }
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> Extract(
+        const Tensor<Float32, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+    ) const
+    {
+        if constexpr (Rank == 2)
+            return WithBench(PCMData, Params);
+        else
+        {
+            auto View = PCMData.Size();
+            View.Back() = -1;
+            return WithBench(PCMData.ReShape(-1, PCMData.Size(-1)), Params).View(View);
+        }
+    }
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> operator()(
+        const Tensor<Float32, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+        ) const
+    {
+        return Extract(PCMData, Params);
+    }
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> Extract(
+        const Tensor<Int16, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+    ) const
+    {
+        if constexpr (Rank == 2)
+            return WithBench(PCMData, Params);
+        else
+        {
+            auto View = PCMData.Size();
+            View.Back() = -1;
+            return WithBench(PCMData.ReShape(-1, PCMData.Size(-1)), Params).View(View);
+        }
+    }
+
+    /**
+     * @brief Extract F0 from PCM data
+     * @param PCMData PCM data, Shape [..., Samples]
+     * @param Params Parameters for F0 extraction
+     * @return F0, Shape [..., Frames]
+     */
+    template <size_t Rank>
+    _D_Dragonian_Lib_Constexpr_Force_Inline Tensor<Float32, Rank, Device::CPU> operator()(
+        const Tensor<Int16, Rank, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+        ) const
+    {
+        return Extract(PCMData, Params);
+    }
+
+protected:
+    Tensor<Float32, 2, Device::CPU> WithBench(
         const Tensor<Float64, 2, Device::CPU>& PCMData,
         const F0ExtractorParams& Params
-        ) const;
+    ) const;
 
-	Tensor<Float32, 2, Device::CPU> operator()(
-		const Tensor<Float32, 2, Device::CPU>& PCMData,
-		const F0ExtractorParams& Params
-		) const;
+    Tensor<Float32, 2, Device::CPU> WithBench(
+        const Tensor<Float32, 2, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+    ) const;
 
-	Tensor<Float32, 2, Device::CPU> operator()(
-		const Tensor<Int16, 2, Device::CPU>& PCMData,
-		const F0ExtractorParams& Params
-		) const;
-
+    Tensor<Float32, 2, Device::CPU> WithBench(
+        const Tensor<Int16, 2, Device::CPU>& PCMData,
+        const F0ExtractorParams& Params
+    ) const;
 };
 
 _D_Dragonian_Lib_F0_Extractor_End

@@ -2,19 +2,8 @@
 #include <iostream>
 
 #include "Libraries/AvCodec/AvCodec.h"
-#include "OnnxLibrary/G2P/G2PW.hpp"
-#include "OnnxLibrary/SingingVoiceConversion/Model/Reflow-Svc.hpp"
-#include "OnnxLibrary/Demix/Demix.hpp"
-#include "OnnxLibrary/BertClap/Context.hpp"
-#include "OnnxLibrary/TextToSpeech/Models/GPT-SoVits.hpp"
-#include "OnnxLibrary/UnitsEncoder/Register.hpp"
-#include "OnnxLibrary/Vocoder/Register.hpp"
-#include "Libraries/G2P/G2PModule.hpp"
-#include "Libraries/Image-Video/ImgVideo.hpp"
-#include "OnnxLibrary/Demix/CascadedNet.hpp"
+
 #include "TensorLib/Include/Base/Tensor/Einops.h"
-#include "OnnxLibrary/SingingVoiceConversion/Api/NativeApi.h"
-#include "OnnxLibrary/SuperResolution/ImplSuperResolution.hpp"
 
 static auto MyLastTime = std::chrono::high_resolution_clock::now();
 static int64_t TotalStep = 0;
@@ -28,66 +17,12 @@ template <typename Fn>
 	std::cout << "Task completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << "\n\n";
 }
 
-[[maybe_unused]] static void ShowProgressBar(int64_t progress) {
-	int barWidth = 70;
-	float progressRatio = static_cast<float>(progress) / float(TotalStep);
-	int pos = static_cast<int>(float(barWidth) * progressRatio);
-
-	std::cout << "\r";
-	std::cout.flush();
-	auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - MyLastTime).count();
-	MyLastTime = std::chrono::high_resolution_clock::now();
-	std::cout << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
-	std::cout << "[";
-	for (int i = 0; i < barWidth; ++i) {
-		if (i < pos) std::cout << "=";
-		else if (i == pos) std::cout << ">";
-		else std::cout << " ";
-	}
-	std::cout << "] " << int(progressRatio * 100.0) << "%  ";
-	MyLastTime = std::chrono::high_resolution_clock::now();
-}
-
 [[maybe_unused]] static void ProgressCb(bool a, int64_t b)
 {
 	if (a)
 		TotalStep = b;
 	else
 		ShowProgressBar(b);
-}
-
-[[maybe_unused]] static void TestUVR()
-{
-	using namespace DragonianLib;
-	const auto Env = OnnxRuntime::CreateEnvironment({Device::CUDA,});
-	Env->EnableMemPattern(true);
-	OnnxRuntime::AudioDemix::Demix Net(
-		L"D:\\VSGIT\\MSST-WebUI-main\\configs_backup\\vocal_models\\melband_roformer_instvox_duality_v2.onnx",
-		//LR"(C:\DataSpace\libsvc\PythonScript\SoVitsSvc4_0_SupportTensorRT\UVR\HP5_only_main_vocal.onnx)",
-		Env,
-		OnnxRuntime::AudioDemix::CascadedNet::GetPreDefinedHParams(L"4band_v2")
-	);
-	auto AudioInStream = AvCodec::OpenInputStream(
-		LR"(C:\DataSpace\MediaProj\PlayList\Echoism.wav)"
-	);
-	auto [AudioData, SamplingRate] = AudioInStream.DecodeAudio(
-		2, true
-	);
-
-	auto Results = Net.Forward(
-		AudioData.UnSqueeze(0),
-		{ SamplingRate, 85, 0.5f, 512, ProgressCb }
-	);
-	Results[0] = Functional::MinMaxNormalize(Results[0], -1).Evaluate();
-	Results[1] = Functional::MinMaxNormalize(Results[1], -1).Evaluate();
-	auto OutputStream = AvCodec::OpenOutputStream(
-		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Vocal.wav)"
-	);
-	OutputStream.EncodeAll(Results[0].GetCRng(), 44100, 2, true);
-	OutputStream = AvCodec::OpenOutputStream(
-		44100, LR"(C:\DataSpace\MediaProj\PlayList\Echoism-Instrument.wav)"
-	);
-	OutputStream.EncodeAll(Results[1].GetCRng(), 44100, 2, true);
 }
 
 [[maybe_unused]] static auto TestG2PW(const std::wstring& Text)
@@ -753,7 +688,7 @@ int main()
 	SetMaxTaskCountPerOperator(4);
 	SetTaskPoolSize(4);
 
-	TestSR();
+	//TestSR();
 
 	//TestStft();
 	return 0;

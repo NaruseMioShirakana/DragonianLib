@@ -57,6 +57,22 @@ public:
 	) const = 0;
 
 	/**
+	 * @brief Convert text to phonemes
+	 * @param InputText Input text
+	 * @param LanguageID Language ID
+	 * @param UserParameter User parameter
+	 * @return Pair of phonemes and tones
+	 */
+	std::pair<Vector<std::wstring>, Vector<Int64>> operator()(
+		const std::wstring& InputText,
+		const std::string& LanguageID,
+		const void* UserParameter = nullptr
+		) const
+	{
+		return Convert(InputText, LanguageID, UserParameter);
+	}
+
+	/**
 	 * @brief Get extra information
 	 * @return Pair of lock and extra information
 	 */

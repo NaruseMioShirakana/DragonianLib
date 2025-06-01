@@ -34,10 +34,10 @@ option(DRAGONIANLIB_TRT_SINGING_VOICE_CONVERSION		"build trt singing voice conve
 option(DRAGONIANLIB_TRT_TEXT_TO_SPEECH					"build trt text to speech libs"					OFF)
 option(DRAGONIANLIB_TRT_MUSIC_TRANSCRIPTION			"build trt music transcription libs"			OFF)
 
-option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				OFF)
-option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		OFF)
-option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				OFF)
-option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			OFF)
+option(DRAGONIANLIB_NCNN_SUPER_RESOLUTION				"build ncnn super resolution libs"				ON)
+option(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION		"build ncnn singing voice conversion libs"		ON)
+option(DRAGONIANLIB_NCNN_TEXT_TO_SPEECH				"build ncnn text to speech libs"				ON)
+option(DRAGONIANLIB_NCNN_MUSIC_TRANSCRIPTION			"build ncnn music transcription libs"			ON)
 
 option(DRAGONIANLIB_STATIC_FFMPEG						"use static ffmpeg"								ON)
 option(DRAGONIANLIB_SHARED_LIBS							"build shared libs"								OFF)
@@ -278,7 +278,31 @@ if(DRAGONIANLIB_NCNN)
 	find_package(ncnn)
 	if(NOT ncnn_FOUND)
 		if(NOT DEFINED NCNN_LIBRARIES)
-			set(NCNN_LIBRARIES ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/ncnn.lib)
+			if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+				set(
+					NCNN_LIBRARIES 
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/GenericCodeGend.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/glslangd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/glslang-default-resource-limitsd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/MachineIndependentd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/ncnnd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/OSDependentd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/OGLCompilerd.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Debug/lib/SPIRVd.lib
+				)
+			else()
+				set(
+					NCNN_LIBRARIES 
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/GenericCodeGen.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/glslang.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/glslang-default-resource-limits.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/MachineIndependent.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/ncnn.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/OSDependent.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/OGLCompiler.lib
+					${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/lib/SPIRV.lib
+				)
+			endif()
 		endif()
 		if(NOT DEFINED NCNN_INCLUDE_DIRS)
 			set(NCNN_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/Third-Party-Libraries/ncnn/out/install/x64-Release/include)
@@ -531,7 +555,10 @@ set(DRAGONIANLIB_ONNX_LIBRARIES ${DRAGONIANLIB_ORT_LIB})
 set(DRAGONIANLIB_ONNX_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
 
 set(DRAGONIANLIB_TENSORRT_LIBRARIES ${DRAGONIANLIB_TRT_LIB})
-set(DRAGONIANLIB_TENSORRT_INCLUDE_DIRS ${ONNXRUNTIME_INCLUDE_DIRS})
+set(DRAGONIANLIB_TENSORRT_INCLUDE_DIRS ${TENSORRT_INCLUDE_DIRS})
+
+set(DRAGONIANLIB_NCNN_LIBRARIES ${DRAGONIANLIB_NCNN_LIB})
+set(DRAGONIANLIB_NCNN_INCLUDE_DIRS ${NCNN_INCLUDE_DIRS})
 
 #Install Target
 install(

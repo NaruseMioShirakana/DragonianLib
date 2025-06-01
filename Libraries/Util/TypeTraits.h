@@ -745,6 +745,9 @@ constexpr inline _IndexType BTCalcIndex(_IndexType _Index, _IndexType _Max)
 template <typename _Type, typename ..._ArgTypes>
 constexpr auto IsConstructibleValue = std::is_constructible<_Type, _ArgTypes...>::value;
 
+template <typename _Type, typename ..._ArgTypes>
+concept ConstructibleFrom = std::constructible_from<_Type, _ArgTypes...>;
+
 struct AnyConvertible
 {
 	template <typename ..._SrcType>
@@ -942,6 +945,16 @@ template <typename _Type>
 concept HasEqualOperator = requires(_Type & _Val)
 {
 	{ _Val == _Val } -> IsType<bool>;
+};
+template <typename _Type1, typename _Type2>
+concept _HasLessOperator = requires(const _Type1 & _Val1, const _Type2 & _Val2)
+{
+	{ _Val1 < _Val2 } -> IsType<bool>;
+};
+template <typename _Type1, typename _Type2>
+concept _HasEqualOperator = requires(const _Type1 & _Val1, const _Type2 & _Val2)
+{
+	{ _Val1 == _Val2 } -> IsType<bool>;
 };
 
 template <typename _Type>

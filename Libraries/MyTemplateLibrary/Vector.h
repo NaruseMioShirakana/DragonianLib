@@ -93,9 +93,24 @@ protected:
     bool _MyOwner = true;
 
 public:
+    static constexpr struct EmptyTag_t{} EmptyTag;
+
+    static Vector NewEmpty(Allocator _Allocator = Allocator())
+    {
+        return Vector(EmptyTag, std::move(_Allocator));
+    }
+
     ~Vector() noexcept
     {
         Destory();
+    }
+
+    Vector(EmptyTag_t, Allocator _Allocator = Allocator())
+    {
+        _MyAllocator = _Allocator;
+        _MyFirst = nullptr;
+        _MyLast = nullptr;
+        _MyEnd = nullptr;
     }
 
     Vector(nullptr_t)

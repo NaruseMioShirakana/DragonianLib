@@ -507,6 +507,91 @@ public:
 
 using OnDeConstruct = UniqueScopeExit;
 
+template <typename StreamType>
+class DefaultProgressCallback
+{
+public:
+	DefaultProgressCallback(StreamType& _Stream) : _MyStream(&_Stream) {}
+
+	void operator()(bool _Cond, Int64 _Cur) const
+	{
+		if (_Cond)
+		{
+			_MyLastTime = std::chrono::high_resolution_clock::now();
+			_Total = _Cur;
+		}
+		else
+			ProgressBarFn(_Cur);
+	}
+
+	void ProgressBarFn(Int64 _Progress) const
+	{
+		if (!_MyStream)
+			return;
+
+		int BarWidth = 70;
+		float progressRatio = static_cast<float>(_Progress) / float(_Total);
+		int Pos = static_cast<int>(float(BarWidth) * progressRatio);
+
+		(*_MyStream) << "\r";
+		(*_MyStream).flush();
+		auto TimeUsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::high_resolution_clock::now() - _MyLastTime
+		).count();
+		_MyLastTime = std::chrono::high_resolution_clock::now();
+		(*_MyStream) << "[Speed: " << 1000.0f / static_cast<float>(TimeUsed) << " it/s] ";
+		(*_MyStream) << "[";
+		for (int i = 0; i < BarWidth; ++i) {
+			if (i < Pos) (*_MyStream) << "=";
+			else if (i == Pos) (*_MyStream) << ">";
+			else (*_MyStream) << " ";
+		}
+		(*_MyStream) << "] " << int(progressRatio * 100.0) << "%  \r";
+		_MyLastTime = std::chrono::high_resolution_clock::now();
+	}
+
+	operator std::function<void(bool, Int64)>(this DefaultProgressCallback&& Self)
+	{
+		return [It = std::move(Self)](bool _Cond, Int64 _Cur)
+			{
+				It(_Cond, _Cur);
+			};
+	}
+
+	operator std::function<void(bool, Int64)>() const
+	{
+		return [this](bool _Cond, Int64 _Cur)
+			{
+				operator()(_Cond, _Cur);
+			};
+	}
+private:
+	mutable Int64 _Total = 0;
+	mutable decltype(std::chrono::high_resolution_clock::now()) _MyLastTime;
+	StreamType* _MyStream = nullptr;
+};
+
+template <typename _MyModule>
+class ModulePointer : public std::shared_ptr<_MyModule>
+{
+public:
+	using _MyBase = std::shared_ptr<_MyModule>;
+	template <typename... _ArgumentTypes>
+	_D_Dragonian_Lib_Constexpr_Force_Inline ModulePointer(_ArgumentTypes&&... _Arguments)
+		requires(TypeTraits::ConstructibleFrom<_MyBase, _ArgumentTypes...>)
+	: _MyBase(std::forward<_ArgumentTypes>(_Arguments)...)
+	{
+
+	}
+
+	template <typename... _ArgumentTypes>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator()(_ArgumentTypes&&... _Arguments)
+		requires(requires(_ArgumentTypes&&... _Args) { this->get()->operator()(std::forward<_ArgumentTypes>(_Args)...); })
+	{
+		return this->get()->operator()(std::forward<_ArgumentTypes>(_Arguments)...);
+	}
+};
+
 _D_Dragonian_Lib_Space_End
 
 namespace Dlib

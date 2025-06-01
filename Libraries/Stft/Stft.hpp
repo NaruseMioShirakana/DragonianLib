@@ -31,6 +31,8 @@ namespace FunctionTransform
 {
 	class MFCCKernel;
 
+	void NormWindow(double* WindowNorm, const double* Window, int WindowSize, int HopSize, double NormScale = 1.);
+
 	/**
 	 * @brief Modified Bessel function of the first kind of order zero, I₀(x)
 	 * @tparam T Type of input and output (float, double)
@@ -602,9 +604,9 @@ namespace FunctionTransform
 		int PADDING = 0; ///< Padding size
 		bool CENTER = true;
 		int CENTER_PADDING_SIZE = 256;
-		double WINDOW_POWER_SUM = 0.0; ///< Window power sum
 		PaddingType PADDING_TYPE = PaddingType::Reflect;
 		std::shared_ptr<TemplateLibrary::Vector<Double>> WINDOW;
+		std::shared_ptr<TemplateLibrary::Vector<Double>> WINDOW_NORM;
 	};
 
 	/**

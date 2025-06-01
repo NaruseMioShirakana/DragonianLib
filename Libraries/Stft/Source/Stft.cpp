@@ -46,6 +46,16 @@ namespace FunctionTransform
 			Window[i] = 0.5 * (1 - cos(Step * i));
 	}
 
+	void NormWindow(double* WindowNorm, const double* Window, int WindowSize, int HopSize, double NormScale)
+	{
+		TemplateLibrary::Vector Ola(HopSize, 0.);
+		for (int m = 0; m != HopSize; ++m)
+			for (int i = m; i < WindowSize; i += HopSize)
+				Ola[m] += Window[i] * Window[i];
+		for (int i = 0; i < WindowSize; ++i)
+			WindowNorm[i] = (Window[i] / Ola[i % HopSize]) * NormScale;
+	}
+
 	template <typename Type>
 	static void WindowFn(double* Output, const Type* Signal, const double* Window, int WindowSize)
 	{
@@ -56,10 +66,10 @@ namespace FunctionTransform
 				Output[i] = double(Signal[i]) * Window[i];
 	}
 
-	static void InverseWindowFn(double* Output, const double* Signal, const double* Window, double WindowPowSum, int WindowSize)
+	static void InverseWindowFn(double* Output, const double* Signal, const double* Window, int WindowSize, int NFFT)
 	{
 		for (int i = 0; i < WindowSize; i++)
-			Output[i] = double(Signal[i]) * Window[i] / WindowPowSum;
+			Output[i] = double(Signal[i]) * Window[i] / double(NFFT);
 	}
 
 	struct FFTW_COMPLEX
@@ -186,7 +196,7 @@ namespace FunctionTransform
 	template <typename TypeInput, typename TypeOutput>
 	static void ExecuteIStft(
 		Tensor<TypeOutput, 3, Device::CPU>& View, TypeOutput* Signal, const TypeInput* Spectrogram,
-		const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW, double WINDOW_POW_SUM, int WINDOW_SIZE,
+		const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW, int WINDOW_SIZE,
 		int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS, int NUM_FRAMES,
 		const std::shared_ptr<void>& BUFFER
 	)
@@ -220,8 +230,8 @@ namespace FunctionTransform
 							SignalData + PADDING,
 							SignalData + PADDING,
 							WINDOW->Data(),
-							WINDOW_POW_SUM,
-							WINDOW_SIZE
+							WINDOW_SIZE,
+							NUM_FFT
 						);
 						for (int j = 0; j < WINDOW_SIZE; j++)
 							Signal[size_t(CurFrame) * HOP_SIZE + j] += TypeOutput(SignalData[j + PADDING]);
@@ -269,8 +279,8 @@ namespace FunctionTransform
 				const auto SignalData = SignalDataBegin + (b * Channel + c) * SignalSize;
 				const auto SpectrogramData = SpecDataBegin + (b * Channel + c) * NUM_FRAMES * FFT_BINS;
 				ExecuteStft(
-					SpectrogramTensor, SpectrogramData, SignalData, WINDOW,
-					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(NUM_FRAMES),
+					SpectrogramTensor, SpectrogramData, SignalData, WINDOW, WINDOW_SIZE, NUM_FFT,
+					HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(NUM_FRAMES),
 					SignalCont.Buffer()
 				);
 			}
@@ -281,7 +291,7 @@ namespace FunctionTransform
 	template <typename TypeOutput, typename TypeInput>
 	static Tensor<TypeOutput, 3, Device::CPU> ExecuteIStft(
 		const Tensor<TypeInput, 4, Device::CPU>& RawSpectrogram, const std::shared_ptr<TemplateLibrary::Vector<Double>>& WINDOW,
-		int WINDOW_SIZE, double WINDOW_POW_SUM, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS
+		int WINDOW_SIZE, int NUM_FFT, int HOP_SIZE, int PADDING, int FFT_BINS
 	)
 	{
 		const auto [BatchSize, ChannelCount, FrameCount, StftBins] = RawSpectrogram.Size().RawArray();
@@ -302,8 +312,8 @@ namespace FunctionTransform
 				const auto SignalData = SignalBegin + (b * ChannelCount + c) * SignalSize;
 				const auto SpectrogramData = SpectrogramDataBegin + (b * ChannelCount + c) * FrameCount * FFT_BINS;
 				ExecuteIStft(
-					Signal, SignalData, SpectrogramData, WINDOW, WINDOW_POW_SUM,
-					WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(FrameCount),
+					Signal, SignalData, SpectrogramData, WINDOW, WINDOW_SIZE, NUM_FFT,
+					HOP_SIZE, PADDING, FFT_BINS, static_cast<int>(FrameCount),
 					Spectrogram.Buffer()
 				);
 			}
@@ -347,9 +357,8 @@ namespace FunctionTransform
 			WINDOW = std::make_shared<TemplateLibrary::Vector<Double>>(WINDOW_SIZE);
 			HannWindowFn(WINDOW->Data(), WINDOW_SIZE);
 		}
-		WINDOW_POWER_SUM = 0.;
-		for (int i = 0; i < WINDOW_SIZE; i++)
-			WINDOW_POWER_SUM += (*WINDOW)[i] * (*WINDOW)[i];
+		WINDOW_NORM = std::make_shared<TemplateLibrary::Vector<Double>>(WINDOW_SIZE);
+		NormWindow(WINDOW_NORM->Data(), WINDOW->Data(), WINDOW_SIZE, HOP_SIZE);
 	}
 
 	StftKernel::~StftKernel() = default;
@@ -357,69 +366,69 @@ namespace FunctionTransform
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Int16, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING,
+			FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING,
+			FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 
 	Tensor<Float64, 4, Device::CPU> StftKernel::operator()(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Float64>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING,
+			FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 
 	Tensor<Complex32, 4, Device::CPU> StftKernel::Execute(const Tensor<Float32, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Complex32>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING,
+			FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 
 	Tensor<Complex64, 4, Device::CPU> StftKernel::Execute(const Tensor<Float64, 3, Device::CPU>& Signal) const
 	{
 		return ExecuteStft<Complex64>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING,
+			FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Float32, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float32>(
-			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW_NORM, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float32, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex32, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float32>(
-			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW_NORM, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float64, 3, Device::CPU> StftKernel::Inverse(const Tensor<Complex64, 4, Device::CPU>& Spectrogram) const
 	{
 		return ExecuteIStft<Float64>(
-			Spectrogram, WINDOW, WINDOW_SIZE, WINDOW_POWER_SUM, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
+			Spectrogram, WINDOW_NORM, WINDOW_SIZE, NUM_FFT, HOP_SIZE, PADDING, FFT_BINS
 		);
 	}
 
 	Tensor<Float32, 4, Device::CPU> StftKernel::operator()(const Tensor<Float32, 3, Device::CPU>& Signal, Int64 HopSize) const
 	{
 		return ExecuteStft<Float32>(
-			Signal, WINDOW,
-			WINDOW_SIZE, NUM_FFT, static_cast<int>(HopSize), PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
+			Signal, WINDOW, WINDOW_SIZE, NUM_FFT, static_cast<int>(HopSize),
+			PADDING, FFT_BINS, CENTER_PADDING_SIZE, PADDING_TYPE
 		);
 	}
 

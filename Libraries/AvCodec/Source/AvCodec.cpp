@@ -72,19 +72,40 @@ namespace AvCodec
 	{
 		switch (Format)
 		{
+			case AvCodec::PCM_FORMAT_INT8:
 			case AvCodec::PCM_FORMAT_UINT8: return AV_SAMPLE_FMT_U8;
+
+			case AvCodec::PCM_FORMAT_UINT16:
 			case AvCodec::PCM_FORMAT_INT16: return AV_SAMPLE_FMT_S16;
+
+			case AvCodec::PCM_FORMAT_UINT32:
 			case AvCodec::PCM_FORMAT_INT32: return AV_SAMPLE_FMT_S32;
+
 			case AvCodec::PCM_FORMAT_FLOAT32: return AV_SAMPLE_FMT_FLT;
+
 			case AvCodec::PCM_FORMAT_FLOAT64: return AV_SAMPLE_FMT_DBL;
+
+			case AvCodec::PCM_FORMAT_INT8_PLANAR:
 			case AvCodec::PCM_FORMAT_UINT8_PLANAR: return AV_SAMPLE_FMT_U8P;
+
+			case AvCodec::PCM_FORMAT_UINT16_PLANAR:
 			case AvCodec::PCM_FORMAT_INT16_PLANAR: return AV_SAMPLE_FMT_S16P;
+
+			case AvCodec::PCM_FORMAT_UINT32_PLANAR:
 			case AvCodec::PCM_FORMAT_INT32_PLANAR: return AV_SAMPLE_FMT_S32P;
+
 			case AvCodec::PCM_FORMAT_FLOAT32_PLANAR: return AV_SAMPLE_FMT_FLTP;
+
 			case AvCodec::PCM_FORMAT_FLOAT64_PLANAR: return AV_SAMPLE_FMT_DBLP;
+
+			case AvCodec::PCM_FORMAT_UINT64:
 			case AvCodec::PCM_FORMAT_INT64: return AV_SAMPLE_FMT_S64;
+
+			case AvCodec::PCM_FORMAT_UINT64_PLANAR:
 			case AvCodec::PCM_FORMAT_INT64_PLANAR: return AV_SAMPLE_FMT_S64P;
+
 			case AvCodec::PCM_FORMAT_NONE: return AV_SAMPLE_FMT_NONE;
+
 			case AvCodec::PCM_FORMAT_NB: return AV_SAMPLE_FMT_NB;
 		}
 		return AV_SAMPLE_FMT_NONE;
@@ -112,16 +133,66 @@ namespace AvCodec
 		return AvCodec::PCM_FORMAT_NONE;
 	}
 
+	static AVCodecID PCMFormat2CodecID(const AvCodec::PCMFormat& Format)
+	{
+		switch (Format)
+		{
+		case AvCodec::PCM_FORMAT_UINT8:
+			return AV_CODEC_ID_PCM_U8;
+
+		case AvCodec::PCM_FORMAT_INT8:
+			return AV_CODEC_ID_PCM_S8;
+
+		case AvCodec::PCM_FORMAT_UINT16:
+			return AV_CODEC_ID_PCM_U16LE;
+
+		case AvCodec::PCM_FORMAT_INT16:
+			return AV_CODEC_ID_PCM_S16LE;
+
+		case AvCodec::PCM_FORMAT_UINT32:
+			return AV_CODEC_ID_PCM_U32LE;
+
+		case AvCodec::PCM_FORMAT_INT32:
+			return AV_CODEC_ID_PCM_S32LE;
+
+		case AvCodec::PCM_FORMAT_UINT64:
+		case AvCodec::PCM_FORMAT_INT64:
+			return AV_CODEC_ID_PCM_S64LE;
+
+		case AvCodec::PCM_FORMAT_UINT8_PLANAR:
+		case AvCodec::PCM_FORMAT_INT8_PLANAR:
+			return AV_CODEC_ID_PCM_S8_PLANAR;
+
+		case AvCodec::PCM_FORMAT_UINT16_PLANAR:
+		case AvCodec::PCM_FORMAT_INT16_PLANAR:
+			return AV_CODEC_ID_PCM_S16LE_PLANAR;
+
+		case AvCodec::PCM_FORMAT_UINT32_PLANAR:
+		case AvCodec::PCM_FORMAT_INT32_PLANAR:
+		case AvCodec::PCM_FORMAT_UINT64_PLANAR:
+		case AvCodec::PCM_FORMAT_INT64_PLANAR:
+		case AvCodec::PCM_FORMAT_FLOAT32_PLANAR:
+		case AvCodec::PCM_FORMAT_FLOAT64_PLANAR:
+			return AV_CODEC_ID_PCM_S32LE_PLANAR;
+
+		case AvCodec::PCM_FORMAT_FLOAT32:
+			return AV_CODEC_ID_PCM_F32LE;
+
+		case AvCodec::PCM_FORMAT_FLOAT64:
+			return AV_CODEC_ID_PCM_F64LE;
+
+		case AvCodec::PCM_FORMAT_NB:
+		case AvCodec::PCM_FORMAT_NONE:
+			break;
+		}
+		_D_Dragonian_Lib_Throw_Exception("Invalid format!");
+	}
+
 	bool AvCodec::PCMFormatIsPlannar(PCMFormat Format) noexcept
 	{
-		if (Format == PCM_FORMAT_UINT8_PLANAR ||
-			Format == PCM_FORMAT_INT16_PLANAR ||
-			Format == PCM_FORMAT_INT32_PLANAR ||
-			Format == PCM_FORMAT_FLOAT32_PLANAR ||
-			Format == PCM_FORMAT_FLOAT64_PLANAR ||
-			Format == PCM_FORMAT_INT64_PLANAR)
-			return true;
-		return false;
+		return (Format >= PCM_FORMAT_UINT8_PLANAR && Format <= PCM_FORMAT_FLOAT64_PLANAR) ||
+			(Format >= PCM_FORMAT_INT8_PLANAR && Format <= PCM_FORMAT_UINT32_PLANAR) ||
+			Format == PCM_FORMAT_INT64_PLANAR || Format == PCM_FORMAT_UINT64_PLANAR;
 	}
 
 	UInt64 AvCodec::PCMFormatBytes(PCMFormat Format) noexcept
@@ -1398,6 +1469,8 @@ namespace AvCodec
 				_D_Dragonian_Lib_Throw_Exception("Input sample format is not set!");
 
 			auto OutCodecFormat = (AVCodecID)_MySettings._Format;
+			if (OutCodecFormat == AV_CODEC_ID_FIRST_AUDIO)
+				OutCodecFormat = PCMFormat2CodecID(_MySettings._OutputSampleFormat);
 			auto AVEncodec = avcodec_find_encoder(OutCodecFormat);
 			if (!AVEncodec)
 				_D_Dragonian_Lib_Throw_Exception("Codec not found");
@@ -1727,8 +1800,6 @@ namespace AvCodec
 				CodecId = AV_CODEC_ID_AAC;
 			else if (_MyExtension == L"flac")
 				CodecId = AV_CODEC_ID_FLAC;
-			else if (_MyExtension == L"wav")
-				CodecId = AV_CODEC_ID_PCM_S16LE;
 			else if (_MyExtension == L"ogg")
 				CodecId = AV_CODEC_ID_VORBIS;
 			else if (_MyExtension == L"opus")
@@ -1736,27 +1807,15 @@ namespace AvCodec
 			else if (_MyExtension == L"wma")
 				CodecId = AV_CODEC_ID_WMAV2;
 			else if (_MyExtension == L"wav")
-			{
-				if (_OutputDataFormat == AvCodec::PCM_FORMAT_UINT8 || _OutputDataFormat == AvCodec::PCM_FORMAT_UINT8_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_U8;
-				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT16 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT16_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_S16LE;
-				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT32 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT32_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_S32LE;
-				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT32 || _OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT32_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_F32LE;
-				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_INT64 || _OutputDataFormat == AvCodec::PCM_FORMAT_INT64_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_S64LE;
-				else if (_OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT64 || _OutputDataFormat == AvCodec::PCM_FORMAT_FLOAT64_PLANAR)
-					CodecId = AV_CODEC_ID_PCM_F64LE;
-				else
-					_D_Dragonian_Lib_Throw_Exception("Unsupported output format!");
-			}
+				CodecId = AV_CODEC_ID_FIRST_AUDIO;
 			else
 				_D_Dragonian_Lib_Throw_Exception("Unsupported output format!");
 		}
 		else
 			CodecId = static_cast<AVCodecID>(_OutputCodecID);
+
+		if (CodecId == AV_CODEC_ID_FIRST_AUDIO)
+			CodecId = PCMFormat2CodecID(_OutputDataFormat);
 
 		bool Found = false;
 		auto Codec = avcodec_find_encoder(CodecId);

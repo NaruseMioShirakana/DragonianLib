@@ -142,7 +142,7 @@ private:
 
 namespace TypeTraits
 {
-	template <typename _Type>
+	template <typename>
 	struct IsRange : std::false_type {};
 	template <>
 	struct IsRange<Range> : std::true_type {};
@@ -285,13 +285,16 @@ public:
 	template <typename _TensorType_, size_t _NRank_, Device _MyDevice_>
 	friend class Tensor;
 	friend class Functional::FunctionalImpl;
+
 	using ValueType = std::remove_reference_t<_TensorType>;
 	static_assert(!Operators::SimdTypeTraits::IsVectorizedValue<ValueType>, "Vectorized value type is not supported!");
+	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace DlibValue>);
+
 	using Pointer = std::shared_ptr<void>;
 	using RawPointer = ValueType*;
+	using ConstRawPointer = const ValueType*;
 	using Reference = ValueType&;
 	using ConstReference = const ValueType&;
-	static_assert(!TypeTraits::IsSameTypeValue<ValueType, _D_Dragonian_Lib_Namespace DlibValue>);
 
 	using DependencyChainDataPointers = Operators::DependencyChainTypes::DependencyChainDataPointers;
 	using DependencyChainPair = Operators::DependencyChainTypes::DependencyChainPair;
@@ -299,15 +302,31 @@ public:
 	using DependencyChainPointer = Operators::DependencyChainTypes::DependencyChainPointer;
 	static constexpr auto _Device = _MyDevice;
 	static constexpr auto _DType = Type2TensorType<_TensorType>;
+	static constexpr auto _MyRank = _NRank;
 	using Allocator = TemplateLibrary::GetAllocatorType<_MyDevice>;
 
-	auto CreateShared() const { return std::make_shared<Tensor<_TensorType, _NRank, _MyDevice>>(*this); }
+protected:
+	Pointer _MyFirst = nullptr;
+	RawPointer _MyLast = nullptr;
+	RawPointer _MyData = nullptr;
+	Dimensions<_NRank> _MyShape;
+	Dimensions<_NRank> _MyViewStride;
+	DependencyChainPointer _MyFuturesAsResult = nullptr;
+	DependencyChainPointer _MyFuturesAsArgument = nullptr;
+	Allocator _MyAllocator;
+	mutable bool _IgnoreDep = false;
 
+public:
 	Tensor() = default;
 
 	Tensor(std::nullopt_t) : Tensor() {} ///< Constructor for nullopt
 
 	Tensor(NoneType) : Tensor() {} ///< Constructor for nullopt
+
+	auto CreateShared() const
+	{
+		return std::make_shared<Tensor>(*this);
+	}
 
 	bool operator==(std::nullopt_t) const { return Null(); } ///< Comparison with nullopt
 	bool operator!=(std::nullopt_t) const { return !Null(); } ///< Comparison with nullopt
@@ -331,6 +350,7 @@ public:
 			}
 		}
 	}
+
 	//Waiting for all the tasks which change the data of this tensor. (waiting for the result)
 	void WaitingForTheOperationLock() const
 	{
@@ -345,6 +365,7 @@ public:
 			}
 		}
 	}
+
 	//Clean tasks that is already finished
 	void CleanInplaceChain() const
 	{
@@ -358,6 +379,7 @@ public:
 			_MyFuturesAsArgument->erase(SubBegin, SubEnd);
 		}
 	}
+
 	//Clean tasks that is already finished
 	void CleanOperationChain() const
 	{
@@ -371,6 +393,7 @@ public:
 			_MyFuturesAsResult->erase(SubBegin, SubEnd);
 		}
 	}
+
 	//Check write permission.
 	void WaitingAsResult() const
 	{
@@ -386,6 +409,7 @@ public:
 			CleanInplaceChain();
 		}
 	}
+
 	//Check read permission.
 	void WaitingAsArgument() const
 	{
@@ -398,6 +422,7 @@ public:
 		}
 		CleanInplaceChain();
 	}
+
 	//Check read and write permission.
 	void WaitingForAllLocks() const
 	{
@@ -452,123 +477,10 @@ private:
 		_IgnoreDep = false;
 	}
 
-public:
-	decltype(auto) CastToString(bool _Fold = true) const
-	{
-		return CastToString(TotalSize(), _Fold);
-	}
-
-	decltype(auto) to_string() const
-	{
-		return CastToString(TotalSize());
-	}
-
-	decltype(auto) CastToWideString(bool _Fold = true) const
-	{
-		return UTF8ToWideString(CastToString(TotalSize()), _Fold);
-	}
-
-	TemplateLibrary::Vector<ValueType> ToVectorView() const
-	{
-		if (IsContinuous())
-			return TemplateLibrary::Vector<ValueType>::CreateView(_MyData, TotalSize(), GetAllocator());
-		_D_Dragonian_Lib_Throw_Exception("Could Not Convert Non-Continuous Tensor To Vector View!");
-	}
-
-	template <typename _Type2, size_t _Rank2, Device _Device2>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) BroadCast2AndCpy(const Tensor<_Type2, _Rank2, _Device2>& _Other) const
-		requires (_Rank2 <= _NRank)
-	{
-		decltype(auto) Bd = BroadCast(*this, _Other, false);
-		return Bd.first.Continuous();
-	}
-
-	template <typename _ThisType, typename _TFn, typename... _ArgType>
-	decltype(auto) AppendTask(this _ThisType&& _Self, _TFn&& _Fn, _ArgType&&... _Args)
-		requires (TypeTraits::IsInvocableValue<_TFn, _ArgType...>)
-	{
-		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst };
-		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
-			std::forward<_ThisType>(_Self)._MyFuturesAsResult->emplace_back(
-				Operators::GetTaskPool().Commit(
-					std::forward<_TFn>(_Fn),
-					std::forward<_ArgType>(_Args)...
-				),
-				_DataPointer
-			);
-		else
-			std::forward<_TFn>(_Fn)(std::forward<_ArgType>(_Args)...);
-		return std::forward<_ThisType>(_Self);
-	}
-
-	template <typename _ThisType>
-	decltype(auto) GetRng(this _ThisType&& _Self)
-	{
-		if (std::forward<_ThisType>(_Self).IsContinuous())
-			return TemplateLibrary::RangesWrp(
-				std::forward<_ThisType>(_Self)._MyData,
-				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
-			);
-		else
-			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Continuous Tensor!");
-	}
-
-	template <typename _ThisType>
-	decltype(auto) GetCRng(this _ThisType&& _Self)
-	{
-		if (std::forward<_ThisType>(_Self).IsContinuous())
-			return TemplateLibrary::ConstantRanges<ValueType>(
-				std::forward<_ThisType>(_Self)._MyData,
-				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
-			);
-		else
-			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Continuous Tensor!");
-	}
-
-	template <size_t _Axis, size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) GatherAxis(SizeType _Index) const
-		requires (_TmpTank > 0 && _TmpTank == _NRank && _Axis < _NRank)
-	{
-		ThrowOnNotEnabled();
-		if constexpr (_NRank == 1)
-			return Get(_Index);
-		else
-		{
-			constexpr auto _MyRnk = _NRank - 1;
-			Tensor<_TensorType, _MyRnk, _MyDevice> Ret;
-
-			for (size_t i = 0, j = 0; i < _NRank; ++i)
-			{
-				if (i == _Axis)
-					continue;
-				Ret._MyShape[j] = _MyShape[i];
-				Ret._MyViewStride[j] = _MyViewStride[i];
-				++j;
-			}
-
-			Ret._MyFirst = _MyFirst;
-			Ret._MyData = _MyData + CalcIndex(_Index, _MyShape[_Axis]) * _MyViewStride[_Axis];
-			Ret._MyLast = _MyLast;
-			Ret._MyFuturesAsResult = _MyFuturesAsResult;
-			Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-			Ret._MyAllocator = _MyAllocator;
-			return Ret;
-		}
-	}
-
-protected:
-	Pointer _MyFirst = nullptr;
-	RawPointer _MyLast = nullptr;
-	RawPointer _MyData = nullptr;
-	Dimensions<_NRank> _MyShape;
-	Dimensions<_NRank> _MyViewStride;
-	DependencyChainPointer _MyFuturesAsResult = nullptr;
-	DependencyChainPointer _MyFuturesAsArgument = nullptr;
-	Allocator _MyAllocator;
-	mutable bool _IgnoreDep = false;
-
-private:
-	decltype(auto) CastToString(SizeType _MyTotalSize, bool _Fold = true) const
+	decltype(auto) CastToString(
+		SizeType _MyTotalSize,
+		bool _Fold = true
+	) const
 	{
 		ThrowOnNotEnabled();
 		if constexpr (_NRank > 1)
@@ -607,30 +519,6 @@ private:
 			Ret += "]";
 			return Ret;
 		}
-	}
-
-	template <size_t _TmpTank = _NRank>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ViewFirstAxis(SizeType _Index) const
-		requires (_TmpTank > 0 && _TmpTank == _NRank)
-	{
-		return GatherAxis<0>(_Index);
-	}
-
-	template <size_t _TRank>
-	constexpr decltype(auto) ViewDimensions(const Dimensions<_TRank>& _Indice) const
-		requires (_NRank > _TRank)
-	{
-		Tensor<_TensorType, _NRank - _TRank, _MyDevice> Ret;
-		Ret._MyShape.Assign(_MyShape.begin() + _TRank);
-		Ret._MyViewStride.Assign(_MyViewStride.begin() + _TRank);
-
-		Ret._MyFirst = _MyFirst;
-		Ret._MyData = Data(_Indice);
-		Ret._MyLast = _MyLast;
-		Ret._MyFuturesAsResult = _MyFuturesAsResult;
-		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyAllocator = _MyAllocator;
-		return Ret;
 	}
 
 	template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
@@ -704,10 +592,165 @@ private:
 		return Ret;
 	}
 
+public:
+	decltype(auto) CastToAnsiString(
+		bool _Fold = true
+	) const
+	{
+		return CastToString(TotalSize(), _Fold);
+	}
+
+	decltype(auto) CastToWideString(
+		bool _Fold = true
+	) const
+	{
+		return UTF8ToWideString(CastToString(TotalSize()), _Fold);
+	}
+
+	decltype(auto) to_string() const
+	{
+		return CastToString(TotalSize());
+	}
+
+	decltype(auto) to_wstring() const
+	{
+		return UTF8ToWideString(to_string());
+	}
+
+	TemplateLibrary::Vector<ValueType> ToVectorView() const
+	{
+		if (IsContiguous())
+			return TemplateLibrary::Vector<ValueType>::CreateView(_MyData, TotalSize(), GetAllocator());
+		_D_Dragonian_Lib_Throw_Exception("Could Not Convert Non-Contiguous Tensor To Vector View!");
+	}
+
 	template <typename _Type2, size_t _Rank2, Device _Device2>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		BroadCast(const Tensor<_Type2, _Rank2, _Device2>& _Other, bool Inplace = true) const
-		requires (_Rank2 <= _NRank)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) BroadCast2AndCpy(
+		const Tensor<_Type2, _Rank2, _Device2>& _Other
+	) const requires (_Rank2 <= _NRank)
+	{
+		decltype(auto) Bd = BroadCast(*this, _Other, false);
+		return Bd.first.Contiguous();
+	}
+
+	template <typename _ThisType, typename _TFn, typename... _ArgType>
+	decltype(auto) AppendTask(
+		this _ThisType&& _Self,
+		_TFn&& _Fn,
+		_ArgType&&... _Args
+	) requires (TypeTraits::IsInvocableValue<_TFn, _ArgType...>)
+	{
+		DependencyChainDataPointers _DataPointer{ std::forward<_ThisType>(_Self)._MyFirst };
+		if (std::forward<_ThisType>(_Self)._MyFuturesAsResult)
+			std::forward<_ThisType>(_Self)._MyFuturesAsResult->emplace_back(
+				Operators::GetTaskPool().Commit(
+					std::forward<_TFn>(_Fn),
+					std::forward<_ArgType>(_Args)...
+				),
+				_DataPointer
+			);
+		else
+			std::forward<_TFn>(_Fn)(std::forward<_ArgType>(_Args)...);
+		return std::forward<_ThisType>(_Self);
+	}
+
+	template <typename _ThisType>
+	decltype(auto) GetRng(
+		this _ThisType&& _Self
+	)
+	{
+		if (std::forward<_ThisType>(_Self).IsContiguous())
+			return TemplateLibrary::RangesWrp(
+				std::forward<_ThisType>(_Self)._MyData,
+				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
+			);
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Contiguous Tensor!");
+	}
+
+	template <typename _ThisType>
+	decltype(auto) GetCRng(
+		this _ThisType&& _Self
+	)
+	{
+		if (std::forward<_ThisType>(_Self).IsContiguous())
+			return TemplateLibrary::ConstantRanges<ValueType>(
+				std::forward<_ThisType>(_Self)._MyData,
+				std::forward<_ThisType>(_Self)._MyData + std::forward<_ThisType>(_Self).ElementCount()
+			);
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could Not Get Range From Non-Contiguous Tensor!");
+	}
+
+	template <size_t _Axis, size_t = _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) GatherAxis(
+		SizeType _Index
+	) const requires (_NRank > 0 && _Axis < _NRank)
+	{
+		ThrowOnNotEnabled();
+		if constexpr (_NRank == 1)
+			return Get(_Index);
+		else
+		{
+			constexpr auto _MyRnk = _NRank - 1;
+			Tensor<_TensorType, _MyRnk, _MyDevice> Ret;
+
+			for (size_t i = 0, j = 0; i < _NRank; ++i)
+			{
+				if (i == _Axis)
+					continue;
+				Ret._MyShape[j] = _MyShape[i];
+				Ret._MyViewStride[j] = _MyViewStride[i];
+				++j;
+			}
+
+			Ret._MyFirst = _MyFirst;
+			Ret._MyData = _MyData + CalcIndex(_Index, _MyShape[_Axis]) * _MyViewStride[_Axis];
+			Ret._MyLast = _MyLast;
+			Ret._MyFuturesAsResult = _MyFuturesAsResult;
+			Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
+			Ret._MyAllocator = _MyAllocator;
+			return Ret;
+		}
+	}
+
+private:
+	template <size_t = _NRank>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ViewFirstAxis(
+		SizeType _Index
+	) const requires (_NRank > 0)
+	{
+		return GatherAxis<0>(_Index);
+	}
+
+	template <size_t _TRank>
+	constexpr decltype(auto) ViewDimensions(
+		const Dimensions<_TRank>& _Indice
+	) const requires (_NRank >= _TRank)
+	{
+		if constexpr (_NRank > _TRank)
+		{
+			Tensor<_TensorType, _NRank - _TRank, _MyDevice> Ret;
+			Ret._MyShape.Assign(_MyShape.begin() + _TRank);
+			Ret._MyViewStride.Assign(_MyViewStride.begin() + _TRank);
+
+			Ret._MyFirst = _MyFirst;
+			Ret._MyData = Data(_Indice);
+			Ret._MyLast = _MyLast;
+			Ret._MyFuturesAsResult = _MyFuturesAsResult;
+			Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
+			Ret._MyAllocator = _MyAllocator;
+			return Ret;
+		}
+		else
+			return *Data(_Indice);
+	}
+
+	template <typename _Type2, size_t _Rank2, Device _Device2>
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) BroadCast(
+		const Tensor<_Type2, _Rank2, _Device2>& _Other,
+		bool Inplace = true
+	) const requires (_Rank2 <= _NRank)
 	{
 		auto [_Self, _That] = BroadCast(*this, _Other, Inplace);
 		return _That;
@@ -722,6 +765,7 @@ public:
 	{
 
 	}
+
 	Tensor(Tensor&& Right) noexcept
 		: _MyFirst(std::move(Right._MyFirst)), _MyLast(Right._MyLast), _MyData(Right._MyData),
 		_MyShape(Right._MyShape), _MyViewStride(Right._MyViewStride),
@@ -730,25 +774,23 @@ public:
 	{
 
 	}
+
 	constexpr Tensor& operator=(Tensor&& _Right) noexcept = default;
 
 	template <size_t _TRank>
-	Tensor& TensorAssign(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
-		requires (_NRank >= _TRank)
+	Tensor& TensorAssign(
+		const Tensor<ValueType, _TRank, _MyDevice>& _Left
+	) requires (_NRank >= _TRank && std::is_copy_assignable_v<ValueType>)
 	{
-		if constexpr (std::is_copy_assignable_v<ValueType>)
-		{
-			if ((const void*)this != (const void*)&_Left)
-				Assign(_Left);
-			return *this;
-		}
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		if ((const void*)this != (const void*)&_Left)
+			Assign(_Left);
+		return *this;
 	}
 
 	template <size_t _TRank>
-	Tensor& Inplace(const Tensor<ValueType, _TRank, _MyDevice>& _Left)
-		requires (_NRank >= _TRank)
+	Tensor& Inplace(
+		const Tensor<ValueType, _TRank, _MyDevice>& _Left
+	) requires (_NRank >= _TRank && std::is_copy_assignable_v<ValueType>)
 	{
 		return TensorAssign(_Left);
 	}
@@ -761,14 +803,10 @@ public:
 	 * @return Reference of this.
 	 */
 	Tensor& operator=(const ValueType& _Val)
+		requires (std::is_copy_assignable_v<ValueType>)
 	{
-		if constexpr (std::is_copy_assignable_v<ValueType>)
-		{
-			Assign(_Val);
-			return *this;
-		}
-		else
-			_D_Dragonian_Lib_Not_Implemented_Error;
+		Assign(_Val);
+		return *this;
 	}
 
 	/**
@@ -776,9 +814,9 @@ public:
 	 * @param _Index The index of the element tensor.
 	 * @return The element tensor.
 	 */
-	template <size_t _TmpTank = _NRank>
+	template <size_t = _NRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](SizeType _Index) const
-		requires (_TmpTank > 0 && _TmpTank == _NRank)
+		requires (_NRank > 0)
 	{
 		return ViewFirstAxis(_Index);
 	}
@@ -800,7 +838,7 @@ public:
 	 */
 	template <size_t _TRank>
 	constexpr decltype(auto) operator[](const Dimensions<_TRank>& _Indice) const
-		requires (_NRank > _TRank)
+		requires (_NRank >= _TRank)
 	{
 		return ViewDimensions(_Indice);
 	}
@@ -844,26 +882,22 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) New(
 		const Dimensions<_NRank>& _Shape,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> || std::is_default_constructible_v<_CurValueType>))
+	) requires (std::is_trivially_copy_assignable_v<ValueType> || std::is_default_constructible_v<ValueType>)
 	{
 		return Tensor(_Shape, _Al);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) NewVector(
 		SizeType _Size,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_trivially_copy_assignable_v<_CurValueType> || std::is_default_constructible_v<_CurValueType>))
+	) requires (std::is_trivially_copy_assignable_v<ValueType> || std::is_default_constructible_v<ValueType>)
 	{
-		Dimensions<_NRank> MyShape;
-		for (size_t i = 0; i < _NRank; ++i)
-			MyShape[i] = 1;
+		auto MyShape = Dimensions<_NRank>::ConstantOf(1ll);
 		MyShape.Back() = _Size;
 		return Tensor(MyShape, _Al);
 	}
@@ -872,9 +906,8 @@ public:
 	 * @brief Create an empty new tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) New()
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_trivially_copy_assignable_v<_CurValueType>)
 	{
 		return Tensor();
 	}
@@ -894,12 +927,11 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) Ones(
 		const Dimensions<_NRank>& _Shape,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(1)>)
+	) requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(1)>)
 	{
 		Tensor Ret(_Shape, _Al);
 		Ret.Assign(ValueType(1));
@@ -912,12 +944,11 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) Zeros(
 		const Dimensions<_NRank>& _Shape,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(0)>)
+	) requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(0)>)
 	{
 		Tensor Ret(_Shape, _Al);
 		Ret.Assign(ValueType(0));
@@ -931,13 +962,12 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) ConstantOf(
 		const Dimensions<_NRank>& _Shape,
 		const ValueType& _Val,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		Tensor Ret(_Shape, _Al);
 		Ret.Assign(_Val);
@@ -952,14 +982,13 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) Rand(
 		const Dimensions<_NRank>& _Shape,
 		const ValueType& Min,
 		const ValueType& Max,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		Tensor Ret(_Shape, _Al);
 		Ret.AssignRand(Min, Max);
@@ -974,14 +1003,13 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) Randn(
 		const Dimensions<_NRank>& _Shape,
 		double _Mean = 0.,
 		double _Sigma = 1.,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		Tensor Ret(_Shape, _Al);
 		Ret.AssignRandn(_Mean, _Sigma);
@@ -993,11 +1021,10 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) OnesLike(
 		const Tensor& _ShapeReference
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(1)>)
+	) requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(1)>)
 	{
 		_ShapeReference.ThrowOnNotEnabled();
 		return Ones(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
@@ -1008,11 +1035,10 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) ZerosLike(
 		const Tensor& _ShapeReference
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(0)>)
+	) requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(0)>)
 	{
 		_ShapeReference.ThrowOnNotEnabled();
 		return Zeros(_ShapeReference.Shape(), _ShapeReference.GetAllocator());
@@ -1024,12 +1050,11 @@ public:
 	 * @param _Val The constant value to fix the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) ConstantLike(
 		const Tensor& _ShapeReference,
 		const ValueType& _Val
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		_ShapeReference.ThrowOnNotEnabled();
 		return ConstantOf(_ShapeReference.Shape(), _Val, _ShapeReference.GetAllocator());
@@ -1042,13 +1067,12 @@ public:
 	 * @param Max The maximum value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) RandLike(
 		const Tensor& _ShapeReference,
 		const ValueType& Min,
 		const ValueType& Max
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		_ShapeReference.ThrowOnNotEnabled();
 		return Rand(_ShapeReference.Shape(), Min, Max, _ShapeReference.GetAllocator());
@@ -1061,13 +1085,12 @@ public:
 	 * @param _Sigma The sigma value of the random values.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) RandnLike(
 		const Tensor& _ShapeReference,
 		double _Mean = 0.,
 		double _Sigma = 1.
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		_ShapeReference.ThrowOnNotEnabled();
 		return Randn(_ShapeReference.Shape(), _Mean, _Sigma, _ShapeReference.GetAllocator());
@@ -1079,12 +1102,11 @@ public:
 	 * @param _Al The allocator of the tensor.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) Empty(
 		const Dimensions<_NRank>& _Shape,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_trivially_copy_assignable_v<_CurValueType>)
+	) requires (std::is_trivially_copy_assignable_v<ValueType>)
 	{
 		return Tensor(_Shape, _Al);
 	}
@@ -1094,23 +1116,21 @@ public:
 	 * @param _ShapeReference The tensor to reference the shape.
 	 * @return The new tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	static constexpr decltype(auto) EmptyLike(
 		const Tensor& _ShapeReference
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_trivially_copy_assignable_v<_CurValueType>)
+	) requires (std::is_trivially_copy_assignable_v<ValueType>)
 	{
 		return Tensor(_ShapeReference._MyShape, _ShapeReference.GetAllocator());
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
+	template <typename = ValueType, size_t = _NRank>
 	static constexpr decltype(auto) Arange(
 		ValueType _Begin,
 		ValueType _End,
 		ValueType _Step,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType> && std::is_copy_assignable_v<_CurValueType> && std::is_default_constructible_v<ValueType>)
+	) requires (_NRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType> && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		if (_Step == ValueType(0))
 			_D_Dragonian_Lib_Throw_Exception("Step Can't Be Zero!");
@@ -1126,20 +1146,19 @@ public:
 			Ret._MyData,
 			Ret.GetDefaultOperatorParameter(),
 			_Begin, _Step,
-			!Ret.IsBroadCasted() && Ret.IsContinuous()
+			!Ret.IsBroadCasted() && Ret.IsContiguous()
 		);
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
+	template <typename = ValueType, size_t = _NRank>
 	static constexpr decltype(auto) Linspace(
 		ValueType _Begin,
 		ValueType _End,
 		size_t _Count,
 		bool _EndPoint = false,
 		Allocator _Al = Allocator()
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank == _NRank && _TRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType> && std::is_copy_assignable_v<_CurValueType> && std::is_default_constructible_v<ValueType>)
+	) requires (_NRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType> && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		if (_EndPoint)
 		{
@@ -1214,7 +1233,8 @@ private:
 	Tensor(
 		const Dimensions<_NRank>& MyShape,
 		Allocator Alloc = Allocator()
-	) : _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
+	) requires(std::is_trivially_copy_assignable_v<ValueType> || std::is_default_constructible_v<ValueType>)
+		: _MyFuturesAsResult(new DependencyChainType), _MyFuturesAsArgument(new DependencyChainType)
 	{
 		if (AllocateMemory(MyShape, Alloc))
 		{
@@ -1295,11 +1315,10 @@ private:
 		ConstructViewInfo(MyShape);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const ValueType& _Value
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
@@ -1309,16 +1328,15 @@ private:
 			_MyData,
 			GetDefaultOperatorParameter(),
 			_Value,
-			!IsBroadCasted() && IsContinuous()
+			!IsBroadCasted() && IsContiguous()
 		);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const ValueType* _Buffer,
 		SizeType _Count
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
@@ -1331,16 +1349,15 @@ private:
 			GetDefaultOperatorParameter(),
 			_Buffer,
 			_Count,
-			!IsBroadCasted() && IsContinuous()
+			!IsBroadCasted() && IsContiguous()
 		);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) MoveAssign(
 		const ValueType* _Buffer,
 		SizeType _Count
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_move_assignable_v<_CurValueType>)
+	) requires (std::is_move_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
@@ -1353,15 +1370,14 @@ private:
 			GetDefaultOperatorParameter(),
 			_Buffer,
 			_Count,
-			!IsBroadCasted() && IsContinuous()
+			!IsBroadCasted() && IsContiguous()
 		);
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank>
+	template <typename = ValueType, size_t _TRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const Tensor<ValueType, _TRank, _MyDevice>& _Val
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		_Val.ThrowOnNotEnabled();
@@ -1377,16 +1393,15 @@ private:
 			GetDefaultOperatorParameter(),
 			BroadCasted.Data(),
 			BroadCasted.GetDefaultOperatorParameter(),
-			!IsBroadCasted() && !BroadCasted.IsBroadCasted() && IsContinuous() && BroadCasted.IsContinuous()
+			!IsBroadCasted() && !BroadCasted.IsBroadCasted() && IsContiguous() && BroadCasted.IsContiguous()
 		);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) AssignRand(
 		const ValueType& Min,
 		const ValueType& Max
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
@@ -1396,16 +1411,15 @@ private:
 			_MyData,
 			GetDefaultOperatorParameter(),
 			Min, Max,
-			!IsBroadCasted() && IsContinuous()
+			!IsBroadCasted() && IsContiguous()
 		);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) AssignRandn(
 		double _Mean = 0.,
 		double _Sigma = 1.
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
@@ -1416,20 +1430,17 @@ private:
 			GetDefaultOperatorParameter(),
 			_Mean,
 			_Sigma,
-			!IsBroadCasted() && IsContinuous()
+			!IsBroadCasted() && IsContiguous()
 		);
 	}
 
 public:
-
 	//********************************************************Info********************************************************//
-
 	/**
 	 * @brief Get the alignment size of the value type.
 	 * @return The alignment size of the value type.
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline
-		SizeType GetAlignSize()
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType GetAlignSize()
 	{
 		return alignof(ValueType);
 	}
@@ -1438,8 +1449,7 @@ public:
 	 * @brief Get the device of the tensor.
 	 * @return The device of the tensor.
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline
-		Device GetDevice()
+	static _D_Dragonian_Lib_Constexpr_Force_Inline Device GetDevice()
 	{
 		return _Device;
 	}
@@ -1448,8 +1458,7 @@ public:
 	 * @brief Get the allocator of the tensor.
 	 * @return The allocator of the tensor.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) GetAllocator() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) GetAllocator() const
 	{
 		return _MyAllocator;
 	}
@@ -1459,8 +1468,9 @@ public:
 	 * @return The buffer of the tensor.
 	 */
 	template <typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Buffer(this _ThisType&& Self)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Buffer(
+		this _ThisType&& Self
+	)
 	{
 		return std::forward<_ThisType>(Self)._MyFirst;
 	}
@@ -1470,8 +1480,9 @@ public:
 	 * @return The data pointer of the tensor.
 	 */
 	template <typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Data(this _ThisType&& Self)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data(
+		this _ThisType&& Self
+	)
 	{
 		return std::forward<_ThisType>(Self)._MyData;
 	}
@@ -1481,8 +1492,10 @@ public:
 	 * @return The data pointer of the tensor.
 	 */
 	template <size_t _TRank, typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Data(this _ThisType&& Self, const Dimensions<_TRank>& _Indices)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Data(
+		this _ThisType&& Self,
+		const Dimensions<_TRank>& _Indices
+	)
 	{
 		static_assert(_TRank <= _NRank, "The rank of the indices must be less than or equal to the rank of the tensor!");
 		SizeType Index = 0;
@@ -1499,8 +1512,10 @@ public:
 	 * @return The val.
 	 */
 	template <typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Get(this _ThisType&& Self, SizeType Index)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Get(
+		this _ThisType&& Self,
+		SizeType Index
+	)
 	{
 		return *(std::forward<_ThisType>(Self).template Data<1>({ Index }));
 	}
@@ -1510,8 +1525,10 @@ public:
 	 * @return The val.
 	 */
 	template <size_t _TRank, typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Item(this _ThisType&& Self, const Dimensions<_TRank>& _Indices)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Item(
+		this _ThisType&& Self,
+		const Dimensions<_TRank>& _Indices
+	)
 	{
 		return *(std::forward<_ThisType>(Self).Data(_Indices));
 	}
@@ -1521,8 +1538,9 @@ public:
 	 * @return The val.
 	 */
 	template <typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) Item(this _ThisType&& Self)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Item(
+		this _ThisType&& Self
+	)
 	{
 		return *std::forward<_ThisType>(Self)._MyData;
 	}
@@ -1532,13 +1550,14 @@ public:
 	 * @return The pointer.
 	 */
 	template <typename _ThisType>
-	_D_Dragonian_Lib_Constexpr_Force_Inline
-		decltype(auto) ItemPointer(this _ThisType&& Self)
+	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) ItemPointer(
+		this _ThisType&& Self
+	)
 	{
 		return std::forward<_ThisType>(Self)._MyData;
 	}
 
-	decltype(auto) GetShared()const
+	decltype(auto) GetShared() const
 	{
 		auto Shared = _MyFirst;
 		return Shared;
@@ -1550,9 +1569,9 @@ public:
 	 * @brief Assign the tensor with ones.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) FixOnes()
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(1)>)
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(1)>)
 	{
 		Assign(ValueType(1));
 		return *this;
@@ -1562,9 +1581,9 @@ public:
 	 * @brief Assign the tensor with zeros.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) FixZeros()
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_constructible_v<_CurValueType, decltype(0)>)
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_constructible_v<ValueType, decltype(0)>)
 	{
 		Assign(ValueType(0));
 		return *this;
@@ -1575,11 +1594,10 @@ public:
 	 * @param _Val The constant value.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Fix(
 		const ValueType& _Val
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		Assign(_Val);
 		return *this;
@@ -1591,12 +1609,11 @@ public:
 	 * @param _Count Data count of the buffer.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Fix(
 		const ValueType* _Buffer,
 		SizeType _Count
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	) requires (std::is_copy_assignable_v<ValueType>)
 	{
 		Assign(_Buffer, _Count);
 		return *this;
@@ -1608,12 +1625,11 @@ public:
 	 * @param _Count Data count of the buffer.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) MoveFix(
 		const ValueType* _Buffer,
 		SizeType _Count
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_move_assignable_v<_CurValueType>)
+	) requires (std::is_move_assignable_v<ValueType>)
 	{
 		MoveAssign(_Buffer, _Count);
 		return *this;
@@ -1623,12 +1639,11 @@ public:
 	 * @brief Assign the tensor with random values.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) RandFix(
 		const ValueType& Min = ValueType(0),
 		const ValueType& Max = ValueType(1)
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	) requires (TypeTraits::IsArithmeticValue<ValueType>)
 	{
 		AssignRand(Min, Max);
 		return *this;
@@ -1640,8 +1655,8 @@ public:
 	 * @param _Sigma The sigma value of the random values.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::IsArithmeticValue<_CurValueType>)
+	template <typename = ValueType>
+		requires (TypeTraits::IsArithmeticValue<ValueType>)
 	decltype(auto) RandnFix(
 		double _Mean = 0.,
 		double _Sigma = 1.
@@ -1651,12 +1666,11 @@ public:
 		return *this;
 	}
 
-	template <typename _MaskType, typename _CurValueType = ValueType>
+	template <typename _MaskType, typename = ValueType>
 	decltype(auto) MaskedFill(
 		const Tensor<_MaskType, _NRank, _MyDevice>& _Mask,
 		const ValueType& _Value
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>)
+	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>)
 	{
 		ThrowOnNotEnabled();
 		_Mask.ThrowOnNotEnabled();
@@ -1669,17 +1683,16 @@ public:
 			MaskBroadCasted.Data(),
 			MaskBroadCasted.GetDefaultOperatorParameter(),
 			_Value,
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContinuous() && MaskBroadCasted.IsContinuous()
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContiguous() && MaskBroadCasted.IsContiguous()
 		);
 		return *this;
 	}
 
-	template <typename _MaskType, size_t _TRank, typename _CurValueType = ValueType>
+	template <typename _MaskType, size_t _TRank, typename = ValueType>
 	decltype(auto) MaskedFill(
 		const Tensor<_MaskType, _NRank, _MyDevice>& _Mask,
 		const Tensor<ValueType, _TRank, _MyDevice>& _Value
-	)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
+	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
 	{
 		ThrowOnNotEnabled();
 		_Mask.ThrowOnNotEnabled();
@@ -1697,8 +1710,8 @@ public:
 			MaskBroadCasted.Data(),
 			MaskBroadCasted.GetDefaultOperatorParameter(),
 			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
-			!BroadCasted.IsBroadCasted() && IsContinuous() &&
-			MaskBroadCasted.IsContinuous() && BroadCasted.IsContinuous()
+			!BroadCasted.IsBroadCasted() && IsContiguous() &&
+			MaskBroadCasted.IsContiguous() && BroadCasted.IsContiguous()
 		);
 		return *this;
 	}
@@ -1710,8 +1723,7 @@ public:
 		const _ArgType& _Value,
 		_FunTy _ScalarFun,
 		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
-	)
-		requires (TypeTraits::IsInvocableValue<std::decay_t<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
+	) requires (TypeTraits::IsInvocableValue<std::decay_t<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
 	{
 		ThrowOnNotEnabled();
 		_Mask.ThrowOnNotEnabled();
@@ -1726,7 +1738,7 @@ public:
 			_Value,
 			_ScalarFun,
 			_VectorizedFn,
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContinuous() && MaskBroadCasted.IsContinuous()
+			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContiguous() && MaskBroadCasted.IsContiguous()
 		);
 		return *this;
 	}
@@ -1738,8 +1750,7 @@ public:
 		const Tensor<_ArgType, _TRank2, _MyDevice>& _Value,
 		_FunTy _ScalarFun,
 		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
-	)
-		requires (TypeTraits::IsInvocableValue<TypeTraits::RemoveReferenceType<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank1) && (_NRank >= _TRank2))
+	) requires (TypeTraits::IsInvocableValue<TypeTraits::RemoveReferenceType<_FunTy>, ValueType&, const _ArgType&> && TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank1) && (_NRank >= _TRank2))
 	{
 		ThrowOnNotEnabled();
 		_Mask.ThrowOnNotEnabled();
@@ -1759,8 +1770,8 @@ public:
 			_ScalarFun,
 			_VectorizedFn,
 			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
-			!BroadCasted.IsBroadCasted() && IsContinuous() &&
-			MaskBroadCasted.IsContinuous() && BroadCasted.IsContinuous()
+			!BroadCasted.IsBroadCasted() && IsContiguous() &&
+			MaskBroadCasted.IsContiguous() && BroadCasted.IsContiguous()
 		);
 		return *this;
 	}
@@ -1769,75 +1780,75 @@ public:
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Add);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Add, +, (Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Add, +, (Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Sub);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Sub, -, (Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Sub, -, (Operators::BinaryOperators::SubBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Mul);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mul, *, (Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mul, *, (Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Div);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Div, / , (Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Div, / , (Operators::BinaryOperators::DivBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Mod);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mod, %, (Operators::BinaryOperators::ModBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Mod, %, (Operators::BinaryOperators::ModBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(And);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(And, &&, (Operators::BinaryOperators::AndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(And, &&, (Operators::BinaryOperators::AndBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Or);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Or, || , (Operators::BinaryOperators::OrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Or, || , (Operators::BinaryOperators::OrBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Xor);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Xor, ^, (Operators::BinaryOperators::XorBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(Xor, ^, (Operators::BinaryOperators::XorBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(LShift);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(LShift, << , (Operators::BinaryOperators::LShiftBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(LShift, << , (Operators::BinaryOperators::LShiftBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(RShift);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(RShift, >> , (Operators::BinaryOperators::RShiftBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(RShift, >> , (Operators::BinaryOperators::RShiftBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(BitwiseOr);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseOr, | , (Operators::BinaryOperators::BitwiseOrBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseOr, | , (Operators::BinaryOperators::BitwiseOrBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(BitwiseAnd);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseAnd, &, (Operators::BinaryOperators::BitwiseAndBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator(BitwiseAnd, &, (Operators::BinaryOperators::BitwiseAndBinary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Equal);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Equal, == , (Operators::ComparisonOperators::EqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Equal, == , (Operators::ComparisonOperators::EqualBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(NotEqual);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(NotEqual, != , (Operators::ComparisonOperators::NotEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(NotEqual, != , (Operators::ComparisonOperators::NotEqualBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Greater);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Greater, > , (Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Greater, > , (Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(Less);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Less, < , (Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(Less, < , (Operators::ComparisonOperators::LessBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(GreaterEqual);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(GreaterEqual, >= , (Operators::ComparisonOperators::GreaterEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(GreaterEqual, >= , (Operators::ComparisonOperators::GreaterEqualBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Compare_Function_Define(LessEqual);
-	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(LessEqual, <= , (Operators::ComparisonOperators::LessEqualBinary::HasOperatorValue<_CurValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>));
+	_D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(LessEqual, <= , (Operators::ComparisonOperators::LessEqualBinary::HasOperatorValue<ValueType>));
 
 	//*****************************************************************************************************************//
 	_D_Dragonian_Lib_Operator_Binary_Function_Define(Pow);
@@ -1900,23 +1911,23 @@ public:
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(ATan2);
 	_D_Dragonian_Lib_Operator_Unary_Function_Define(Polar);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) operator-() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NegativeUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>))
+		requires (Operators::UnaryOperators::NegativeUnary::HasOperatorValue<ValueType> && (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>))
 	{
 		return Negative();
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) operator!() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::NotUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>))
+		requires (Operators::UnaryOperators::NotUnary::HasOperatorValue<ValueType> && (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>))
 	{
 		return Not();
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) operator~() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::BitwiseNotUnary::HasOperatorValue<_CurValueType> && (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>))
+		requires (Operators::UnaryOperators::BitwiseNotUnary::HasOperatorValue<ValueType> && (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>))
 	{
 		return BitwiseNot();
 	}
@@ -1930,7 +1941,9 @@ public:
 	 * @return The shape info of the tensor.
 	 */
 	template <size_t _Begin = 0, size_t _End = _NRank - _Begin>
-	Operators::OperatorParameter<_End - _Begin> GetDefaultOperatorParameter(bool _CheckIsContinuous = false) const
+	Operators::OperatorParameter<_End - _Begin> GetDefaultOperatorParameter(
+		bool _CheckIsContiguous = false
+	) const
 	{
 		ThrowOnNotEnabled();
 		constexpr auto CurrentRank = SizeType(_End - _Begin);
@@ -1962,7 +1975,9 @@ public:
 	 * @param _Index
 	 * @return
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Shape(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Shape(
+		SizeType _Index
+	) const
 	{
 		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
 		return _MyShape[_Index];
@@ -2000,7 +2015,9 @@ public:
 	 * @param _Index The index of the axis.
 	 * @return The shape of the specified axis of the tensor.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Size(
+		SizeType _Index
+	) const
 	{
 		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
 		return _MyShape[_Index];
@@ -2029,7 +2046,9 @@ public:
 	 * @param _Index
 	 * @return
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Stride(SizeType _Index) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline SizeType Stride(
+		SizeType _Index
+	) const
 	{
 		_Index = CalcIndex(_Index, static_cast<SizeType>(_NRank));
 		return _MyViewStride[_Index];
@@ -2088,10 +2107,10 @@ public:
 	}
 
 	/**
-	 * @brief Get the continuous access order of the tensor.
-	 * @return The continuous access order of the tensor.
+	 * @brief Get the Contiguous access order of the tensor.
+	 * @return The Contiguous access order of the tensor.
 	 */
-	Dimensions<_NRank> CalcContinuousAccessOrder() const
+	Dimensions<_NRank> CalcContiguousAccessOrder() const
 	{
 		const auto Dims = Rank();
 		if (Dims == 1)
@@ -2139,10 +2158,10 @@ public:
 	}
 
 	/**
-	 * @brief Check if the tensor is continuous in the specified range.
-	 * @return True if the tensor is continuous, false otherwise.
+	 * @brief Check if the tensor is Contiguous in the specified range.
+	 * @return True if the tensor is Contiguous, false otherwise.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContiguous() const
 	{
 		if (IsBroadCasted())
 			return false;
@@ -2152,28 +2171,35 @@ public:
 
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = 1; std::cmp_less(i, _NRank); ++i)
+		{
+			if (_MyShape[i] == 1)
+				continue;
 			if (_MyViewStride[i - 1] <= 0 ||
 				_MyViewStride[i - 1] % _MyShape[i] ||
 				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
 				Diff % _MyShape[i])
 				return false;
+		}
 		return true;
 	}
 
 	/**
-	 * @brief Check if the tensor is continuous in the specified range.
-	 * @return True if the tensor is continuous, false otherwise.
+	 * @brief Check if the tensor is Contiguous in the specified range.
+	 * @return True if the tensor is Contiguous, false otherwise.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContiguous() const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous() const
 	{
-		return IsContinuous();
+		return IsContiguous();
 	}
 
 	/**
-	 * @brief Check if the tensor is continuous in the specified range.
-	 * @return True if the tensor is continuous, false otherwise.
+	 * @brief Check if the tensor is Contiguous in the specified range.
+	 * @return True if the tensor is Contiguous, false otherwise.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(SizeType _Begin, SizeType _End) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContiguous(
+		SizeType _Begin,
+		SizeType _End
+	) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcIterator(_End, Rank());
@@ -2183,19 +2209,38 @@ public:
 
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = _Begin + 1; i < _End; ++i)
+		{
+			if (_MyShape[i] == 1)
+				continue;
 			if (_MyViewStride[i - 1] <= 0 ||
 				_MyViewStride[i - 1] % _MyShape[i] ||
 				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
 				Diff % _MyShape[i])
 				return false;
+		}
 		return true;
+	}
+
+	/**
+	 * @brief Check if the tensor is Contiguous in the specified range.
+	 * @return True if the tensor is Contiguous, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContinuous(
+		SizeType _Begin,
+		SizeType _End
+	) const
+	{
+		return IsContiguous(_Begin, _End);
 	}
 
 	/**
 	 * @brief Check if the tensor is not sliced.
 	 * @return True if the tensor is not sliced, false otherwise.
 	 */
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool NotSliced(SizeType _Begin, SizeType _End) const
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool NotSliced(
+		SizeType _Begin,
+		SizeType _End
+	) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcIterator(_End, Rank());
@@ -2213,7 +2258,7 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsView() const
 	{
-		return _MyData != (RawPointer)_MyFirst.get() || !IsContinuous();
+		return _MyData != (RawPointer)_MyFirst.get() || !IsContiguous();
 	}
 
 	/**
@@ -2225,7 +2270,14 @@ public:
 		return IsBroadCasted_();
 	}
 
-	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted_(SizeType _Begin = 0, SizeType _End = _NRank) const
+	/**
+	 * @brief Check if the tensor is broadcasted.
+	 * @return True if the tensor is broadcasted, false otherwise.
+	 */
+	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsBroadCasted_(
+		SizeType _Begin = 0,
+		SizeType _End = _NRank
+	) const
 	{
 		_Begin = CalcIndex(_Begin, Rank());
 		_End = CalcIterator(_End, Rank());
@@ -2238,7 +2290,6 @@ public:
 	}
 
 private:
-
 	_D_Dragonian_Lib_Constexpr_Force_Inline void ThrowOnNotEnabled() const
 	{
 		if (!IsEnabled())
@@ -2247,7 +2298,6 @@ private:
 
 public:
 	//*******************************************************Iterator*******************************************************//
-
 	/**
 	 * @brief Get the begining iterator of the tensor.
 	 * @return The begining iterator of the tensor.
@@ -2294,7 +2344,9 @@ public:
 	 * @param _Indices The indices of the loop iterator.
 	 * @return Reference of _Indices
 	 */
-	Dimensions<_NRank>& IteratorAdd(Dimensions<_NRank>& _Indices) const
+	Dimensions<_NRank>& IteratorAdd(
+		Dimensions<_NRank>& _Indices
+	) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -2318,7 +2370,9 @@ public:
 	 * @param _Indices The indices of the loop iterator.
 	 * @return Reference of _Indices
 	 */
-	Dimensions<_NRank>& IteratorSub(Dimensions<_NRank>& _Indices) const
+	Dimensions<_NRank>& IteratorSub(
+		Dimensions<_NRank>& _Indices
+	) const
 	{
 		auto Val = _Indices.Data() + _Indices.Size() - 1;
 		const auto ShapePtr = _MyShape.Data();
@@ -2345,18 +2399,18 @@ public:
 	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (0 ~ (Max - 1))
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(SizeType _Index, SizeType _Max, bool _Strict = true)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIndex(
+		SizeType _Index,
+		SizeType _Max,
+		bool _Strict = true
+	)
 	{
 		if (_Index < 0)
 			_Index += _Max;
+		if (!_Strict)
+			_Index = std::clamp(_Index, 0ll, _Max - 1);
 		if (_Index >= _Max || _Index < 0)
-		{
-			if (_Strict)
-				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
-			if (_Index >= _Max)
-				return _Max - 1;
-			_Index = std::max(0ll, _Index);
-		}
+			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
 		return _Index;
 	}
 
@@ -2374,15 +2428,17 @@ public:
 	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (-1 ~ Max)
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcEndPos(SizeType _Index, SizeType _Max, bool _Strict = true)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcEndPos(
+		SizeType _Index,
+		SizeType _Max,
+		bool _Strict = true
+	)
 	{
 		if (_Index == RangeEndPos)
 			return _Max;
 		if (_Index == RangeBeginPos)
 			return -1;
-		if (_Index == _Max)
-			return _Max;
-		if (!_Strict && _Index > _Max)
+		if (_Index == _Max || (!_Strict && _Index > _Max))
 			return _Max;
 		return CalcIndex(_Index, _Max, _Strict);
 	}
@@ -2400,23 +2456,20 @@ public:
 	 * @param _Strict Whether to throw exception when the index is out of range.
 	 * @return The transformed index. (0 ~ Max)
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIterator(SizeType _Index, SizeType _Max, bool _Strict = true)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType CalcIterator(
+		SizeType _Index,
+		SizeType _Max,
+		bool _Strict = true
+	)
 	{
 		if (_Index == RangeEndPos)
 			return _Max;
-		if (_Index == _Max)
-			return _Max;
-
 		if (_Index < 0)
 			_Index += _Max + 1;
+		if (!_Strict)
+			_Index = std::clamp(_Index, 0ll, _Max);
 		if (_Index > _Max || _Index < 0)
-		{
-			if (_Strict)
-				_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
-			if (_Index > _Max)
-				return _Max;
-			_Index = std::max(0ll, _Index);
-		}
+			_D_Dragonian_Lib_Throw_Exception("Index Out Of Range!");
 		return _Index;
 	}
 
@@ -2426,11 +2479,14 @@ public:
 	 * @param _Right The right number.
 	 * @return The ceil of the division.
 	 */
-	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Ceil(SizeType _Left, SizeType _Right)
+	static _D_Dragonian_Lib_Constexpr_Force_Inline SizeType Ceil(
+		SizeType _Left,
+		SizeType _Right
+	)
 	{
 		auto Div = _Left / _Right;
-		if (_Left > (Div * _Right))
-			++Div;
+		if (_Left % _Right)
+			return Div + 1;
 		return Div;
 	}
 
@@ -2443,7 +2499,10 @@ public:
 	 * @return A vector of split tensors.
 	 */
 	template <size_t _Count>
-	decltype(auto) Split(const Dimensions<_Count>& _Size, SizeType _Axis = 0) const
+	decltype(auto) Split(
+		const Dimensions<_Count>& _Size,
+		SizeType _Axis = 0
+	) const
 	{
 		ThrowOnNotEnabled();
 		IDLArray<Tensor, _Count> Ret;
@@ -2455,12 +2514,12 @@ public:
 			_D_Dragonian_Lib_Throw_Exception("The Size Of The Split Is Not Equal To The Source!");
 
 		SliceOptions<_Count> SliceOptions;
+		SliceOptions[_Axis] = { 0, 1, 0 };
 		for (size_t i = 0; i < _Count; ++i)
 		{
-			SliceOptions[_Axis].Begin = i * _Size[i];
-			SliceOptions[_Axis].Step = 1;
-			SliceOptions[_Axis].End = SliceOptions[_Axis].Begin + _Size[i];
+			SliceOptions[_Axis].End += _Size[i];
 			Ret[i] = Slice(SliceOptions);
+			SliceOptions[_Axis].Begin += _Size[i];
 		}
 
 		return Ret;
@@ -2472,7 +2531,10 @@ public:
 	 * @param _Axis The axis to split along.
 	 * @return A vector of split tensors.
 	 */
-	decltype(auto) Split(SizeType _Size, SizeType _Axis = 0) const
+	decltype(auto) Split(
+		SizeType _Size,
+		SizeType _Axis = 0
+	) const
 	{
 		ThrowOnNotEnabled();
 		TemplateLibrary::Vector<Tensor> Ret;
@@ -2484,17 +2546,16 @@ public:
 		auto Remain = _MyShape[_Axis];
 		Ret.Reserve(Remain / _Size + 1);
 
+
 		SliceOptions<_NRank> SliceOptions;
-		Int64 i = 0;
+		SliceOptions[_Axis] = { 0, 1, 0 };
 		while (Remain)
 		{
 			const auto CSize = std::min(_Size, Remain);
-			SliceOptions[_Axis].Begin = i * _Size;
-			SliceOptions[_Axis].Step = 1;
-			SliceOptions[_Axis].End = SliceOptions[_Axis].Begin + CSize;
+			SliceOptions[_Axis].End += CSize;
 			Ret.EmplaceBack(Slice(SliceOptions));
+			SliceOptions[_Axis].Begin += CSize;
 			Remain -= CSize;
-			++i;
 		}
 		return Ret;
 	}
@@ -2506,7 +2567,11 @@ public:
 	 * @param _Axis The axis to window along.
 	 * @return A vector of windowed tensors.
 	 */
-	decltype(auto) Window(SizeType _HopSize, SizeType _WinLength, SizeType _Axis = 0)
+	decltype(auto) Window(
+		SizeType _HopSize,
+		SizeType _WinLength,
+		SizeType _Axis = 0
+	)
 	{
 		ThrowOnNotEnabled();
 		_Axis = CalcIndex(_Axis, Rank());
@@ -2535,18 +2600,20 @@ public:
 	 * @param _SliceOptions A [[begin, step, end]/null, ...] array of all sliced axes, null means no slice.
 	 * @return A sliced tensor(view).
 	 */
-	decltype(auto) Slice(const SliceOptions<_NRank>& _SliceOptions) const
+	template <size_t _Rnk = _NRank>
+	decltype(auto) Slice(
+		const SliceOptions<_Rnk>& _SliceOptions
+	) const requires (_Rnk <= _NRank && _Rnk > 0)
 	{
 		ThrowOnNotEnabled();
 		if (IsBroadCasted())
 			_D_Dragonian_Lib_Throw_Exception("Broad Casted Could Not Be Sliced!");
-		if (_MyShape.Empty() || _SliceOptions.Size() > _MyShape.Size())
-			_D_Dragonian_Lib_Throw_Exception("Axis Out Of Range!");
 
 		Tensor Ret = View();
-		for (size_t i = 0; i < _SliceOptions.Size(); ++i)
+		for (size_t i = 0; i < _Rnk; ++i)
 		{
-			if (_SliceOptions[i].Begin == 0 && _SliceOptions[i].Step == 1 &&
+			if (_SliceOptions[i].Begin == 0 &&
+				_SliceOptions[i].Step == 1 &&
 				(_SliceOptions[i].End == RangeEndPos || _SliceOptions[i].End == _MyShape[i]))
 				continue;
 
@@ -2569,12 +2636,10 @@ public:
 
 			const auto SliceLength = SliceEndPos - SliceBeginPos;
 			if (SliceLength == 0)
-				_D_Dragonian_Lib_Throw_Exception("(SliceEnd - SliceBegin) Should Not Be Zero!");
+				_D_Dragonian_Lib_Throw_Exception("SliceLength could not be zero!");
 			if (SliceLength / SliceStep < 0)
-				_D_Dragonian_Lib_Throw_Exception("Step Error!");
+				_D_Dragonian_Lib_Throw_Exception("Shape could not be negative!");
 			const auto SlicedShape = Ceil(abs(SliceLength), abs(SliceStep));
-			if (SlicedShape < 0)
-				_D_Dragonian_Lib_Throw_Exception("Step And (SliceEnd - SliceBegin) Should Have The Same Sign!");
 
 			Ret._MyData += SliceBeginPos * Ret._MyViewStride[i];
 			Ret._MyShape[i] = SlicedShape;
@@ -2588,11 +2653,54 @@ public:
 	 * @param _SliceOptions A [[begin, end, step]/none, ...] array of all sliced axes, none means no slice.
 	 * @return A sliced tensor(view).
 	 */
-	decltype(auto) ReversedSlice(const SliceOptions<_NRank>& _SliceOptions) const
+	template <size_t _Rnk = _NRank>
+	decltype(auto) ReversedSlice(
+		const SliceOptions<_NRank>& _SliceOptions
+	) const requires (_Rnk <= _NRank && _Rnk > 0)
 	{
-		auto NewRange = _SliceOptions;
-		std::ranges::reverse(NewRange);
-		return Slice(NewRange);
+		ThrowOnNotEnabled();
+		if (IsBroadCasted())
+			_D_Dragonian_Lib_Throw_Exception("Broad Casted Could Not Be Sliced!");
+
+		Tensor Ret = View();
+		for (size_t j = 0; j < _Rnk; ++j)
+		{
+			const auto i = _Rnk - 1 - j; // Reverse the index for reversed slice
+
+			if (_SliceOptions[j].Begin == 0 &&
+				_SliceOptions[j].Step == 1 &&
+				(_SliceOptions[j].End == RangeEndPos || _SliceOptions[j].End == _MyShape[i]))
+				continue;
+
+			SizeType SliceBeginPos, SliceStep, SliceEndPos;
+
+			if (_SliceOptions[j].Begin == _SliceOptions[j].Step && _SliceOptions[j].Begin == _SliceOptions[j].End)
+			{
+				SliceBeginPos = CalcIndex(_SliceOptions[j].Step, _MyShape[i], false);
+				SliceStep = 1;
+				SliceEndPos = SliceBeginPos + 1;
+			}
+			else
+			{
+				SliceStep = _SliceOptions[j].Step;
+				if (SliceStep == 0)
+					_D_Dragonian_Lib_Throw_Exception("SliceStep Should Not Be Zero!");
+				SliceBeginPos = CalcIndex(_SliceOptions[j].Begin, _MyShape[i], false);
+				SliceEndPos = CalcEndPos(_SliceOptions[j].End, _MyShape[i], false);
+			}
+
+			const auto SliceLength = SliceEndPos - SliceBeginPos;
+			if (SliceLength == 0)
+				_D_Dragonian_Lib_Throw_Exception("SliceLength could not be zero!");
+			if (SliceLength / SliceStep < 0)
+				_D_Dragonian_Lib_Throw_Exception("Shape could not be negative!");
+			const auto SlicedShape = Ceil(abs(SliceLength), abs(SliceStep));
+
+			Ret._MyData += SliceBeginPos * Ret._MyViewStride[i];
+			Ret._MyShape[i] = SlicedShape;
+			Ret._MyViewStride[i] *= SliceStep;
+		}
+		return Ret;
 	}
 
 	/**
@@ -2600,7 +2708,9 @@ public:
 	 * @param _PremuteOrder The new order of axes.
 	 * @return A permuted tensor(view).
 	 */
-	decltype(auto) Permute(const Dimensions<_NRank>& _PremuteOrder) const
+	decltype(auto) Permute(
+		const Dimensions<_NRank>& _PremuteOrder
+	) const
 	{
 		ThrowOnNotEnabled();
 		if (_MyShape.Empty() || _PremuteOrder.Size() != _MyShape.Size())
@@ -2628,8 +2738,9 @@ public:
 	 * @return A permuted tensor(view).
 	 */
 	template <typename... _Args>
-	decltype(auto) Permute(_Args... _Order) const
-		requires (sizeof...(_Args) == _NRank)
+	decltype(auto) Permute(
+		_Args... _Order
+	) const requires (sizeof...(_Args) == _NRank)
 	{
 		return Permute(Dimensions<_NRank>{_Order...});
 	}
@@ -2640,7 +2751,10 @@ public:
 	 * @param _Axis2 The second axis.
 	 * @return A transposed tensor(view).
 	 */
-	decltype(auto) Transpose(SizeType _Axis1 = -1, SizeType _Axis2 = -2) const
+	decltype(auto) Transpose(
+		SizeType _Axis1 = -1,
+		SizeType _Axis2 = -2
+	) const
 	{
 		ThrowOnNotEnabled();
 		const auto AxisCount = (SizeType)_MyShape.Size();
@@ -2656,7 +2770,10 @@ public:
 		return Ret;
 	}
 
-	decltype(auto) AxisFromTo(SizeType _Begin = -2, SizeType _End = -1) const
+	decltype(auto) AxisFromTo(
+		SizeType _Begin = -2,
+		SizeType _End = -1
+	) const
 	{
 		ThrowOnNotEnabled();
 		const auto AxisCount = (SizeType)_MyShape.Size();
@@ -2678,7 +2795,9 @@ public:
 	 * @param _Dim The specified position.
 	 * @return An unsqueezed tensor(view).
 	 */
-	decltype(auto) UnSqueeze(SizeType _Dim) const
+	decltype(auto) UnSqueeze(
+		SizeType _Dim
+	) const
 	{
 		ThrowOnNotEnabled();
 		Tensor<_TensorType, _NRank + 1, _MyDevice> Ret;
@@ -2700,12 +2819,12 @@ public:
 	 * @param _Dim The specified position.
 	 * @return A squeezed tensor(view).
 	 */
-	template <size_t _TRank = _NRank>
-	decltype(auto) Squeeze(SizeType _Dim) const
-		requires (_TRank == _NRank)
+	decltype(auto) Squeeze(
+		SizeType _Dim
+	) const
 	{
 		ThrowOnNotEnabled();
-		if constexpr (_TRank == 1)
+		if constexpr (_NRank == 1)
 			return View();
 		else
 		{
@@ -2742,12 +2861,14 @@ public:
 	 * @return A viewed tensor(view).
 	 */
 	template <size_t _TRank>
-	decltype(auto) View(const Dimensions<_TRank>& _ViewShape) const
+	decltype(auto) View(
+		const Dimensions<_TRank>& _ViewShape
+	) const
 	{
 		ThrowOnNotEnabled();
 
-		if (!IsContinuous())
-			_D_Dragonian_Lib_Throw_Exception("View Should Be Continuous!");
+		if (!IsContiguous())
+			_D_Dragonian_Lib_Throw_Exception("View Should Be Contiguous!");
 		const auto DynamicCount = std::ranges::count(_ViewShape, -1);
 		if (DynamicCount > 1)
 			_D_Dragonian_Lib_Throw_Exception("Count Of Dynamic Axis Should Be <= 1!");
@@ -2798,14 +2919,18 @@ public:
 	 * @return A viewed tensor(view).
 	 */
 	template <typename... _Args>
-	decltype(auto) View(SizeType _Shape0, _Args... _Shape) const
+	decltype(auto) View(
+		SizeType _Shape0, _Args... _Shape
+	) const
 	{
 		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		return View(_ViewShape);
 	}
 
 	template <typename... _Args>
-	decltype(auto) AutoView(SizeType _Shape0, _Args... _Shape) const
+	decltype(auto) AutoView(
+		SizeType _Shape0, _Args... _Shape
+	) const
 	{
 		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		for (auto& i : _ViewShape)
@@ -2819,7 +2944,9 @@ public:
 	 * @param _Axis The specified axis.
 	 * @return A viewed tensor(view).
 	 */
-	decltype(auto) Reverse(SizeType _Axis = 0) const
+	decltype(auto) Reverse(
+		SizeType _Axis = 0
+	) const
 	{
 		ThrowOnNotEnabled();
 		_Axis = CalcIndex(_Axis, Rank());
@@ -2833,12 +2960,12 @@ public:
 	 * @brief Get the real part of the tensor.
 	 * @return A viewed tensor(view).
 	 */
-	template <typename _Type = _TensorType>
+	template <typename = _TensorType>
 	decltype(auto) Real() const
-		requires (TypeTraits::IsSameTypeValue<_Type, _TensorType>&& TypeTraits::IsComplexValue<_Type>)
+		requires (TypeTraits::IsComplexValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
-		using RealType = typename _Type::value_type;
+		using RealType = typename ValueType::value_type;
 		SliceOptions<_NRank> SliceVector;
 		SliceVector[_NRank - 1].Step = 2;
 		return ViewAs<RealType>().Slice(SliceVector);
@@ -2848,12 +2975,12 @@ public:
 	 * @brief Get the imaginary part of the tensor.
 	 * @return A viewed tensor(view).
 	 */
-	template <typename _Type = _TensorType>
+	template <typename = _TensorType>
 	decltype(auto) Imag() const
-		requires (TypeTraits::IsSameTypeValue<_Type, _TensorType>&& TypeTraits::IsComplexValue<_Type>)
+		requires (TypeTraits::IsComplexValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
-		using RealType = typename _Type::value_type;
+		using RealType = typename ValueType::value_type;
 		SliceOptions<_NRank> SliceVector;
 		SliceVector[_NRank - 1].Begin = 1;
 		SliceVector[_NRank - 1].Step = 2;
@@ -2861,12 +2988,12 @@ public:
 	}
 
 	/**
-	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
+	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
 	 * @return New tensor.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Clone() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		auto Ret = New(_MyShape, _MyAllocator);
@@ -2875,13 +3002,14 @@ public:
 	}
 
 	/**
-	 * @brief Clone this tensor, if the tensor is not continuous, make output continuous.
+	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
 	 * @param _Buffer The buffer to clone to.
 	 * @return New tensor.
 	 */
-	template <typename _CurValueType = ValueType, size_t _TRank>
-	decltype(auto) Clone(Tensor<_CurValueType, _TRank, _MyDevice>& _Buffer) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) Clone(
+		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
+	) const requires (std::is_copy_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		_Buffer.ThrowOnNotEnabled();
@@ -2890,14 +3018,14 @@ public:
 	}
 
 	/**
-	 * @brief If the tensor is not continuous, make output continuous.
+	 * @brief If the tensor is not Contiguous, make output Contiguous.
 	 * @return New tensor (view or clone).
 	 */
-	template <typename _CurValueType = ValueType>
-	decltype(auto) Continuous() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType>
+	decltype(auto) Contiguous() const
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
-		if (IsContinuous())
+		if (IsContiguous())
 			return View();
 		return Clone();
 	}
@@ -2906,11 +3034,11 @@ public:
 	 * @brief If the tensor is not contiguous, make output contiguous.
 	 * @return New tensor (view or clone).
 	 */
-	template <typename _CurValueType = ValueType>
-	decltype(auto) Contiguous() const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType>
+	decltype(auto) Continuous() const
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
-		return Continuous();
+		return Contiguous();
 	}
 
 	/** 
@@ -2918,22 +3046,36 @@ public:
 	 * @param _Buffer The buffer to clone to.
 	 * @return New tensor (view or clone).
 	 */
-	template <typename _CurValueType = ValueType, size_t _TRank>
-	decltype(auto) Continuous(Tensor<_CurValueType, _TRank, _MyDevice>& _Buffer) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>)
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) Contiguous(
+		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
+	) const requires (std::is_copy_assignable_v<ValueType>)
 	{
 		return Clone(_Buffer);
 	}
 
 	/**
-	 * @brief Make this tensor continuous.
+	 * @brief If the tensor is not contiguous, make output contiguous.
+	 * @param _Buffer The buffer to clone to.
+	 * @return New tensor (view or clone).
+	 */
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) Continuous(
+		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
+	) const requires (std::is_copy_assignable_v<ValueType>)
+	{
+		return Clone(_Buffer);
+	}
+
+	/**
+	 * @brief Make this tensor Contiguous.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) MakeContinuous()
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
-		if (IsContinuous())
+		if (IsContiguous())
 			return *this;
 		return *this = Clone();
 	}
@@ -2942,11 +3084,11 @@ public:
 	 * @brief Make this tensor contiguous.
 	 * @return Reference of this.
 	 */
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) MakeContiguous()
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
-		if (IsContinuous())
+		if (IsContiguous())
 			return *this;
 		return *this = Clone();
 	}
@@ -2956,11 +3098,12 @@ public:
 	 * @param _ViewShape The specified shape.
 	 * @return A reshaped tensor(view).
 	 */
-	template <typename _CurValueType = ValueType, size_t _TRank>
-	decltype(auto) ReShape(const Dimensions<_TRank>& _ViewShape) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) ReShape(
+		const Dimensions<_TRank>& _ViewShape
+	) const requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
-		if (IsContinuous())
+		if (IsContiguous())
 			return View(_ViewShape);
 		return Clone().View(_ViewShape);
 	}
@@ -2971,9 +3114,11 @@ public:
 	 * @param _Buffer The buffer to reshape to.
 	 * @return A reshaped tensor(view).
 	 */
-	template <typename _CurValueType = ValueType, size_t _TRank>
-	decltype(auto) ReShape(const Dimensions<_TRank>& _ViewShape, Tensor<_CurValueType, _TRank, _MyDevice>& _Buffer) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) ReShape(
+		const Dimensions<_TRank>& _ViewShape,
+		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
+	) const requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return Clone(_Buffer).View(_ViewShape);
 	}
@@ -2984,16 +3129,21 @@ public:
 	 * @param _Shape The shapes.
 	 * @return A reshaped tensor(view).
 	 */
-	template <typename _CurValueType = ValueType, typename... _Args>
-	decltype(auto) ReShape(SizeType _Shape0, _Args... _Shape) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType, typename... _Args>
+	decltype(auto) ReShape(
+		SizeType _Shape0,
+		_Args... _Shape
+	) const requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		return ReShape(_ViewShape);
 	}
 
 	template <typename... _Args>
-	decltype(auto) AutoShape(SizeType _Shape0, _Args... _Shape) const
+	decltype(auto) AutoShape(
+		SizeType _Shape0,
+		_Args... _Shape
+	) const
 	{
 		auto _ViewShape = Dimensions{ _Shape0, _Shape... };
 		for (auto& i : _ViewShape)
@@ -3002,8 +3152,11 @@ public:
 		return ReShape(_ViewShape);
 	}
 
-	template <typename _CurValueType = ValueType, typename... _Args>
-	decltype(auto) ReSize(SizeType _Shape0, _Args... _Shape) const
+	template <typename = ValueType, typename... _Args>
+	decltype(auto) ReSize(
+		SizeType _Shape0,
+		_Args... _Shape
+	) const
 	{
 		return ReShape(_Shape0, _Shape...);
 	}
@@ -3011,8 +3164,10 @@ public:
 	//********************************************************Operation********************************************************//
 
 	template <size_t _UnfoldDim, size_t _UnfoldCount, typename InvokeFnType>
-	static decltype(auto) Invoke(Tensor& _Tensor, const InvokeFnType& _Fn)
-		requires (TypeTraits::IsCallableValue<InvokeFnType>)
+	static decltype(auto) Invoke(
+		Tensor& _Tensor,
+		const InvokeFnType& _Fn
+	) requires (TypeTraits::IsCallableValue<InvokeFnType>)
 	{
 		ThrowOnNotEnabled();
 		const auto Parameter = _Tensor.GetDefaultOperatorParameter();
@@ -3027,9 +3182,10 @@ public:
 		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(0, ShapeInfo, BeginInfo, ViewStrideInfo, Function);
 	}
 
-	template <SizeType _Axis = 0, typename _CurValueType = ValueType, typename _IndexType>
-	decltype(auto) Gather(const Tensor<_IndexType, _NRank, _MyDevice>& _Indices) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<_CurValueType> && std::is_default_constructible_v<_CurValueType>)
+	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
+	decltype(auto) Gather(
+		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices
+	) const requires (TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		_Indices.ThrowOnNotEnabled();
@@ -3054,9 +3210,11 @@ public:
 		return Ret;
 	}
 
-	template <SizeType _Axis = 0, typename _CurValueType = ValueType, typename _IndexType>
-	decltype(auto) Gather(const Tensor<_IndexType, _NRank, _MyDevice>& _Indices, Tensor<_IndexType, _NRank, _MyDevice>& _Buffer)
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<_CurValueType>)
+	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
+	decltype(auto) Gather(
+		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices,
+		Tensor<_IndexType, _NRank, _MyDevice>& _Buffer
+	) requires (TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		_Indices.ThrowOnNotEnabled();
@@ -3087,22 +3245,28 @@ public:
 	{
 		ThrowOnNotEnabled();
 		WaitingAsArgument();
-		Tensor<_Type, _NRank, _MyDevice> Ret = Tensor<_Type, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
-		Ret.WaitingAsResult();
-		Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
-			(
-				Ret.Data(),
-				Ret.GetDefaultOperatorParameter(),
-				Data(),
-				GetDefaultOperatorParameter(),
-				IsContinuous() && !IsBroadCasted()
-			);
-		return Ret;
+		if constexpr (TypeTraits::IsSameTypeValue<_Type, ValueType>)
+			return View();
+		else
+		{
+			Tensor<_Type, _NRank, _MyDevice> Ret = Tensor<_Type, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
+			Ret.WaitingAsResult();
+			Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
+				(
+					Ret.Data(),
+					Ret.GetDefaultOperatorParameter(),
+					Data(),
+					GetDefaultOperatorParameter(),
+					IsContiguous() && !IsBroadCasted()
+				);
+			return Ret;
+		}
 	}
 
 	template <typename _Type>
-	decltype(auto) Cast(Tensor<_Type, _NRank, _MyDevice>& _Buffer) const
-		requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>)
+	decltype(auto) Cast(
+		Tensor<_Type, _NRank, _MyDevice>& _Buffer
+	) const requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>)
 	{
 		ThrowOnNotEnabled();
 		_Buffer.ThrowOnNotEnabled();
@@ -3115,7 +3279,7 @@ public:
 				_Buffer.GetDefaultOperatorParameter(),
 				BroadCasted.Data(),
 				BroadCasted.GetDefaultOperatorParameter(),
-				BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && _Buffer.IsContinuous()
+				BroadCasted.IsContiguous() && !BroadCasted.IsBroadCasted() && _Buffer.IsContiguous()
 			);
 		return _Buffer;
 	}
@@ -3125,7 +3289,7 @@ public:
 		requires (std::is_trivially_copy_assignable_v<_Type> && (bool(sizeof(_Type) % sizeof(ValueType)) || bool(sizeof(ValueType) % sizeof(_Type))))
 	{
 		ThrowOnNotEnabled();
-		if (!IsContinuous())
+		if (!IsContiguous())
 			_D_Dragonian_Lib_Throw_Exception("ViewAs Should Be Contiguous!");
 
 		const auto TailShape = _MyShape.Back();
@@ -3148,13 +3312,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
+	template <typename = ValueType, size_t _TRank = _NRank>
 	decltype(auto) Padding(
 		const PaddingCounts<_TRank>& _PaddingCount,
 		PaddingType _Type,
 		std::optional<ValueType> _Val = std::nullopt
-	) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank <= _NRank && std::is_copy_assignable_v<_CurValueType> && std::is_default_constructible_v<_CurValueType>)
+	) const requires (_TRank <= _NRank && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		auto Shape = _MyShape;
@@ -3277,13 +3440,12 @@ public:
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType, size_t _TRank = _NRank>
+	template <typename = ValueType, size_t _TRank = _NRank>
 	decltype(auto) Pad(
 		const PaddingCounts<_TRank>& _PaddingCount,
 		PaddingType _Type,
 		std::optional<ValueType> _Val = std::nullopt
-	) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& _TRank <= _NRank && std::is_copy_assignable_v<_CurValueType> && std::is_default_constructible_v<_CurValueType>)
+	) const requires (_TRank <= _NRank && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
 	{
 		PaddingCounts<_NRank> PaddingC;
 		for (size_t i = 0; i < _TRank; ++i)
@@ -3291,9 +3453,10 @@ public:
 		return Padding(PaddingC, _Type, std::move(_Val));
 	}
 
-	template <typename _CurValueType = ValueType>
-	decltype(auto) Repeat(const Dimensions<_NRank>& _Repeat) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType>
+	decltype(auto) Repeat(
+		const Dimensions<_NRank>& _Repeat
+	) const requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		PaddingCounts<_NRank> _PaddingCount;
@@ -3306,9 +3469,11 @@ public:
 		return Padding(_PaddingCount, PaddingType::Cicular);
 	}
 
-	template <typename _CurValueType = ValueType>
-	decltype(auto) Repeat(SizeType _Axis, SizeType _Repeat) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_copy_assignable_v<_CurValueType>&& std::is_default_constructible_v<_CurValueType>)
+	template <typename = ValueType>
+	decltype(auto) Repeat(
+		SizeType _Axis,
+		SizeType _Repeat
+	) const requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		PaddingCounts<_NRank> _PaddingCount;
@@ -3317,84 +3482,84 @@ public:
 		return Padding(_PaddingCount, PaddingType::Cicular);
 	}
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) Sum(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(Sum, Sum);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) Prod(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(Prod, Prod);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) Mean(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(Mean, Mean);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) ReduceMax(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(ReduceMax, Max);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) ReduceMin(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(ReduceMin, Min);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) LogSum(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(LogSum, LogSum);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) LogSumExp(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::UnaryOperators::ExpUnary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::UnaryOperators::ExpUnary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::UnaryOperators::LogUnary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body(LogSumExp, LogSumExp);
 
-	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType>
+	template <typename RetType = Int32, bool KeepDim = false, typename = ValueType>
 	decltype(auto) ArgMax(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body_T(ArgMax, ArgMax, RetType);
 
-	template <typename RetType = Int32, bool KeepDim = false, typename _CurValueType = ValueType>
+	template <typename RetType = Int32, bool KeepDim = false, typename = ValueType>
 	decltype(auto) ArgMin(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Reduce_Function_Body_T(ArgMin, ArgMin, RetType);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumSum(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumSum);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumSub(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumSub);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumProd(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumProd);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumDiv(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::DivBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumDiv);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumMax(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::GreaterBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumMax);
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) CumMin(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::ComparisonOperators::LessBinary::HasOperatorValue<ValueType>)
 	_D_Dragonian_Lib_Operator_Cumulate_Function_Body(CumMin);
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) ReduceLp(SizeType _Axis, const ValueType& _P) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if constexpr (_NRank == 1)
@@ -3416,7 +3581,7 @@ public:
 				TensorTmp.Data(),
 				TensorTmp.GetDefaultOperatorParameter(),
 				_P,
-				RetView.IsContinuous() && TensorTmp.IsContinuous()
+				RetView.IsContiguous() && TensorTmp.IsContiguous()
 			);
 			if constexpr (KeepDim)
 				return RetView;
@@ -3425,23 +3590,23 @@ public:
 		}
 	}
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) ReduceL1(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<ValueType>)
 	{
 		return ReduceLp<KeepDim>(_Axis, 1);
 	}
 
-	template <bool KeepDim = false, typename _CurValueType = ValueType>
+	template <bool KeepDim = false, typename = ValueType>
 	decltype(auto) ReduceL2(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::PowBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::UnaryOperators::AbsUnary::HasOperatorValue<ValueType>)
 	{
 		return ReduceLp<KeepDim>(_Axis, 2);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Diff(SizeType _Axis) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		if constexpr (_NRank == 1)
@@ -3464,15 +3629,15 @@ public:
 				ResView.GetDefaultOperatorParameter(),
 				TensorTmp.Data(),
 				TensorTmp.GetDefaultOperatorParameter(),
-				ResView.IsContinuous() && TensorTmp.IsContinuous()
+				ResView.IsContiguous() && TensorTmp.IsContiguous()
 			);
 			return Ret;
 		}
 	}
 
-	template <Operators::InterpolateMode _Mode = Operators::InterpolateMode::Nearest, typename _CurValueType = ValueType>
+	template <Operators::InterpolateMode _Mode = Operators::InterpolateMode::Nearest, typename = ValueType>
 	decltype(auto) Interpolate(const Dimensions<Operators::GetInterpolateModeRank<_Mode>>& _Dims, Operators::InterpolateParam<_Mode> _InterpParams) const
-		requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<_CurValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<_CurValueType>)
+		requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::SubBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		using ParamsType = Operators::InterpolateParam<_Mode>;
@@ -3537,15 +3702,15 @@ public:
 				MyView.Data(),
 				MyView.GetDefaultOperatorParameter(),
 				_InterpParams,
-				RetView.IsContinuous() && MyView.IsContinuous()
+				RetView.IsContiguous() && MyView.IsContiguous()
 			);
 
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) ClampMin(ValueType _Min) const
-		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
@@ -3558,14 +3723,14 @@ public:
 			Data(),
 			GetDefaultOperatorParameter(),
 			_Min,
-			Ret.IsContinuous() && IsContinuous()
+			Ret.IsContiguous() && IsContiguous()
 		);
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) ClampMax(ValueType _Max) const
-		requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
 		auto Ret = Tensor<_TensorType, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
@@ -3578,28 +3743,28 @@ public:
 			Data(),
 			GetDefaultOperatorParameter(),
 			_Max,
-			Ret.IsContinuous() && IsContinuous()
+			Ret.IsContiguous() && IsContiguous()
 		);
 		return Ret;
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Clamp(ValueType _Min, ValueType _Max) const
-		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return ClampMin(_Min).ClampMax(_Max);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Min(ValueType _Min) const
-		requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (Operators::BinaryOperators::MinBinary::HasOperatorValue<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return ClampMax(_Min);
 	}
 
-	template <typename _CurValueType = ValueType>
+	template <typename = ValueType>
 	decltype(auto) Max(ValueType _Max) const
-		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>)
+		requires (Operators::BinaryOperators::MaxBinary::HasOperatorValue<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		return ClampMin(_Max);
 	}

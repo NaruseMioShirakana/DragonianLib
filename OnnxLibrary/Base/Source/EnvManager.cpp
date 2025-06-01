@@ -27,7 +27,7 @@ constexpr const char* CUDAEPSessionOptions[]{
 	"use_tf32",
 	"prefer_nhwc",
 	"disable_synchronize_execution_providers",
-	"cudnn_conv_use_max_workspace ",
+	"cudnn_conv_use_max_workspace",
 	"cudnn_conv1d_pad_to_nc1d",
 };
 

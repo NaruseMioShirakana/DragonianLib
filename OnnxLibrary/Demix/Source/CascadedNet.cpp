@@ -120,10 +120,7 @@ std::tuple<SignalTensor, SpecTensor, SpecTensor, SpecTensor, Int64, Int64, Float
 		auto SignalView = SignalCont.Detach();
 		if (Band.SamplingRate != SamplingRate)
 			_D_Dragonian_Lib_Rethrow_Block(
-				SignalView = SignalView.Interpolate<Operators::InterpolateMode::Linear>(
-					IDim(-1),
-					IScale(double(Band.SamplingRate) / double(SamplingRate))
-				);
+				SignalView = _MyResampleKernel(SignalView, SamplingRate, Band.SamplingRate);
 			);
 		StftResults.emplace_back(_MyStftKernels[b].Execute(SignalView.UnSqueeze(0)).Squeeze(0));
 	}
@@ -273,9 +270,10 @@ SignalTensor CascadedNet::Spec2Audio(
 					BSpec.UnSqueeze(0).Transpose()
 				);
 				if (_MySetting.Bands[BandIdx + 1].SamplingRate != Band.SamplingRate)
-					Audio = Audio.Interpolate<Operators::InterpolateMode::Linear>(
-						IDim(-1),
-						IScale(double(_MySetting.Bands[BandIdx + 1].SamplingRate) / double(Band.SamplingRate))
+					Audio = _MyResampleKernel(
+						Audio,
+						Band.SamplingRate,
+						_MySetting.Bands[BandIdx + 1].SamplingRate
 					);
 			}
 			else

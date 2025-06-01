@@ -26,14 +26,16 @@
 
 _D_Dragonian_Lib_Onnx_Vocoder_Header
 
-using Vocoder = std::shared_ptr<VocoderBase>;
-using Constructor = std::function<Vocoder(
-	const std::wstring& _Path,
-	const OnnxRuntimeEnvironment& _Environment,
-	Int64 _SamplingRate,
-	Int64 _MelBins,
-	const std::shared_ptr<Logger>& _Logger
-)>;
+using Vocoder = ModulePointer<VocoderBase>;
+using Constructor = std::function<
+	Vocoder(
+		const std::wstring& _Path,
+		const OnnxRuntimeEnvironment& _Environment,
+		Int64 _SamplingRate,
+		Int64 _MelBins,
+		const std::shared_ptr<Logger>& _Logger
+	)
+>;
 
 /**
  * @brief Register a Vocoder

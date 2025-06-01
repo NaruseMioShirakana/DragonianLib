@@ -21,6 +21,10 @@ if(DRAGONIANLIB_NCNN_SINGING_VOICE_CONVERSION)
 		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.cpp
 		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.h
 		${PROJECT_SOURCE_DIR}/SingingVoiceConversion/*.hpp
+		${PROJECT_SOURCE_DIR}/UnitsEncoder/*.c
+		${PROJECT_SOURCE_DIR}/UnitsEncoder/*.cpp
+		${PROJECT_SOURCE_DIR}/UnitsEncoder/*.h
+		${PROJECT_SOURCE_DIR}/UnitsEncoder/*.hpp
 	)
 	list(APPEND DRAGONIANLIB_NCNNLIB_SRC ${DRAGONIANLIB_NCNNLIB_SVC_SRC})
 	message("	- Build Singing Voice Conversion")

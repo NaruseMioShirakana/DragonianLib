@@ -24,6 +24,7 @@
 #pragma once
 
 #include "OnnxLibrary/Demix/Base.hpp"
+#include "Libraries/AvCodec/SignalProcess.h"
 
 _D_Dragonian_Lib_Onnx_Demix_Header
 
@@ -68,6 +69,7 @@ private:
 	std::vector<FunctionTransform::StftKernel> _MyStftKernels;
 	Int64 _MyPaddingLeft;
 	Int64 _MyRoiSize;
+	Signal::ResampleKernel<float> _MyResampleKernel{ FunctionTransform::KaiserWindow<float>(32) };
 };
 
 _D_Dragonian_Lib_Onnx_Demix_End

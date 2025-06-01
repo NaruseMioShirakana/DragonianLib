@@ -28,11 +28,15 @@ ContextModel::ContextModel(
 Tensor<Float32, 3, Device::CPU> ContextModel::Forward(
 	const Tensor<Int64, 2, Device::CPU>& TokenIds,
 	std::optional<Tensor<Int64, 2, Device::CPU>> TokenTypeIds,
-	std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask
+	std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask,
+	std::optional<Tensor<Int64, 2, Device::CPU>> Aligment
 ) const
 {
 	if (TokenIds.Null())
 		_D_Dragonian_Lib_Throw_Exception("TokenIds could not be null!");
+
+	if (Aligment.has_value() && Aligment->HasValue() && Aligment->Size(0) != TokenIds.Size(0))
+		_D_Dragonian_Lib_Throw_Exception("Batch size mis match!");
 
 	if (_MyInputCount > 1)
 	{
@@ -121,12 +125,47 @@ Tensor<Float32, 3, Device::CPU> ContextModel::Forward(
 	else if (OShape.size() == 1)
 		Shape = { 1, 1, OShape[0] };
 
-	_D_Dragonian_Lib_Rethrow_Block(
-		return CreateTensorViewFromOrtValue<Float>(
-			std::move(OutputTensors[0]),
-			Shape
-		);
+	auto Raw = CreateTensorViewFromOrtValue<Float>(
+		std::move(OutputTensors[0]),
+		Shape
 	);
+
+	if (!(Aligment.has_value() && Aligment->HasValue()))
+		return Raw;
+
+	auto New = Functional::Empty(
+		Dimensions{ Raw.Size(0), Aligment->Size(1), Raw.Size(2) }
+	);
+
+	auto AligCont = Aligment->Contiguous();
+	auto AligData = AligCont.Data();
+	auto NewData = New.Data();
+	auto RawData = Raw.Data();
+
+	auto [Batch, TokenSize, BertSize] = New.Size().RawArray();
+	for (SizeType b = 0; b < Batch; ++b)
+	{
+		auto CurAligData = AligData + b * AligCont.Stride(0);
+		auto CurNewData = NewData + b * New.Stride(0);
+		auto CurRawData = RawData + b * Raw.Stride(0);
+		New.AppendTask([TokenSize, BertSize, CurNewData, CurRawData, CurAligData]
+		(std::shared_ptr<void>, std::shared_ptr<void>)  // NOLINT(performance-unnecessary-value-param)
+			{
+				for (SizeType t = 0; t < TokenSize; ++t)
+				{
+					memcpy(
+						CurNewData + t * BertSize,
+						CurRawData + CurAligData[t] * BertSize,
+						BertSize * sizeof(float)
+					);
+				}
+			},
+			Raw.Buffer(),
+			AligCont.Buffer()
+		);
+	}
+
+	return New;
 }
 
 _D_Dragonian_Lib_Lib_Bert_Clap_End

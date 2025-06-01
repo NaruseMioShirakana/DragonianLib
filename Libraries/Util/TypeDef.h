@@ -444,6 +444,27 @@ namespace Hash
 		}
 		return hash;
 	}
+
+	template <size_t Bits, size_t N>
+	constexpr auto CompileTimeHash(const char (&Bytes)[N])
+	{
+		using Constants = FNV1aConstants<Bits>;
+		typename Constants::HashType hash = Constants::Offset;
+
+		for (size_t i = 0; i < N; ++i)
+		{
+			hash ^= static_cast<UInt8>(Bytes[i]);
+			hash *= Constants::Prime;
+		}
+		return hash;
+	}
+
+	template <typename T>
+	constexpr auto Hash(const T& Obj)
+		requires(requires() { CompileTimeHash<64>(Obj); })
+	{
+		return CompileTimeHash<64>(Obj);
+	}
 }
 
 _D_Dragonian_Lib_Space_End

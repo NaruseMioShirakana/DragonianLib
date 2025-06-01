@@ -26,15 +26,17 @@
 
 _D_Dragonian_Lib_Onnx_UnitsEncoder_Header
 
-using UnitsEncoder = std::shared_ptr<UnitsEncoderBase>;
+using UnitsEncoder = ModulePointer<UnitsEncoderBase>;
 
-using Constructor = std::function< UnitsEncoder(
-	const std::wstring& _Path,
-	const OnnxRuntimeEnvironment& _Environment,
-	Int64 _SamplingRate,
-	Int64 _UnitsDims,
-	const std::shared_ptr<Logger>& _Logger
-)>;
+using Constructor = std::function<
+	UnitsEncoder(
+		const std::wstring& _Path,
+		const OnnxRuntimeEnvironment& _Environment,
+		Int64 _SamplingRate,
+		Int64 _UnitsDims,
+		const std::shared_ptr<Logger>& _Logger
+	)
+>;
 
 /**
  * @brief Register a UnitsEncoder

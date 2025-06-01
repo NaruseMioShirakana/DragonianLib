@@ -106,7 +106,8 @@ public:
 template <typename _MyValueType, size_t _NRank>
 auto CreateTensorViewFromOrtValue(
 	Ort::Value&& _Value,
-	const Dimensions<_NRank>& _Shape
+	const Dimensions<_NRank>& _Shape,
+	bool _DoCopy = false
 )
 {
 	const auto BufferSize = _Shape.Multiply();
@@ -121,11 +122,17 @@ auto CreateTensorViewFromOrtValue(
 		if (ElementType == TypeToOnnxTensorType<_MyValueType>)
 		{
 			auto Data = _Value.GetTensorMutableData<_MyValueType>();
+			if (_DoCopy)
+				return Functional::FromShared<_MyValueType, _NRank, Device::CPU>(
+					_Shape,
+					{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
+					BufferSize
+				).Clone();
 			return Functional::FromShared<_MyValueType, _NRank, Device::CPU>(
 				_Shape,
 				{ Data, [_Value{ std::move(_Value) }](void* _Data) mutable {} },
 				BufferSize
-			).Clone();
+			);
 		}
 
 		if constexpr (TypeTraits::IsFloatingPointValue<_MyValueType>)

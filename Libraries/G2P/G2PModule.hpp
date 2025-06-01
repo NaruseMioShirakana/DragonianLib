@@ -27,7 +27,7 @@
 
 _D_Dragonian_Lib_G2P_Header
 
-using G2PModule = std::shared_ptr<G2PBase>;
+using G2PModule = ModulePointer<G2PBase>;
 using Constructor = std::function<G2PModule(const void*)>;
 
 /**

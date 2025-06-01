@@ -403,6 +403,39 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 	auto SegData = Seg(InputText);
 	Vector<std::wstring> PinYinResult;
 	Vector<Int64> ToneResult;
+
+	auto CallbackFn = [&](const wchar_t* Text, CppPinYinParameters::Language Lang)
+	{
+		if (Parameters.Callback && Parameters.DeleterCallback)
+		{
+			wchar_t* Phs = nullptr;
+			Int64* Ts = nullptr;
+			UniqueScopeExit Guard([=, &Parameters]
+				{
+					if (Phs)
+						Parameters.DeleterCallback(Phs);
+					if (Ts)
+						Parameters.DeleterCallback(Ts);
+				}
+			);
+
+			Parameters.Callback(Text, Lang, &Phs, &Ts);
+
+			if (!Phs || !Ts)
+				return;
+
+			Int64 Size = 0;
+			auto Iter = Phs;
+			while (*Iter)
+			{
+				std::wstring Ph = Iter;
+				Iter += Ph.size() + 1;
+				PinYinResult.EmplaceBack(std::move(Ph));
+				ToneResult.EmplaceBack(Ts[Size++]);
+			}
+		}
+	};
+
 	for (auto& Seg : SegData)
 	{
 		if (Seg.SegType == Segment::NUMBER)
@@ -453,6 +486,11 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 			}
 			else if (Parameters.NumberStyle == CppPinYinParameters::DEL)
 				continue;
+			else if (Parameters.NumberStyle == UInt8(CppPinYinParameters::CALLBACK))
+			{
+				CallbackFn(Seg.Text.c_str(), CppPinYinParameters::__NUM);
+				continue;
+			}
 		}
 		if (Seg.SegType == Segment::CHINESE)
 			Chinese2PinYin(PinYinResult, ToneResult, Seg.Text, Parameters);
@@ -476,6 +514,8 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 					ToneResult.EmplaceBack(Parameters.UNKTone);
 				}
 			}
+			else if (Parameters.English == CppPinYinParameters::CALLBACK)
+				CallbackFn(Seg.Text.c_str(), CppPinYinParameters::__EN);
 		}
 		else if (Seg.SegType == Segment::PUNCTUATION)
 		{
@@ -497,6 +537,8 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 					ToneResult.EmplaceBack(Parameters.UNKTone);
 				}
 			}
+			else if (Parameters.Symbol == CppPinYinParameters::CALLBACK)
+				CallbackFn(Seg.Text.c_str(), CppPinYinParameters::__SYMB);
 		}
 		else if (Seg.SegType == Segment::SPACE)
 		{
@@ -528,6 +570,8 @@ std::pair<Vector<std::wstring>, Vector<Int64>> CppPinYin::PinYin(
 					ToneResult.EmplaceBack(Parameters.UNKTone);
 				}
 			}
+			else if (Parameters.Unknown == CppPinYinParameters::CALLBACK)
+				CallbackFn(Seg.Text.c_str(), CppPinYinParameters::__UNK);
 		}
 	}
 	if (Parameters.ReplaceASV)

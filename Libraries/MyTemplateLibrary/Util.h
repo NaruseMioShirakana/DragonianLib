@@ -456,7 +456,6 @@ struct NEpsilonImpl<long double>
 template <typename _Type>
 using EpsilonImpl = NEpsilonImpl<TypeTraits::RemoveConstType<TypeTraits::RemoveVolatileType<TypeTraits::RemoveReferenceType<_Type>>>>;
 
-
 class CCmpEqual
 {
 public:
@@ -541,6 +540,39 @@ public:
 };
 constexpr CCmpGreaterEqual CmpGreaterEqual{};
 
+template <typename _IteratorTypeBeg, typename _IteratorTypeEnd>
+size_t GetSize(_IteratorTypeBeg _MyBegin, _IteratorTypeEnd _MyEnd)
+	requires(TypeTraits::IsSameIterator<_IteratorTypeBeg, _IteratorTypeEnd>)
+{
+	using MyIterTypeBeg = _IteratorTypeBeg;
+	using MyIterTypeEnd = _IteratorTypeEnd;
+
+	if constexpr (TypeTraits::HasIntegerSubtraction<MyIterTypeBeg>)
+		return static_cast<UInt64>(_MyEnd - _MyBegin);
+	else if constexpr (TypeTraits::HasFrontIncrement<MyIterTypeBeg>)
+	{
+		auto _Tmp = _MyBegin;
+		UInt64 _Size = 0;
+		if constexpr (TypeTraits::_HasLessOperator<MyIterTypeBeg, MyIterTypeEnd>)
+			while (_Tmp < _MyEnd)
+			{
+				++_Tmp;
+				++_Size;
+			}
+		else if constexpr (TypeTraits::_HasEqualOperator<MyIterTypeBeg, MyIterTypeEnd>)
+			while (_Tmp != _MyEnd)
+			{
+				++_Tmp;
+				++_Size;
+			}
+		else
+			_D_Dragonian_Lib_Throw_Exception("Could not get size!");
+		return _Size;
+	}
+	else
+		_D_Dragonian_Lib_Throw_Exception("Could not get size!");
+}
+
 template <typename _IteratorTypeBeg, typename _IteratorTypeEnd, typename = std::enable_if_t<
 	TypeTraits::IsSameIterator<_IteratorTypeBeg, _IteratorTypeEnd>>>
 	class RangesWrp
@@ -590,21 +622,7 @@ public:
 
 	_D_Dragonian_Lib_Constexpr_Force_Inline UInt64 Size() const noexcept
 	{
-		if constexpr (TypeTraits::HasIntegerSubtraction<MyIterTypeBeg>)
-			return static_cast<UInt64>(_MyEnd - _MyBegin);
-		else if constexpr (TypeTraits::HasFrontIncrement<MyIterTypeBeg>)
-		{
-			auto _Tmp = _MyBegin;
-			UInt64 _Size = 0;
-			while (_Tmp != _MyEnd)
-			{
-				++_Tmp;
-				++_Size;
-			}
-			return _Size;
-		}
-		else
-			_D_Dragonian_Lib_Throw_Exception("Could not get size!");
+		return GetSize(_MyBegin, _MyEnd);
 	}
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) operator[](size_t _Index) const
 	{

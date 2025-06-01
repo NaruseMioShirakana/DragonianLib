@@ -64,7 +64,8 @@ public:
 	Tensor<Float32, 3, Device::CPU> Forward(
 		const Tensor<Int64, 2, Device::CPU>& TokenIds,
 		std::optional<Tensor<Int64, 2, Device::CPU>> TokenTypeIds = std::nullopt,
-		std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask = std::nullopt
+		std::optional<Tensor<Int64, 2, Device::CPU>> AttentionMask = std::nullopt,
+		std::optional<Tensor<Int64, 2, Device::CPU>> Aligment = std::nullopt
 	) const;
 };
 

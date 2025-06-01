@@ -177,5 +177,31 @@
 		</Expand>
 	</Type>
 
-	
+	<Type Name="ncnn::Mat">
+		<DisplayString Condition="dims == 1">{{{w * elempack}}}</DisplayString>
+		<DisplayString Condition="dims == 2">{{{h * elempack} x {w}}}</DisplayString>
+		<DisplayString Condition="dims == 3">{{{c * elempack} x {h} x {w}}}</DisplayString>
+		<DisplayString Condition="dims == 4">{{{c * elempack} x {d} x {h} x {w}}}</DisplayString>
+		<Expand>
+			<Synthetic Name="[type]" Condition="elemsize==4">
+				<DisplayString>FLOAT32</DisplayString>
+			</Synthetic>
+			<Synthetic Name="[type]" Condition="elemsize==2">
+				<DisplayString>FLOAT16</DisplayString>
+			</Synthetic>
+			<Synthetic Name="[type]" Condition="elemsize==1">
+				<DisplayString>INT8</DisplayString>
+			</Synthetic>
+			<Item Name="[channels]">c</Item>
+			<Item Name="[width]">w</Item>
+			<Item Name="[height]">h</Item>
+			<Item Name="[planes]">c</Item>
+			<Item Name="[data]" Condition="elemsize==4">((float*)(data))</Item>
+			<Item Name="[data]" Condition="elemsize==2">data</Item>
+			<Item Name="[data]" Condition="elemsize==1">data</Item>
+			<Item Name="[stride]" Condition="elemsize==1">w</Item>
+			<Item Name="[stride]" Condition="elemsize==2">w*2</Item>
+			<Item Name="[stride]" Condition="elemsize==4">w*4</Item>
+		</Expand>
+	</Type>
 </AutoVisualizer>

@@ -151,7 +151,7 @@ namespace Vits
             std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds = std::nullopt,
             std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds = std::nullopt,
             std::optional<const Tensor<Float, 4, Device::CPU>> Bert = std::nullopt,
-            std::optional<Tensor<Float, 2, Device::CPU>> Clap = std::nullopt,
+            std::optional<Tensor<Float, 3, Device::CPU>> Clap = std::nullopt,
             Int64 VQIndex = 0,
             Int64 SpeakerIndex = 0
         ) const;
@@ -441,7 +441,7 @@ namespace Vits
             std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds = std::nullopt,
             std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds = std::nullopt,
             std::optional<const Tensor<Float32, 4, Device::CPU>> Bert = std::nullopt,
-            std::optional<Tensor<Float32, 2, Device::CPU>> Clap = std::nullopt,
+            std::optional<Tensor<Float32, 3, Device::CPU>> Clap = std::nullopt,
 			std::optional<Tensor<Float32, 3, Device::CPU>> Duration = std::nullopt
 		) const;
 
@@ -453,7 +453,7 @@ namespace Vits
             std::optional<const Tensor<Int64, 2, Device::CPU>> ToneIds = std::nullopt,
             std::optional<const Tensor<Int64, 2, Device::CPU>> LanguageIds = std::nullopt,
             std::optional<const Tensor<Float32, 4, Device::CPU>> Bert = std::nullopt,
-            std::optional<Tensor<Float32, 2, Device::CPU>> Clap = std::nullopt,
+            std::optional<Tensor<Float32, 3, Device::CPU>> Clap = std::nullopt,
             std::optional<Tensor<Float32, 3, Device::CPU>> Duration = std::nullopt
             ) const
         {

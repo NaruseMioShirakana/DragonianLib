@@ -1182,18 +1182,29 @@ namespace Functional
 	template <typename _MyValueType, size_t _NRank, Device _MyDevice>
 	decltype(auto) MinMaxNormalize(
 		const Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor,
-		SizeType _Axis
+		SizeType _Axis,
+		const _MyValueType& _RngMax = _MyValueType(1),
+		const _MyValueType& _RngMin = _MyValueType(0)
 	)
 	{
-		auto Min = _Tensor.template ReduceMin<true>(_Axis);
-		auto Max = _Tensor.template ReduceMax<true>(_Axis);
-		if (Min.ElementCount() == 1 && Max.ElementCount() == 1)
+		const auto Maximum = _Tensor.template ReduceMax<true>(_Axis);
+		const auto Minimum = _Tensor.template ReduceMin<true>(_Axis);
+		const auto RngNorm = _RngMax - _RngMin;
+
+		Tensor<_MyValueType, _NRank, _MyDevice> Ret;
+		if (Maximum.ElementCount() == 1 && Minimum.ElementCount() == 1)
 		{
-			const auto MaxVal = Max.Evaluate().Item();
-			const auto MinVal = Min.Evaluate().Item();
-			return (_Tensor - MinVal) / (MaxVal - MinVal);
+			const auto MaxVal = Maximum.Evaluate().Item();
+			const auto MinVal = Minimum.Evaluate().Item();
+			Ret = (_Tensor - MinVal) / (MaxVal - MinVal);
 		}
-		return (_Tensor - Min) / (Max - Min);
+		else
+			Ret = (_Tensor - Minimum) / (Maximum - Minimum);
+		if (TemplateLibrary::CmpNotEqual(RngNorm, _MyValueType(1)))
+			Ret *= RngNorm;
+		if (TemplateLibrary::CmpNotEqual(_RngMin, _MyValueType(0)))
+			Ret += _RngMin;
+		return Ret;
 	}
 
 	template <
@@ -1259,14 +1270,14 @@ _D_Dragonian_Lib_Space_End
 template <typename _MyValueType, size_t _NRank, DragonianLib::Device _MyDevice>
 std::ostream& operator<<(std::ostream& _OStream, const DragonianLib::Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
 {
-	_OStream << _Tensor.CastToString();
+	_OStream << _Tensor.to_string();
 	return _OStream;
 }
 
 template <typename _MyValueType, size_t _NRank, DragonianLib::Device _MyDevice>
 std::wostream& operator<<(std::wostream& _OStream, const DragonianLib::Tensor<_MyValueType, _NRank, _MyDevice>& _Tensor)
 {
-	_OStream << _Tensor.CastToWideString();
+	_OStream << _Tensor.to_wstring();
 	return _OStream;
 }
 

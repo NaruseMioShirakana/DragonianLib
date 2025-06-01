@@ -26,7 +26,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::ExtractF0(
 	return ExtractF0(PCMData.Cast<Float64>() / 32768., Params);
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::WithBench(const Tensor<Float32, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();
@@ -48,7 +48,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float32
 #endif
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::WithBench(const Tensor<Float64, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();
@@ -70,7 +70,7 @@ Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Float64
 #endif
 }
 
-Tensor<Float32, 2, Device::CPU> BaseF0Extractor::operator()(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
+Tensor<Float32, 2, Device::CPU> BaseF0Extractor::WithBench(const Tensor<Int16, 2, Device::CPU>& PCMData, const F0ExtractorParams& Params) const
 {
 #ifdef _DEBUG
 	static auto _MyLogger = _D_Dragonian_Lib_Namespace GetDefaultLogger();

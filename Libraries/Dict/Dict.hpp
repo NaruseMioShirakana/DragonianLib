@@ -72,6 +72,20 @@ public:
 	/**
 	 * @brief Tokenize the input text
 	 * @param _InputText Text to be tokenized
+	 * @param _Method Tokenizer method
+	 * @param _SkipNonLatin Skip non-latin characters
+	 * @param _MaximumMatching Maximum matching length
+	 */
+	Vector<std::wstring> Tokenize(
+		const std::wstring& _InputText,
+		TokenizerMethod _Method = Maximum,
+		bool _SkipNonLatin = true,
+		Int64 _MaximumMatching = 32
+	) const;
+
+	/**
+	 * @brief Tokenize the input text
+	 * @param _InputText Text to be tokenized
 	 * @param _OutputTokens Result buffer for tokenized tokens
 	 * @param _Method Tokenizer method
 	 * @param _SkipNonLatin Skip non-latin characters
@@ -200,8 +214,13 @@ public:
 	/**
 	 * @brief Construct a new Dict object
 	 * @param _DictModulePath Path to the dictionary module, a dictionary module is a text file which contains the dictionary (json format) which is key-value pairs of token and vector of token text
+	 * @param UNK UnkReps
 	 */
-	Dict(const std::wstring& _DictModulePath);
+	Dict(
+		const std::wstring& _DictModulePath,
+		Vector<DictType> UNK = _MyDefUnk
+	);
+
 	~Dict() = default;
 
 	/**
@@ -247,10 +266,16 @@ public:
 		Int64 _MaximumMatching = 32,
 		const std::optional<std::wstring>& _UNKID = std::nullopt
 	) const;
+
+	const Vector<DictType>& GetUNK() const
+	{
+		return _MyUnk;
+	}
 private:
 	std::unordered_map<std::wstring, Vector<DictType>> _MyDict;
 	Int64 MaximumLength = 0;
-	static inline Vector<DictType> _MyUnk{ L"UNK" };
+	Vector<DictType> _MyUnk;
+	static inline Vector<DictType> _MyDefUnk{ L"UNK" };
 
 public:
 	Dict(const Dict&) = default;
@@ -338,6 +363,16 @@ public:
 		Int64 _MaximumMatching = 32,
 		const std::optional<std::wstring>& _UNKID = std::nullopt
 	) const;
+
+	const std::wstring& GetUNKToken() const
+	{
+		return _MyUnk;
+	}
+
+	const DictType& GetUNKId() const
+	{
+		return _MyUnkId;
+	}
 private:
 	std::unordered_map<std::wstring, DictType> _MyDict;
 	std::unordered_map<DictType, std::wstring> _MyReverseDict;

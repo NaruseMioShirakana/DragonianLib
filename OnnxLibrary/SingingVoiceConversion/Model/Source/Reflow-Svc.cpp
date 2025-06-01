@@ -18,7 +18,6 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 	const Parameters& Params,
 	const SliceDatas& InputDatas
 ) const
-
 {
 	auto Tuple = Extract(Params, InputDatas);
 
@@ -123,7 +122,8 @@ Tensor<Float32, 4, Device::CPU> ReflowSvc::Forward(
 	const auto Duration = std::chrono::duration_cast<std::chrono::milliseconds>(EndTime - StartTime).count();
 	GetLoggerPtr()->LogInfo(L"Reflow finished, time: " + std::to_wstring(Duration) + L"ms");
 #endif
-
+	if (Mel.has_value() && Mel->HasValue() && OMel.GetTensorMutableData<float>() == Mel->Data())
+		return std::move(*Mel);
 	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(OMel), OutputDims););
 }
 

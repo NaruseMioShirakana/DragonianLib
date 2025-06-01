@@ -57,6 +57,34 @@ public:
 	 */
 	Tensor<Float32, 2, Device::CPU> Search(const Tensor<Float32, 2, Device::CPU>& Points, Long CodebookID);
 
+	/**
+	 * @brief Search for the nearest Points to the Point in the cluster of id, not need to call evaluate function of the returned tensor
+	 * @param Points Point that needs to be searched, Shape: [Count, Dimension]
+	 * @param CodebookID Codebook ID
+	 * @param Count Count of the input and output Points
+	 * @return A Tensor of the nearest Points, Shape: [Count, Dimension]
+	 */
+	Tensor<Float32, 2, Device::CPU> operator()(Float32* Points, Long CodebookID, Int64 Count = 1);
+
+	/**
+	 * @brief Search for the nearest Points to the Point in the cluster of id, not need to call evaluate function of the returned tensor
+	 * @param Points Point that needs to be searched, Shape: [Count, Dimension]
+	 * @param CodebookID Codebook ID
+	 * @return A Tensor of the nearest Points, Shape: [Count, Dimension]
+	 */
+	template <size_t Rank>
+	Tensor<Float32, Rank, Device::CPU> operator()(const Tensor<Float32, Rank, Device::CPU>& Points, Long CodebookID)
+	{
+		if constexpr (Rank == 2)
+			return Search(Points, CodebookID);
+		else
+		{
+			auto View = Points.Size();
+			View.Back() = -1;
+			return Search(Points.ReShape(-1, Points.Size(-1)), CodebookID).View(View);
+		}
+	}
+
 protected:
 	Int64 _MyDimension = 256;
 

@@ -100,8 +100,8 @@ static void Impl##_Function##Unary( \
 )
 
 #define _D_Dragonian_Lib_Operator_Unary_Function_Define(_Function) \
-template <typename _CurValueType = ValueType> \
-decltype(auto) _Function##Inplace() requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&&(std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType> \
+decltype(auto) _Function##Inplace() requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&&(std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	if (IsBroadCasted()) \
@@ -119,8 +119,8 @@ decltype(auto) _Function##Inplace() requires (TypeTraits::IsSameTypeValue<_CurVa
 	return *this; \
 } \
  \
-template <typename _CurValueType = ValueType> \
-decltype(auto) _Function() const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType> \
+decltype(auto) _Function() const requires (std::is_default_constructible_v<ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	auto Ret = Tensor::New(_MyShape, _MyAllocator); \
@@ -137,8 +137,8 @@ decltype(auto) _Function() const requires (TypeTraits::IsSameTypeValue<_CurValue
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _BufferRank> \
-decltype(auto) _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_BufferRank >= _NRank)) \
+template <typename = ValueType, size_t _BufferRank> \
+decltype(auto) _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) const requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_BufferRank >= _NRank)) \
 { \
 	ThrowOnNotEnabled(); \
 	_Buffer.ThrowOnNotEnabled(); \
@@ -161,8 +161,8 @@ struct _D_Dragonian_Lib_Unary##_Function##_Defined_Tag
 
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Binary_Function_Define(_Function) \
-template <typename _CurValueType = ValueType> \
-decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType> \
+decltype(auto) _Function(const ValueType& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	auto Ret = New(_MyShape, _MyAllocator); \
@@ -179,8 +179,8 @@ decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::Is
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType> \
-decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType> \
+decltype(auto) __##_Function(const ValueType& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	auto Ret = New(_MyShape, _MyAllocator); \
@@ -197,8 +197,8 @@ decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType> \
-decltype(auto) _Function##Inplace(const ValueType& _Right) requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType> \
+decltype(auto) _Function##Inplace(const ValueType& _Right) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	if (IsBroadCasted()) \
@@ -216,8 +216,8 @@ decltype(auto) _Function##Inplace(const ValueType& _Right) requires (TypeTraits:
 	return *this; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_MyOpRank >= _NRank)) \
+template <typename = ValueType, size_t _MyOpRank> \
+decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _MyDevice>& _Buffer) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank >= _NRank)) \
 { \
 	ThrowOnNotEnabled(); \
 	_Buffer.ThrowOnNotEnabled(); \
@@ -237,8 +237,8 @@ decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _
 	return _Buffer; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<_CurValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)) \
+template <typename = ValueType, size_t _MyOpRank> \
+decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
 { \
 	ThrowOnNotEnabled(); \
 	_Right.ThrowOnNotEnabled(); \
@@ -260,8 +260,8 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) 
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>)&& (_NRank >= _MyOpRank)) \
+template <typename = ValueType, size_t _MyOpRank> \
+decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)&& (_NRank >= _MyOpRank)) \
 { \
  	ThrowOnNotEnabled(); \
  	_Right.ThrowOnNotEnabled(); \
@@ -283,8 +283,8 @@ decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>&
 	return *this; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<ValueType, _MyOpRank2, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<_CurValueType>&& (std::is_copy_assignable_v<_CurValueType> || std::is_move_assignable_v<_CurValueType>) && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
+template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
+decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<ValueType, _MyOpRank2, _MyDevice>& _Buffer) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
 { \
 	ThrowOnNotEnabled(); \
  	_Buffer.ThrowOnNotEnabled(); \
@@ -313,8 +313,8 @@ struct _D_Dragonian_Lib_Binary##_Function##_Defined_Tag
 
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Compare_Function_Define(_Function) \
-template <typename _CurValueType = ValueType> \
-decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
+template <typename = ValueType> \
+decltype(auto) _Function(const ValueType& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
 { \
 	ThrowOnNotEnabled(); \
 	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
@@ -331,8 +331,8 @@ decltype(auto) _Function(const ValueType& _Right) const requires (TypeTraits::Is
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType> \
-decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
+template <typename = ValueType> \
+decltype(auto) __##_Function(const ValueType& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
 { \
 	ThrowOnNotEnabled(); \
 	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
@@ -349,8 +349,8 @@ decltype(auto) __##_Function(const ValueType& _Right) const requires (TypeTraits
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType>) \
+template <typename = ValueType, size_t _MyOpRank> \
+decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
 { \
 	ThrowOnNotEnabled(); \
 	_Right.ThrowOnNotEnabled(); \
@@ -372,8 +372,8 @@ decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) 
 	return Ret; \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType> && (_MyOpRank >= _NRank)) \
+template <typename = ValueType, size_t _MyOpRank> \
+decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDevice>& _Buffer) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank >= _NRank)) \
 { \
 	ThrowOnNotEnabled(); \
 	_Buffer.ThrowOnNotEnabled(); \
@@ -392,8 +392,8 @@ decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDev
 	); \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<bool, _MyOpRank2, _MyDevice>& _Buffer) const requires (TypeTraits::IsSameTypeValue<_CurValueType, ValueType>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<_CurValueType> && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
+template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
+decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<bool, _MyOpRank2, _MyDevice>& _Buffer) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
 { \
 	ThrowOnNotEnabled(); \
 	_Right.ThrowOnNotEnabled(); \
@@ -422,31 +422,31 @@ struct _D_Dragonian_Lib_Compare##_Function##_Defined_Tag
 
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Bond_Function_2_Operator(_Function, _Operator, _Condition) \
-template <typename _CurValueType = ValueType> \
-decltype(auto) operator##_Operator##(const ValueType& _Right) const requires ((_Condition)&& std::is_default_constructible_v<_CurValueType>) \
+template <typename = ValueType> \
+decltype(auto) operator##_Operator##(const ValueType& _Right) const requires ((_Condition)&& std::is_default_constructible_v<ValueType>) \
 { \
 	return _Function(_Right); \
 } \
  \
-template <typename _CurValueType = ValueType> \
+template <typename = ValueType> \
 	decltype(auto) operator##_Operator##=(const ValueType& _Right) requires (_Condition) \
 { \
 	return _Function##Inplace(_Right); \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _TRank> \
-	decltype(auto) operator##_Operator##(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const requires ((_Condition)&& std::is_default_constructible_v<_CurValueType>) \
+template <typename = ValueType, size_t _TRank> \
+	decltype(auto) operator##_Operator##(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const requires ((_Condition)&& std::is_default_constructible_v<ValueType>) \
 { \
 	return _Function(_Right); \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _TRank> \
+template <typename = ValueType, size_t _TRank> \
 	decltype(auto) operator##_Operator##=(const Tensor<ValueType, _TRank, _MyDevice>& _Right) requires ((_Condition)&& (_NRank >= _TRank)) \
 { \
 	return _Function##Inplace(_Right); \
 } \
-template <typename _CurValueType = ValueType> \
-friend decltype(auto) operator##_Operator##(const ValueType& _Left, const Tensor& _Right) requires ((_Condition)&& std::is_default_constructible_v<_CurValueType>) \
+template <typename = ValueType> \
+friend decltype(auto) operator##_Operator##(const ValueType& _Left, const Tensor& _Right) requires ((_Condition)&& std::is_default_constructible_v<ValueType>) \
 { \
 	return _Right.__##_Function(_Right); \
 } \
@@ -454,18 +454,18 @@ struct _D_Dragonian_Lib_Operator_##_Function##_Defined_Tag
 
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Bond_Function_2_Operator_Nip(_Function, _Operator, _Condition) \
-template <typename _CurValueType = ValueType> \
+template <typename = ValueType> \
 decltype(auto) operator##_Operator##(const ValueType& _Right) const requires (_Condition) \
 { \
 	return _Function(_Right); \
 } \
  \
-template <typename _CurValueType = ValueType, size_t _TRank> \
+template <typename = ValueType, size_t _TRank> \
 	decltype(auto) operator##_Operator##(const Tensor<ValueType, _TRank, _MyDevice>& _Right) const requires (_Condition) \
 { \
 	return _Function(_Right); \
 } \
-template <typename _CurValueType = ValueType> \
+template <typename = ValueType> \
 friend decltype(auto) operator##_Operator##(const ValueType& _Left, const Tensor& _Right) requires (_Condition) \
 { \
 	return _Right.__##_Function(_Right); \

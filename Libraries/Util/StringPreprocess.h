@@ -31,7 +31,7 @@ _D_Dragonian_Lib_Space_Begin
 namespace PreDefinedRegex
 {
 	static inline const std::wstring Chinese =
-		LR"((?:[\u3007\ue815-\ue864\ufa18\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002A6DF\U0002A703-\U0002B73F\U0002B740-\U0002B81D\U0002B825-\U0002BF6E\U0002C029-\U0002CE93\U0002D016\U0002D11B-\U0002EBD9\U0002F80A-\U0002FA1F\U000300F7-\U00031288\U00030EDD\U00030EDE]))";
+		LR"(([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u2F00-\u2FDF\u2E80-\u2EFF\u31C0-\u31EF\u2FF0-\u2FFF]))";
 	static inline const std::wstring Japanese =
 		LR"([\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF])";
 	static inline const std::wstring FullWidth =
@@ -39,7 +39,7 @@ namespace PreDefinedRegex
 	static inline const std::wstring Alphabet =
 		LR"([a-zA-Z])";
 	static inline const std::wstring ChineseAndJapanese =
-		LR"((?:[\u3007\ue815-\ue864\ufa18\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002A6DF\U0002A703-\U0002B73F\U0002B740-\U0002B81D\U0002B825-\U0002BF6E\U0002C029-\U0002CE93\U0002D016\U0002D11B-\U0002EBD9\U0002F80A-\U0002FA1F\U000300F7-\U00031288\U00030EDD\U00030EDE\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]))";
+		LR"(([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u2F00-\u2FDF\u2E80-\u2EFF\u31C0-\u31EF\u2FF0-\u2FFF\u3040-\u30FF\u31F0-\u31FF\uFF00-\uFFEF]))";
 	static inline const std::wstring Number =
 		LR"([0-9])";
 	static inline const std::wstring Real =

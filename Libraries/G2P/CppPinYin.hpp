@@ -37,7 +37,14 @@ struct CppPinYinConfigs
 
 struct CppPinYinParameters
 {
-	enum Type : UInt8 {
+	enum Language : UInt8 { __EN, __NUM, __UNK, __SYMB };
+
+	// Text:输入文本；Lang：语言；Phonemes：返回的音素，是一个使用\0分割，以\0\0结束的数组；Tones：返回的语调，长度认为与Phonemes相同
+	using Callback_t = std::function<void(const wchar_t* Text, Language Lang, wchar_t** Phonemes, Int64** Tones)>;
+	using Deleter_t = std::function<void(void* Block)>;
+
+	enum Type : UInt8
+	{
 		// 普通风格，不带声调。如： 中国 -> ``zhong guo``
 		NORMAL = 0,
 		// 标准声调风格，拼音声调在韵母第一个字母上（默认风格）。如： 中国 -> ``zhōng guó``
@@ -62,7 +69,8 @@ struct CppPinYinParameters
 		// 将阿拉伯数字直接删除
 		DEL = 5,
 	};
-	enum ErrorType : UInt8 {
+	enum ErrorType : UInt8
+	{
 		// 不处理错误音节，保持原样
 		NONE = 0,
 		// 替换为 UNK
@@ -70,7 +78,9 @@ struct CppPinYinParameters
 		// 忽略错误音节，直接删除
 		IGNORE = 2,
 		// 抛出异常或逐字母切分（中文外语言）
-		THROWORSPLIT = 3
+		THROWORSPLIT = 3,
+		// 使用回调函数处理
+		CALLBACK = 6
 	};
 
 	/**
@@ -132,6 +142,9 @@ struct CppPinYinParameters
 	 * @brief 分词器最大匹配长度（若为-1则设置为词典中最大长度）
 	 */
 	Int64 MaximumMatch = -1;
+
+	Callback_t Callback;
+	Deleter_t DeleterCallback;
 };
 
 /**

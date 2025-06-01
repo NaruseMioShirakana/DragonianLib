@@ -66,6 +66,24 @@ Vector<std::wstring_view> Tokenizer::SplitWithSymbolToViews(
 	return Result;
 }
 
+Vector<std::wstring> Tokenizer::Tokenize(
+	const std::wstring& _InputText,
+	TokenizerMethod _Method,
+	bool _SkipNonLatin,
+	Int64 _MaximumMatching
+) const
+{
+	Vector<std::wstring> Ret;
+	Tokenize(
+		_InputText,
+		Ret,
+		_Method,
+		_SkipNonLatin,
+		_MaximumMatching
+	);
+	return Ret;
+}
+
 void Tokenizer::Tokenize(
 	std::wstring_view _InputText,
 	Vector<std::wstring>& _OutputTokens,
@@ -308,7 +326,6 @@ void Tokenizer::Tokenize(
 			PreDefinedRegex::ChineseAndJapaneseRegex,
 			{ -1, 0 }
 		);
-
 	for (const auto& Seq : SeqVector)
 	{
 		std::wstring SubSeq = std::regex_replace(Seq, std::wregex(L"[ ]+"), L" ");
@@ -489,8 +506,9 @@ Tokenizer::Tokenizer(
 }
 
 Dict::Dict(
-	const std::wstring& _DictModulePath
-)
+	const std::wstring& _DictModulePath,
+	Vector<DictType> UNK
+) : _MyUnk(std::move(UNK))
 {
 	if (_DictModulePath.empty())
 		return;
@@ -562,7 +580,8 @@ const Vector<Dict::DictType>& Dict::Search(
 	if (Match == _MyDict.end())
 	{
 		if (_Result)
-			_Result->EmplaceBack(L"UNK");
+			for (const auto& SubToken : _MyUnk)
+				_Result->EmplaceBack(SubToken);
 		return _MyUnk;
 	}
 	if (_Result)
@@ -698,34 +717,48 @@ IdsDict::IdsDict(
 	if (_DictModulePath.empty())
 		return;
 	MJson::MJsonDocument PhoneJson(_DictModulePath.c_str());
-	for (const auto& itr : PhoneJson.GetMemberArray())
+	if (PhoneJson.IsArray())
 	{
-		std::wstring Key = UTF8ToWideString(itr.first);
-		if (itr.second.IsInt64())
+		DictType Ids = 0;
+		for (const auto& Key : PhoneJson.GetArray())
 		{
-			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
-			_MyDict[Key] = itr.second.GetInt64();
-			_MyReverseDict[itr.second.GetInt64()] = Key;
-			continue;
+			auto Str = UTF8ToWideString(Key.GetString());
+			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Str.size()));
+			_MyDict.emplace(Str, Ids);
+			_MyReverseDict.emplace(Ids++, std::move(Str));
 		}
+	}
+	else
+	{
+		for (const auto& itr : PhoneJson.GetMemberArray())
+		{
+			std::wstring Key = UTF8ToWideString(itr.first);
+			if (itr.second.IsInt64())
+			{
+				MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
+				_MyDict[Key] = itr.second.GetInt64();
+				_MyReverseDict[itr.second.GetInt64()] = Key;
+				continue;
+			}
 
-		if (!itr.second.IsString() || !itr.second.GetStringLength())
-			_D_Dragonian_Lib_Throw_Exception("Value is not a string or empty");
-		auto Value = UTF8ToWideString(itr.second.GetString());
-		if (std::regex_match(Key, PreDefinedRegex::IntegerRegex))
-		{
-			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
-			_MyReverseDict[wcstoll(Key.c_str(), nullptr, 10)] = UTF8ToWideString(Value);
-			_MyDict[Value] = wcstoll(Key.c_str(), nullptr, 10);
+			if (!itr.second.IsString() || !itr.second.GetStringLength())
+				_D_Dragonian_Lib_Throw_Exception("Value is not a string or empty");
+			auto Value = UTF8ToWideString(itr.second.GetString());
+			if (std::regex_match(Key, PreDefinedRegex::IntegerRegex))
+			{
+				MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
+				_MyReverseDict[wcstoll(Key.c_str(), nullptr, 10)] = UTF8ToWideString(Value);
+				_MyDict[Value] = wcstoll(Key.c_str(), nullptr, 10);
+			}
+			else if (std::regex_match(Value, PreDefinedRegex::IntegerRegex))
+			{
+				MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
+				_MyDict[Key] = wcstoll(Value.c_str(), nullptr, 10);
+				_MyReverseDict[wcstoll(Value.c_str(), nullptr, 10)] = Key;
+			}
+			else
+				_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
 		}
-		else if (std::regex_match(Value, PreDefinedRegex::IntegerRegex))
-		{
-			MaximumLength = std::max(MaximumLength, static_cast<Int64>(Key.size()));
-			_MyDict[Key] = wcstoll(Value.c_str(), nullptr, 10);
-			_MyReverseDict[wcstoll(Value.c_str(), nullptr, 10)] = Key;
-		}
-		else
-			_D_Dragonian_Lib_Throw_Exception("Dict Module Prase Error");
 	}
 	if (_MyDict.contains(_MyUnk))
 		_MyUnkId = _MyDict.at(_MyUnk);

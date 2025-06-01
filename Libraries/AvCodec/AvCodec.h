@@ -96,6 +96,7 @@ namespace AvCodec
 
 		enum PCMFormat : Int8 {
 			PCM_FORMAT_NONE = -1,
+
 			PCM_FORMAT_UINT8,				///< unsigned 8 bits
 			PCM_FORMAT_INT16,				///< signed 16 bits
 			PCM_FORMAT_INT32,				///< signed 32 bits
@@ -107,10 +108,22 @@ namespace AvCodec
 			PCM_FORMAT_INT32_PLANAR,        ///< signed 32 bits, planar
 			PCM_FORMAT_FLOAT32_PLANAR,      ///< float, planar
 			PCM_FORMAT_FLOAT64_PLANAR,      ///< double, planar
+
 			PCM_FORMAT_INT64,				///< signed 64 bits
 			PCM_FORMAT_INT64_PLANAR,        ///< signed 64 bits, planar
 
-			PCM_FORMAT_NB					///< Number of sample formats. DO NOT USE if linking dynamically
+			PCM_FORMAT_NB,					///< Number of sample formats. DO NOT USE if linking dynamically
+
+			PCM_FORMAT_INT8,
+			PCM_FORMAT_UINT16,
+			PCM_FORMAT_UINT32,
+
+			PCM_FORMAT_INT8_PLANAR,
+			PCM_FORMAT_UINT16_PLANAR,
+			PCM_FORMAT_UINT32_PLANAR,
+
+			PCM_FORMAT_UINT64,
+			PCM_FORMAT_UINT64_PLANAR,
 		};
 
 		static bool PCMFormatIsPlannar(PCMFormat Format) noexcept;
@@ -120,18 +133,26 @@ namespace AvCodec
 		template <typename _ThisType>
 		static PCMFormat Type2PCMFormat(bool IsPlannar = false)
 		{
-			if constexpr (std::is_same_v<_ThisType, UInt8>)
+			if constexpr (std::is_same_v<_ThisType, Int8>)
+				return IsPlannar ? PCM_FORMAT_INT8_PLANAR : PCM_FORMAT_INT8;
+			else if constexpr (std::is_same_v<_ThisType, UInt8>)
 				return IsPlannar ? PCM_FORMAT_UINT8_PLANAR : PCM_FORMAT_UINT8;
 			else if constexpr (std::is_same_v<_ThisType, Int16>)
 				return IsPlannar ? PCM_FORMAT_INT16_PLANAR : PCM_FORMAT_INT16;
+			else if constexpr (std::is_same_v<_ThisType, UInt16>)
+				return IsPlannar ? PCM_FORMAT_UINT16_PLANAR : PCM_FORMAT_UINT16;
 			else if constexpr (std::is_same_v<_ThisType, Int32>)
 				return IsPlannar ? PCM_FORMAT_INT32_PLANAR : PCM_FORMAT_INT32;
+			else if constexpr (std::is_same_v<_ThisType, UInt32>)
+				return IsPlannar ? PCM_FORMAT_UINT32_PLANAR : PCM_FORMAT_UINT32;
 			else if constexpr (std::is_same_v<_ThisType, Float32>)
 				return IsPlannar ? PCM_FORMAT_FLOAT32_PLANAR : PCM_FORMAT_FLOAT32;
 			else if constexpr (std::is_same_v<_ThisType, Float64>)
 				return IsPlannar ? PCM_FORMAT_FLOAT64_PLANAR : PCM_FORMAT_FLOAT64;
 			else if constexpr (std::is_same_v<_ThisType, Int64>)
 				return IsPlannar ? PCM_FORMAT_INT64_PLANAR : PCM_FORMAT_INT64;
+			else if constexpr (std::is_same_v<_ThisType, UInt64>)
+				return IsPlannar ? PCM_FORMAT_UINT64_PLANAR : PCM_FORMAT_UINT64;
 			else
 				return PCM_FORMAT_NONE;
 		}
@@ -880,6 +901,58 @@ namespace AvCodec
 		UInt32 _OutputChannelCount = 1,
 		Int32 _OutputCodecID = -1
 	);
+
+	/**
+	 * @brief Encode all PCM data
+	 * @param _Path Output Path
+	 * @param _PCMData PCM data
+	 * @param _InputSamplingRate Input sampling rate
+	 * @param _InputChannelCount Input channel count
+	 * @param _InputPlanar Whether the input data is planar
+	 * @param _ParameterDict Codec Parameter dictionary (AVDictionary)
+	 */
+	template <typename _InputType>
+	void EncodeAudio(
+		const std::wstring& _Path,
+		const TemplateLibrary::ConstantRanges<_InputType>& _PCMData,
+		UInt32 _InputSamplingRate,
+		UInt32 _InputChannelCount = 1,
+		bool _InputPlanar = false,
+		void* _ParameterDict = nullptr
+	)
+	{
+		auto Stream = OpenOutputStream(
+			_InputSamplingRate,
+			_Path,
+			AvCodec::Type2PCMFormat<_InputType>(),
+			_InputChannelCount
+		);
+
+		Stream.EncodeAll(
+			_PCMData,
+			_InputSamplingRate,
+			_InputChannelCount,
+			_InputPlanar,
+			_ParameterDict
+		);
+	}
+
+	template <typename _RetType = Float32>
+	auto DecodeAudio(
+		const std::wstring& _Path,
+		UInt32 _OutputChannels = 1,
+		bool _OutputPlanar = false,
+		void* _ParameterDict = nullptr
+	)
+	{
+		auto Stream = OpenInputStream(_Path);
+
+		return Stream.DecodeAudio<_RetType>(
+			_OutputChannels,
+			_OutputPlanar,
+			_ParameterDict
+		);
+	}
 
 	/**
 	 * @brief Write PCM data to a file

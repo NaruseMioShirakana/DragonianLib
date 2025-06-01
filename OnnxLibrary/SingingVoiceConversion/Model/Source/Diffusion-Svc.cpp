@@ -284,7 +284,8 @@ Tensor<Float32, 4, Device::CPU> ProphesierDiffusion::Forward(
 	const auto Duration = std::chrono::duration_cast<std::chrono::milliseconds>(EndTime - StartTime).count();
 	GetLoggerPtr()->LogInfo(L"ProphesierDiffusion finished, time: " + std::to_wstring(Duration) + L"ms");
 #endif
-
+	if (Mel.has_value() && Mel->HasValue() && OMel.GetTensorMutableData<float>() == Mel->Data())
+		return std::move(*Mel);
 	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(OMel), OutputDims););
 }
 
@@ -416,7 +417,8 @@ Tensor<Float32, 4, Device::CPU> DiffusionSvc::Forward(
 	const auto Duration = std::chrono::duration_cast<std::chrono::milliseconds>(EndTime - StartTime).count();
 	GetLoggerPtr()->LogInfo(L"Diffusion finished, time: " + std::to_wstring(Duration) + L"ms");
 #endif
-
+	if (Mel.has_value() && Mel->HasValue() && OMel.GetTensorMutableData<float>() == Mel->Data())
+		return std::move(*Mel);
 	_D_Dragonian_Lib_Rethrow_Block(return CreateTensorViewFromOrtValue<Float32>(std::move(OMel), OutputDims););
 }
 
