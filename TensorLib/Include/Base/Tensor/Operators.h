@@ -22,11 +22,6 @@
  */
 
 #pragma once
-#include "TensorLib/Include/Base/Tensor/Operators/User/Unary.h"
-#include "TensorLib/Include/Base/Tensor/Operators/User/Binary.h"
-#include "TensorLib/Include/Base/Tensor/Operators/CPU/Unary.h"
-#include "TensorLib/Include/Base/Tensor/Operators/CPU/Binary.h"
-#include "TensorLib/Include/Base/Tensor/Operators/CPU/Comparison.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Assign.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Interpolate.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Reduce.h"

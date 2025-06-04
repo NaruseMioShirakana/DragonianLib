@@ -23,19 +23,9 @@
 
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/CPU.h"
+#include "TensorLib/Include/Base/Tensor/Operators/User/Binary.h"
 
 #define _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(_Function, Unfold, AvxThroughput) \
-namespace ComparisonOperators \
-{ \
-	namespace _Function##Binary \
-	{ \
-		template <class _ValueType> \
-		concept HasOperatorValue = requires(_ValueType & __r, _ValueType & __l) { {_D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
-		template <class _ValueType> \
-		concept HasVectorOperatorValue = requires(Vectorized<_ValueType> & __r, Vectorized<_ValueType> & __l) { {_D_Dragonian_Lib_Namespace Operators::ComparisonOperators::_Function(__r, __l)} -> TypeTraits::NotType<decltype(std::nullopt)>; }; \
-	} \
-} \
- \
 template <typename _Type> \
 template<size_t _NRank> \
 void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Scalar( \
@@ -143,99 +133,6 @@ void OperatorsBase<_Type, Device::CPU>::Impl##_Function##Tensor( \
 } 
 
 _D_Dragonian_Lib_Operator_Space_Begin
-
-namespace ComparisonOperators
-{
-	using namespace DragonianLib::Operators::SimdTypeTraits;
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		Equal(const Type& A, const Type& B)
-	{
-		if constexpr (IsAnyOfValue<Type, float, double>)
-			return std::fabs(A - B) <= std::numeric_limits<Type>::epsilon();
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left == _Right }; })
-			return A == B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Equal(_Right) }; })
-			return A.Equal(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.equal(_Right) }; })
-			return A.equal(B);
-		else
-			return std::nullopt;
-	}
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		NotEqual(const Type& A, const Type& B)
-	{
-		if constexpr (IsAnyOfValue<Type, float, double>)
-			return std::fabs(A - B) > std::numeric_limits<Type>::epsilon();
-		else if constexpr (requires(Type & _Left, Type & _Right) { {_Left != _Right}; })
-			return A != B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.NotEqual(_Right) }; })
-			return A.NotEqual(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.not_equal(_Right) }; })
-			return A.not_equal(B);
-		else
-			return std::nullopt;
-	}
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		Greater(const Type& A, const Type& B)
-	{
-		if constexpr (requires(Type & _Left, Type & _Right) { {_Left > _Right}; })
-			return A > B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Greater(_Right) }; })
-			return A.Greater(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.greater(_Right) }; })
-			return A.greater(B);
-		else
-			return std::nullopt;
-	}
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		GreaterEqual(const Type& A, const Type& B)
-	{
-		if constexpr (requires(Type & _Left, Type & _Right) { {_Left >= _Right}; })
-			return A >= B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.GreaterEqual(_Right) }; })
-			return A.GreaterEqual(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.greater_equal(_Right) }; })
-			return A.greater_equal(B);
-		else
-			return std::nullopt;
-	}
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		Less(const Type& A, const Type& B)
-	{
-		if constexpr (requires(Type & _Left, Type & _Right) { {_Left < _Right}; })
-			return A < B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.Less(_Right) }; })
-			return A.Less(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.less(_Right) }; })
-			return A.less(B);
-		else
-			return std::nullopt;
-	}
-
-	template <typename Type>
-	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto)
-		LessEqual(const Type& A, const Type& B)
-	{
-		if constexpr (requires(Type & _Left, Type & _Right) { {_Left <= _Right}; })
-			return A <= B;
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.LessEqual(_Right) }; })
-			return A.LessEqual(B);
-		else if constexpr (requires(Type & _Left, Type & _Right) { { _Left.less_equal(_Right) }; })
-			return A.less_equal(B);
-		else
-			return std::nullopt;
-	}
-}
 
 _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(Equal, 8, 2)
 _D_Dragonian_Lib_Operator_Binary_Bool_Function_Def(NotEqual, 8, 2)

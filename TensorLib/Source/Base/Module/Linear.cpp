@@ -1,4 +1,4 @@
-#include "../../../Include/Base/Module/Linear.h"
+#include "TensorLib/Include/Base/Module/Linear.h"
 
 _D_Dragonian_Lib_Graph_Space_Begin
 

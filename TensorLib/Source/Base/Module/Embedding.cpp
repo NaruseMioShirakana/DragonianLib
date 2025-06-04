@@ -1,4 +1,4 @@
-#include "../../../Include/Base/Module/Embedding.h"
+#include "TensorLib/Include/Base/Module/Embedding.h"
 
 _D_Dragonian_Lib_Graph_Space_Begin
 

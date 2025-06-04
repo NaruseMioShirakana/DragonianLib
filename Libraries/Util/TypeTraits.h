@@ -217,7 +217,7 @@ constexpr bool IsRReferenceValue = _D_Dragonian_Lib_Type_Traits_Namespace IsRRef
 template <typename _Type>
 struct IsReference { constexpr static bool _IsReference = _D_Dragonian_Lib_Type_Traits_Namespace IsLReferenceValue<_Type> || _D_Dragonian_Lib_Type_Traits_Namespace IsRReferenceValue<_Type>; };
 template <typename _Type>
-constexpr bool IsReferenceValue = _D_Dragonian_Lib_Type_Traits_Namespace IsReference<_Type>::_IsReference;
+constexpr bool IsReferenceValue = _D_Dragonian_Lib_Type_Traits_Namespace IsReference<_D_Dragonian_Lib_Type_Traits_Namespace RemoveCVType<_Type>>::_IsReference;
 
 template <typename _Type>
 struct IsPointer { constexpr static bool _IsPointer = false; };

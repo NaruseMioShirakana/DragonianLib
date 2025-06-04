@@ -31,7 +31,6 @@
 #include "Libraries/Util/StringPreprocess.h"
 #include "Libraries/Util/Logger.h"
 
-
 #define _D_Dragonian_Lib_Operator_Space_Begin _D_Dragonian_Lib_Space_Begin namespace Operators {
 #define _D_Dragonian_Lib_Operator_Space_End } _D_Dragonian_Lib_Space_End
 

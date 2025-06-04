@@ -99,326 +99,111 @@ static void Impl##_Function##Unary( \
 	bool Continuous \
 )
 
-#define _D_Dragonian_Lib_Operator_Unary_Function_Define(_Function) \
+//********************************************************************************************//
+#define _D_Dragonian_Lib_Operator_Binary_Function_Declare(_Function) \
 template <typename = ValueType> \
-decltype(auto) _Function##Inplace() requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&&(std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	if (IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	WaitingAsResult(); \
-	const auto MyParameter = GetDefaultOperatorParameter(); \
-	Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \
-	( \
-		_MyData, \
-		MyParameter, \
-		_MyData, \
-		MyParameter, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return *this; \
-} \
+Tensor<_TensorType, _NRank, _MyDevice> _Function( \
+	const ValueType& _Right \
+) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)); \
  \
 template <typename = ValueType> \
-decltype(auto) _Function() const requires (std::is_default_constructible_v<ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	auto Ret = Tensor::New(_MyShape, _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \
-	( \
-		Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		_MyData, \
-		GetDefaultOperatorParameter(), \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return Ret; \
-} \
+Tensor<_TensorType, _NRank, _MyDevice> __##_Function( \
+	const ValueType& _Left \
+) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)); \
+ \
+template <typename = ValueType> \
+Tensor<_TensorType, _NRank, _MyDevice>& _Function##Inplace( \
+	const ValueType& _Right \
+) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)); \
+ \
+template <typename = ValueType> \
+Tensor<_TensorType, _NRank, _MyDevice>& __##_Function##Inplace( \
+	const ValueType& _Left \
+) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<_TensorType, _MyOpRank, _MyDevice>& _Function( \
+	const ValueType& _Right, \
+	Tensor<_TensorType, _MyOpRank, _MyDevice>& _Buffer \
+) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank >= _NRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<_TensorType, _MyOpRank, _MyDevice>& __##_Function( \
+	const ValueType& _Left, \
+	Tensor<_TensorType, _MyOpRank, _MyDevice>& _Buffer \
+) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank >= _NRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<_TensorType, _NRank, _MyDevice> _Function( \
+	const Tensor<_TensorType, _MyOpRank, _MyDevice>& _Right \
+) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_NRank >= _MyOpRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<_TensorType, _MyOpRank, _MyDevice> _Function( \
+	const Tensor<_TensorType, _MyOpRank, _MyDevice>& _Right \
+) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_NRank < _MyOpRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<_TensorType, _NRank, _MyDevice>& _Function##Inplace( \
+	const Tensor<_TensorType, _MyOpRank, _MyDevice>& _Right \
+) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)&& (_NRank >= _MyOpRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
+Tensor<_TensorType, _MyOpRank2, _MyDevice>& _Function( \
+	const Tensor<_TensorType, _MyOpRank1, _MyDevice>& _Right, \
+	Tensor<_TensorType, _MyOpRank2, _MyDevice>& _Buffer \
+) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1))
+
+//********************************************************************************************//
+#define _D_Dragonian_Lib_Operator_Compare_Function_Declare(_Function) \
+template <typename = ValueType> \
+Tensor<bool, _NRank, _MyDevice> _Function( \
+	const ValueType& _Right \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>); \
+ \
+template <typename = ValueType> \
+Tensor<bool, _NRank, _MyDevice> __##_Function( \
+	const ValueType& _Left \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<bool, _MyOpRank, _MyDevice>& _Function( \
+	const ValueType& _Right, \
+	Tensor<bool, _MyOpRank, _MyDevice>& _Buffer \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank >= _NRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<bool, _MyOpRank, _MyDevice>& __##_Function( \
+	const ValueType& _Left, \
+	Tensor<bool, _MyOpRank, _MyDevice>& _Buffer \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank >= _NRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<bool, _NRank, _MyDevice> _Function( \
+	const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_NRank >= _MyOpRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank> \
+Tensor<bool, _MyOpRank, _MyDevice> _Function( \
+	const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_NRank < _MyOpRank)); \
+ \
+template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
+Tensor<bool, _MyOpRank2, _MyDevice>& _Function( \
+	const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, \
+	Tensor<bool, _MyOpRank2, _MyDevice>& _Buffer \
+) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1))
+
+//********************************************************************************************//
+#define _D_Dragonian_Lib_Operator_Unary_Function_Declare(_Function) \
+template <typename = ValueType> \
+Tensor& _Function##Inplace() requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&&(std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>));\
+ \
+template <typename = ValueType> \
+Tensor _Function() const requires (std::is_default_constructible_v<ValueType>&& Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>));\
  \
 template <typename = ValueType, size_t _BufferRank> \
-decltype(auto) _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) const requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_BufferRank >= _NRank)) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Buffer.ThrowOnNotEnabled(); \
-	if (_Buffer.IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	_Buffer.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	auto BroadCasted = _Buffer.Broadcast(*this); \
-	Operators::OperatorsBase<ValueType, _MyDevice>::Impl##_Function##Unary \
-	( \
-		_Buffer.Data(), \
-		_Buffer.GetDefaultOperatorParameter(), \
-		BroadCasted.Data(), \
-		BroadCasted.GetDefaultOperatorParameter(), \
-		_Buffer.IsContinuous() && !BroadCasted.IsBroadCasted() && BroadCasted.IsContinuous() \
-	); \
-	return _Buffer; \
-} \
-struct _D_Dragonian_Lib_Unary##_Function##_Defined_Tag
-
-//********************************************************************************************
-#define _D_Dragonian_Lib_Operator_Binary_Function_Define(_Function) \
-template <typename = ValueType> \
-decltype(auto) _Function(const ValueType& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	auto Ret = New(_MyShape, _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
-		Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		_MyData, \
-		GetDefaultOperatorParameter(), \
-		_Right, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType> \
-decltype(auto) __##_Function(const ValueType& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	auto Ret = New(_MyShape, _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##ReverseScalar( \
-		Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		_MyData, \
-		GetDefaultOperatorParameter(), \
-		_Right, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType> \
-decltype(auto) _Function##Inplace(const ValueType& _Right) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	if (IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	WaitingAsResult(); \
-	const auto MyParameter = GetDefaultOperatorParameter(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
-		_MyData, \
-		MyParameter, \
-		_MyData, \
-		MyParameter, \
-		_Right, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return *this; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const ValueType& _Right, Tensor<ValueType, _MyOpRank, _MyDevice>& _Buffer) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank >= _NRank)) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Buffer.ThrowOnNotEnabled(); \
-	if (_Buffer.IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	_Buffer.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	auto BroadCasted = _Buffer.Broadcast(*this); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
-		_Buffer.Data(), \
-		_Buffer.GetDefaultOperatorParameter(), \
-		BroadCasted.Data(), \
-		BroadCasted.GetDefaultOperatorParameter(), \
-		_Right, \
-		_Buffer.IsContinuous() && !BroadCasted.IsBroadCasted() && BroadCasted.IsContinuous() \
-	); \
-	return _Buffer; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (std::is_default_constructible_v<ValueType>&& Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Right.ThrowOnNotEnabled(); \
-	auto BroadCasted = BroadCast(*this, _Right); \
-	auto Ret = Tensor<ValueType, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	_Right.WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Tensor( \
-		Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		BroadCasted.first.Data(), \
-		BroadCasted.first.GetDefaultOperatorParameter(), \
-		BroadCasted.second.Data(), \
-		BroadCasted.second.GetDefaultOperatorParameter(), \
-		!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() && \
-		!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function##Inplace(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>)&& (_NRank >= _MyOpRank)) \
-{ \
- 	ThrowOnNotEnabled(); \
- 	_Right.ThrowOnNotEnabled(); \
-	if (IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	WaitingAsResult(); \
-	_Right.WaitingAsArgument(); \
-	auto BroadCasted = BroadCast(_Right); \
-	const auto MyParameter = GetDefaultOperatorParameter(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Tensor( \
-		_MyData, \
-		MyParameter, \
-		_MyData, \
-		MyParameter, \
-		BroadCasted.Data(), \
-		BroadCasted.GetDefaultOperatorParameter(), \
-		IsContinuous() && BroadCasted.IsContinuous() && !BroadCasted.IsBroadCasted() && !IsBroadCasted() \
-	); \
-	return *this; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<ValueType, _MyOpRank2, _MyDevice>& _Buffer) const requires (Operators::BinaryOperators::##_Function##Binary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
-{ \
-	ThrowOnNotEnabled(); \
- 	_Buffer.ThrowOnNotEnabled(); \
-	_Right.ThrowOnNotEnabled(); \
-	if (_Buffer.IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	_Buffer.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	_Right.WaitingAsArgument(); \
-	auto BroadCastedLeft = _Buffer.Broadcast(*this); \
-	auto BroadCastedRight = _Buffer.Broadcast(_Right); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Tensor( \
-		_Buffer.Data(), \
-		_Buffer.GetDefaultOperatorParameter(), \
-		BroadCastedLeft.Data(), \
-		BroadCastedLeft.GetDefaultOperatorParameter(), \
-		BroadCastedRight.Data(), \
-		BroadCastedRight.GetDefaultOperatorParameter(), \
-		!BroadCastedLeft.IsBroadCasted() && BroadCastedLeft.IsContinuous() && \
-		!BroadCastedRight.IsBroadCasted() && BroadCastedRight.IsContinuous() && \
-		_Buffer.IsContinuous() \
-	); \
-	return _Buffer; \
-} \
-struct _D_Dragonian_Lib_Binary##_Function##_Defined_Tag
-
-//********************************************************************************************
-#define _D_Dragonian_Lib_Operator_Compare_Function_Define(_Function) \
-template <typename = ValueType> \
-decltype(auto) _Function(const ValueType& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
-{ \
-	ThrowOnNotEnabled(); \
-	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
-		(bool*)Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		_MyData, \
-		GetDefaultOperatorParameter(), \
-		_Right, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType> \
-decltype(auto) __##_Function(const ValueType& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
-{ \
-	ThrowOnNotEnabled(); \
-	auto Ret = Tensor<bool, _NRank, _MyDevice>::New(_MyShape, _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##ReverseScalar( \
-		(bool*)Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		_MyData, \
-		GetDefaultOperatorParameter(), \
-		_Right, \
-		!IsBroadCasted() && IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank, _MyDevice>& _Right) const requires (std::is_default_constructible_v<bool>&& Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType>) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Right.ThrowOnNotEnabled(); \
-	auto BroadCasted = BroadCast(*this, _Right); \
-	auto Ret = Tensor<bool, MaxOf(_NRank, _MyOpRank), _MyDevice>::New(BroadCasted.first.Shape(), _MyAllocator); \
-	Ret.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	_Right.WaitingAsArgument(); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Tensor( \
-		(bool*)Ret.Data(), \
-		Ret.GetDefaultOperatorParameter(), \
-		BroadCasted.first.Data(), \
-		BroadCasted.first.GetDefaultOperatorParameter(), \
-		BroadCasted.second.Data(), \
-		BroadCasted.second.GetDefaultOperatorParameter(), \
-		!BroadCasted.first.IsBroadCasted() && BroadCasted.first.IsContinuous() && \
-		!BroadCasted.second.IsBroadCasted() && BroadCasted.second.IsContinuous() \
-	); \
-	return Ret; \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank> \
-decltype(auto) _Function(const ValueType& _Right, Tensor<bool, _MyOpRank, _MyDevice>& _Buffer) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank >= _NRank)) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Buffer.ThrowOnNotEnabled(); \
-	if (_Buffer.IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	_Buffer.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	auto BroadCasted = _Buffer.Broadcast(*this); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Scalar( \
-		(bool*)_Buffer.Data(), \
-		_Buffer.GetDefaultOperatorParameter(), \
-		BroadCasted.Data(), \
-		BroadCasted.GetDefaultOperatorParameter(), \
-		_Right, \
-		_Buffer.IsContinuous() && !BroadCasted.IsBroadCasted() && BroadCasted.IsContinuous() \
-	); \
-} \
- \
-template <typename = ValueType, size_t _MyOpRank1, size_t _MyOpRank2> \
-decltype(auto) _Function(const Tensor<ValueType, _MyOpRank1, _MyDevice>& _Right, Tensor<bool, _MyOpRank2, _MyDevice>& _Buffer) const requires (Operators::ComparisonOperators::##_Function##Binary::HasOperatorValue<ValueType> && (_MyOpRank2 >= _NRank) && (_MyOpRank2 >= _MyOpRank1)) \
-{ \
-	ThrowOnNotEnabled(); \
-	_Right.ThrowOnNotEnabled(); \
-	_Buffer.ThrowOnNotEnabled(); \
-	if (_Buffer.IsBroadCasted()) \
-		_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!"); \
-	_Buffer.WaitingAsResult(); \
-	WaitingAsArgument(); \
-	_Right.WaitingAsArgument(); \
-	auto BroadCastedLeft = _Buffer.Broadcast(*this); \
-	auto BroadCastedRight = _Buffer.Broadcast(_Right); \
-	Operators::OperatorsBase<_TensorType, _MyDevice>::Impl##_Function##Tensor( \
-		_Buffer.Data(), \
-		_Buffer.GetDefaultOperatorParameter(), \
-		BroadCastedLeft.Data(), \
-		BroadCastedLeft.GetDefaultOperatorParameter(), \
-		BroadCastedRight.Data(), \
-		BroadCastedRight.GetDefaultOperatorParameter(), \
-		!BroadCastedLeft.IsBroadCasted() && BroadCastedLeft.IsContinuous() && \
-		!BroadCastedRight.IsBroadCasted() && BroadCastedRight.IsContinuous() && \
-		_Buffer.IsContinuous() \
-	); \
-	return _Buffer; \
-} \
-struct _D_Dragonian_Lib_Compare##_Function##_Defined_Tag
+Tensor<_TensorType, _BufferRank, _MyDevice>& _Function(Tensor<ValueType, _BufferRank, _MyDevice>& _Buffer) const requires (Operators::UnaryOperators::##_Function##Unary::HasOperatorValue<ValueType>&& (std::is_copy_assignable_v<ValueType> || std::is_move_assignable_v<ValueType>) && (_BufferRank >= _NRank))
 
 //********************************************************************************************
 #define _D_Dragonian_Lib_Operator_Bond_Function_2_Operator(_Function, _Operator, _Condition) \

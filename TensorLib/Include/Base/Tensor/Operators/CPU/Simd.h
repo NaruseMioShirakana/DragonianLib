@@ -55,7 +55,7 @@ template<typename Type, typename = std::enable_if_t<TypeTraits::IsAvx256Supporte
 class Vectorized
 {
 public:
-	static constexpr size_t Alignment = 32; // AVX-256 requires 32-byte alignment
+	static constexpr size_t Alignment = sizeof(__m256); // AVX-256 requires 32-byte alignment
 	static constexpr size_t Stride = sizeof(__m256) / sizeof(Type);
 	static constexpr size_t size() { return sizeof(__m256) / sizeof(Type); }
 	_D_Dragonian_Lib_Constexpr_Force_Inline Vectorized() = default;
