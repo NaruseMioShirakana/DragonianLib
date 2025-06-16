@@ -477,6 +477,7 @@ class MelBandRoformer(Module):
 
         self.match_input_audio_length = match_input_audio_length
 
+    @torch.no_grad()
     def forward(
         self,
         stft_repr

@@ -22,7 +22,6 @@
  */
 
 #pragma once
-#include "TensorLib/Include/Base/Tensor/Operators/CPU/Assign.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Interpolate.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Reduce.h"
 #include "TensorLib/Include/Base/Tensor/Operators/CPU/Cumulate.h"

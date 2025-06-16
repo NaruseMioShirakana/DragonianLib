@@ -2,6 +2,14 @@
 #include "fftw3.h"
 #include "Libraries/Stft/Stft.hpp"
 #include "TensorLib/Include/Base/Tensor/Functional.h"
+#ifdef DRAGONIANLIB_ENABLECUDA
+#include "cufft.h"
+#include "cublas.h"
+#endif
+
+#ifdef DRAGONIANLIB_ENABLECUDA
+
+#endif
 
 _D_Dragonian_Lib_Space_Begin
 

@@ -755,8 +755,7 @@ template<
 	size_t _ArgCount, size_t _NRank, SizeType OperatorDims,
 	typename _Src2Type, typename _Src1Type, typename _DstType,
 	typename _ParameterType, typename _FunctionType, typename _ContinuousFunctionType
->
-void ImplMultiThreadCaller(
+> void ImplMultiThreadCaller(
 	_DstType* _Dest,
 	std::shared_ptr<OperatorParameter<_NRank>> _IDestInfoOld,
 	const _Src1Type* _Src1,

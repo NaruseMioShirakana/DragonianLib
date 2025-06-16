@@ -10,13 +10,7 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "variables": [
-        {
-          "name": "CMAKE_CXX_FLAGS_DEBUG",
-          "value": "/MDd /Zi /Ob0 /Od /RTC1 /Gy /experimental:module /openmp:experimental /bigobj",
-          "type": "STRING"
-        }
-      ]
+      "variables": []
     },
     {
       "name": "x64-RelWithDebInfo",
@@ -28,18 +22,7 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": [
-        {
-          "name": "CMAKE_CXX_FLAGS_RELEASE",
-          "value": "/MD /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_CXX_FLAGS_DEBUG",
-          "value": "/MDd /Zi /Ob0 /Od /RTC1 /Gy /experimental:module /openmp:experimental /bigobj",
-          "type": "STRING"
-        }
-      ]
+      "variables": []
     },
     {
       "name": "x64-Release",
@@ -51,23 +34,35 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": [
-        {
-          "name": "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
-          "value": "/MD /Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj /DNDEBUG",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_CXX_FLAGS_RELEASE",
-          "value": "/MD /GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj",
-          "type": "STRING"
-        },
-        {
-          "name": "CMAKE_CXX_FLAGS_DEBUG",
-          "value": "/MDd /Zi /Ob0 /Od /RTC1 /Gy /experimental:module /openmp:experimental /bigobj",
-          "type": "STRING"
-        }
-      ]
+      "variables": []
+    },
+    {
+      "name": "WSL-GCC-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeExecutable": "cmake",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "linux_x64" ],
+      "wslPath": "${defaultWSLPath}",
+      "variables": []
+    },
+    {
+      "name": "WSL-GCC-Release",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeExecutable": "cmake",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "linux_x64" ],
+      "wslPath": "${defaultWSLPath}",
+      "variables": []
     }
   ]
 }

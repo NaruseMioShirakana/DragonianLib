@@ -2,11 +2,12 @@
 
 #Version
 set(DRAGONIANLIB_VERSION_MAJOR 1)
-set(DRAGONIANLIB_VERSION_MINOR 3)
-set(DRAGONIANLIB_VERSION_PATCH 4)
-set(CMAKE_CXX_STANDARD 23)
+set(DRAGONIANLIB_VERSION_MINOR 4)
+set(DRAGONIANLIB_VERSION_PATCH 0)
 
 #Global Visual Studio Macros
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
@@ -119,12 +120,12 @@ set(DRAGONIANLIB_LANGUAGES CXX ASM_MASM)
 #Execusion Providers
 if(DRAGONIANLIB_CUDA)
 	add_definitions(-DDRAGONIANLIB_ENABLECUDA)
-	list(APPEND DRAGONIANLIB_LANGUAGES CUDA)
-	set(CUDA_ARCHITECTURES all)
+	#list(APPEND DRAGONIANLIB_LANGUAGES CUDA)
+	#set(CMAKE_CUDA_ARCHITECTURES all)
 endif()
 if (DRAGONIANLIB_ROCM)
 	add_definitions(-DDRAGONIANLIB_ENABLEROCM)
-	list(APPEND DRAGONIANLIB_LANGUAGES HIP)
+	#list(APPEND DRAGONIANLIB_LANGUAGES HIP)
 endif ()
 if (DRAGONIANLIB_DML)
 	add_definitions(-DDRAGONIANLIB_ENABLEDML)
@@ -197,11 +198,10 @@ endif()
 
 #Set CUDA Libraries And Include Directories
 if(DRAGONIANLIB_CUDA)
-	find_package(libcudacxx REQUIRED)
+	find_package(CUDA REQUIRED)
 	if(libcudacxx_FOUND)
 		set(CUDA_LIBRARIES
 			libcudacxx::libcudacxx
-			${_libcudacxx_INCLUDE_DIR}/../lib/x64/cudart_static.lib
 		)
 	elseif(NOT DEFINED CUDA_LIBRARIES OR NOT DEFINED CUDA_INCLUDE_DIRS)
 		message(FATAL_ERROR "CUDA Libraries Not Found")
@@ -393,27 +393,35 @@ add_library(${DRAGONIANLIB_LIB} STATIC ${DRAGONIANLIB_LIBRARIES_SRC})
 message("Project Name: "${DRAGONIANLIB_LIB})
 
 #Build Type
+if(MSVC)
+	set(DRAGONIANLIB_LIB_ARGUMENT_RELEASE
+		/GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj /std:c++latest)
+	set(DRAGONIANLIB_LIB_ARGUMENT_RELEASE_DEB
+		/Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj /std:c++latest)
+	set(DRAGONIANLIB_LIB_ARGUMENT_DEBUG
+		/Zi /Gy /experimental:module /openmp:experimental /bigobj /std:c++latest)
+else()
+	set(DRAGONIANLIB_LIB_ARGUMENT_RELEASE
+		-O3 -std=c++23)
+	set(DRAGONIANLIB_LIB_ARGUMENT_RELEASE_DEB
+		-O3 -std=c++23)
+	set(DRAGONIANLIB_LIB_ARGUMENT_DEBUG
+		-g -O0 -std=c++23)
+endif()
+
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 	message("Build Type: \"Release\"")
-	target_compile_options(
-		${DRAGONIANLIB_LIB} PRIVATE
-		/GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_RELEASE})
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	message("Build Type: \"RelWithDebInfo\"")
-	target_compile_options(
-		${DRAGONIANLIB_LIB} PRIVATE
-		/Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_RELEASE_DEB})
 else()
 	message("Build Type: \"Debug\"")
 	add_definitions(-DDRAGONIANLIB_DEBUG)
 	add_definitions(-DDRAGONIANLIB_DEBUG_MACRO)
-	target_compile_options(
-		${DRAGONIANLIB_LIB} PRIVATE
-		/Zi /Gy /experimental:module /openmp:experimental /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_DEBUG})
 endif()
+
 #Link Libraries
 if(DEFINED FFMPEG_LIBRARIES)
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${FFMPEG_LIBRARIES})
@@ -499,7 +507,8 @@ else()
 endif()
 
 if(DRAGONIANLIB_CUDA)
-	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${_libcudacxx_INCLUDE_DIR})
+	set_target_properties(${DRAGONIANLIB_LIB} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+	target_include_directories(${DRAGONIANLIB_LIB} PRIVATE ${CUDA_INCLUDE_DIRS})
 	target_link_libraries(${DRAGONIANLIB_LIB} PUBLIC ${CUDA_LIBRARIES})
 endif()
 

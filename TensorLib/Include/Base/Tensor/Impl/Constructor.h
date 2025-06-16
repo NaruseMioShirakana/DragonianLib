@@ -23,6 +23,7 @@
 
 #pragma once 
 #include "TensorLib/Include/Base/Tensor/Impl/Tensor.h"
+#include "TensorLib/Include/Base/Tensor/Impl/Grad/Binary.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -167,6 +168,34 @@ Tensor<_TensorType, _NRank, _MyDevice>::Tensor(
 	_MyLast = _MyData + BufferSize;
 	_MyAllocator = Allocator();
 	ConstructViewInfo(MyShape);
+}
+
+template <typename _TensorType, size_t _NRank, Device _MyDevice>
+template <typename, size_t>
+constexpr decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::Arange(
+	ValueType _Begin,
+	ValueType _End,
+	ValueType _Step,
+	Allocator _Al
+) requires (_NRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType> && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
+{
+	if (_Step == ValueType(0))
+		_D_Dragonian_Lib_Throw_Exception("Step Can't Be Zero!");
+	auto _Count = static_cast<SizeType>((_End - _Begin) / _Step);
+	if (_Count <= 0)
+		_D_Dragonian_Lib_Throw_Exception("End Must Be Greater Than Begin!");
+	if constexpr (TypeTraits::IsFloatingPointValue<ValueType>)
+		if (std::isnan(_Count))
+			_D_Dragonian_Lib_Throw_Exception("Invalid Range!");
+	Tensor Ret = New({ _Count }, _Al);
+	Ret.WaitingAsResult();
+	Operators::OperatorsBase<_TensorType, _MyDevice>::ImplArange(
+		Ret._MyData,
+		Ret.GetDefaultOperatorParameter(),
+		_Begin, _Step,
+		!Ret.IsBroadCasted() && Ret.IsContiguous()
+	);
+	return Ret;
 }
 
 _D_Dragonian_Lib_Space_End

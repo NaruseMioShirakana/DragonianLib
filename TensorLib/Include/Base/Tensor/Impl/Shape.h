@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file Shape.h
  * @author NaruseMioShirakana
  * @email shirakanamio@foxmail.com
@@ -25,6 +25,156 @@
 #include "TensorLib/Include/Base/Tensor/Impl/Grad/Shape.h"
 
 _D_Dragonian_Lib_Space_Begin
+
+template <typename _TensorType, size_t _NRank, Device _MyDevice>
+template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
+std::pair<
+	Tensor<_Type1, _Rank1, _Device1>,
+	Tensor<_Type2, _Rank1, _Device2>
+> Tensor<_TensorType, _NRank, _MyDevice>::BroadCast(
+	const Tensor<_Type1, _Rank1, _Device1>& _A,
+	const Tensor<_Type2, _Rank2, _Device2>& _B,
+	bool Inplace
+) requires(_Rank1 >= _Rank2)
+{
+	constexpr auto CurrentRank = MaxOf(_Rank1, _Rank2);
+	std::pair<
+		Tensor<_Type1, CurrentRank, _Device1>,
+		Tensor<_Type2, CurrentRank, _Device2>
+	> Ret{ {},{} };
+
+	auto& First = Ret.first;		auto& Second = Ret.second;
+	First._MyShape.AssignConstant(1);					Second._MyShape.AssignConstant(1);
+	First._MyViewStride.AssignConstant(0);				Second._MyViewStride.AssignConstant(0);
+	First._MyFirst = _A._MyFirst;							Second._MyFirst = _B._MyFirst;
+	First._MyLast = _A._MyLast;								Second._MyLast = _B._MyLast;
+	First._MyFuturesAsResult = _A._MyFuturesAsResult;		Second._MyFuturesAsResult = _B._MyFuturesAsResult;
+	First._MyFuturesAsArgument = _A._MyFuturesAsArgument;	Second._MyFuturesAsArgument = _B._MyFuturesAsArgument;
+	First._MyData = _A._MyData;								Second._MyData = _B._MyData;
+	First._MyAllocator = _A._MyAllocator;					Second._MyAllocator = _B._MyAllocator;
+	First._IgnoreDep = _A._IgnoreDep;						Second._IgnoreDep = _B._IgnoreDep;
+	First._MyGraph = _A._MyGraph;							Second._MyGraph = _B._MyGraph;
+	First._MyFunction = _A._MyFunction;						Second._MyFunction = _B._MyFunction;
+
+	for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
+	{
+		//const auto i = CurrentRank - CurrentIndex - 1;
+		const auto idx = CurrentRank - CurrentIndex - 1;
+		auto XSize = 1ll, YSize = 1ll;
+		if (CurrentIndex < _Rank1)
+		{
+			const auto i = _Rank1 - CurrentIndex - 1;
+			First._MyShape[idx] = _A._MyShape[i];
+			First._MyViewStride[idx] = _A._MyViewStride[i];
+			XSize = _A._MyShape[i];
+		}
+		if (CurrentIndex < _Rank2)
+		{
+			const auto i = _Rank2 - CurrentIndex - 1;
+			Second._MyShape[idx] = _B._MyShape[i];
+			Second._MyViewStride[idx] = _B._MyViewStride[i];
+			YSize = _B._MyShape[i];
+		}
+		if (XSize == YSize)
+			continue;
+		if (XSize == 1)
+		{
+			if (Inplace)
+				_D_Dragonian_Lib_Throw_Exception(
+					"Could Not Inplace Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
+					"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
+					"] From " + std::to_string(XSize) + " To " + std::to_string(YSize) + "!"
+				);
+			First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
+		}
+		else if (YSize == 1)
+		{
+			Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
+		}
+		else
+			_D_Dragonian_Lib_Throw_Exception(
+				"Could Not Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
+				"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
+				"] With Value [" + std::to_string(XSize) + ", " + std::to_string(YSize) + "]!"
+			);
+	}
+	return Ret;
+}
+
+template <typename _TensorType, size_t _NRank, Device _MyDevice>
+template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
+std::pair<
+	Tensor<_Type1, _Rank2, _Device1>,
+	Tensor<_Type2, _Rank2, _Device2>
+> Tensor<_TensorType, _NRank, _MyDevice>::BroadCast(
+	const Tensor<_Type1, _Rank1, _Device1>& _A,
+	const Tensor<_Type2, _Rank2, _Device2>& _B,
+	bool Inplace
+) requires (_Rank1 < _Rank2)
+{
+	constexpr auto CurrentRank = MaxOf(_Rank1, _Rank2);
+	std::pair<
+		Tensor<_Type1, CurrentRank, _Device1>,
+		Tensor<_Type2, CurrentRank, _Device2>
+	> Ret{ {},{} };
+
+	auto& First = Ret.first;		auto& Second = Ret.second;
+	First._MyShape.AssignConstant(1);					Second._MyShape.AssignConstant(1);
+	First._MyViewStride.AssignConstant(0);				Second._MyViewStride.AssignConstant(0);
+	First._MyFirst = _A._MyFirst;							Second._MyFirst = _B._MyFirst;
+	First._MyLast = _A._MyLast;								Second._MyLast = _B._MyLast;
+	First._MyFuturesAsResult = _A._MyFuturesAsResult;		Second._MyFuturesAsResult = _B._MyFuturesAsResult;
+	First._MyFuturesAsArgument = _A._MyFuturesAsArgument;	Second._MyFuturesAsArgument = _B._MyFuturesAsArgument;
+	First._MyData = _A._MyData;								Second._MyData = _B._MyData;
+	First._MyAllocator = _A._MyAllocator;					Second._MyAllocator = _B._MyAllocator;
+	First._IgnoreDep = _A._IgnoreDep;						Second._IgnoreDep = _B._IgnoreDep;
+	First._MyGraph = _A._MyGraph;							Second._MyGraph = _B._MyGraph;
+	First._MyFunction = _A._MyFunction;						Second._MyFunction = _B._MyFunction;
+
+	for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
+	{
+		//const auto i = CurrentRank - CurrentIndex - 1;
+		const auto idx = CurrentRank - CurrentIndex - 1;
+		auto XSize = 1ll, YSize = 1ll;
+		if (CurrentIndex < _Rank1)
+		{
+			const auto i = _Rank1 - CurrentIndex - 1;
+			First._MyShape[idx] = _A._MyShape[i];
+			First._MyViewStride[idx] = _A._MyViewStride[i];
+			XSize = _A._MyShape[i];
+		}
+		if (CurrentIndex < _Rank2)
+		{
+			const auto i = _Rank2 - CurrentIndex - 1;
+			Second._MyShape[idx] = _B._MyShape[i];
+			Second._MyViewStride[idx] = _B._MyViewStride[i];
+			YSize = _B._MyShape[i];
+		}
+		if (XSize == YSize)
+			continue;
+		if (XSize == 1)
+		{
+			if (Inplace)
+				_D_Dragonian_Lib_Throw_Exception(
+					"Could Not Inplace Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
+					"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
+					"] From " + std::to_string(XSize) + " To " + std::to_string(YSize) + "!"
+				);
+			First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
+		}
+		else if (YSize == 1)
+		{
+			Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
+		}
+		else
+			_D_Dragonian_Lib_Throw_Exception(
+				"Could Not Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
+				"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
+				"] With Value [" + std::to_string(XSize) + ", " + std::to_string(YSize) + "]!"
+			);
+	}
+	return Ret;
+}
 
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
 template <size_t _Axis, size_t>
@@ -246,7 +396,7 @@ decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::Slice(
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
 template <size_t _Rnk>
 decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::ReversedSlice(
-	const SliceOptions<_NRank>& _SliceOptions
+	const SliceOptions<_Rnk>& _SliceOptions
 ) const requires (_Rnk <= _NRank && _Rnk > 0)
 {
 	ThrowOnNotEnabled();
@@ -341,7 +491,7 @@ decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::Transpose(
 	Ret._MyShape[_Axis1] = _MyShape[_Axis2];
 	Ret._MyViewStride[_Axis1] = _MyViewStride[_Axis2];
 
-	_D_Dragonian_Lib_Auto_Grad(Permute, *this, _Axis1, _Axis2, Ret);
+	_D_Dragonian_Lib_Auto_Grad(Transpose, *this, _Axis1, _Axis2, Ret);
 	return Ret;
 }
 
@@ -363,6 +513,7 @@ decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::AxisFromTo(
 		std::swap(Ret._MyShape[i], Ret._MyShape[i + 1]);
 		std::swap(Ret._MyViewStride[i], Ret._MyViewStride[i + 1]);
 	}
+	_D_Dragonian_Lib_Auto_Grad(ShiftAxis, *this, _Axis1, _Axis2, Ret);
 	return Ret;
 }
 
@@ -479,152 +630,47 @@ decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::View(
 }
 
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
-template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
-std::pair<
-	Tensor<_Type1, _Rank1, _Device1>,
-	Tensor<_Type2, _Rank1, _Device2>
-> Tensor<_TensorType, _NRank, _MyDevice>::BroadCast(
-	const Tensor<_Type1, _Rank1, _Device1>& _A,
-	const Tensor<_Type2, _Rank2, _Device2>& _B,
-	bool Inplace
-) requires(_Rank1 >= _Rank2)
+template <typename _Type>
+decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::ViewAs() const requires (std::is_trivially_copy_assignable_v<_Type> && (bool(sizeof(_Type) % sizeof(ValueType)) || bool(sizeof(ValueType) % sizeof(_Type))))
 {
-	constexpr auto CurrentRank = MaxOf(_Rank1, _Rank2);
-	std::pair<
-		Tensor<_Type1, CurrentRank, _Device1>,
-		Tensor<_Type2, CurrentRank, _Device2>
-	> Ret{ {},{} };
+	ThrowOnNotEnabled();
+	if (!IsContiguous())
+		_D_Dragonian_Lib_Throw_Exception("ViewAs Should Be Contiguous!");
 
-	auto& First = Ret.first;		auto& Second = Ret.second;
-	First._MyShape.AssignConstant(1);					Second._MyShape.AssignConstant(1);
-	First._MyViewStride.AssignConstant(0);				Second._MyViewStride.AssignConstant(0);
-	First._MyFirst = _A._MyFirst;							Second._MyFirst = _B._MyFirst;
-	First._MyLast = _A._MyLast;								Second._MyLast = _B._MyLast;
-	First._MyFuturesAsResult = _A._MyFuturesAsResult;		Second._MyFuturesAsResult = _B._MyFuturesAsResult;
-	First._MyFuturesAsArgument = _A._MyFuturesAsArgument;	Second._MyFuturesAsArgument = _B._MyFuturesAsArgument;
-	First._MyData = _A._MyData;								Second._MyData = _B._MyData;
-	First._MyAllocator = _A._MyAllocator;					Second._MyAllocator = _B._MyAllocator;
-	First._IgnoreDep = _A._IgnoreDep;						Second._IgnoreDep = _B._IgnoreDep;
-	First._MyGraph = _A._MyGraph;							Second._MyGraph = _B._MyGraph;
-	First._MyFunction = _A._MyFunction;						Second._MyFunction = _B._MyFunction;
+	const auto TailShape = _MyShape.Back();
+	const auto TailSize = size_t(TailShape) * sizeof(ValueType);
+	if (TailSize % sizeof(_Type))
+		_D_Dragonian_Lib_Throw_Exception("Could not view as this type!");
+	const auto NewTailShape = SizeType(TailSize / sizeof(_Type));
 
-	for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
-	{
-		//const auto i = CurrentRank - CurrentIndex - 1;
-		const auto idx = CurrentRank - CurrentIndex - 1;
-		auto XSize = 1ll, YSize = 1ll;
-		if (CurrentIndex < _Rank1)
-		{
-			const auto i = _Rank1 - CurrentIndex - 1;
-			First._MyShape[idx] = _A._MyShape[i];
-			First._MyViewStride[idx] = _A._MyViewStride[i];
-			XSize = _A._MyShape[i];
-		}
-		if (CurrentIndex < _Rank2)
-		{
-			const auto i = _Rank2 - CurrentIndex - 1;
-			Second._MyShape[idx] = _B._MyShape[i];
-			Second._MyViewStride[idx] = _B._MyViewStride[i];
-			YSize = _B._MyShape[i];
-		}
-		if (XSize == YSize)
-			continue;
-		if (XSize == 1)
-		{
-			if (Inplace)
-				_D_Dragonian_Lib_Throw_Exception(
-					"Could Not Inplace Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
-					"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
-					"] From " + std::to_string(XSize) + " To " + std::to_string(YSize) + "!"
-				);
-			First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
-		}
-		else if (YSize == 1)
-		{
-			Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
-		}
-		else
-			_D_Dragonian_Lib_Throw_Exception(
-				"Could Not Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
-				"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
-				"] With Value [" + std::to_string(XSize) + ", " + std::to_string(YSize) + "]!"
-			);
-	}
+	using RetType = Tensor<_Type, _NRank, _MyDevice>;
+	RetType Ret;
+	Ret._MyFirst = _MyFirst;
+	Ret._MyLast = RetType::RawPointer(_MyLast);
+	Ret._MyData = RetType::RawPointer(_MyData);
+	Ret._MyShape = _MyShape;
+	Ret._MyShape.Back() = NewTailShape;
+	Ret._MyFuturesAsResult = _MyFuturesAsResult;
+	Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
+	Ret._MyAllocator = _MyAllocator;
+	Ret._IgnoreDep = _IgnoreDep;
+	Ret._MyGraph = _MyGraph;
+	Ret._MyFunction = _MyFunction;
+	Ret.ConstructViewInfo(Ret._MyShape);
+
+	_D_Dragonian_Lib_Auto_Grad(ViewAs, *this, Ret);
 	return Ret;
 }
 
 template <typename _TensorType, size_t _NRank, Device _MyDevice>
-template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
-std::pair<
-	Tensor<_Type1, _Rank2, _Device1>,
-	Tensor<_Type2, _Rank2, _Device2>
-> Tensor<_TensorType, _NRank, _MyDevice>::BroadCast(
-	const Tensor<_Type1, _Rank1, _Device1>& _A,
-	const Tensor<_Type2, _Rank2, _Device2>& _B,
-	bool Inplace
-) requires (_Rank1 < _Rank2)
+decltype(auto) Tensor<_TensorType, _NRank, _MyDevice>::Reverse(SizeType _Axis) const
 {
-	constexpr auto CurrentRank = MaxOf(_Rank1, _Rank2);
-	std::pair<
-		Tensor<_Type1, CurrentRank, _Device1>,
-		Tensor<_Type2, CurrentRank, _Device2>
-	> Ret{ {},{} };
-
-	auto& First = Ret.first;		auto& Second = Ret.second;
-	First._MyShape.AssignConstant(1);					Second._MyShape.AssignConstant(1);
-	First._MyViewStride.AssignConstant(0);				Second._MyViewStride.AssignConstant(0);
-	First._MyFirst = _A._MyFirst;							Second._MyFirst = _B._MyFirst;
-	First._MyLast = _A._MyLast;								Second._MyLast = _B._MyLast;
-	First._MyFuturesAsResult = _A._MyFuturesAsResult;		Second._MyFuturesAsResult = _B._MyFuturesAsResult;
-	First._MyFuturesAsArgument = _A._MyFuturesAsArgument;	Second._MyFuturesAsArgument = _B._MyFuturesAsArgument;
-	First._MyData = _A._MyData;								Second._MyData = _B._MyData;
-	First._MyAllocator = _A._MyAllocator;					Second._MyAllocator = _B._MyAllocator;
-	First._IgnoreDep = _A._IgnoreDep;						Second._IgnoreDep = _B._IgnoreDep;
-	First._MyGraph = _A._MyGraph;							Second._MyGraph = _B._MyGraph;
-	First._MyFunction = _A._MyFunction;						Second._MyFunction = _B._MyFunction;
-
-	for (size_t CurrentIndex = 0; CurrentIndex < CurrentRank; ++CurrentIndex)
-	{
-		//const auto i = CurrentRank - CurrentIndex - 1;
-		const auto idx = CurrentRank - CurrentIndex - 1;
-		auto XSize = 1ll, YSize = 1ll;
-		if (CurrentIndex < _Rank1)
-		{
-			const auto i = _Rank1 - CurrentIndex - 1;
-			First._MyShape[idx] = _A._MyShape[i];
-			First._MyViewStride[idx] = _A._MyViewStride[i];
-			XSize = _A._MyShape[i];
-		}
-		if (CurrentIndex < _Rank2)
-		{
-			const auto i = _Rank2 - CurrentIndex - 1;
-			Second._MyShape[idx] = _B._MyShape[i];
-			Second._MyViewStride[idx] = _B._MyViewStride[i];
-			YSize = _B._MyShape[i];
-		}
-		if (XSize == YSize)
-			continue;
-		if (XSize == 1)
-		{
-			if (Inplace)
-				_D_Dragonian_Lib_Throw_Exception(
-					"Could Not Inplace Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
-					"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
-					"] From " + std::to_string(XSize) + " To " + std::to_string(YSize) + "!"
-				);
-			First._MyShape[idx] = YSize;					First._MyViewStride[idx] = 0;
-		}
-		else if (YSize == 1)
-		{
-			Second._MyShape[idx] = XSize;					Second._MyViewStride[idx] = 0;
-		}
-		else
-			_D_Dragonian_Lib_Throw_Exception(
-				"Could Not Broadcast Tensor[Shape: " + ToString(_A.Shape()) +
-				"] And Tensor[Shape: " + ToString(_B.Shape()) + "] At Axis[" + std::to_string(idx) +
-				"] With Value [" + std::to_string(XSize) + ", " + std::to_string(YSize) + "]!"
-			);
-	}
+	ThrowOnNotEnabled();
+	_Axis = CalcIndex(_Axis, Rank());
+	auto Ret = View();
+	Ret._MyData += (_MyShape[_Axis] - 1) * _MyViewStride[_Axis];
+	Ret._MyViewStride[_Axis] = -_MyViewStride[_Axis];
+	_D_Dragonian_Lib_Auto_Grad(Reverse, *this, _Axis, Ret);
 	return Ret;
 }
 

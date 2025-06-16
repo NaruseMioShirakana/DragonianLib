@@ -24,6 +24,9 @@
 #pragma once
 #include "TensorLib/Include/Base/Tensor/Impl/Util.h"
 #include "TensorLib/Include/Base/Tensor/Impl/AutoGrad.h"
+
+#include "TensorLib/Include/Base/Tensor/Operators.h"
+
 #include "TensorLib/Include/Base/Tensor/Operators/User/Binary.h"
 #include "TensorLib/Include/Base/Tensor/Operators/User/Unary.h"
 
@@ -265,8 +268,8 @@ public:
 	decltype(auto) Detach() const
 	{
 		auto Ret = View();
-		Ret._MyFuturesAsArgument = std::make_shared<std::deque<DependencyChainPair>>();
-		Ret._MyFuturesAsResult = std::make_shared<std::deque<DependencyChainPair>>();
+		Ret._MyFuturesAsArgument = std::make_shared<DependencyChainType>();
+		Ret._MyFuturesAsResult = std::make_shared<DependencyChainType>();
 		Ret._IgnoreDep = std::make_shared<bool>(false);
 		return Ret;
 	}
@@ -454,7 +457,7 @@ private:
 		const Tensor<_Type1, _Rank1, _Device1>& _A,
 		const Tensor<_Type2, _Rank2, _Device2>& _B,
 		bool Inplace = false
-	) requires(_Rank1 >= _Rank2);
+	) requires (_Rank1 >= _Rank2);
 
 	template <typename _Type1, typename _Type2, size_t _Rank1, size_t _Rank2, Device _Device1, Device _Device2>
 	static std::pair<
@@ -464,7 +467,7 @@ private:
 		const Tensor<_Type1, _Rank1, _Device1>& _A,
 		const Tensor<_Type2, _Rank2, _Device2>& _B,
 		bool Inplace = false
-	) requires(_Rank1 < _Rank2);
+	) requires (_Rank1 < _Rank2);
 
 public:
 	template <typename _Type2, size_t _Rank2, Device _Device2>
@@ -592,7 +595,7 @@ public:
 	 */
 	template <size_t _Rnk = _NRank>
 	decltype(auto) ReversedSlice(
-		const SliceOptions<_NRank>& _SliceOptions
+		const SliceOptions<_Rnk>& _SliceOptions
 	) const requires (_Rnk <= _NRank && _Rnk > 0);
 
 	/**
@@ -706,15 +709,10 @@ public:
 	 */
 	decltype(auto) Reverse(
 		SizeType _Axis = 0
-	) const
-	{
-		ThrowOnNotEnabled();
-		_Axis = CalcIndex(_Axis, Rank());
-		auto Ret = View();
-		Ret._MyData += (_MyShape[_Axis] - 1) * _MyViewStride[_Axis];
-		Ret._MyViewStride[_Axis] = -_MyViewStride[_Axis];
-		return Ret;
-	}
+	) const;
+
+	template <typename _Type>
+	decltype(auto) ViewAs() const requires (std::is_trivially_copy_assignable_v<_Type> && (bool(sizeof(_Type) % sizeof(ValueType)) || bool(sizeof(ValueType) % sizeof(_Type))));
 
 	/**
 	 * @brief Get the real part of the tensor.
@@ -745,36 +743,6 @@ public:
 		SliceVector[_NRank - 1].Begin = 1;
 		SliceVector[_NRank - 1].Step = 2;
 		return ViewAs<RealType>().Slice(SliceVector);
-	}
-
-	/**
-	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
-	 * @return New tensor.
-	 */
-	template <typename = ValueType>
-	decltype(auto) Clone() const
-		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		auto Ret = New(_MyShape, _MyAllocator);
-		Ret.TensorAssign(*this);
-		return Ret;
-	}
-
-	/**
-	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
-	 * @param _Buffer The buffer to clone to.
-	 * @return New tensor.
-	 */
-	template <typename = ValueType, size_t _TRank>
-	decltype(auto) Clone(
-		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
-	) const requires (std::is_copy_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		_Buffer.ThrowOnNotEnabled();
-		_Buffer.TensorAssign(*this);
-		return _Buffer;
 	}
 
 	/**
@@ -1178,26 +1146,7 @@ public:
 		ValueType _End,
 		ValueType _Step,
 		Allocator _Al = Allocator()
-	) requires (_NRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType> && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
-	{
-		if (_Step == ValueType(0))
-			_D_Dragonian_Lib_Throw_Exception("Step Can't Be Zero!");
-		auto _Count = static_cast<SizeType>((_End - _Begin) / _Step);
-		if (_Count <= 0)
-			_D_Dragonian_Lib_Throw_Exception("End Must Be Greater Than Begin!");
-		if constexpr (TypeTraits::IsFloatingPointValue<ValueType>)
-			if (std::isnan(_Count))
-				_D_Dragonian_Lib_Throw_Exception("Invalid Range!");
-		Tensor Ret = New({ _Count }, _Al);
-		Ret.WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplArange(
-			Ret._MyData,
-			Ret.GetDefaultOperatorParameter(),
-			_Begin, _Step,
-			!Ret.IsBroadCasted() && Ret.IsContiguous()
-		);
-		return Ret;
-	}
+	) requires (_NRank == 1 && Operators::BinaryOperators::AddBinary::HasOperatorValue<ValueType> && Operators::BinaryOperators::MulBinary::HasOperatorValue<ValueType> && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>);
 
 	template <typename = ValueType, size_t = _NRank>
 	static constexpr decltype(auto) Linspace(
@@ -1377,51 +1326,13 @@ public:
 	decltype(auto) MaskedFill(
 		const Tensor<_MaskType, _NRank, _MyDevice>& _Mask,
 		const ValueType& _Value
-	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>)
-	{
-		ThrowOnNotEnabled();
-		_Mask.ThrowOnNotEnabled();
-		auto MaskBroadCasted = BroadCast(_Mask);
-		WaitingAsResult();
-		MaskBroadCasted.WaitingAsArgument();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssignScalar(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			MaskBroadCasted.Data(),
-			MaskBroadCasted.GetDefaultOperatorParameter(),
-			_Value,
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContiguous() && MaskBroadCasted.IsContiguous()
-		);
-		return *this;
-	}
+	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType>);
 
 	template <typename _MaskType, size_t _TRank, typename = ValueType>
 	decltype(auto) MaskedFill(
 		const Tensor<_MaskType, _NRank, _MyDevice>& _Mask,
 		const Tensor<ValueType, _TRank, _MyDevice>& _Value
-	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
-	{
-		ThrowOnNotEnabled();
-		_Mask.ThrowOnNotEnabled();
-		_Value.ThrowOnNotEnabled();
-		auto MaskBroadCasted = BroadCast(_Mask);
-		auto BroadCasted = BroadCast(_Value);
-		WaitingAsResult();
-		MaskBroadCasted.WaitingAsArgument();
-		BroadCasted.WaitingAsArgument();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedAssign(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			BroadCasted.Data(),
-			BroadCasted.GetDefaultOperatorParameter(),
-			MaskBroadCasted.Data(),
-			MaskBroadCasted.GetDefaultOperatorParameter(),
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
-			!BroadCasted.IsBroadCasted() && IsContiguous() &&
-			MaskBroadCasted.IsContiguous() && BroadCasted.IsContiguous()
-		);
-		return *this;
-	}
+	) requires (std::is_copy_assignable_v<ValueType>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank));
 
 	template <typename _MaskType, typename _FunTy, size_t _TRank,
 		typename _ArgType = std::nullptr_t, typename _VectorizedFnTy = nullptr_t
@@ -1430,25 +1341,7 @@ public:
 		const _ArgType& _Value,
 		_FunTy _ScalarFun,
 		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
-	) requires (TypeTraits::IsInvocableValue<std::decay_t<_FunTy>, ValueType&, const _ArgType&>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank))
-	{
-		ThrowOnNotEnabled();
-		_Mask.ThrowOnNotEnabled();
-		auto MaskBroadCasted = BroadCast(_Mask);
-		WaitingAsResult();
-		MaskBroadCasted.WaitingAsArgument();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedInplaceScalar(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			MaskBroadCasted.Data(),
-			MaskBroadCasted.GetDefaultOperatorParameter(),
-			_Value,
-			_ScalarFun,
-			_VectorizedFn,
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() && IsContiguous() && MaskBroadCasted.IsContiguous()
-		);
-		return *this;
-	}
+	) requires (TypeTraits::IsInvocableValue<std::decay_t<_FunTy>, ValueType&, const _ArgType&>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank));
 
 	template <typename _ArgType, typename _MaskType,
 		typename _FunTy, size_t _TRank1, size_t _TRank2, typename _VectorizedFnTy = nullptr_t
@@ -1457,151 +1350,92 @@ public:
 		const Tensor<_ArgType, _TRank2, _MyDevice>& _Value,
 		_FunTy _ScalarFun,
 		_VectorizedFnTy _VectorizedFn = _VectorizedFnTy()
-	) requires (TypeTraits::IsInvocableValue<TypeTraits::RemoveReferenceType<_FunTy>, ValueType&, const _ArgType&>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank1) && (_NRank >= _TRank2))
+	) requires (TypeTraits::IsInvocableValue<TypeTraits::RemoveReferenceType<_FunTy>, ValueType&, const _ArgType&>&& TypeTraits::CouldBeConvertedFromValue<bool, _MaskType> && (_NRank >= _TRank1) && (_NRank >= _TRank2));
+
+	/**
+	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
+	 * @return New tensor.
+	 */
+	template <typename = ValueType>
+	decltype(auto) Clone() const
+		requires (std::is_copy_assignable_v<ValueType>&& std::is_default_constructible_v<ValueType>)
 	{
 		ThrowOnNotEnabled();
-		_Mask.ThrowOnNotEnabled();
-		_Value.ThrowOnNotEnabled();
-		auto MaskBroadCasted = BroadCast(_Mask);
-		auto BroadCasted = BroadCast(_Value);
-		WaitingAsResult();
-		MaskBroadCasted.WaitingAsArgument();
-		BroadCasted.WaitingAsArgument();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMaskedInplace(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			BroadCasted.Data(),
-			BroadCasted.GetDefaultOperatorParameter(),
-			MaskBroadCasted.Data(),
-			MaskBroadCasted.GetDefaultOperatorParameter(),
-			_ScalarFun,
-			_VectorizedFn,
-			!IsBroadCasted() && !MaskBroadCasted.IsBroadCasted() &&
-			!BroadCasted.IsBroadCasted() && IsContiguous() &&
-			MaskBroadCasted.IsContiguous() && BroadCasted.IsContiguous()
-		);
-		return *this;
+		auto Ret = New(_MyShape, _MyAllocator);
+		Ret.TensorAssign(*this);
+		return Ret;
 	}
+
+	/**
+	 * @brief Clone this tensor, if the tensor is not Contiguous, make output Contiguous.
+	 * @param _Buffer The buffer to clone to.
+	 * @return New tensor.
+	 */
+	template <typename = ValueType, size_t _TRank>
+	decltype(auto) Clone(
+		Tensor<ValueType, _TRank, _MyDevice>& _Buffer
+	) const requires (std::is_copy_assignable_v<ValueType>)
+	{
+		ThrowOnNotEnabled();
+		_Buffer.ThrowOnNotEnabled();
+		_Buffer.TensorAssign(*this);
+		return _Buffer;
+	}
+
+	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
+	decltype(auto) Gather(
+		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices
+	) const requires ((_Axis < _NRank) && (_Axis > -_NRank - 1) && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>);
+
+	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
+	decltype(auto) Gather(
+		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices,
+		Tensor<_IndexType, _NRank, _MyDevice>& _Buffer
+	) requires ((_Axis < _NRank) && (_Axis > -_NRank - 1) && std::is_copy_assignable_v<ValueType>);
+
+	template <typename _Type>
+	decltype(auto) Cast() const
+		requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>);
+
+	template <typename _Type>
+	decltype(auto) Cast(
+		Tensor<_Type, _NRank, _MyDevice>& _Buffer
+	) const requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>);
 
 private:
 	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const ValueType& _Value
-	) requires (std::is_copy_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignScalar(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			_Value,
-			!IsBroadCasted() && IsContiguous()
-		);
-	}
+	) requires (std::is_copy_assignable_v<ValueType>);
 
 	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const ValueType* _Buffer,
 		SizeType _Count
-	) requires (std::is_copy_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		if (_Count != ElementCount())
-			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
-		WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignBuffer(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			_Buffer,
-			_Count,
-			!IsBroadCasted() && IsContiguous()
-		);
-	}
+	) requires (std::is_copy_assignable_v<ValueType>);
 
 	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) MoveAssign(
 		const ValueType* _Buffer,
 		SizeType _Count
-	) requires (std::is_move_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		if (_Count != ElementCount())
-			_D_Dragonian_Lib_Throw_Exception("Buffer Size MisMatch!");
-		WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplMoveBuffer(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			_Buffer,
-			_Count,
-			!IsBroadCasted() && IsContiguous()
-		);
-	}
+	) requires (std::is_move_assignable_v<ValueType>);
 
 	template <typename = ValueType, size_t _TRank>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) Assign(
 		const Tensor<ValueType, _TRank, _MyDevice>& _Val
-	) requires (std::is_copy_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		_Val.ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		_Val.WaitingAsArgument();
-		if (_Val.IsScalar())
-			return Assign(_Val.Item());
-		WaitingAsResult();
-		Tensor BroadCasted = BroadCast(_Val);
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignTensor(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			BroadCasted.Data(),
-			BroadCasted.GetDefaultOperatorParameter(),
-			!IsBroadCasted() && !BroadCasted.IsBroadCasted() && IsContiguous() && BroadCasted.IsContiguous()
-		);
-	}
+	) requires (std::is_copy_assignable_v<ValueType>);
 
 	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) AssignRand(
 		const ValueType& Min,
 		const ValueType& Max
-	) requires (TypeTraits::IsArithmeticValue<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRand(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			Min, Max,
-			!IsBroadCasted() && IsContiguous()
-		);
-	}
+	) requires (TypeTraits::IsArithmeticValue<ValueType>);
 
 	template <typename = ValueType>
 	_D_Dragonian_Lib_Constexpr_Force_Inline decltype(auto) AssignRandn(
 		double _Mean = 0.,
 		double _Sigma = 1.
-	) requires (TypeTraits::IsArithmeticValue<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		if (IsBroadCasted())
-			_D_Dragonian_Lib_Throw_Exception("You Can't Assign To a BroadCasted Tensor!");
-		WaitingAsResult();
-		Operators::OperatorsBase<_TensorType, _MyDevice>::ImplAssignRandn(
-			_MyData,
-			GetDefaultOperatorParameter(),
-			_Mean,
-			_Sigma,
-			!IsBroadCasted() && IsContiguous()
-		);
-	}
+	) requires (TypeTraits::IsArithmeticValue<ValueType>);
 #pragma endregion
 
 #pragma region attribute
@@ -1961,23 +1795,24 @@ public:
 	 */
 	_D_Dragonian_Lib_Constexpr_Force_Inline bool IsContiguous() const
 	{
-		if (IsBroadCasted())
-			return false;
-
-		if (_MyViewStride[_NRank - 1] != 1)
-			return false;
-
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
-		for (SizeType i = 1; std::cmp_less(i, _NRank); ++i)
+
+		auto _End = _NRank - 1;
+		while (_End && _MyShape[_End] == 1)
+			--_End;
+
+		if (_MyViewStride[_End] != 1)
+			return false;
+
+		for (SizeType i = 1; std::cmp_less_equal(i, _End); ++i)
 		{
-			if (_MyShape[i] == 1)
-				continue;
 			if (_MyViewStride[i - 1] <= 0 ||
 				_MyViewStride[i - 1] % _MyShape[i] ||
 				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
 				Diff % _MyShape[i])
 				return false;
 		}
+
 		return true;
 	}
 
@@ -2026,8 +1861,6 @@ public:
 		const auto Diff = _MyData - (const ValueType*)_MyFirst.get();
 		for (SizeType i = _Begin + 1; i < _End; ++i)
 		{
-			if (_MyShape[i] == 1)
-				continue;
 			if (_MyViewStride[i - 1] <= 0 ||
 				_MyViewStride[i - 1] % _MyShape[i] ||
 				_MyViewStride[i - 1] / _MyShape[i] != _MyViewStride[i] ||
@@ -2503,139 +2336,6 @@ public:
 		Operators::SingleTensorLoop<_UnfoldDim, _UnfoldCount>(0, ShapeInfo, BeginInfo, ViewStrideInfo, Function);
 	}
 
-	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
-	decltype(auto) Gather(
-		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices
-	) const requires (TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<ValueType> && std::is_default_constructible_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		_Indices.ThrowOnNotEnabled();
-		for (SizeType i = 0; std::cmp_less(i, _NRank); ++i)
-			if (i != _Axis && _MyShape[i] != _Indices.Shape()[i])
-				_D_Dragonian_Lib_Throw_Exception("Shape Mismatch!");
-
-		_Indices.WaitingAsArgument();
-		WaitingAsArgument();
-		constexpr auto _Dim = TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank));
-		auto Ret = New(_Indices.Shape(), _MyAllocator);
-		Ret.WaitingAsResult();
-		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplGather<_IndexType, _NRank, _Dim>
-			(
-				Ret.Data(),
-				Ret.GetDefaultOperatorParameter(),
-				Data(),
-				GetDefaultOperatorParameter(),
-				_Indices.Data(),
-				_Indices.GetDefaultOperatorParameter()
-			);
-		return Ret;
-	}
-
-	template <SizeType _Axis = 0, typename = ValueType, typename _IndexType>
-	decltype(auto) Gather(
-		const Tensor<_IndexType, _NRank, _MyDevice>& _Indices,
-		Tensor<_IndexType, _NRank, _MyDevice>& _Buffer
-	) requires (TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank)) != -1 && std::is_copy_assignable_v<ValueType>)
-	{
-		ThrowOnNotEnabled();
-		_Indices.ThrowOnNotEnabled();
-		_Buffer.ThrowOnNotEnabled();
-		for (SizeType i = 0; std::cmp_less(i, _NRank); ++i)
-			if ((i != _Axis && _MyShape[i] != _Indices.Shape()[i]) || (_Buffer.Shape()[i] != _Indices.Shape()[i]))
-				_D_Dragonian_Lib_Throw_Exception("Shape Mismatch!");
-
-		_Indices.WaitingAsArgument();
-		WaitingAsArgument();
-		constexpr auto _Dim = TypeTraits::BTCalcIndex(_Axis, SizeType(_NRank));
-		_Buffer.WaitingAsResult();
-		Operators::OperatorsBase<ValueType, _MyDevice>::template ImplGather<_IndexType, _NRank, _Dim>
-			(
-				_Buffer.Data(),
-				_Buffer.GetDefaultOperatorParameter(),
-				Data(),
-				GetDefaultOperatorParameter(),
-				_Indices.Data(),
-				_Indices.GetDefaultOperatorParameter()
-			);
-		return _Buffer;
-	}
-
-	template <typename _Type>
-	decltype(auto) Cast() const
-		requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>)
-	{
-		ThrowOnNotEnabled();
-		WaitingAsArgument();
-		if constexpr (TypeTraits::IsSameTypeValue<_Type, ValueType>)
-			return View();
-		else
-		{
-			Tensor<_Type, _NRank, _MyDevice> Ret = Tensor<_Type, _NRank, _MyDevice>::New(_MyShape, _MyAllocator);
-			Ret.WaitingAsResult();
-			Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
-				(
-					Ret.Data(),
-					Ret.GetDefaultOperatorParameter(),
-					Data(),
-					GetDefaultOperatorParameter(),
-					IsContiguous() && !IsBroadCasted()
-				);
-			return Ret;
-		}
-	}
-
-	template <typename _Type>
-	decltype(auto) Cast(
-		Tensor<_Type, _NRank, _MyDevice>& _Buffer
-	) const requires (TypeTraits::CouldBeConvertedFromValue<_Type, ValueType>&& TypeTraits::CouldBeConvertedFromValue<_Type, _Type>&& std::is_copy_assignable_v<_Type>&& std::is_default_constructible_v<_Type>)
-	{
-		ThrowOnNotEnabled();
-		_Buffer.ThrowOnNotEnabled();
-		WaitingAsArgument();
-		_Buffer.WaitingAsResult();
-		auto BroadCasted = _Buffer.Broadcast(*this);
-		Operators::OperatorsBase<_Type, _MyDevice>::template ImplCast<ValueType>
-			(
-				_Buffer.Data(),
-				_Buffer.GetDefaultOperatorParameter(),
-				BroadCasted.Data(),
-				BroadCasted.GetDefaultOperatorParameter(),
-				BroadCasted.IsContiguous() && !BroadCasted.IsBroadCasted() && _Buffer.IsContiguous()
-			);
-		return _Buffer;
-	}
-
-	template <typename _Type>
-	decltype(auto) ViewAs() const
-		requires (std::is_trivially_copy_assignable_v<_Type> && (bool(sizeof(_Type) % sizeof(ValueType)) || bool(sizeof(ValueType) % sizeof(_Type))))
-	{
-		ThrowOnNotEnabled();
-		if (!IsContiguous())
-			_D_Dragonian_Lib_Throw_Exception("ViewAs Should Be Contiguous!");
-
-		const auto TailShape = _MyShape.Back();
-		const auto TailSize = size_t(TailShape) * sizeof(ValueType);
-		if (TailSize % sizeof(_Type))
-			_D_Dragonian_Lib_Throw_Exception("Could not view as this type!");
-		const auto NewTailShape = SizeType(TailSize / sizeof(_Type));
-
-		using RetType = Tensor<_Type, _NRank, _MyDevice>;
-		RetType Ret;
-		Ret._MyFirst = _MyFirst;
-		Ret._MyLast = RetType::RawPointer(_MyLast);
-		Ret._MyData = RetType::RawPointer(_MyData);
-		Ret._MyShape = _MyShape;
-		Ret._MyShape.Back() = NewTailShape;
-		Ret._MyFuturesAsResult = _MyFuturesAsResult;
-		Ret._MyFuturesAsArgument = _MyFuturesAsArgument;
-		Ret._MyAllocator = _MyAllocator;
-		Ret._IgnoreDep = _IgnoreDep;
-		Ret._MyGraph = _MyGraph;
-		Ret._MyFunction = _MyFunction;
-		Ret.ConstructViewInfo(Ret._MyShape);
-		return Ret;
-	}
-
 	template <typename = ValueType, size_t _TRank = _NRank>
 	decltype(auto) Padding(
 		const PaddingCounts<_TRank>& _PaddingCount,
@@ -3092,30 +2792,6 @@ public:
 	{
 		return ClampMin(_Max);
 	}
-
-	/*
-
-	static Tensor Sum(
-		const Tensor& _Input,
-		SizeType _Axis = 0
-	);
-
-	static Tensor CumSum(
-		const Tensor& _Input,
-		SizeType _Axis = 0
-	);
-
-	static Tensor Diff(
-		const Tensor& _Input,
-		SizeType _Axis = 0
-	);
-
-	static Tensor CumProd(
-		const Tensor& _Input,
-		SizeType _Axis = 0
-	);
-
-	*/
 };
 
 template <typename _TensorType = float, Device _MyDevice = Device::CPU, size_t _NRank = 1>

@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from omegaconf import OmegaConf
 from ml_collections import ConfigDict
+import pnnx
 
 def get_model_from_config(model_type, config_path):
     with open(config_path) as f:
@@ -47,31 +48,15 @@ def export(model_type, config_path, model_path=None, sim = False):
     model.eval()
     model.requires_grad_(False)
     inputs = torch.randn(1, 2, 512, 1025, 2)
-    model(inputs)
+    inputs.requires_grad_(False)
+    #model = torch.jit.trace(model, inputs, check_trace=False)
     if output_path:
-        torch.onnx.export(
+        pnnx.export(
             model,
+            model_path+".pt",
             inputs,
-            output_path,
-            opset_version=18,
-            do_constant_folding=True,
-            input_names=['input'],
-            output_names=['output'],
-            dynamic_axes={
-                'input': {
-                    0: 'batch_size',
-                    1: 'channel',
-                    2: 'num_frames',
-                }
-            },
+            check_trace=False
         )
-        if sim:
-            import onnxsim
-            import onnx
-            model_onnx = onnx.load(output_path)
-            model_onnx, check = onnxsim.simplify(model_onnx, dynamic_input_shape=True)
-            assert check, "Simplified ONNX model could not be validated"
-            onnx.save(model_onnx, output_path)
 
 
 export(

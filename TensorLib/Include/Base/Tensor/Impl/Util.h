@@ -25,13 +25,10 @@
 
 #include <deque>
 #include <ranges>
-#include <mdspan>
-
-#include "TensorLib/Include/Base/Tensor/Operators.h"
-#include "TensorLib/Include/Base/Tensor/Impl/AutoGrad.h"
-#include "TensorLib/Include/Base/Tensor/Operators/OperatorBase.h"
 
 #include "Libraries/Util/StringPreprocess.h"
+
+#include "TensorLib/Include/Base/Tensor/Operators/CPU/CPU.h"
 
 _D_Dragonian_Lib_Space_Begin
 
@@ -95,6 +92,12 @@ struct Range
 	 */
 	Range(const std::wstring& _RangeArgs);
 
+	template <size_t N>
+	Range(const char(&_RangeArgs)[N]) : Range(&_RangeArgs[0]) {}
+
+	template <size_t N>
+	Range(const wchar_t(&_RangeArgs)[N]) : Range(&_RangeArgs[0]) {}
+
 	/**
 	 * @brief Constructor for a range with begin, step, and end values.
 	 * @param _Begin The begining value.
@@ -155,7 +158,7 @@ constexpr Range NPAD{ 0, 0, 0 }; ///< Zero padding count
 template <size_t _NRank>
 class SliceOptions : public IDLArray<Range, _NRank>
 {
-	
+
 };
 template <size_t _NRank>
 class VRanges : public IDLArray<Range, _NRank>

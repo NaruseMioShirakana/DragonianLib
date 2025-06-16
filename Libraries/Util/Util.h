@@ -54,6 +54,7 @@
 #endif
 
 #define _D_Dragonian_Lib_Constexpr_Force_Inline constexpr _D_Dragonian_Lib_Force_Inline
+#define _DDragonianLibCInline _D_Dragonian_Lib_Constexpr_Force_Inline
 
 // Define exception throwing macro
 #ifdef _MSC_VER

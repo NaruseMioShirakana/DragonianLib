@@ -444,6 +444,7 @@ class BSRoformer(Module):
             normalized=multi_stft_normalized
         )
 
+    @torch.no_grad()
     def forward(
         self,
         stft_repr
@@ -505,7 +506,9 @@ class BSRoformer(Module):
 
             if self.skip_connection:
                 store[i] = x
+
         x = self.final_norm(x)
+
         num_stems = len(self.mask_estimators)
         masks = torch.stack([fn(x) for fn in self.mask_estimators], dim=1)
         #masks = rearrange(masks, 'b n t (f c) -> b n f t c', c=2)

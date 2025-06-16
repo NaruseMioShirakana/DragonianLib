@@ -128,21 +128,11 @@ endif()
 
 #Build Type
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-	target_compile_options(
-		${DRAGONIANLIB_ORT_LIB} PRIVATE
-		/GS- /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_ORT_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_RELEASE})
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-	target_compile_options(
-		${DRAGONIANLIB_ORT_LIB} PRIVATE
-		/Gy  /O2 /Ot /Oi /Ob3 /Zc:inline /arch:AVX2 /experimental:module /openmp:experimental /Zi /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_ORT_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_RELEASE_DEB})
 else()
-	add_definitions(-DDRAGONIANLIB_DEBUG)
-	target_compile_options(
-		${DRAGONIANLIB_ORT_LIB} PRIVATE
-		/Zi /Gy /experimental:module /openmp:experimental /bigobj
-	)
+	target_compile_options(${DRAGONIANLIB_ORT_LIB} PRIVATE ${DRAGONIANLIB_LIB_ARGUMENT_DEBUG})
 endif()
 
 target_include_directories(
@@ -156,10 +146,6 @@ target_link_libraries(
 	${DRAGONIANLIB_ORT_LIB} PRIVATE
 	${DRAGONIANLIB_LIB}
 )
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-	set_property(TARGET ${DRAGONIANLIB_ORT_LIB} PROPERTY CXX_STANDARD 23)
-endif()
 
 if(MSVC)
 	if (POLICY CMP0141)

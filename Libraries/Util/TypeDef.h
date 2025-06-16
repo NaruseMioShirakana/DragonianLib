@@ -50,6 +50,7 @@ using Complex32 = std::complex<float>; ///< 32-bit complex
 using Complex64 = std::complex<double>; ///< 64-bit complex
 using Int = int; ///< Int
 using UInt = unsigned int; ///< Unsigned int
+using Unsigned = unsigned int; ///< Unsigned int (alias for UInt)
 using Long = long; ///< Long
 using ULong = unsigned long; ///< Unsigned long
 using LongLong = long long; ///< Int64

@@ -1207,7 +1207,7 @@ namespace Functional
 		return Ret;
 	}
 
-	template <
+	/*template <
 		bool KeepDim = false, Int64 Throughput = 2,
 		typename _FunctionTypeMid, typename _FunctionTypePre = nullptr_t, typename _FunctionTypeEnd = nullptr_t,
 		typename _FunctionTypeMidVec = nullptr_t, typename _FunctionTypePreVec = nullptr_t,
@@ -1262,7 +1262,7 @@ namespace Functional
 			else
 				return Ret;
 		}
-	}
+	}*/
 }
 
 _D_Dragonian_Lib_Space_End
