@@ -53,22 +53,23 @@ namespace DragonianLib
                 Tensor<float>& output,
                 Tensor<float>& mean,
                 Tensor<float>& var,
-                Tensor<float>& cache
+                Tensor<float>& cache,
+                Tensor<float>& col
             ) const
             {
                 if (auto Ret = net_0->Forward(output, mean, var)) return Ret;
 
                 if (auto Ret = net_1.Forward(output, cache)) return Ret;
 
-                if (auto Ret = net_2->Forward(cache, output)) return Ret;
+                if (auto Ret = net_2->Forward(cache, output, col)) return Ret;
 
                 if (auto Ret = net_3.Forward(output, cache)) return Ret;
 
-                if (auto Ret = net_4_conv->Forward(cache, output)) return Ret;
+                if (auto Ret = net_4_conv->Forward(cache, output, col)) return Ret;
 
                 if (auto Ret = net_5.Forward(output)) return Ret;
 
-                if (auto Ret = net_6->Forward(output, cache)) return Ret;
+                if (auto Ret = net_6->Forward(output, cache, col)) return Ret;
 
                 return net_7.Forward(cache, output);
             }
@@ -99,13 +100,14 @@ namespace DragonianLib
                 Tensor<float>& mean,
                 Tensor<float>& var,
                 Tensor<float>& res,
-                Tensor<float>& cache
+                Tensor<float>& cache,
+                Tensor<float>& col
             ) const
             {
                 res.Copy(output);
 
                 if (auto Ret = conformer->Forward(
-                    output, mean, var, cache
+                    output, mean, var, cache, col
                 )) return Ret;
 
                 return AddTensor(output, res);
@@ -138,7 +140,8 @@ namespace DragonianLib
                 Tensor<float>& mean,
                 Tensor<float>& var,
                 Tensor<float>& res,
-                Tensor<float>& cache
+                Tensor<float>& cache,
+                Tensor<float>& col
             ) const
             {
                 for (const auto& layer : encoder_layers)
@@ -147,7 +150,8 @@ namespace DragonianLib
                         mean,
                         var,
                         res,
-                        cache
+                        cache,
+                        col
                     )) return Ret;
                 return LAYER_STATUS_SUCCESS;
             }
@@ -216,56 +220,57 @@ namespace DragonianLib
             }
 
             layerStatus_t Model::Forward(
-                const Tensor<float>& input,
-                Tensor<float>& output,
                 CacheTensors& caches
             ) const
             {
                 if (auto Ret = input_stack_0->Forward(
-                    input,
-                    caches.input_stack_out1
+                    caches.input,
+                    caches.res,
+                    caches.col
                 )) return Ret;
 
                 if (auto Ret = input_stack_1->Forward(
-                    caches.input_stack_out1,
+                    caches.res,
                     caches.mean,
                     caches.var
                 )) return Ret;
 
                 if (auto Ret = input_stack_2.Forward(
-                    caches.input_stack_out1
+                    caches.res
                 )) return Ret;
 
                 if (auto Ret = input_stack_3->Forward(
-                    caches.input_stack_out1,
-                    caches.input_stack_out2
+                    caches.res,
+                    caches.output,
+                    caches.col
                 )) return Ret;
 
                 if (auto Ret = Transpose::Forward(
-                    caches.input_stack_out2,
-                    caches.input_stack_out1
+                    caches.output,
+                    caches.input
                 )) return Ret;
 
                 if (auto Ret = net->Forward(
-                    caches.input_stack_out1,
+                    caches.input,
                     caches.mean,
                     caches.var,
                     caches.res,
-                    caches.cache
+                    caches.output,
+                    caches.col
                 )) return Ret;
 
                 if (auto Ret = norm->Forward(
-                    caches.input_stack_out1,
+                    caches.input,
                     caches.mean,
                     caches.var
                 )) return Ret;
 
                 if (auto Ret = output_proj->Forward(
-                    caches.input_stack_out1,
-                    output
+                    caches.input,
+                    caches.output
                 )) return Ret;
 
-                return SigmoidTensor(output);
+                return SigmoidTensor(caches.output);
             }
 
 		}

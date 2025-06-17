@@ -4,6 +4,10 @@
 
 #include "kernel.h"
 
+#ifndef DRAGONIANLIB_CUDA_EP_BENCHMARK
+#define DRAGONIANLIB_CUDA_EP_BENCHMARK 1
+#endif // DRAGONIANLIB_CUDA_EP_BENCHMARK
+
 #ifndef DRAGONIANLIB_CUDA_BLOCK_SIZE
 #define DRAGONIANLIB_CUDA_BLOCK_SIZE 1024
 #endif // DRAGONIANLIB_CUDA_BLOCK_SIZE
@@ -65,8 +69,10 @@ namespace DragonianLib
                 N = _Right.N; C = _Right.C; H = _Right.H; W = _Right.W;
                 Dim = _Right.Dim; BufferSize = _Right.BufferSize; Handle = _Right.Handle;
                 Own = _Right.Own;
+
                 _Right.Data = nullptr;
-                _Right.BufferSize = 0;
+                _Right.N = _Right.C = _Right.H = _Right.W = _Right.Dim = _Right.BufferSize = 0;
+                _Right.Handle = nullptr;
             }
             Tensor& operator=(Tensor&& _Right) noexcept
             {
@@ -77,8 +83,10 @@ namespace DragonianLib
                     N = _Right.N; C = _Right.C; H = _Right.H; W = _Right.W;
                     Dim = _Right.Dim; BufferSize = _Right.BufferSize; Handle = _Right.Handle;
                     Own = _Right.Own;
+
                     _Right.Data = nullptr;
-                    _Right.BufferSize = 0;
+                    _Right.N = _Right.C = _Right.H = _Right.W = _Right.Dim = _Right.BufferSize = 0;
+                    _Right.Handle = nullptr;
                 }
                 return *this;
             }
@@ -87,7 +95,6 @@ namespace DragonianLib
             {
                 if (Dim == 4 && N == _N && C == _C && H == _H && W == _W) return;
 
-                N = _N; C = _C; H = _H; W = _W; Dim = 4;
                 auto NewSize = _W * _H * _C * _N;
                 
                 if (NewSize > BufferSize)
@@ -97,12 +104,13 @@ namespace DragonianLib
                     BufferSize = NewSize;
                     Own = true;
                 }
+
+                N = _N; C = _C; H = _H; W = _W; Dim = 4;
             }
             void Resize(unsigned _N, unsigned _H, unsigned _W)
             {
                 if (Dim == 3 && N == _N && H == _H && W == _W) return;
 
-                N = _N; C = 1; H = _H; W = _W; Dim = 3;
                 auto NewSize = _W * _H * _N;
                 
                 if (NewSize > BufferSize)
@@ -112,12 +120,13 @@ namespace DragonianLib
                     BufferSize = NewSize;
                     Own = true;
                 }
+
+                N = _N; C = 1; H = _H; W = _W; Dim = 3;
             }
             void Resize(unsigned _H, unsigned _W)
             {
                 if (Dim == 2 && H == _H && W == _W) return;
 
-                N = 1; C = 1; H = _H; W = _W; Dim = 2;
                 auto NewSize = _W * _H;
                 
                 if (NewSize > BufferSize)
@@ -127,12 +136,13 @@ namespace DragonianLib
                     BufferSize = NewSize;
                     Own = true;
                 }
+
+                N = 1; C = 1; H = _H; W = _W; Dim = 2;
             }
             void Resize(unsigned _W)
             {
                 if (Dim == 1 && W == _W) return;
 
-                N = 1; C = 1; H = 1; W = _W; Dim = 1;
                 auto NewSize = _W;
                 
                 if (NewSize > BufferSize)
@@ -142,6 +152,8 @@ namespace DragonianLib
                     BufferSize = NewSize;
                     Own = true;
                 }
+
+                N = 1; C = 1; H = 1; W = _W; Dim = 1;
             }
             void Resize(const Tensor& _Ref)
             {
@@ -188,6 +200,7 @@ namespace DragonianLib
 
             Tensor& Copy(const Tensor& _Left, stream_t _Stream = nullptr)
             {
+                if (Handle) CudaProvider::asyncCudaStream(getHandleStream(Handle));
                 if (!_Stream) _Stream = getHandleStream(_Left.Handle);
 
                 Resize(_Left);
@@ -209,14 +222,16 @@ namespace DragonianLib
         private:
             void Release()
             {
+                if (Handle) CudaProvider::asyncCudaStream(getHandleStream(Handle));
                 if (Own && Data)
                     if (auto Ret = CudaProvider::cudaFree(Data))
                     {
-	                    fprintf(stderr, "%s\n", CudaProvider::getCudaError(Ret));
+                        fprintf(stderr, "%s\n", CudaProvider::getCudaError(Ret));
                         abort();
                     }
-				Data = nullptr;
-                BufferSize = 0;
+                Data = nullptr;
+                N = C = H = W = Dim = BufferSize = 0;
+                Handle = nullptr;
             }
             bool Own = false;
         };
@@ -276,7 +291,8 @@ namespace DragonianLib
 
             layerStatus_t Forward(
                 const Tensor<float>& input,
-                Tensor<float>& output
+                Tensor<float>& output,
+                Tensor<float>& col
             ) const noexcept;
 
             Conv1D(
@@ -302,7 +318,7 @@ namespace DragonianLib
             unsigned Groups = 1;
             unsigned InputChannels = 1;
             unsigned OutputChannels = 1;
-            bool biasEnabled = true;
+            bool BiasEnabled = true;
         };
 
         class LeakyReLU

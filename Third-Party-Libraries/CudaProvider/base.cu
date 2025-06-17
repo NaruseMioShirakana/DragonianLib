@@ -1,19 +1,38 @@
-﻿#include <device_launch_parameters.h>
+﻿#include <chrono>
+#include <device_launch_parameters.h>
 
 #include "base.h"
+
 #include "cublas_v2.h"
-
-
 
 namespace DragonianLib
 {
     namespace CudaModules
     {
+        class Timer  // NOLINT(cppcoreguidelines-special-member-functions)
+        {
+        public:
+            Timer(std::string name, const handle_t* handle = nullptr) : Handle(handle), Name(std::move(name)), Start(std::chrono::high_resolution_clock::now()) {}
+            ~Timer()
+            {
+                if (Handle && *Handle) CudaProvider::asyncCudaStream(getHandleStream(*Handle));
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - Start).count();
+                printf("%s: %lld us\n", Name.c_str(), duration);
+            }
+
+        private:
+            const handle_t* Handle;
+            std::string Name;
+            std::chrono::high_resolution_clock::time_point Start;
+        };
+
         handle_t createHandle()
         {
             cublasHandle_t Handle;
             if (auto Ret = cublasCreate(&Handle))
                 fprintf(stderr, "%s\n", cublasGetStatusString(Ret));
+            cublasSetMathMode(Handle, CUBLAS_TF32_TENSOR_OP_MATH);
             return handle_t(Handle);
         }
 
@@ -254,6 +273,9 @@ namespace DragonianLib
 		)
 		{
 			{
+                cudaMemsetAsync(ioMean, 0, sizeof(float) * sampleCount, cudaStream);
+                cudaMemsetAsync(ioVar, 0, sizeof(float) * sampleCount, cudaStream);
+
 				dim3 blockSize(DRAGONIANLIB_CUDA_BLOCK_SIZE);
 				dim3 gridSize(
 					(featureSize + blockSize.x - 1) / blockSize.x,
@@ -290,6 +312,120 @@ namespace DragonianLib
 				);
 		}
 
+        static __global__ void implAffineKernel(
+            float* output,
+            const float* weight,
+            unsigned batchSize,
+            unsigned numChannel
+        )
+        {
+            const unsigned ty = threadIdx.y;
+            const unsigned tx = threadIdx.x;
+
+            unsigned y = blockIdx.y * blockDim.y + ty;
+            unsigned x = blockIdx.x * blockDim.x + tx;
+
+            extern __shared__ float implAffineSharedMem[];
+
+            if (y >= batchSize || x >= numChannel)
+                return;
+
+            if (threadIdx.y == 0)
+                implAffineSharedMem[threadIdx.x] = weight[x];
+
+            __syncthreads();
+
+            output[y * numChannel + x] *= implAffineSharedMem[threadIdx.x];
+        }
+
+        static __global__ void implAffineBiasKernel(
+            float* output,
+            const float* weight,
+            const float* bias,
+            unsigned batchSize,
+            unsigned numChannel
+        )
+        {
+            const unsigned ty = threadIdx.y;
+            const unsigned tx = threadIdx.x;
+
+            unsigned y = blockIdx.y * blockDim.y + ty;
+            unsigned x = blockIdx.x * blockDim.x + tx;
+
+            extern __shared__ float implAffineBiasSharedMem[];
+
+            if (y >= batchSize || x >= numChannel)
+                return;
+
+            if (threadIdx.y == 0)
+            {
+                implAffineBiasSharedMem[threadIdx.x] = weight[x];
+                implAffineBiasSharedMem[threadIdx.x + blockDim.x] = bias[x];
+            }
+
+            __syncthreads();
+
+            (output[y * numChannel + x] *= implAffineBiasSharedMem[threadIdx.x]) +=
+                implAffineBiasSharedMem[threadIdx.x + blockDim.x];
+        }
+
+        static __global__ void implAffineBias2DKernel(
+            float* output,
+            const float* weight,
+            const float* bias,
+            unsigned numChannel,
+            unsigned featureSize
+        )
+        {
+            const unsigned ty = threadIdx.y;
+            const unsigned tx = threadIdx.x;
+
+            unsigned y = blockIdx.y * blockDim.y + ty;
+            unsigned x = blockIdx.x * blockDim.x + tx;
+
+            extern __shared__ float implAffineBias2DSharedMem[];
+
+            if (y >= numChannel || x >= featureSize)
+                return;
+
+            if (threadIdx.x == 0)
+            {
+                implAffineBias2DSharedMem[threadIdx.y] = weight[y];
+                implAffineBias2DSharedMem[threadIdx.y + blockDim.y] = bias[y];
+            }
+
+            __syncthreads();
+
+            (output[(blockIdx.z * numChannel + y) * featureSize + x] *= implAffineBias2DSharedMem[threadIdx.y]) +=
+                implAffineBias2DSharedMem[threadIdx.y + blockDim.y];
+        }
+
+        static __global__ void implBias2DKernel(
+            float* output,
+            const float* bias,
+            unsigned numChannel,
+            unsigned featureSize
+        )
+        {
+            const unsigned ty = threadIdx.y;
+            const unsigned tx = threadIdx.x;
+
+            unsigned y = blockIdx.y * blockDim.y + ty;
+            unsigned x = blockIdx.x * blockDim.x + tx;
+
+            extern __shared__ float implBias2DSharedMem[];
+
+            if (y >= numChannel || x >= featureSize)
+                return;
+
+            if (threadIdx.x == 0)
+	            implBias2DSharedMem[ty] = bias[y];
+
+            __syncthreads();
+            
+        	output[(blockIdx.z * numChannel + y) * featureSize + x] += implBias2DSharedMem[ty];
+        }
+
         Linear::Linear(
             Module* parent,
             const std::string& name,
@@ -312,6 +448,10 @@ namespace DragonianLib
             Tensor<float>& output
         ) const noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("Linear " + Name, &output.Handle);
+#endif
+
             unsigned inFeature = input.W;
             if (inFeature != InFeatureDim)
                 return LAYER_STATUS_SIZE_MISMATCH;
@@ -325,13 +465,13 @@ namespace DragonianLib
                 output.Resize(input.H, OutFeatureDim);
             else
                 output.Resize(OutFeatureDim);
-
+            if (output.Handle) CudaProvider::asyncCudaStream(getHandleStream(output.Handle));
             output.Handle = input.Handle;
 
-            static float Alpha = 1.f;
-            static float Beta = 0.f;
+            static constexpr float Alpha = 1.f;
+            static constexpr float Beta = 0.f;
 
-            auto Ret = cublasSgemm(
+            if (auto Ret = cublasSgemm(
                 cublasHandle_t(input.Handle), CUBLAS_OP_T, CUBLAS_OP_N,
                 (int)OutFeatureDim, (int)inputSize, (int)InFeatureDim,
                 &Alpha,
@@ -339,10 +479,7 @@ namespace DragonianLib
                 input.Data, (int)InFeatureDim,
                 &Beta,
                 output.Data, (int)OutFeatureDim
-            );
-
-            if (Ret)
-                return static_cast<layerStatus_t>(Ret);
+            )) return static_cast<layerStatus_t>(Ret);
 
             if (BiasEnabled)
             {
@@ -357,101 +494,6 @@ namespace DragonianLib
             }
 
             return LAYER_STATUS_SUCCESS;
-        }
-
-        static __global__ void implAffineKernel(
-            const float* input,
-            float* output,
-            const float* weight,
-            unsigned batchSize,
-            unsigned numChannel
-        )
-        {
-            const unsigned ty = threadIdx.y;
-            const unsigned tx = threadIdx.x;
-
-            unsigned y = blockIdx.y * blockDim.y + ty;
-            unsigned x = blockIdx.x * blockDim.x + tx;
-
-            extern __shared__ float implAffineSharedMem[];
-
-            if (threadIdx.y == 0 && x < numChannel)
-                implAffineSharedMem[threadIdx.x] = weight[x];
-
-            __syncthreads();
-
-            if (y < batchSize && x < numChannel)
-            {
-                auto idx = y * numChannel + x;
-                output[idx] = input[idx] * implAffineSharedMem[threadIdx.x];
-            }
-        }
-
-        static __global__ void implAffineBiasKernel(
-            const float* input,
-            float* output,
-            const float* weight,
-            const float* bias,
-            unsigned batchSize,
-            unsigned numChannel
-        )
-        {
-            const unsigned ty = threadIdx.y;
-            const unsigned tx = threadIdx.x;
-
-            unsigned y = blockIdx.y * blockDim.y + ty;
-            unsigned x = blockIdx.x * blockDim.x + tx;
-
-            extern __shared__ float implAffineBiasSharedMem[];
-
-            if (threadIdx.y == 0 && x < numChannel)
-            {
-                implAffineBiasSharedMem[threadIdx.x] = weight[x];
-                implAffineBiasSharedMem[threadIdx.x + blockDim.x] = bias[x];
-            }
-
-            __syncthreads();
-
-            if (y < batchSize && x < numChannel)
-            {
-                auto idx = y * numChannel + x;
-                output[idx] = (input[idx] * implAffineBiasSharedMem[threadIdx.x]) + implAffineBiasSharedMem[threadIdx.x + blockDim.x];
-            }
-        }
-
-        static __global__ void implAffineBias2DKernel(
-            const float* input,
-            float* output,
-            const float* weight,
-            const float* bias,
-            unsigned batchSize,
-            unsigned numChannel,
-            unsigned featureSize
-        )
-        {
-            const unsigned tz = threadIdx.z;
-            const unsigned ty = threadIdx.y;
-            const unsigned tx = threadIdx.x;
-
-            unsigned z = blockIdx.z * blockDim.z + tz;
-            unsigned y = blockIdx.y * blockDim.y + ty;
-            unsigned x = blockIdx.x * blockDim.x + tx;
-
-            extern __shared__ float implAffineBias2DSharedMem[];
-
-            if (threadIdx.x == 0 && threadIdx.z == 0 && y < numChannel)
-            {
-                implAffineBias2DSharedMem[threadIdx.y] = weight[y];
-                implAffineBias2DSharedMem[threadIdx.y + blockDim.y] = bias[y];
-            }
-
-            __syncthreads();
-
-            if (z < batchSize && y < numChannel && x < featureSize)
-            {
-                auto idx = z * featureSize * numChannel + y * featureSize + x;
-                output[idx] = (input[idx] * implAffineBias2DSharedMem[threadIdx.y]) + implAffineBias2DSharedMem[threadIdx.y + blockDim.y];
-            }
         }
 
         LayerNorm1D::LayerNorm1D(
@@ -482,6 +524,10 @@ namespace DragonianLib
             Tensor<float>& var
         ) const noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("LayerNorm1D " + Name, &output.Handle);
+#endif
+
             const auto featureDim = output.W;
             if (featureDim != NumChannels)
                 return LAYER_STATUS_SIZE_MISMATCH;
@@ -489,6 +535,10 @@ namespace DragonianLib
             unsigned sampleCountNorm = output.N * output.C * output.H;
             mean.Resize(sampleCountNorm);
             var.Resize(sampleCountNorm);
+            if (mean.Handle) CudaProvider::asyncCudaStream(getHandleStream(mean.Handle));
+            mean.Handle = output.Handle;
+            if (var.Handle) CudaProvider::asyncCudaStream(getHandleStream(var.Handle));
+            var.Handle = output.Handle;
 
             auto Stream = cudaStream_t(getHandleStream(output.Handle));
 
@@ -511,11 +561,11 @@ namespace DragonianLib
                 );
                 unsigned sharedMemSize = blockSize.x * 2ull * sizeof(float);
 	            if (BiasEnabled)
-                    implAffineBiasKernel<<<blockSize, gridSize, sharedMemSize, Stream>>>
-						(output.Data, output.Data, Weight->GetTensor().Data, Bias->GetTensor().Data, sampleCountNorm, NumChannels);
+                    implAffineBiasKernel<<<gridSize, blockSize, sharedMemSize, Stream>>>
+						(output.Data, Weight->GetTensor().Data, Bias->GetTensor().Data, sampleCountNorm, NumChannels);
                 else
-                    implAffineKernel<<<blockSize, gridSize, sharedMemSize, Stream>>>
-						(output.Data, output.Data, Weight->GetTensor().Data, sampleCountNorm, NumChannels);
+                    implAffineKernel<<<gridSize, blockSize, sharedMemSize, Stream>>>
+						(output.Data, Weight->GetTensor().Data, sampleCountNorm, NumChannels);
             }
 
             return LAYER_STATUS_SUCCESS;
@@ -551,6 +601,10 @@ namespace DragonianLib
             Tensor<float>& var
         ) const noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("GroupNorm1D " + Name, &output.Handle);
+#endif
+
             unsigned featureDim = output.H;
             if (featureDim != NumChannels)
                 return LAYER_STATUS_SIZE_MISMATCH;
@@ -562,6 +616,10 @@ namespace DragonianLib
             unsigned featureSizeNorm = output.H * output.W / NumGroups;
             mean.Resize(sampleCountNorm);
             var.Resize(sampleCountNorm);
+            if (mean.Handle) CudaProvider::asyncCudaStream(getHandleStream(mean.Handle));
+            mean.Handle = output.Handle;
+            if (var.Handle) CudaProvider::asyncCudaStream(getHandleStream(var.Handle));
+            var.Handle = output.Handle;
 
             auto Stream = cudaStream_t(getHandleStream(output.Handle));
 
@@ -577,16 +635,20 @@ namespace DragonianLib
 
             if (AffineEnabled)
             {
-                const auto batchThreadCount = std::min(batchSize, 2u);
-                dim3 blockSizeSp(DRAGONIANLIB_CUDA_BLOCK_SIZE / 32 / batchThreadCount, 32, batchThreadCount);
+                dim3 blockSizeSp(DRAGONIANLIB_CUDA_BLOCK_SIZE / 32, 32);
                 dim3 gridSizeSp(
                     (featureSize + blockSizeSp.x - 1) / blockSizeSp.x,
                     (NumChannels + blockSizeSp.y - 1) / blockSizeSp.y,
-                    (batchSize + blockSizeSp.z - 1) / blockSizeSp.z
+                    batchSize
                 );
                 unsigned sharedMemSize = blockSizeSp.y * 2ull * sizeof(float);
-	            implAffineBias2DKernel<<<blockSizeSp, gridSizeSp, sharedMemSize, Stream>>>
-				   (output.Data, output.Data, Weight->GetTensor().Data, Bias->GetTensor().Data, batchSize, NumChannels, featureSize);
+	            implAffineBias2DKernel<<<gridSizeSp, blockSizeSp, sharedMemSize, Stream>>>(
+                    output.Data,
+                    Weight->GetTensor().Data,
+                    Bias->GetTensor().Data,
+                    NumChannels,
+                    featureSize
+                    );
             }
 
             return LAYER_STATUS_SUCCESS;
@@ -608,11 +670,18 @@ namespace DragonianLib
 	        Tensor<float>& output
         ) const noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("LeakyReLU", &output.Handle);
+#endif
+
             auto size = output.N * output.C * output.H * output.W;
+
             dim3 blockLength(DRAGONIANLIB_CUDA_BLOCK_SIZE);
             dim3 gridLength((size + blockLength.x - 1) / blockLength.x);
+
             leakyReLUKernel<<<gridLength, blockLength, 0, cudaStream_t(getHandleStream(output.Handle))>>>
                 (output.Data, output.Data, NegativeSlope, size);
+
             return LAYER_STATUS_SUCCESS;
         }
 
@@ -621,176 +690,207 @@ namespace DragonianLib
             unsigned inputChannels, unsigned outputChannels, unsigned kernelSize,
             unsigned stride, unsigned padding, unsigned dilation, unsigned groups,
             bool bias
-        ) : Module(parent, name), KernelSize(kernelSize), Stride(stride), Padding(padding), Dilation(dilation), Groups(groups), InputChannels(inputChannels), OutputChannels(outputChannels), biasEnabled(bias)
+        ) : Module(parent, name), KernelSize(kernelSize), Stride(stride), Padding(padding), Dilation(dilation), Groups(groups), InputChannels(inputChannels), OutputChannels(outputChannels), BiasEnabled(bias)
         {
             Weight = std::make_shared<Parameter>(
                 this, "weight", Tensor<float>(outputChannels, inputChannels / groups, kernelSize)
             );
-            if (biasEnabled)
+            if (BiasEnabled)
                 Bias = std::make_shared<Parameter>(
                     this, "bias", Tensor<float>(outputChannels)
                 );
         }
 
-        static __global__ void conv1DForwardKernelBias(
+        static __global__ void im2ColKernel(
             const float* input,
-            const float* weight,
-            const float* bias,
             float* output,
-            unsigned batchSize,
-            unsigned inputChannels,
+            unsigned groups,
+            unsigned groupSize,
             unsigned inputLength,
-            unsigned outputChannels,
+            unsigned im2ColChannels,
             unsigned outputLength,
             unsigned kernelSize,
             unsigned stride,
             unsigned padding,
-            unsigned dilation,
-            unsigned groups
+            unsigned dilation
         )
         {
-            const unsigned batchIdx = blockIdx.z;
-            const unsigned outChannelIdx = blockIdx.y * blockDim.y + threadIdx.y;
-            const unsigned outIdx = blockIdx.x * blockDim.x + threadIdx.x;
-
-            if (batchIdx >= batchSize || outChannelIdx >= outputChannels || outIdx >= outputLength)
-                return;
-
-            float sum = 0.0f;
-
-            for (unsigned inputChannelIdx = 0; inputChannelIdx < inputChannels; ++inputChannelIdx)
-            {
-                for (unsigned kernelIdx = 0; kernelIdx < kernelSize; ++kernelIdx)
-                {
-                    int inIdx = int(outIdx * stride) - int(padding) + int(kernelIdx * dilation);
-                    if (inIdx >= 0 && inIdx < int(inputLength))
-                    {
-                        
-                        const unsigned weightIdx = (outChannelIdx * inputChannels + inputChannelIdx) * kernelSize + kernelIdx;
-                        for (unsigned groupIdx = 0; groupIdx < groups; ++groupIdx)
-                        {
-                            const unsigned inputIdx = 
-                                ((batchIdx * groups + groupIdx) * inputChannels + inputChannelIdx) * inputLength + inIdx;
-                        	sum += input[inputIdx] * weight[weightIdx];
-                        }
-                    }
-                }
-            }
-
-            extern __shared__ float conv1DSharedBias[];
-            if (threadIdx.x == 0)
-                conv1DSharedBias[threadIdx.y] = bias[outChannelIdx];
-            __syncthreads();
-            sum += conv1DSharedBias[threadIdx.y];
-
-            const unsigned outputIdx = ((batchIdx * outputChannels + outChannelIdx) * outputLength) + outIdx;
-            output[outputIdx] = sum;
-        }
-
-        static __global__ void conv1DForwardKernel(
-            const float* input,
-            const float* weight,
-            float* output,
-            unsigned batchSize,
-            unsigned inputChannels,
-            unsigned inputLength,
-            unsigned outputChannels,
-            unsigned outputLength,
-            unsigned kernelSize,
-            unsigned stride,
-            unsigned padding,
-            unsigned dilation,
-            unsigned groups
-        )
-        {
-            const unsigned batchIdx = blockIdx.z;
-            const unsigned outChannelIdx = blockIdx.y * blockDim.y + threadIdx.y;
-            const unsigned outIdx = blockIdx.x * blockDim.x + threadIdx.x;
-
-            if (batchIdx >= batchSize || outChannelIdx >= outputChannels || outIdx >= outputLength)
-                return;
-
-            float sum = 0.0f;
-
+			//im2ColChannels = groupSize * kernelSize, groupSize = inputChannel / groups
+            //[batchSize, groups, groupSize, inputLength] ->  [batchSize, groups, im2ColChannels, outputLength]
+            const unsigned bg = blockIdx.z;
+            const unsigned outCh = blockIdx.y * blockDim.y + threadIdx.y;
+            const unsigned outPos = blockIdx.x * blockDim.x + threadIdx.x;
+            if (outCh >= im2ColChannels || outPos >= outputLength)
+				return;
             
-            for (unsigned inputChannelIdx = 0; inputChannelIdx < inputChannels; ++inputChannelIdx)
-            {
-                for (unsigned kernelIdx = 0; kernelIdx < kernelSize; ++kernelIdx)
-                {
-                    int inIdx = int(outIdx * stride) - int(padding) + int(kernelIdx * dilation);
-                    if (inIdx >= 0 && inIdx < int(inputLength))
-                    {
-                        const unsigned inputIdx = (batchIdx * inputChannels + inputChannelIdx) * inputLength + inIdx;
-                        const unsigned weightIdx = (outChannelIdx * inputChannels + inputChannelIdx) * kernelSize + kernelIdx;
-                        sum += input[inputIdx] * weight[weightIdx];
-                    }
-                }
-            }
+            const unsigned batchIdx = bg / groups;
+            const unsigned gIdx = bg % groups;
 
-            const unsigned outputIdx = ((batchIdx * outputChannels + outChannelIdx) * outputLength) + outIdx;
-            output[outputIdx] = sum;
+            const unsigned gcIdx = outCh / kernelSize;
+            const unsigned kernelOffset = outCh % kernelSize;
+
+			const int inPos = int(outPos * stride) - int(padding) + int(kernelOffset * dilation);
+            const unsigned oPos = ((batchIdx * groups + gIdx) * im2ColChannels + outCh) * outputLength + outPos;
+            const unsigned iPos = ((batchIdx * groups + gIdx) * groupSize + gcIdx) * inputLength + inPos;
+            if (inPos >= 0 && inPos < int(inputLength))
+                output[oPos] = input[iPos];
+            else
+                output[oPos] = 0.f;
         }
 
         layerStatus_t Conv1D::Forward(
             const Tensor<float>& input,
-            Tensor<float>& output
+            Tensor<float>& output,
+            Tensor<float>& col
         ) const noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("Conv1D " + Name, &output.Handle);
+#endif
+
             if (input.H != InputChannels)
                 return LAYER_STATUS_SIZE_MISMATCH;
 
-            const unsigned batchDim = input.N * input.C;
-            const unsigned inChannel = input.H / Groups;
+            const unsigned batchSize = input.N * input.C;
+			const unsigned iGroupSize = InputChannels / Groups;
+            const unsigned oGroupSize = OutputChannels / Groups;
             const unsigned inputLength = input.W;
 
             const unsigned outputLength = (inputLength + 2 * Padding - Dilation * (KernelSize - 1) - 1) / Stride + 1;
 
-            output.Resize(batchDim, OutputChannels, outputLength);
+            output.Resize(batchSize, OutputChannels, outputLength);
+            if (output.Handle) CudaProvider::asyncCudaStream(getHandleStream(output.Handle));
             output.Handle = input.Handle;
 
-            dim3 blockSize(DRAGONIANLIB_CUDA_BLOCK_SIZE / 32, 32);
-            dim3 gridSize(
-                (outputLength + blockSize.x - 1) / blockSize.x,
-                (OutputChannels + blockSize.y - 1) / blockSize.y,
-                batchDim
-            );
-            unsigned sharedMemSize = blockSize.y * sizeof(float);
+            const unsigned im2ColChannels = iGroupSize * KernelSize;
+            col.Resize(batchSize, Groups, outputLength, im2ColChannels);
+            if (col.Handle) CudaProvider::asyncCudaStream(getHandleStream(col.Handle));
+            col.Handle = input.Handle;
 
-            if (biasEnabled)
-                conv1DForwardKernelBias<<<gridSize, blockSize, sharedMemSize, cudaStream_t(getHandleStream(input.Handle))>>>(
-                    input.Data,
-                    Weight->GetTensor().Data,
-                    Bias->GetTensor().Data,
-                    output.Data,
-                    batchDim,
-                    inChannel,
-                    inputLength,
-                    OutputChannels,
-                    outputLength,
-                    KernelSize,
-                    Stride,
-                    Padding,
-                    Dilation,
-                    Groups
-                    );
+            cudaStream_t Stream = cudaStream_t(getHandleStream(input.Handle));
+
+            static constexpr float Alpha = 1.f;
+            static constexpr float Beta = 0.f;
+
+            if (KernelSize == 1&&
+                Stride == 1 &&
+                Padding == 0 &&
+                Dilation == 1 &&
+                Groups == 1)
+            {
+				//[BatchSize, InputChannels, InputLength/OutputLength, 1]^T * [1, OutputChannels, InputChannels, 1]^T
+                if (auto Ret = cublasSgemmStridedBatched(
+                    cublasHandle_t(input.Handle), CUBLAS_OP_N, CUBLAS_OP_N,
+                    (int)outputLength, (int)OutputChannels, (int)InputChannels,
+                    &Alpha,
+                    input.Data, (int)outputLength, (ptrdiff_t)InputChannels * outputLength,
+                    Weight->GetTensor().Data, (int)InputChannels, 0,
+                    &Beta,
+					output.Data, (int)outputLength, (ptrdiff_t)OutputChannels * outputLength,
+                    (int)batchSize
+                )) return static_cast<layerStatus_t>(Ret);
+            }
             else
-				conv1DForwardKernel<<<gridSize, blockSize, sharedMemSize, cudaStream_t(getHandleStream(input.Handle))>>>(
-                    input.Data,
-                    Weight->GetTensor().Data,
+            {
+	            dim3 blockSize(DRAGONIANLIB_CUDA_BLOCK_SIZE / 32, 32);
+                dim3 gridSize(
+                    (outputLength + blockSize.x - 1) / blockSize.x,
+                    (im2ColChannels + blockSize.y - 1) / blockSize.y,
+                    batchSize * Groups
+                );
+
+	            im2ColKernel<<<gridSize, blockSize, 0, Stream>>>(
+	                input.Data,
+	                col.Data,
+	                Groups,
+                    iGroupSize,
+	                inputLength,
+	                im2ColChannels,
+	                outputLength,
+	                KernelSize,
+	                Stride,
+	                Padding,
+	                Dilation
+					);
+
+				//[batchSize, Groups, Im2ColChannels, OutputLength]^T * [1, Groups, oGroupSize, Im2ColChannels]^T
+				//[batchSize, InputChannels, OutputLength]^T * [1, OutputChannels, InputChannels, KernelSize]^T
+				//[batchSize, Groups, oGroupSize, OutputLength]^T
+                for (unsigned b = 0; b < batchSize; ++b)
+                    if (auto Ret = cublasSgemmStridedBatched(
+                        cublasHandle_t(col.Handle), CUBLAS_OP_N, CUBLAS_OP_N,
+                        (int)outputLength, (int)oGroupSize, (int)im2ColChannels,
+                        &Alpha,
+                        col.Data + (ptrdiff_t)Groups * im2ColChannels * outputLength * b, (int)outputLength,
+                        (ptrdiff_t)im2ColChannels * outputLength,
+                        Weight->GetTensor().Data, (int)im2ColChannels, (ptrdiff_t)oGroupSize * im2ColChannels,
+                        &Beta,
+                        output.Data + (ptrdiff_t)OutputChannels * outputLength * b, (int)outputLength,
+                        (ptrdiff_t)oGroupSize * outputLength,
+                        (int)Groups
+                    )) return static_cast<layerStatus_t>(Ret);
+            }
+
+            //const unsigned iGroupSize = InputChannels / Groups;
+            //const unsigned oGroupSize = OutputChannels / Groups;
+            //const unsigned im2ColChannels = iGroupSize * KernelSize;
+            //[batchSize, Groups, outputLength, im2ColChannels] * [Groups, oGroupSize, im2ColChannels]
+            //[batchSize, Groups, oGroupSize, outputLength] -> [batchSize, OutputChannels, outputLength]
+            /*static constexpr float Alpha = 1.f;
+            static constexpr float Beta = 0.f;
+            for (unsigned b = 0; b < 1; ++b)
+                for (unsigned g = 0; g < 1; ++g)
+                {
+                    const float* A = Weight->GetTensor().Data + (ptrdiff_t)g * oGroupSize * im2ColChannels;
+                    const float* B = col.Data + ptrdiff_t(b * Groups + g) * outputLength * im2ColChannels;
+                    float* C = output.Data + ptrdiff_t(b * Groups + g) * oGroupSize * outputLength;
+                    if (auto Ret = cublasSgemm(
+                        cublasHandle_t(input.Handle),
+                        CUBLAS_OP_T,
+                        CUBLAS_OP_N,
+                        (int)oGroupSize,
+                        int(outputLength),
+                        (int)im2ColChannels,
+                        &Alpha,
+                        A,
+                        (int)im2ColChannels,
+                        B,
+                        (int)im2ColChannels,
+                        &Beta,
+                        C,
+                        (int)oGroupSize
+                    )) return static_cast<layerStatus_t>(Ret);
+                }*/
+
+            if (BiasEnabled)
+            {
+                dim3 blockSizeSp(DRAGONIANLIB_CUDA_BLOCK_SIZE / 32, 32);
+                dim3 gridSizeSp(
+                    (outputLength + blockSizeSp.x - 1) / blockSizeSp.x,
+                    (OutputChannels + blockSizeSp.y - 1) / blockSizeSp.y,
+                    batchSize
+                );
+                unsigned sharedMemSize = blockSizeSp.y * sizeof(float);
+	            implBias2DKernel<<<gridSizeSp, blockSizeSp, sharedMemSize, Stream>>>(
                     output.Data,
-                    batchDim,
-                    inChannel,
-                    inputLength,
+                    Bias->GetTensor().Data,
                     OutputChannels,
-                    outputLength,
-                    KernelSize,
-                    Stride,
-                    Padding,
-                    Dilation,
-                    Groups
+                    outputLength
                     );
+            }
 
             return LAYER_STATUS_SUCCESS;
+        }
+
+        static __global__ void implInplaceAddKernel(
+            float* output,
+            const float* input,
+            const unsigned size
+        )
+        {
+            const unsigned index = blockIdx.x * blockDim.x + threadIdx.x;
+            if (index < size)
+				output[index] += input[index];
         }
 
         layerStatus_t AddTensor(
@@ -799,18 +899,31 @@ namespace DragonianLib
             const Tensor<float>& input
         )
         {
-            output.Handle = input.Handle;
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("Add", &output.Handle);
+#endif
+
+            if (output.Dim != input.Dim ||
+                output.N != input.N ||
+                output.C != input.C ||
+                output.H != input.H ||
+                output.W != input.W)
+                return LAYER_STATUS_SIZE_MISMATCH;
+
+            if (input.Handle) CudaProvider::asyncCudaStream(getHandleStream(input.Handle));
+
             const auto n = input.N * input.C * input.H * input.W;
-            float alpha = 1.f;
-            return static_cast<layerStatus_t>(cublasSaxpy(
-                cublasHandle_t(output.Handle),
-                static_cast<int>(n),
-                &alpha,
-                input.Data,
-                1,
+
+			dim3 blockLength(DRAGONIANLIB_CUDA_BLOCK_SIZE);
+			dim3 gridLength((n + blockLength.x - 1) / blockLength.x);
+
+            implInplaceAddKernel<<<gridLength, blockLength, 0, cudaStream_t(getHandleStream(output.Handle))>>>(
                 output.Data,
-                1
-            ));
+                input.Data,
+                n
+				);
+
+            return LAYER_STATUS_SUCCESS;
         }
 
         static __device__ float sigmoid(float x)
@@ -834,9 +947,15 @@ namespace DragonianLib
 	        Tensor<float>& output
         )
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("Sigmoid", &output.Handle);
+#endif
+
             const auto size = output.N * output.C * output.H * output.W;
+
             dim3 blockLength(DRAGONIANLIB_CUDA_BLOCK_SIZE);
             dim3 gridLength((size + blockLength.x - 1) / blockLength.x);
+
             implSigmoidKernel<<<gridLength, blockLength, 0, cudaStream_t(getHandleStream(output.Handle))>>>(
                 output.Data,
                 output.Data,
@@ -851,6 +970,10 @@ namespace DragonianLib
             Tensor<float>& output
         ) noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("Transpose", &output.Handle);
+#endif
+
             if (input.Dim == 4)
                 output.Resize(input.N, input.C, input.W, input.H);
             else if (input.Dim == 3)
@@ -859,14 +982,17 @@ namespace DragonianLib
                 output.Resize(input.W, input.H);
             else
                 return LAYER_STATUS_SIZE_MISMATCH;
+            if (output.Handle) CudaProvider::asyncCudaStream(getHandleStream(output.Handle));
+            output.Handle = input.Handle;
+
             const auto BatchSize = input.N * input.C;
             const auto BatchStride = input.H * input.W;
-            output.Handle = input.Handle;
-            float alpha = 1.f;
-            float beta = 0.f;
+
+            static constexpr float alpha = 1.f;
+            static constexpr float beta = 0.f;
+
             for (unsigned b = 0; b < BatchSize; ++b)
-            {
-                auto Ret = cublasSgeam(
+                if (auto Ret = cublasSgeam(
                     cublasHandle_t(input.Handle),
                     CUBLAS_OP_T,
                     CUBLAS_OP_T,
@@ -880,35 +1006,30 @@ namespace DragonianLib
                     static_cast<int>(input.W),
                     output.Data + (ptrdiff_t)b * BatchStride,
                     static_cast<int>(input.H)
-                );
-                if (Ret)
-                    return static_cast<layerStatus_t>(Ret);
-            }
+                )) return static_cast<layerStatus_t>(Ret);
+
             return LAYER_STATUS_SUCCESS;
         }
 
         static __global__ void implGLUKernel(
             const float* input,
             float* output,
-            unsigned batchSize,
+            unsigned half,
             unsigned featureSize
         )
         {
+            //[batch, 2, half, featureSize] -> [batch, half, featureSize]
+            const unsigned bz = blockIdx.z;
             const unsigned ty = threadIdx.y;
             const unsigned tx = threadIdx.x;
 
             unsigned y = blockIdx.y * blockDim.y + ty;
             unsigned x = blockIdx.x * blockDim.x + tx;
 
-            if (y < batchSize && x < featureSize)
+            if (y < half && x < featureSize)
             {
-                const unsigned idx1 = y * featureSize + x;
-                const unsigned idx2 = (y + batchSize) * featureSize + x;
-
-                float linearPart = input[idx1];
-                float gatePart = input[idx2];
-
-                output[idx1] = linearPart * sigmoid(gatePart);
+                output[(bz * half + y) * featureSize + x] = 
+                    input[((bz * 2 + 0) * half + y) * featureSize + x] * sigmoid(input[((bz * 2 + 1) * half + y) * featureSize + x]);
             }
         }
 
@@ -917,6 +1038,10 @@ namespace DragonianLib
             Tensor<float>& output
         ) noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("GLU", &output.Handle);
+#endif
+
             if (input.Dim == 4)
                 output.Resize(input.N, input.C, input.H / 2, input.W);
             else if (input.Dim == 3)
@@ -925,20 +1050,25 @@ namespace DragonianLib
                 output.Resize(input.H / 2, input.W);
             else
                 return LAYER_STATUS_SIZE_MISMATCH;
-            const auto BatchSize = input.N * input.C * input.H / 2;
-            const auto FeatureSize = input.W;
+            if (output.Handle) CudaProvider::asyncCudaStream(getHandleStream(output.Handle));
+            output.Handle = input.Handle;
 
-            // Launch CUDA kernel for GLU computation
+            const auto BatchSize = input.N * input.C;
+            const auto Half = input.H / 2;
+            const auto FeatureSize = input.W;
+			
+
             dim3 blockSize(32, DRAGONIANLIB_CUDA_BLOCK_SIZE / 32);
             dim3 gridSize(
                 (FeatureSize + blockSize.x - 1) / blockSize.x,
-                (BatchSize + blockSize.y - 1) / blockSize.y
+                (Half + blockSize.y - 1) / blockSize.y,
+                BatchSize
             );
 
             implGLUKernel<<<gridSize, blockSize, 0, cudaStream_t(getHandleStream(input.Handle))>>>(
                 input.Data,
                 output.Data,
-                BatchSize,
+                Half,
                 FeatureSize
             );
 
@@ -965,9 +1095,15 @@ namespace DragonianLib
 	        Tensor<float>& output
         ) noexcept
         {
+#if DRAGONIANLIB_CUDA_EP_BENCHMARK
+			auto __BENCH_TM_BEG = Timer("SiLU", &output.Handle);
+#endif
+
             const auto size = output.N * output.C * output.H * output.W;
+
             dim3 blockLength(DRAGONIANLIB_CUDA_BLOCK_SIZE);
             dim3 gridLength((size + blockLength.x - 1) / blockLength.x);
+
             implSiLUKernel<<<gridLength, blockLength, 0, cudaStream_t(getHandleStream(output.Handle))>>>(
                 output.Data,
                 output.Data,
@@ -976,8 +1112,5 @@ namespace DragonianLib
 
             return LAYER_STATUS_SUCCESS;
         }
-
-
-
     }
 }

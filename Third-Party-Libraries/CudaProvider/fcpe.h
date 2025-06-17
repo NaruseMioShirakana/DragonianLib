@@ -23,7 +23,8 @@ namespace DragonianLib
                     Tensor<float>& output,
                     Tensor<float>& mean,
                     Tensor<float>& var,
-                    Tensor<float>& cache
+                    Tensor<float>& cache,
+                    Tensor<float>& col
                 ) const;
 
             private:
@@ -54,7 +55,8 @@ namespace DragonianLib
                     Tensor<float>& mean,
                     Tensor<float>& var,
                     Tensor<float>& res,
-                    Tensor<float>& cache
+                    Tensor<float>& cache,
+                    Tensor<float>& col
                 ) const;
 
             private:
@@ -82,7 +84,8 @@ namespace DragonianLib
                     Tensor<float>& mean,
                     Tensor<float>& var,
                     Tensor<float>& res,
-                    Tensor<float>& cache
+                    Tensor<float>& cache,
+                    Tensor<float>& col
                 ) const;
 
             private:
@@ -94,12 +97,15 @@ namespace DragonianLib
             public:
                 struct CacheTensors
                 {
-                    Tensor<float> input_stack_out1;
-                    Tensor<float> input_stack_out2;
+                    CacheTensors(Tensor<float>&& _i) : input(std::move(_i)) {}
+                    Tensor<float> input;
+                    Tensor<float> output;
+                    friend Model;
+                protected:
                     Tensor<float> mean;
                     Tensor<float> var;
                     Tensor<float> res;
-                    Tensor<float> cache;
+                    Tensor<float> col;
                 };
 
                 Model(
@@ -116,8 +122,6 @@ namespace DragonianLib
                 );
 
                 layerStatus_t Forward(
-                    const Tensor<float>& input,
-                    Tensor<float>& output,
                     CacheTensors& caches
                 ) const;
 

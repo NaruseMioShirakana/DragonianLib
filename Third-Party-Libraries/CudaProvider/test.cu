@@ -1,4 +1,5 @@
 ﻿#include "fcpe.h"
+#include "npy.h"
 
 
 int main()
@@ -12,7 +13,7 @@ int main()
 	constexpr auto BatchSize = 2ull;
 	constexpr auto InChannels = 128ull;
 	constexpr auto OutChannels = 360ull;
-	constexpr auto Length = 810ull;
+	constexpr auto Length = 1024ull;
 	constexpr auto Groups = 8ull;
 	constexpr auto KernelSize = 4ull;
 
@@ -49,8 +50,22 @@ int main()
 		OutChannels
 	);
 
-	DragonianLib::CudaModules::FCPE::Model::CacheTensors Cache;
-	Test.Forward(Input, Output, Cache);
+	auto Dict = DragonianLib::Util::LoadNumpyFileToDict(
+		L"C:/DataSpace/torchfcpe/assets/fcpe"
+	);
+
+	Test.LoadModel(Dict);
+
+	auto Time = clock();
+	DragonianLib::CudaModules::FCPE::Model::CacheTensors Cache{ Input.Clone(Stream) };
+	Test.Forward(Cache);
+	auto Vec = Cache.output.Cpy2Host(Stream);
 	DragonianLib::CudaProvider::asyncCudaStream(Stream);
+	printf("%ld\n\n\n", clock() - Time);
+	Cache.input.Copy(Input, Stream);
+	Time = clock();
+	Test.Forward(Cache);
+	DragonianLib::CudaProvider::asyncCudaStream(Stream);
+	printf("%ld\n", clock() - Time);
 	return 0;
 }
